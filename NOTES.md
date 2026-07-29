@@ -1,6 +1,6 @@
 # `noggin` Spec
 
-`noggin` is a TUI for viewing markdown files with an integrated file/folder exlorer and manager. Its primary purpose is efficiently accessing and viewing markdown files. It is explicitly not an editor. 
+`noggin` is a TUI for viewing markdown files with an integrated file/folder exlorer and manager. Its primary purpose is efficiently accessing and viewing markdown files. It is explicitly not a text editor. 
 
 While the markdown renderer is at the heart of its functionality, most of the actual feature set involve navigating, parsing and managing files, including:
 - rendering file/folder trees
@@ -24,7 +24,6 @@ While the markdown renderer is at the heart of its functionality, most of the ac
 - "Nav Keys": Standardized keys for navigating: see Keyboard Commands below.
 - "Tag": A label added to a document, used for non-hierarchical organization and relation. Tags can be nested via "/" (i.e. "projects/work").
 - "Edit": Open the selected document in nvim or $EDITOR (via tmux or handoff process)
-- "Leader Key": Special key that starts a chorded input command.
 
 ## Overview
 
@@ -76,7 +75,7 @@ The UI tree:
 - Last search (scope and type)
 - Last Results Set (excludes Tags-derived)
 - Focus (Root Nav/Files Nav/Document Viewer/Outline Viewer/Modal/Dialog)
-- Files opened this session
+- Files opened this session (as stack for back/forward)
 
 ## UI Panes
 
@@ -176,13 +175,13 @@ Activating a result dismisses the Fuzzy Finder and navigates the targeted Docume
 
 The following modal UIs exist (only one of which can be displayed at a time):
 - Fuzzy Finder (as File Search or Document Search)
+- Search Picker
 - Browse By Picker
 - Tag Browser
 
 as well as dialogs (which display above modals):
 - Confirm dialogs (delete file/folder)
 - Input fields (move file name)
-- Leader Key completion help
 - Keyboard help
 
 
@@ -192,9 +191,6 @@ as well as dialogs (which display above modals):
 base         x xxx xx xx        
 + sft              xx           
 + ctr                           
-### Leader Key
-
-Keyboard commands are non-chorded, with one exception. There is a Leader Key (`<space>`) that can be starts a chord (endable by `<esc>`). When it is pressed, it presents an expanded (from the bottom) helper menu of what the next key will do.
 
 ### Global
 Always availabe (except when a modal/dialog is present).
@@ -204,15 +200,8 @@ Always availabe (except when a modal/dialog is present).
 - `r`: focus Roots Nav
 - `n`: focus Files Nav
 - `b`: open Browse By Picker
-- ``: focus Document Viewer
-- ``: go to previous document in history
-- ``: go to next document in history
-- `<leader>s`: open file name search scoped to Active Root
-- `<leader>S`: open file name search scoped to All Roots
-- `<leader>,`: open file name search scoped to Documents opened this session
-- `<leader>/`: open grep search scoped to Active Root
-- `<leader>\`: open grep search scoped to All Roots
-- `<leader>.`: open most recent search
+- `d`: focus Document Viewer
+- `<space>`: open Search Picker
 
 ### General
 Context-dependent, but universal when applicable.
@@ -225,6 +214,8 @@ Nav keys:
 - `<shift>+`: 5x movement
 - `<ctrl>+`: 15x movement
 - `<alt>+`: 50x movement
+- `g`: top
+- `G`: bottom
 
 ### Focus-specific
 
@@ -251,26 +242,10 @@ File selected:
 - `<enter>`: set as the active document in the targeted Document Viewer and focus it
 - `<space>`: preview the document (Document Viewer will show the document until item is unselected)
 - `m`: move file (show prompt with current path, after user edits, move file to new location) (error on collision)
-- `d`: duplicate file (create copy of file in same folder
+- `D`: duplicate file (create copy of file in same folder
 - `X`: delete file (w/ confirm)
 Folder selected:
 - `X`: delete folder (w/ confirm) (error if folder non-empty)
-
-###### Targetting
-
-Since we can have up to three Document Viewers, the following modifiers apply to determine which we are targeting:
-- No mod: Document Viewer 1
-- `<shift>+`: Document Viewer 2
-- `<ctrl>+`: Document Viewer 3
-
-These apply to:
-- `<enter>`
-- `<space>`
-- `f`
-
-Ambiguity handling:
-- If something targets Document Viewer 3, but there is only one, target Document Viewer 2
-- For `f` (folow toggle), target the nearest (`<ctrl>+f` with 2, target 2; with 3, target 1)
 
 ##### Browse By Picker
 
@@ -287,12 +262,15 @@ Ambiguity handling:
 
 - `v`: Enter Select mode
 - `<esc>`: Enter Normal mode
+- `[`: go to previous document in history
+- `]`: go to next document in history
+- `^`, `$`, `w`, `e`, `b`: corresponding vim motions
 
 ###### Normal Mode
 
-- `g`: (if cursor is within) open URL/wiki-link
-- `n`: jump to next URL/wiki-link
-- `p`: jump to previous URL/wiki-link
+- `J`: (if cursor is within) open URL in default browser/open wiki-link locally
+- `)`: jump to next URL/wiki-link
+- `(`: jump to previous URL/wiki-link
 - `o`: focus outline
 - `O`: toggle Outline visibility
 - `E`: Edit
@@ -301,44 +279,65 @@ Ambiguity handling:
 ###### Select Mode
 
 - `c`, `y`: copy selected
-- `w`, `e`, `b`: corresponding vim motions
 
 ##### Outline Viewer
 
+- `<enter>`: jump to selected header in Document Viewer and focus
 - `o`: unfocus outline (focus Document)
 - `O`: unfocus outline (focus Document) and hide outline
 
+#### Search Picker
+
+- `s`: open file name search scoped to Active Root
+- `S`: open file name search scoped to All Roots
+- `,`: open file name search scoped to Documents opened this session
+- `/`: open grep search scoped to Active Root
+- `\`: open grep search scoped to All Roots
+- `.`: open most recent search
+
 #### Fuzzy Finder
 
+- `<esc>`: dismiss
 - Nav Keys: navigate results
+- `<enter>`: open in Document Viewer
 - `<ctrl>+d`: scroll preview down
 - `<ctrl>+u`: scroll preview up
 - `<ctrl>+o`: send Results to File Nav
-- `<esc>`: dismiss
-- ``: history?
-- ``: 
+- `<ctrl>+h`: toggle hidden
+- `<ctrl>+i`: toggle ignored
 
-## TODO
-- history?
-- look at picker options
-- vet/prune keyboard claims
-- vet brainstorm
-- pgup/pgdn
+### Targetting
+
+Since we can have up to three Document Viewers, the following modifiers apply to determine which we are targeting:
+- No mod: Document Viewer 1
+- `<shift>+`: Document Viewer 2
+- `<ctrl>+`: Document Viewer 3
+
+These apply to:
+- Files Nav:
+    - `<enter>
+    - `<space>`
+    - `f`
+- Fuzzy Finder:
+    - `<enter>
+- Document Viewer:
+    - `J` (if wiki-link)
+
+Ambiguity handling:
+- If Document Viewer does not exist, silent no-op (if we develop a need for quiet notifications, we can add this)
+    - Example: `<ctrl>+f` is entered when only 2 DVs are shown, no-op
+- Only one Document Viewer can follow at a time, so if `f` toggle follow for DV1, `<shift>+f` will disable follow of DV1 and enable it for DV2. 
+
+## Tech stack
+
+Golang using BubbleTree. Glamour gets us a beautiful markdown renderer for free.
 
 ## Open Questions
-
-### Tech stack
-
-Considerations:
-- Using Glamour (part of Charm) gets us a beautiful markdown renderer for free.
-- Versatility to interface with libs (ffi?)
-    - fzf
-    - others?
 
 ### Tags notation
 
 Options:
-- Obsidian-compatible (frontmatter)
+- Obsidian-style (frontmatter)
 - Free text 
 - Metadata
 
@@ -351,7 +350,10 @@ Considerations:
 - Create daily note
 - Create zettelkasten note
 - Simple editing
+- Outline re-ordering
 - Audio input
 - Encryption
 - Sync (git?)
+- wikipedia pane
+- agent chat pane
 
