@@ -4,15 +4,18 @@ Greenfield: the repo has no code yet, so M1 stands up the walking skeleton. Mile
 puts the pre-agreed cut candidates (S8, S9, S12 — D8) last, in reverse cut order, so an
 overrun trims the tail instead of forcing a re-plan (D11).
 
-Build environment: `GOROOT` is misset in this sandbox; use `GOROOT=/usr/lib/go` (go 1.26).
-See `findings/go-toolchain-env.md`.
+Build environment: run every Go command with `GOROOT` **unset** — the sandbox exports a
+`GOROOT` for a toolchain that is not installed, which breaks the apt go 1.26 that is. No
+`staticcheck`/`goimports`/`gopls`, so checks are `go vet` + `gofmt -l` + `go test`. See
+`findings/go-toolchain-env.md`.
 
 ## M1 — Walking skeleton and Document Viewer
 
 Delivers: S7 (plus the frame every later milestone hangs off)
 
 - **M1.1** — Scaffold the Go module and a Bubble Tea program that starts and exits cleanly —
-  done when: `go build ./...` and `go vet ./...` pass and the binary runs and quits on `q`
+  done when: `go build ./...`, `go vet ./...` and `gofmt -l .` are clean via a checked-in
+  make/just target that neutralises the bad `GOROOT`, and the binary runs and quits on `q`
   and `ctrl+c` restoring the terminal — effort: 2
 - **M1.2** — Lay out the frame: Navigator column (two stacked pane regions) beside the
   Document Viewer, Footer line beneath, keyboard focus moving between panes, reflowing on
