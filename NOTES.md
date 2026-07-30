@@ -187,11 +187,6 @@ as well as dialogs (which display above modals):
 
 ## Keyboard commands
 
-      abcdefghijklmnopqrstuvwxyz
-base         x xxx xx xx        
-+ sft              xx           
-+ ctr                           
-
 ### Global
 Always availabe (except when a modal/dialog is present).
 

@@ -1,27 +1,123 @@
 # Decisions
 
-<!-- Durable, cross-cycle. One entry per decision. Statuses: open | decided | superseded.
-     Decisions are judgments, not a backlog. Via the escalation matrix: medium risk/value ->
-     do + log here (decided); high + non-blocking -> skip + log the open JUDGMENT QUESTION
-     here — deferred work-shaped items go to cycle/TRIAGE.md instead, and if replan defers
-     them past this cycle, to ROADMAP.md Unscheduled. Blockage is tracked in PROGRESS.md
-     (blocked rows reference D keys); no blocking field here. Keep entries short; the "why"
-     matters most.
+## D1: Go with the grain of the libraries
 
-     Every entry stamps its `Cycle:` — bare M/S keys inside an entry resolve against that
-     cycle, permanently. A reference to another cycle must qualify it (C2/M1.2), since key
-     namespaces reset each cycle.
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: `NOTES.md` specified UI and behavior in unusual detail before any code existed.
+- Decision: Where intent and library behavior differ, try the library's way first. Where a
+  spec'd nicety would require authoring a subsystem to obtain it, drop the nicety and raise it
+  for triage. The spec expresses intent; it is not a design to reproduce exactly.
+- Why: The project only feels reachable because Glamour/Bubble Tea do the hard parts. Fighting
+  them to match a pre-code design is how the budget disappears.
 
-     Retention is a hindsight judgment made at /charm-close, not at write time: entries that
-     no longer constrain future work are retired (moved to the closing cycle's archive), and
-     the enduring ADRs stay. Never delete an entry here; retire it, or mark it superseded and
-     link the replacement. -->
+## D2: The keymap is provisional and build-time-only
 
-## D1: <title>
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: `NOTES.md` contains a near-complete keymap, including collisions (`J` as
+  follow-link vs. `shift+j` as accelerated movement) and an inverted `j`/`k`.
+- Decision: Deliverables are defined by their *actions*, not their bindings. Bindings must be
+  cheap to change at build time; user-facing key configuration is out of scope indefinitely.
+- Why: Fluency is discovered by dogfooding, not designed up front. Naming keys in the contract
+  would freeze guesses.
 
-- Status: open | decided | superseded (see D<n>)
-- Cycle: C<n>
-- Date: <yyyy-mm-dd>
-- Context: <one or two lines: what forced the decision>
-- Decision: <what was decided, or the open question if status is open>
-- Why: <rationale / tradeoffs; alternatives rejected and why, if notable>
+## D3: Editing is a suspend-and-resume handoff, not a tmux pane
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: `NOTES.md` offered "via tmux or handoff process" as if they were variants; they are
+  different products.
+- Decision: C1 releases the terminal to `$EDITOR` (fallback `vi`), resumes on exit, re-renders
+  from disk. Reading while editing (tmux) is deferred to Unscheduled.
+- Why: Bubble Tea provides process handoff natively, so this is nearly free and needs no file
+  watching. Reading-while-editing only becomes meaningful once more than one document can be
+  on screen (C3).
+
+## D4: The Document Viewer has no cursor
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: The spec'd cursor with vim motions exists only to anchor Select mode and link
+  jumping, both deferred.
+- Decision: Viewport scrolling only. No cursor, no selection, no copy in C1.
+- Why: Mapping cursor positions across styled, wrapped, rendered output is precisely where
+  nvim's markdown plugins fail; paying that cost for no C1 feature is indefensible. Revisit
+  when select mode or wiki-links are actually scheduled.
+
+## D5: YAML frontmatter is hidden by pre-stripping
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: Glamour has no frontmatter support and CommonMark renders the closing `---` as a
+  setext heading underline, so an unstripped block becomes a spurious H2.
+- Decision: Strip the frontmatter bytes before rendering, as Glow does.
+- Why: Doing nothing is not a neutral default, it is a visible bug. Stripping is ~10 lines and
+  no new dependency; frontmatter-aware parsing would mean bypassing `TermRenderer` and
+  re-implementing its options. Stripping for display does not prevent parsing tags later.
+  See `cycle/findings/frontmatter-rendering.md`.
+
+## D6: Roots may not nest
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: Roots bound visibility and search scope; overlapping roots make "which root is this
+  document in" ambiguous.
+- Decision: Roots are unique by exact path and may not be a parent or a child of another root.
+  A path argument inside an existing root activates the covering root instead; a path argument
+  that is a parent of an existing root is rejected with a message.
+- Why: Ambiguous scope would poison C2 search results and C4 per-root document state. Accepted
+  sharp edge: `noggin ~` is rejected when `~/notes` is starred.
+
+## D7: The starred-roots store lives in the config directory, hand-editable
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: It is arguably application data, not user configuration.
+- Decision: Treat it as config for now, in a plain hand-editable format.
+- Why: While iterating, being able to fix a moved or broken root in an editor is worth more
+  than taxonomic correctness — it is also the only repair mechanism, since in-session root
+  management is out of scope. Move it to a data location once it stops needing hand edits.
+
+## D8: Pre-agreed cut order if C1 overruns
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: Twelve deliverables against a one-week appetite.
+- Decision: Cut in this order, most expendable first: S12 (help modal), S9 (navigator toggle),
+  S8 (find-in-document).
+- Why: Deciding the sacrifice while calm is better than triaging it on day five. Everything
+  above those three is what makes the dogfood week possible at all.
+
+## D9: Does noggin ever become a general text-file viewer?
+
+- Status: open
+- Cycle: C1
+- Date: 2026-07-30
+- Context: C1 restricts visible files to a markdown-ish allowlist, but the vision mentions
+  wanting to view source and other text files; the two positions were in direct conflict
+  during brainstorming.
+- Decision: **Open.** C1 is markdown-ish only. Unresolved: whether general text/source viewing
+  is a later deliverable or permanently out of character for the product.
+- Why: In a code repo, source files vastly outnumber documents, so admitting them works
+  directly against "find my notes fast" — the core value. Deferred until dogfooding shows
+  whether the need is real.
+
+## D10: Tag notation is unresolved
+
+- Status: open
+- Cycle: C1
+- Date: 2026-07-30
+- Context: `NOTES.md` lists frontmatter / free text / metadata as options for tags, with
+  parsing and caching efficiency as the deciding factor. Tags are C5.
+- Decision: **Open.** Not needed before C5.
+- Why: The C1 decision to hide frontmatter (D5) does not prejudge this — hiding it from the
+  render is independent of parsing it for metadata. Worth deciding before C5 is bet on.
