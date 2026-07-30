@@ -1,35 +1,44 @@
-# Progress — C<n> <cycle name>
-
-<!-- Per-cycle. Cursor and statuses ONLY — no work summaries (git history carries those).
-     The Handoff section is the single exception: overwrite it each session, never append.
-     Statuses: todo | in-progress | done | blocked | deferred.
-     Blocked rows reference the DECISIONS.md / TRIAGE.md item they wait on — the set of
-     blocked rows is the cycle's blocking-issue list.
-
-     Reviewed / Validated columns: date (yyyy-mm-dd) the task was last covered by code
-     review / validate, or `-` if it never has been. Set per task key, by the role that
-     performed the check — or the parent that dispatched it as a subagent — for exactly the
-     tasks that check actually covered, never assumed for a whole milestone. This is what
-     makes reviewed/validated state accurate across replans that insert tasks earlier,
-     partial mid-milestone checks, and skipped end-of-milestone gates — a single cycle-wide
-     checkpoint can't represent any of those. Clear a cell back to `-` when the task's code
-     changes after that date (fix-ups, reopened work) — it needs re-covering. -->
+# Progress — C1 read-across-roots
 
 ## Cursor
 
-Current task: <key>
+Current task: M1.1
 
 ## Handoff
 
-<!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
-     state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
+Planning is done; no code exists yet. The repo holds only `NOTES.md` (raw brainstorm input,
+superseded by `SPEC.md`) and `.charm/`.
 
-<current-state snapshot>
+Next step: M1.1 — scaffold the Go module (module path `noggin`-ish, `cmd/noggin`) and a
+minimal Bubble Tea program.
+
+Gotchas for the first build session:
+- `GOROOT` is misset in this sandbox (`/home/agent/.local/go`, absent). Export
+  `GOROOT=/usr/lib/go` (go 1.26.0). Module downloads through the proxy work.
+  See `findings/go-toolchain-env.md`.
+- Bubble Tea `@latest` resolves to v1.3.10 (v2 is pre-release); Glamour v1.0.0 is out. Take
+  latest stable and go with the grain (D1).
+- M1.3 renders a document from a bare path argument; M3.1 replaces that ad-hoc argument
+  handling with the real S1 launch contract (D11).
+
+No blockers.
 
 ## Status
 
-| Key  | Status      | Reviewed | Validated | Note                              |
-|------|-------------|----------|-----------|------------------------------------|
-| M1.1 | done        | -        | -         |                                    |
-| M1.2 | in-progress | -        | -         |                                    |
-| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |
+| Key  | Status | Reviewed | Validated | Note |
+|------|--------|----------|-----------|------|
+| M1.1 | todo   | -        | -         |      |
+| M1.2 | todo   | -        | -         |      |
+| M1.3 | todo   | -        | -         |      |
+| M2.1 | todo   | -        | -         |      |
+| M2.2 | todo   | -        | -         |      |
+| M2.3 | todo   | -        | -         |      |
+| M3.1 | todo   | -        | -         |      |
+| M3.2 | todo   | -        | -         |      |
+| M3.3 | todo   | -        | -         |      |
+| M3.4 | todo   | -        | -         |      |
+| M4.1 | todo   | -        | -         |      |
+| M4.2 | todo   | -        | -         |      |
+| M5.1 | todo   | -        | -         |      |
+| M5.2 | todo   | -        | -         |      |
+| M5.3 | todo   | -        | -         |      |

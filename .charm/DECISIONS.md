@@ -121,3 +121,18 @@
 - Decision: **Open.** Not needed before C5.
 - Why: The C1 decision to hide frontmatter (D5) does not prejudge this — hiding it from the
   render is independent of parsing it for metadata. Worth deciding before C5 is bet on.
+
+## D11: Plan shape — walking skeleton first, cut candidates last
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-30
+- Context: The repo is greenfield, and the spec's most valuable deliverables (roots, browsing)
+  all presuppose a rendered document and a frame to put it in.
+- Decision: M1 stands up a walking skeleton (module, frame, Document Viewer) that opens a
+  document from a bare path argument; the real S1 launch contract lands in M3.1 and replaces
+  that ad-hoc argument handling. The pre-agreed cut candidates (S8, S9, S12 per D8) are
+  grouped in the final milestone in reverse cut order.
+- Why: Every later milestone needs something on screen to attach to, and a temporary path
+  argument is a few lines that S1 subsumes. Putting the cut candidates last means an overrun
+  is a stop, not a re-plan.
