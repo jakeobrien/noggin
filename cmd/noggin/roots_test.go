@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -197,6 +199,80 @@ func wantLen(t *testing.T, res resolution, n int) {
 	t.Helper()
 	if len(res.roots) != n {
 		t.Fatalf("roots = %v, want %d root(s)", rootPaths(res), n)
+	}
+}
+
+// TestTooManyArgumentsMessageDoesNotImplyFirstWasHonored is T17: the
+// rejection must not read as if args[0] was used and only the rest were
+// dropped, since none of them become a root.
+func TestTooManyArgumentsMessageDoesNotImplyFirstWasHonored(t *testing.T) {
+	base := t.TempDir()
+	one := mkdir(t, filepath.Join(base, "one"))
+	two := mkdir(t, filepath.Join(base, "two"))
+
+	res := resolveRoots([]string{one, two}, nil, base)
+
+	if strings.Contains(res.message, "ignored") && strings.Contains(res.message, "extra") {
+		t.Errorf("message = %q, still implies args[0] was honored and only extras were dropped", res.message)
+	}
+	if res.message == "" {
+		t.Fatal("want a rejection message")
+	}
+	if len(res.roots) != 0 {
+		t.Errorf("roots = %v, want none (no starred roots, no args honored)", rootPaths(res))
+	}
+}
+
+// TestResolveCwdFallsBackToPWD is T20: when os.Getwd fails (e.g. the working
+// directory was removed out from under the process), resolveCwd falls back to
+// the shell-set PWD rather than leaving the caller to feed a bare "." into
+// root resolution.
+func TestResolveCwdFallsBackToPWD(t *testing.T) {
+	removed := mkdir(t, filepath.Join(t.TempDir(), "gone"))
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	t.Cleanup(func() { os.Chdir(orig) })
+
+	if err := os.Chdir(removed); err != nil {
+		t.Fatalf("Chdir: %v", err)
+	}
+	if err := os.RemoveAll(removed); err != nil {
+		t.Fatalf("RemoveAll: %v", err)
+	}
+	if _, err := os.Getwd(); err == nil {
+		t.Skip("os.Getwd did not fail after its directory was removed on this platform")
+	}
+
+	fallback := filepath.Join(t.TempDir(), "pwd-fallback")
+	t.Setenv("PWD", fallback)
+
+	cwd, err := resolveCwd()
+	if err != nil {
+		t.Fatalf("resolveCwd: %v", err)
+	}
+	if cwd != fallback {
+		t.Errorf("cwd = %q, want the PWD fallback %q", cwd, fallback)
+	}
+}
+
+// TestResolveLaunchDropsArgOnUnresolvableCwd is T20's main.go-facing half:
+// when neither os.Getwd nor PWD yields a usable directory, a relative launch
+// argument must not be silently resolved against "." — it is dropped and the
+// session starts on the starred roots alone with a message explaining why.
+func TestResolveLaunchDropsArgOnUnresolvableCwd(t *testing.T) {
+	base := t.TempDir()
+	star := mkdir(t, filepath.Join(base, "star"))
+	cwdErr := errors.New("getwd: no such file or directory")
+
+	res := resolveLaunch([]string{"note.md"}, []string{star}, "", cwdErr)
+
+	wantLen(t, res, 1)
+	wantActiveStarred(t, res, 0)
+	wantNoDoc(t, res)
+	if res.message == "" {
+		t.Error("want a message explaining the dropped argument")
 	}
 }
 

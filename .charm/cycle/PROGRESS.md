@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M3.5 (next: M3.6, M4.2 — reordered by replan, see below)
+Current task: M3.6 (next: M4.2 — reordered by replan, see below)
 
 Last reviewed: M3.1-M3.4 (1bc7c04), 2026-07-31 — standards + spec-fidelity review of the M3
 milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been validated
@@ -25,9 +25,28 @@ coverage, not behavior). Evidence: `make check` clean (`go test ./...` incl. the
 `TestIsReadable` and the new `TestIgnoreMatch` subcase); `make check-pty` clean (all 59+
 checks, confirming M2/M3/M4 pty coverage is untouched by the internal/tree change). Committed.
 
-Next: **M3.5 — roots/messaging correctness fixes** (T17, T18, T20; see D24 for the routing
-rationale). Unrelated to M2.4's area (internal/tree), so no carryover context needed beyond
-what's in the M3.5 PLAN.md entry itself. M3.6 and M4.2 follow after.
+M3.5 done (2026-08-01): roots/messaging correctness fixes (T17, T18, T20; D24 routing).
+`roots.go`'s too-many-arguments message no longer implies `args[0]` was honored — it now
+reports the count and says none were used (T17). `model.go`'s `toggleStar` treats an
+unresolvable `storePath` (`""`) the same as the explicit `toggleStore` write-error branch: it
+declines the flip and sets `m.message`, rather than silently updating the display with nothing
+to persist it (T18) — `TestToggleStarWithNoStorePathDeclinesAndMessages` (renamed from
+`...StillUpdatesDisplay`) locks the new behavior. `roots.go` gained `resolveCwd` (tries
+`os.Getwd`, falls back to an absolute `$PWD` env value, else returns the error) and
+`resolveLaunch` (main.go's wrapper: drops a relative launch argument rather than resolving it
+against `.` when neither works, surfacing a message) — `main.go` now calls `resolveLaunch`
+instead of building `cwd` inline (T20). New tests: `TestTooManyArgumentsMessageDoesNotImplyFirstWasHonored`,
+`TestResolveCwdFallsBackToPWD` (reproduces the Getwd failure for real via chdir+rmdir, confirmed
+non-skipped on this platform), `TestResolveLaunchDropsArgOnUnresolvableCwd`. Evidence: `make
+check` clean; `make check-pty` clean (all 59+ checks). Committed.
+
+Next: **M3.6 — M2/M3 code-review cleanup batch** (T9, T10, T16, T19, T21-T25, T27; see D24 for
+the routing rationale). Ten small, mostly independent nits across `internal/tree`, `keymap.go`,
+`viewer.go`, `rootsnav.go`/`filesnav.go` (shared windowing helper), `roots.go`/`rootsnav.go`
+(the `firstIndex`/`storePath` nits), a shared color constant, and turning M3's two ad-hoc
+validation scripts into permanent `test/pty` checks (T27) — work through the PLAN.md M3.6 entry
+item by item; none of them depend on each other except sharing the same touched files. M4.2
+follows after.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -60,7 +79,7 @@ No blockers.
 | M3.2 | done   | 2026-07-31 | 2026-07-31 | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
 | M3.3 | done   | 2026-07-31 | 2026-07-31 | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
 | M3.4 | done   | 2026-07-31 | 2026-07-31 | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
-| M3.5 | todo   | -        | -         | replan C1/2026-08-01: roots/messaging correctness fixes (T17, T18, T20) |
+| M3.5 | done   | -        | -         | replan C1/2026-08-01: roots/messaging correctness fixes (T17, T18, T20) |
 | M3.6 | todo   | -        | -         | replan C1/2026-08-01: M2/M3 code-review cleanup batch (T9, T10, T16, T19, T21-T25, T27) |
 | M4.1 | done   | -        | -         | edit handoff (S10/D3): tea.ExecProcess release/resume + finishEdit re-render from disk |
 | M4.2 | todo   | -        | -         | replan C1/2026-08-01: scope grew (T15, T26 folded in), effort 2→3 |

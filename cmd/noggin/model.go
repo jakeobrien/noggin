@@ -162,18 +162,22 @@ func (m model) activateRoot() model {
 // the S2 store (M3.2's toggleStore), using the storePath resolved once at
 // startup (withStorePath). A config directory that could not be resolved
 // (m.roots.storePath == "", the same rare case loadStarredRoots degrades on)
-// still updates the pane's own display; there is simply nothing to write
-// through.
+// declines the toggle with a message instead (T18), the same as the
+// explicit-write-error branch below — a star that cannot be persisted must
+// not appear to have flipped, or a restart would silently revert it with no
+// explanation.
 func (m model) toggleStar() model {
 	row, ok := m.roots.selectedRow()
 	if !ok {
 		return m
 	}
-	if m.roots.storePath != "" {
-		if _, err := toggleStore(m.roots.storePath, row.root.path); err != nil {
-			m.message = fmt.Sprintf("cannot save starred roots: %v", err)
-			return m
-		}
+	if m.roots.storePath == "" {
+		m.message = "cannot save starred roots: no resolvable config directory"
+		return m
+	}
+	if _, err := toggleStore(m.roots.storePath, row.root.path); err != nil {
+		m.message = fmt.Sprintf("cannot save starred roots: %v", err)
+		return m
 	}
 	m.roots = m.roots.toggleStarred(m.roots.selected)
 	return m

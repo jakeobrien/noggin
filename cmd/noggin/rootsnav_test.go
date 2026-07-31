@@ -235,18 +235,22 @@ func TestToggleStarPersistsAndUpdatesDisplay(t *testing.T) {
 	}
 }
 
-// TestToggleStarWithNoStorePathStillUpdatesDisplay checks the rare
-// unresolvable-config-dir case (storePath ""): the toggle cannot persist but
-// must not crash, and the pane's own display still flips.
-func TestToggleStarWithNoStorePathStillUpdatesDisplay(t *testing.T) {
+// TestToggleStarWithNoStorePathDeclinesAndMessages checks the rare
+// unresolvable-config-dir case (storePath ""): the toggle cannot persist, so
+// it must not appear to flip either (T18) — the display stays put and a
+// footer message explains why, the same as the explicit-write-error branch.
+func TestToggleStarWithNoStorePathDeclinesAndMessages(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m := sized(t, newModel(), 80, 24) // storePath defaults to ""
 	m.roots = m.roots.setRoots([]root{{path: target}}, -1)
 
 	m = m.toggleStar()
 	row, ok := m.roots.selectedRow()
-	if !ok || !row.root.starred {
-		t.Errorf("selected row after toggleStar with no store path: ok=%v starred=%v, want true/true", ok, row.root.starred)
+	if !ok || row.root.starred {
+		t.Errorf("selected row after toggleStar with no store path: ok=%v starred=%v, want true/false (declined)", ok, row.root.starred)
+	}
+	if m.message == "" {
+		t.Error("want a footer message explaining the decline, got none")
 	}
 }
 

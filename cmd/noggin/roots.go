@@ -35,6 +35,44 @@ func (r resolution) activeRootPath() string {
 	return r.roots[r.active].path
 }
 
+// resolveCwd finds the session's working directory for anchoring a relative
+// launch argument. os.Getwd fails when the directory has been removed out
+// from under the process (rare, but real on a long-lived shell) or the
+// process lacks permission to stat it; falling back to the shell-set PWD
+// environment variable, when it is itself absolute, still gives a usable
+// anchor. When neither works there is no safe absolute path to fall back to
+// (T20): the caller must not feed a bare "." into root resolution, since
+// that would silently misresolve any relative argument against the actual
+// process directory rather than reporting the failure.
+func resolveCwd() (string, error) {
+	if cwd, err := os.Getwd(); err == nil {
+		return cwd, nil
+	} else if pwd := os.Getenv("PWD"); filepath.IsAbs(pwd) {
+		return pwd, nil
+	} else {
+		return "", err
+	}
+}
+
+// resolveLaunch is resolveRoots' main.go-facing wrapper: it folds a failed
+// working-directory lookup (cwdErr, from resolveCwd) into the launch outcome
+// instead of leaving that decision to the caller. Without a safe cwd to
+// anchor a relative argument against, the argument is dropped rather than
+// resolved against a bare "." (T20), and a message says so — unless
+// resolveRoots already produced one of its own (e.g. the too-many-arguments
+// case), which takes precedence since it is more specific.
+func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) resolution {
+	useArgs := args
+	if cwdErr != nil && len(args) > 0 {
+		useArgs = nil
+	}
+	res := resolveRoots(useArgs, starred, cwd)
+	if cwdErr != nil && len(args) > 0 && res.message == "" {
+		res.message = fmt.Sprintf("cannot determine working directory (%v); path argument ignored", cwdErr)
+	}
+	return res
+}
+
 // resolveRoots applies the S1 launch contract. args is the command line beyond
 // the program name; starred is the stored starred-root paths (M3.2 supplies
 // them, empty until then); cwd anchors a relative argument. It never touches
@@ -49,9 +87,10 @@ func resolveRoots(args []string, starred []string, cwd string) resolution {
 	case len(args) == 0:
 		return base
 	case len(args) > 1:
-		// More than one path: refused, but the session still starts on the
+		// More than one path: refused outright, not just trimmed to the first —
+		// none of them become a root (T17), the session still starts on the
 		// starred roots alone.
-		base.message = "noggin takes a single path argument; extra arguments ignored"
+		base.message = fmt.Sprintf("noggin takes a single path argument; got %d, none used", len(args))
 		return base
 	}
 

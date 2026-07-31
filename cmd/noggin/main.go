@@ -18,13 +18,10 @@ func main() {
 	// rejection message and a session that still starts, not a process exit (T7);
 	// walking the active root and opening any active document happen inside
 	// applyResolution, which downgrades their failures to messages too.
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
 	// loadStarredRoots reads the S2 store (D7's os.UserConfigDir()); a fresh
 	// install with no store yet, same as a garbage one, is a first run.
-	res := resolveRoots(os.Args[1:], loadStarredRoots(), cwd)
+	cwd, cwdErr := resolveCwd()
+	res := resolveLaunch(os.Args[1:], loadStarredRoots(), cwd, cwdErr)
 	// storePath is resolved once here and threaded into the model so a Roots
 	// Nav star toggle (M3.3) persists without re-deriving os.UserConfigDir()
 	// on every keypress; an unresolvable config directory (storePath's own
