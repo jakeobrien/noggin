@@ -307,3 +307,27 @@
 - Why: all reversible and contained (medium) so logged, not asked. Reusing the movement keys
   goes with the grain of the existing focus-routing (D1). The dir scaffolding is the minimum to
   make M2.2 demonstrable end-to-end (pty) without pre-empting M3's root contract.
+
+## D20: M3.1 resolveRoots is a pure decision over injected starred paths; rejection message parked on model until M4.2
+
+- Status: decided
+- Cycle: C1
+- Context: M3.1 resolves the session's roots from the launch argument (S1), but its acceptance
+  cases ("already a starred root", "subdirectory of a starred root", "parent of a starred root")
+  presuppose a starred-roots concept that M3.2's persistent store has not built yet. The handoff
+  also flagged that no footer-message mechanism exists (M4.2) for the rejections S1 mandates.
+- Decision: (1) **`resolveRoots(args, starred []string, cwd) resolution` is a pure function** —
+  the starred roots arrive as an injected parameter, not read from a store, so M3.1 needs no
+  persistence and the table-driven test injects them directly; `main.go` passes `nil` until
+  M3.2 wires the store in. (2) **It stats only the single argument** and returns the active root
+  as a *path* — the side-effecting walk (`tree.Walk`) and document read stay in
+  `model.applyResolution`, which downgrades their failures to messages too, never an exit (T7).
+  (3) **Sub/parent detection is pure path arithmetic** (`filepath.Rel` on cleaned absolute
+  paths), so a starred root need not exist on disk — matching S2's "missing paths are kept".
+  (4) **The rejection message is parked on `model.message`** with display deferred to M4.2's
+  footer; a `root{path, starred}` type and `model.{roots, activeRoot}` fields are introduced
+  minimally for M3.2/M3.3 to build on.
+- Why: medium and reversible, so logged not asked. The injected-starred seam is the smallest
+  cut that lets M3.1 land and be fully tested before the store exists (go with the grain of the
+  milestone order); parking the message honours "silence is not an error" without pre-empting
+  M4.2's footer ownership.

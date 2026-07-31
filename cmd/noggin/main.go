@@ -7,8 +7,6 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
-
-	"noggin/internal/tree"
 )
 
 func main() {
@@ -16,35 +14,18 @@ func main() {
 	// markdownStyle for why it cannot wait until the first render.
 	markdownStyle()
 
-	m := newModel()
-
-	// Temporary launch handling: a directory argument browses that folder in the
-	// Files Nav, a file argument opens that document. M3.1 replaces this
-	// wholesale with the S1 launch contract, where arguments resolve the
-	// session's roots and every rejection still yields a running session (D11).
-	if len(os.Args) > 1 {
-		path := os.Args[1]
-		info, err := os.Stat(path)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "noggin:", err)
-			os.Exit(1)
-		}
-		if info.IsDir() {
-			root, err := tree.Walk(path)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "noggin:", err)
-				os.Exit(1)
-			}
-			m = m.openFolder(root)
-		} else {
-			doc, err := loadDocument(path)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "noggin:", err)
-				os.Exit(1)
-			}
-			m = m.openDocument(doc)
-		}
+	// Resolve the session's roots from the launch argument (S1). A bad path is a
+	// rejection message and a session that still starts, not a process exit (T7);
+	// walking the active root and opening any active document happen inside
+	// applyResolution, which downgrades their failures to messages too.
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
 	}
+	// M3.2 will load the starred roots from the store; until then the session
+	// starts with none, so a bare launch is a first run.
+	res := resolveRoots(os.Args[1:], nil, cwd)
+	m := newModel().applyResolution(res)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "noggin:", err)

@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M3.1 (next: M3.2)
+Current task: M3.2 (next: M3.3)
 
 Last reviewed: M1.4 (db8a2e6), 2026-08-01 — two-pass standards + spec-fidelity review of the
 whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T8 in
@@ -10,31 +10,30 @@ whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T
 
 ## Handoff
 
-M2 validated 2026-07-31 (fresh-context subagent, per charm-validate): `make check` and
-`make check-pty` (72/72) both clean; M1.5, M2.1, M2.2 and M2.3's acceptance criteria each
-independently confirmed against source and tests (not just "tests pass") — `keyPress`/
-`modifiers`/`namedKeys` test-only (keymap_test.go), `viewer_test.go` off `bubbles/viewport`
-internals, `pane.title()` divergence commented; M2.1's fixture exercises exactly the
-gitignored-.md/.git/.charm/main.go/README cases; M2.2's expand/collapse/selection/empty-folder
-cases all present; M2.3's activate-to-viewer-with-focus path covered by both unit and pty
-checks. No discrepancies found beyond the already-open low-severity TRIAGE items (T9-T15,
-all cosmetic/hardening, none touch these four criteria) — Status table's Validated column
-stamped for M1.5/M2.1/M2.2/M2.3; nothing added to TRIAGE, nothing flipped in Status.
+M3.1 done (S1 launch contract). New `cmd/noggin/roots.go`: `resolveRoots(args, starred []string,
+cwd) resolution` — pure, stats only the single argument, returns the active root as a *path*.
+The starred roots are **injected** (D20), so M3.1 needs no store; `main.go` passes `nil` for now.
+`model.applyResolution` does the side-effecting walk (`tree.Walk`) and document read, downgrading
+any failure to `model.message` — no `os.Exit` on a bad path anymore (T7 resolved). Sub/parent
+detection is pure `filepath.Rel` on cleaned absolute paths, so a starred root need not exist on
+disk (matches S2). New minimal scaffolding for later: `root{path, starred}` type and
+`model.{roots, activeRoot, message}` fields, all for M3.2/M3.3 to build on.
 
-Next: **M3.1 — resolve the session's roots from the launch argument (S1).** This replaces,
-rather than supplements, `main.go`'s current temporary dir/file-argument scaffolding (dir →
-`openFolder`, file → `openDocument`, both `os.Exit(1)` on error) — per T7 and the plan's own
-note, a bad path must become a rejection message plus a session that still starts, not a
-process exit. The table-driven cases the plan lists (bare launch, dir argument, file argument,
-already-starred dir, non-existent path, subdirectory of a starred root, parent of a starred
-root, more than one argument) imply a starred-roots concept that M3.2 (the store) has not been
-built yet — M3.1's acceptance criterion talks about "already a starred root" cases, so either
-M3.1 needs a minimal in-memory roots concept ahead of M3.2's persistent store, or those specific
-cases wait for M3.2 to land; worth a fresh read of S1's spec text before starting, since PLAN.md
-alone under-specifies the roots data shape at this boundary. No footer-message mechanism exists
-yet for rejections either (M4.2) — M3.1 will need to decide where a rejection message lives in
-the meantime (a temporary field on `model`, most likely) or explicitly punt display to M4.2 and
-just ensure the session still starts.
+Evidence: `make check` clean; `make check-pty` (all pass); `TestResolveRoots` covers all eight
+listed cases + a first-run bonus (9 subtests pass); pty spot-check confirmed `noggin /no/such/path`
+renders a session and quits exit 0 rather than exiting early. See D20 for the design rationale.
+
+**Deferred to M4.2, not lost:** `model.message` is stored but not yet displayed — the footer that
+surfaces launch rejections is M4.2's. Until then a rejected launch starts silently (the message
+is on the model, ready to render). Also: the file-argument case dedupes cwd against starred by
+exact path only; it deliberately does **not** apply the sub/parent rejection logic to cwd,
+because S1 says a file opens "whether or not it falls inside any root."
+
+Next: **M3.2 — starred-roots store (S2, D7).** One plain hand-editable file under the user's
+config directory, tolerant load (missing/garbage → empty list, no error), star toggle written
+through, missing stored paths kept not pruned. This is what supplies the `starred []string` that
+M3.1's `resolveRoots` and `main.go` currently stub as `nil` — wiring the loaded list into
+`main.go` is part of landing M3.2. `os.UserConfigDir()` is the D7 config-dir source.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -62,7 +61,7 @@ No blockers.
 | M2.1 | done   | 2026-07-31 | 2026-07-31 | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14; validated |
 | M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
 | M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
-| M3.1 | todo   | -        | -         |      |
+| M3.1 | done   | -        | -         | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
 | M3.2 | todo   | -        | -         |      |
 | M3.3 | todo   | -        | -         |      |
 | M3.4 | todo   | -        | -         |      |

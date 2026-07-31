@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -46,10 +48,43 @@ type model struct {
 	focus  pane
 	files  filesNav
 	viewer viewer
+
+	// roots is the session's note sources (S1); activeRoot indexes the one the
+	// Files Nav is browsing, or -1 when none. message carries a launch-time
+	// rejection notice until M4.2's footer surfaces it.
+	roots      []root
+	activeRoot int
+	message    string
 }
 
 func newModel() model {
-	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer()}
+	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), activeRoot: -1}
+}
+
+// applyResolution installs an S1 launch resolution: the session's roots, which
+// one is active, an optional document, and any rejection message. Walking the
+// active root or reading the document can fail; that becomes a message, never
+// an exit — the session always starts (S1's "silence is not an error").
+func (m model) applyResolution(res resolution) model {
+	m.roots = res.roots
+	m.activeRoot = res.active
+	m.message = res.message
+
+	if path := res.activeRootPath(); path != "" {
+		if node, err := tree.Walk(path); err != nil {
+			m.message = fmt.Sprintf("cannot read %s: %v", path, err)
+		} else {
+			m = m.openFolder(node)
+		}
+	}
+	if res.docPath != "" {
+		if doc, err := loadDocument(res.docPath); err != nil {
+			m.message = fmt.Sprintf("cannot open %s: %v", res.docPath, err)
+		} else {
+			m = m.openDocument(doc)
+		}
+	}
+	return m
 }
 
 // openFolder points the Files Nav at root and puts focus on it, which is what
