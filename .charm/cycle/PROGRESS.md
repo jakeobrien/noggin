@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M4.1 (next: M4.2)
+Current task: M4.1 (next: M2.4, M3.5, M3.6, M4.2 — reordered by replan, see below)
 
 Last reviewed: M3.1-M3.4 (1bc7c04), 2026-07-31 — standards + spec-fidelity review of the M3
 milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been validated
@@ -10,13 +10,21 @@ milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been 
 
 ## Handoff
 
+Replanned 2026-08-01 (charm-replan): TRIAGE.md's 19 open items (T9-T27) routed. Three new
+tasks added — **M2.4** (internal/tree hardening: T11-T14, D23's case-sensitivity call),
+**M3.5** (roots/messaging correctness fixes: T17, T18, T20), **M3.6** (M2/M3 code-review
+cleanup batch: T9, T10, T16, T19, T21-T25, T27) — and **M4.2**'s scope/acceptance grew to fold
+in T15 and T26 (effort 2→3). See D24 for the full rationale and D23 for the case-sensitivity
+decision. TRIAGE.md is now empty. None of this changes M4.1, which remains next up; M2.4/M3.5/
+M3.6 are cleanup on already-`done` work and can land whenever convenient before the M2/M3 code
+is considered closed out — recommend doing them right after M4.1 while that context is still
+fresh, before M4.2.
+
 M3 milestone (M3.1-M3.4) validated fresh-context (2026-07-31, source: charm-validate): all four
 PASS, no discrepancies vs. their PROGRESS.md claims. `make check` and `make check-pty` clean.
 Strongest checks: M3.2's "survives a restart" ran as two separate real OS processes sharing an
 isolated `$HOME`/`$XDG_CONFIG_HOME`; M3.3/M3.4 were re-exercised end-to-end via pty against the
-real binary (cross-root byte-diff of the viewer pane), not just unit-level model assertions. One
-new low-severity finding, T27 (TRIAGE.md): those two validation checks were ad hoc scripts, not
-added as permanent regression tests — consider hardening into `test/pty`.
+real binary (cross-root byte-diff of the viewer pane), not just unit-level model assertions.
 
 Next: **M4.1 — Edit handoff: release the terminal to `$EDITOR` (fallback `vi`), resume on exit and
 re-render from disk (D3)** (needs M1.3). Acceptance: with `EDITOR` set to a script that appends a
@@ -54,12 +62,15 @@ No blockers.
 | M2.1 | done   | 2026-07-31 | 2026-07-31 | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14; validated |
 | M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
 | M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
+| M2.4 | todo   | -        | -         | replan C1/2026-08-01: internal/tree hardening (T11-T14, D23) |
 | M3.1 | done   | 2026-07-31 | 2026-07-31 | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
 | M3.2 | done   | 2026-07-31 | 2026-07-31 | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
 | M3.3 | done   | 2026-07-31 | 2026-07-31 | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
 | M3.4 | done   | 2026-07-31 | 2026-07-31 | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
+| M3.5 | todo   | -        | -         | replan C1/2026-08-01: roots/messaging correctness fixes (T17, T18, T20) |
+| M3.6 | todo   | -        | -         | replan C1/2026-08-01: M2/M3 code-review cleanup batch (T9, T10, T16, T19, T21-T25, T27) |
 | M4.1 | todo   | -        | -         |      |
-| M4.2 | todo   | -        | -         |      |
+| M4.2 | todo   | -        | -         | replan C1/2026-08-01: scope grew (T15, T26 folded in), effort 2→3 |
 | M5.1 | todo   | -        | -         |      |
 | M5.2 | todo   | -        | -         |      |
 | M5.3 | todo   | -        | -         |      |

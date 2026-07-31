@@ -391,3 +391,45 @@
   task's acceptance criterion requires; building M4.2's full footer redesign to get there would
   be scope creep in the other direction. The marker/key choices are cosmetic and cheap to retune
   under the provisional-keymap principle (D2's build-time-only constraint covers `Star` too).
+
+## D23: Conventional extensionless document names match case-insensitively, like extensions
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-01
+- Context: M2.1 review (T11-T14, TRIAGE.md) found `isReadable` (internal/tree/policy.go)
+  lower-cases extensions before comparing (`.MD` matches) but compares the extensionless
+  conventional names (`README`, `LICENSE`, `CHANGELOG`) by exact case only, so a real-world
+  `Readme` or `readme` would silently not be shown. S6 doesn't specify either way.
+- Decision: normalize case for the extensionless names too, matching the extension path's
+  existing behavior. Folded into M2.4 alongside the rest of the M2.1 review batch (T11, T12,
+  T14) rather than a standalone task.
+- Why: low risk (a strict widening of what's shown, never a narrowing) and real-world value
+  (README variants in the wild are inconsistently cased); consistency with the already-decided
+  extension-matching behavior is the simpler rule to hold in one's head than "extensions
+  normalize, names don't".
+
+## D24: C1's replan (2026-08-01) routes the M1-M3 review/validate backlog into three new
+tasks rather than a fourth cleanup-only milestone
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-01
+- Context: TRIAGE.md had accumulated 19 open items (T9-T27) from the M1-M3 code reviews and
+  the M3 validation pass — mostly low severity, three medium (T16, T17, T18). None invalidate
+  the spec or plan shape; all are in-area fixes/hardening for work already built.
+- Decision: split the backlog by locus and risk rather than one grab-bag task: **M2.4**
+  (internal/tree correctness + test hardening: T11-T14, plus D23's case-sensitivity call),
+  **M3.5** (roots/messaging correctness fixes where behavior diverges from what's communicated
+  or from S1/S2's invariants: T17, T18, T20), and **M3.6** (the remaining standards nits, a
+  real-but-mechanical duplication refactor, and one validate-sourced test-hardening item: T9,
+  T10, T16, T19, T21-T25, T27) — mirroring D17's M1.5 precedent of one bundled cleanup task per
+  batch rather than nineteen. T15 and T26 are folded into M4.2's existing acceptance criteria
+  instead of new tasks, since both are silent-failure gaps in territory M4.2 already owns
+  (footer messaging) and neither needs its own milestone slot. Total added effort: 7
+  (M2.4: 2, M3.5: 2, M3.6: 3) plus M4.2's bump from 2 to 3.
+- Why: medium and reversible — it grows the plan by 8 effort points against a cycle that
+  already has pre-agreed cut candidates (D8) to absorb an overrun, so logged not asked. Keeping
+  correctness fixes (M3.5) separate from pure standards/duplication cleanup (M3.6) and from the
+  tree-specific batch (M2.4) keeps each task's acceptance criterion checkable in one sitting,
+  rather than one criterion trying to cover unrelated files and risk levels.

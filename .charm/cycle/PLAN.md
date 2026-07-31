@@ -70,6 +70,16 @@ Delivers: S5, S6
   done when: selecting a fixture file and pressing the activate key renders that file in the
   viewer with focus in the viewer, and scroll keys then act on it — effort: 1
   (needs: M1.3, M2.2)
+- **M2.4** — internal/tree hardening (review findings T11-T14, replan C1/2026-08-01): align
+  `policy.go`'s doc comment with the glossary term "Readable file" (T12), resolve `tree.go`'s
+  dead non-directory branch in `Walk` — drop it or cover it with a test and correct its comment
+  (T11), decide and implement case handling for the conventional extensionless names per D23
+  (T13), and add a `.gitignore` escape-sequence test case (T14) — done when: `Walk`'s file-root
+  branch is either removed (letting `os.ReadDir` fail naturally on a non-directory root) or
+  covered by a test with its comment corrected; `isReadable` matches `README`/`LICENSE`/
+  `CHANGELOG` case-insensitively with a locking test; `policy.go`'s doc comment says "Readable
+  file"; and `TestIgnoreMatch` gains a case asserting `\!important.md` matches the literal name
+  `!important.md` rather than being treated as a negation line — effort: 2 (needs: M2.1)
 
 ## M3 — Roots
 
@@ -98,6 +108,28 @@ Delivers: S1, S2, S3, S4
   while the open document stays rendered and unchanged — done when: with a document open from
   root A, activating root B shows B's tree collapsed at top level and the viewer still shows
   A's document at its previous scroll position — effort: 2 (needs: M2.2, M3.3)
+- **M3.5** — S1/roots-store message and edge-case fixes (T17, T18, T20; replan C1/2026-08-01):
+  three places where actual behavior diverges from what's communicated or from the roots
+  invariants — done when: the too-many-arguments rejection message no longer implies
+  `args[0]` was honored (T17); toggling a star with an unresolvable config directory either
+  declines to flip the display or surfaces a message, matching the explicit-write-error branch
+  (T18); and an `os.Getwd` failure at launch falls back to an absolute path (or surfaces a
+  message) instead of feeding a bare `.` into root resolution (T20) — effort: 2
+  (needs: M3.1, M3.2)
+- **M3.6** — M2/M3 code-review cleanup batch (T9, T10, T16, T19, T21, T22, T23, T24, T25, T27;
+  replan C1/2026-08-01): the accumulated low/medium standards nits from the M1-M3 reviews plus
+  one validate follow-up — done when: `keymap.go`'s header comment gains the "production file"
+  qualifier (T9); `viewer.setOffset` is either a value-receiver `withOffset` or carries a
+  comment explaining the deliberate exception (T10); `rootsNav`'s and `filesNav`'s
+  near-duplicate `move`/`view` windowing logic is extracted into one shared helper (T16);
+  `newRootsNav`'s unused `storePath` parameter is dropped or `withStorePath` is threaded
+  through it (T19); a test exercises `activateRoot` clearing a stale `m.message` on success
+  (T21); a table case covers `resolveFile`'s cwd-is-itself-a-starred-root dedup path (T22); the
+  stray "(T: rare...)" annotation in `rootsnav.go` is replaced with plain prose (T23);
+  `firstIndex` is renamed or inlined (T24); the four-file-duplicated `lipgloss.Color("245")` is
+  centralized (T25); and M3's two ad-hoc validation scripts (starred-roots restart persistence,
+  cross-root document-unchanged) become permanent checks in `test/pty` (T27) — effort: 3
+  (needs: M2.1, M2.2, M2.3, M3.1, M3.2, M3.3, M3.4)
 
 ## M4 — Handoff and orientation
 
@@ -109,9 +141,13 @@ Delivers: S10, S11
   footer reports that instead — effort: 2 (needs: M1.3)
 - **M4.2** — Footer: key hints for the focused pane, always including quit, truncating
   gracefully to advertise the help affordance; transient messages displace the hints and clear
-  on the next keypress — done when: hints change with focus between Roots Nav, Files Nav and
-  viewer, a narrow terminal shows a truncated hint set still naming the help affordance, and a
-  rejected action's message clears on the next keypress — effort: 2 (needs: M1.2)
+  on the next keypress; also closes two carried-forward silent-failure gaps (T15, T26; replan
+  C1/2026-08-01) — done when: hints change with focus between Roots Nav, Files Nav and viewer,
+  a narrow terminal shows a truncated hint set still naming the help affordance, a rejected
+  action's message clears on the next keypress, `activate()`'s file-read error surfaces a
+  footer message instead of failing silently (T15), and an empty Roots Nav (no starred, no
+  ad-hoc root) shows guidance satisfying SPEC.md's cycle-level "a first run with neither
+  explains what to do next" (T26) — effort: 3 (needs: M1.2)
 
 ## M5 — Reading refinements
 
