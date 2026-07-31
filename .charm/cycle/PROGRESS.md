@@ -4,31 +4,19 @@
 
 Current task: M4.1 (next: M4.2)
 
-Last reviewed: M1.4 (db8a2e6), 2026-08-01 — two-pass standards + spec-fidelity review of the
-whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T8 in
-`TRIAGE.md`. M1.5, M2.1, M2.2, M2.3 have since been validated (2026-07-31, see Handoff).
+Last reviewed: M3.1-M3.4 (1bc7c04), 2026-07-31 — standards + spec-fidelity review of the M3
+milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been validated
+(2026-07-31, see Handoff).
 
 ## Handoff
 
-M3.4 done (S4): the acceptance criterion turned out to already hold as a byproduct of M3.3's
-`activateRoot` reusing `openFolder` (which touches only `m.files`/`m.focus`, never `m.viewer`)
-and `filesNav.setRoot`'s existing reset-to-top-level-collapsed behavior — no production code
-changed. The task was writing the test that proves it: `TestActivateRootLeavesOpenDocumentUntouched`
-(`cmd/noggin/rootsnav_test.go`) opens the fixture document from a fresh model, scrolls it to a
-non-zero offset, opens root A (`testdata/tree`) in the Files Nav with its `docs` folder expanded
-and selection off the top, then activates a second root B (a temp tree with a top-level file and
-a subfolder) via `m.activateRoot()`. It asserts: the Files Nav's expansion map is empty and
-selection is back to 0 (collapsed at top level), B's top-level entries render but its subfolder's
-child does not (still collapsed), and the viewer's offset/content/label are all byte-identical to
-before — the open document is untouched.
-
-Evidence: `make check` clean. Sanity-checked the test isn't vacuous by temporarily breaking each
-half of the guarantee and confirming the new test fails, then reverting: (1) stripped `setRoot`'s
-expansion/selection reset — test failed on both the expansion and selection assertions; (2) made
-`openFolder` also reset the viewer — test failed on offset, content and label. Both reverts
-verified with `diff` against pre-edit backups; `make check` clean again after each revert. No new
-findings, no TRIAGE items — this task was pure verification of an existing guarantee, not new
-behavior.
+M3 milestone (M3.1-M3.4) validated fresh-context (2026-07-31, source: charm-validate): all four
+PASS, no discrepancies vs. their PROGRESS.md claims. `make check` and `make check-pty` clean.
+Strongest checks: M3.2's "survives a restart" ran as two separate real OS processes sharing an
+isolated `$HOME`/`$XDG_CONFIG_HOME`; M3.3/M3.4 were re-exercised end-to-end via pty against the
+real binary (cross-root byte-diff of the viewer pane), not just unit-level model assertions. One
+new low-severity finding, T27 (TRIAGE.md): those two validation checks were ad hoc scripts, not
+added as permanent regression tests — consider hardening into `test/pty`.
 
 Next: **M4.1 — Edit handoff: release the terminal to `$EDITOR` (fallback `vi`), resume on exit and
 re-render from disk (D3)** (needs M1.3). Acceptance: with `EDITOR` set to a script that appends a
@@ -66,10 +54,10 @@ No blockers.
 | M2.1 | done   | 2026-07-31 | 2026-07-31 | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14; validated |
 | M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
 | M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
-| M3.1 | done   | 2026-07-31 | -         | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
-| M3.2 | done   | 2026-07-31 | -         | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
-| M3.3 | done   | 2026-07-31 | -         | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
-| M3.4 | done   | 2026-07-31 | -         | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
+| M3.1 | done   | 2026-07-31 | 2026-07-31 | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
+| M3.2 | done   | 2026-07-31 | 2026-07-31 | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
+| M3.3 | done   | 2026-07-31 | 2026-07-31 | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
+| M3.4 | done   | 2026-07-31 | 2026-07-31 | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
 | M4.1 | todo   | -        | -         |      |
 | M4.2 | todo   | -        | -         |      |
 | M5.1 | todo   | -        | -         |      |
