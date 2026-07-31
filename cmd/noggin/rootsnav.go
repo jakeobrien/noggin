@@ -11,8 +11,11 @@ import (
 
 // emptyRootsText is what the Roots Nav pane says when the session has no
 // roots at all — a bare launch with no starred roots yet (S2's "empty root
-// list" outcome, unreached by anything else this cycle).
-const emptyRootsText = "No roots."
+// list" outcome) and no ad-hoc root from a launch argument either. This is
+// the cycle-level acceptance's "a first run with neither explains what to do
+// next" (T26): the only way to gain a root this cycle is a launch argument
+// (S1), so the guidance names that rather than a nonexistent in-pane action.
+const emptyRootsText = "No roots. Launch noggin with a folder or file path, then press s here to star it for next time."
 
 // rootRow pairs a root with whether its path currently exists on disk (S3's
 // "broken" mark). broken is computed once, when the pane's roots are set —

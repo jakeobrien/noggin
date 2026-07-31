@@ -439,10 +439,14 @@ check("M3.4 pty: README.md opens in the viewer before switching roots",
       "Root Readme" in "\n".join(lines_before), repr(lines_before[:1]))
 
 # Byte-diff only the viewer's columns (right of the Navigator column's box
-# edge) so the check is not tripped up by the Files Nav or footer, which ARE
-# expected to change when the active root switches.
+# edge), excluding the footer row, so the check is not tripped up by the
+# Files Nav or footer, which ARE expected to change when the active root
+# switches — M4.2 made the footer's focus-specific hint text long enough to
+# reach past nav_edge (it used to end well short of that column, so slicing
+# happened to land in its trailing padding regardless of focus; that is no
+# longer a safe assumption, hence dropping the footer row outright).
 nav_edge = lines_before[0].index("\u256e")  # box edge ╮ closing the nav column
-viewer_before = [line[nav_edge + 1:] for line in lines_before]
+viewer_before = [line[nav_edge + 1:] for line in lines_before[:-1]]
 
 s.send(KEY["NextPane"], 0.4)  # Document -> Roots (tab)
 footer = screen_of(s.out, 80, 24).lines()[-1]
@@ -452,7 +456,7 @@ check("M3.4 pty: tab from the Document pane reaches Roots",
 s.send(KEY["Down"], 0.4)   # selection off the ad-hoc TREE root, onto root-b
 s.send(KEY["Activate"], 0.6)
 lines_after = screen_of(s.out, 80, 24).raw_lines()
-viewer_after = [line[nav_edge + 1:] for line in lines_after]
+viewer_after = [line[nav_edge + 1:] for line in lines_after[:-1]]
 
 check("M3.4 pty: viewer pane is byte-identical after activating a different root",
       viewer_before == viewer_after,
@@ -514,5 +518,70 @@ check("M4.1 editing with no document open reports it in the footer",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M4.1 exits 0 after the no-document-open report", code == 0, f"exit {code}")
+
+# --- M4.2: footer key hints, truncation, and message clear-on-keypress -----
+
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.2)
+footer_files = screen_of(s.out, 80, 24).lines()[-1]
+check("M4.2 Files pane footer names its own actions",
+      "expand" in footer_files and "collapse" in footer_files and "open" in footer_files,
+      repr(footer_files))
+
+s.send(KEY["NextPane"], 0.4)  # Files -> Document
+footer_doc = screen_of(s.out, 80, 24).lines()[-1]
+check("M4.2 hints change with focus (Document differs from Files)",
+      footer_doc != footer_files and "page" in footer_doc, repr(footer_doc))
+
+s.send(KEY["NextPane"], 0.4)  # Document -> Roots
+footer_roots = screen_of(s.out, 80, 24).lines()[-1]
+check("M4.2 hints change with focus (Roots differs from Files and Document)",
+      footer_roots not in (footer_files, footer_doc) and "star" in footer_roots,
+      repr(footer_roots))
+check("M4.2 quit is always in the footer",
+      all("quit" in f for f in (footer_files, footer_doc, footer_roots)))
+check("M4.2 the help affordance is always in the footer",
+      all("help" in f for f in (footer_files, footer_doc, footer_roots)))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M4.2 exits 0 after cycling focus", code == 0, f"exit {code}")
+
+# A narrow terminal drops the Navigator column, landing focus in the
+# Document pane; its footer truncates gracefully but still names the help
+# affordance and quit (S11).
+s = Session([BINARY], 30, 24)
+s.pump(1.2)
+narrow_footer = screen_of(s.out, 30, 24).lines()[-1]
+check("M4.2 narrow terminal footer still names the help affordance and quit",
+      "help" in narrow_footer and "quit" in narrow_footer, repr(narrow_footer))
+check("M4.2 narrow terminal footer dropped the pane-specific hints",
+      "page" not in narrow_footer and "top" not in narrow_footer, repr(narrow_footer))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M4.2 exits 0 at a narrow width", code == 0, f"exit {code}")
+
+# A rejected action's footer message clears on the next keypress.
+ghost_home = tempfile.mkdtemp()
+ghost_env, ghost_store = config_env(ghost_home)
+os.makedirs(os.path.dirname(ghost_store))
+with open(ghost_store, "w") as f:
+    f.write(os.path.join(tempfile.mkdtemp(), "ghost") + "\n")  # never created: broken
+
+s = Session([BINARY], 80, 24, env=ghost_env)
+s.pump(1.2)
+s.send(KEY["NextPane"], 0.4)  # Files -> Document
+s.send(KEY["NextPane"], 0.4)  # Document -> Roots
+s.send(KEY["Activate"], 0.6)  # refused: the starred root is broken
+footer_message = screen_of(s.out, 80, 24).lines()[-1]
+check("M4.2 a rejected activation shows a footer message",
+      "not activated" in footer_message, repr(footer_message))
+
+s.send(KEY["Down"], 0.4)  # any keypress, itself unrejected
+footer_after = screen_of(s.out, 80, 24).lines()[-1]
+check("M4.2 the message clears on the next keypress",
+      "not activated" not in footer_after, repr(footer_after))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M4.2 exits 0 after the message-clear check", code == 0, f"exit {code}")
 
 done()

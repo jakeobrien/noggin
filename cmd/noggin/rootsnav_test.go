@@ -144,15 +144,22 @@ func TestRootsNavMoveClampsAtEnds(t *testing.T) {
 }
 
 // TestRootsNavEmptyState checks the no-roots resting state (a bare launch
-// with no starred roots yet).
+// with no starred roots yet, and no ad-hoc root from a launch argument
+// either) says what to do next (T26, the cycle-level acceptance's "a first
+// run with neither explains what to do next"): launch with a path, then star
+// it here.
 func TestRootsNavEmptyState(t *testing.T) {
 	r := newRootsNav().setSize(20, 4)
 	lines := strings.Split(r.view(), "\n")
 	if len(lines) != 4 {
 		t.Fatalf("empty-state view has %d lines, want 4", len(lines))
 	}
-	if !strings.Contains(r.view(), "No roots") {
-		t.Errorf("empty-state view = %q, want the no-roots message", r.view())
+	view := r.view()
+	if !strings.Contains(view, "No roots") {
+		t.Errorf("empty-state view = %q, want the no-roots message", view)
+	}
+	if !strings.Contains(view, "noggin") || !strings.Contains(view, "star") {
+		t.Errorf("empty-state view = %q, want guidance to launch with a path and star it", view)
 	}
 }
 

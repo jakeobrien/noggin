@@ -51,6 +51,12 @@ type keyMap struct {
 	// pane-specific — with no document open it reports that instead of doing
 	// nothing (M4.1).
 	Edit key.Binding
+
+	// Help is the footer's help affordance (S11): the footer advertises it
+	// under truncation (M4.2) even before S12's modal exists to open on it —
+	// the binding and its hint text are what M5.3 wires a modal onto, not a
+	// new contract this milestone invents.
+	Help key.Binding
 }
 
 // keys is the program's keymap.
@@ -118,5 +124,9 @@ var keys = keyMap{
 	Edit: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "edit"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
 	),
 }

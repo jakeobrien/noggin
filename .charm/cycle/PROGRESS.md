@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M4.2 (next milestone: M4)
+Current task: M5.1 (next milestone: M5, the cut-candidate milestone)
 
 Last reviewed: M3.1-M3.4 (1bc7c04), 2026-07-31 — standards + spec-fidelity review of the M3
 milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been validated
@@ -69,13 +69,42 @@ can't mask a regression. Evidence: `make check` clean (`go test ./...` incl. the
 `make check-pty` clean, 105 checks total (was 59+; the two new T27 checks plus their setup/exit
 assertions account for the growth). Committed.
 
-Next: **M4.2 — Footer: key hints for the focused pane** (T15, T26 folded in; needs M1.2). Done
-when: hints change with focus between Roots Nav, Files Nav and viewer; a narrow terminal shows a
-truncated hint set still naming the help affordance; a rejected action's message clears on the
-next keypress; `activate()`'s file-read error surfaces a footer message instead of failing
-silently (T15); and an empty Roots Nav (no starred, no ad-hoc root) shows guidance for a first
-run with neither (T26). M3 is now fully done (all six tasks); M4.1 is done, M4.2 is the only
-task left before M5's cut-candidate milestone.
+M4.2 done (2026-08-01): footer key hints (S11), T15 and T26 folded in. New `footer.go`:
+`paneHints(pane)` lists each pane's bindings most-important-first (Activate/Star/... for Roots,
+Activate/Expand/Collapse/... for Files, scroll actions for the viewer); `alwaysHints` (Help,
+Quit) are appended by every call and never dropped; `hintText(pane, width)` tries the full set
+then drops pane-specific hints from the end until it fits, and drops the pane title too if even
+title+alwaysHints overflow, so quit and the `?` help affordance are the last thing to go, never
+the first. `keymap.go` gained `Help` (`?`), advertised
+in the footer now though S12's modal (M5.3) is what will actually bind it. `model.go`'s
+`renderFooter` calls `hintText` instead of a static title+quit string; its `Update` clears
+`m.message` unconditionally at the top of every `KeyPressMsg` (S11's clear-on-next-keypress),
+which subsumes the explicit `m.message = ""` lines `activateRoot`/`finishEdit` already had on
+their success paths (left in place — harmless, and `TestActivateRootClearsStaleMessageOnSuccess`
+exercises `activateRoot` directly, bypassing `Update`, so it still needs its own clear). T15:
+`activate()`'s `loadDocument` error now sets `m.message` instead of silently no-op'ing, the same
+shape `activateRoot`'s broken-root refusal already had. T26: `rootsnav.go`'s `emptyRootsText`
+now says what to do on a true first run (no starred, no ad-hoc root) — launch with a path, then
+star it — since adding a root any other way is out of scope this cycle. New tests:
+`footer_test.go` (`TestHintTextChangesWithFocus`, `TestHintTextAlwaysIncludesQuit`,
+`TestHintTextTruncatesButKeepsHelpAffordance`, `TestJoinHintsSeparatesWithMiddleDot`),
+`message_test.go` (`TestMessageClearsOnNextKeypress`, `TestMessageDisplayedThenClearedNextKeypress`),
+plus updates to `TestActivateWithAReadErrorLeavesSessionRunning` (now also asserts `m.message`)
+and `TestRootsNavEmptyState` (now also asserts the guidance text). `test/pty/checks.py` gained a
+ten-check M4.2 section (hints differ by focus, quit/help always present, narrow-terminal
+truncation keeps help+quit, a rejected activation's message clears on the next keypress) and had
+to fix an M3.4 check that predates M4.2: the cross-root viewer-unchanged byte-diff sliced every
+row at the Navigator's box-edge column including the footer row, which used to land safely in
+the footer's trailing padding since the old footer text never reached that column — M4.2's much
+longer hint text now does, so that check excludes the footer row (`[:-1]`) explicitly instead of
+relying on incidental padding. Evidence: `make check` clean (`go test ./...` incl. all new
+tests); `make check-pty` clean, 115 checks total (was 105; +10 for M4.2, and the fixed M3.4
+check still asserts what it always meant to). Committed.
+
+M4 is now fully done (both tasks). Next: **M5.1 — Find in document** (needs M1.3, M1.4, both
+done). M5 is the cut-candidate milestone (D8): if the cycle overruns, M5.3 (help modal) goes
+first, then M5.2 (Navigator toggle), then M5.1 (find) — see PLAN.md's M5 header. Nothing about
+M4.2 changes that order or raises new triage.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -111,7 +140,7 @@ No blockers.
 | M3.5 | done   | -        | -         | replan C1/2026-08-01: roots/messaging correctness fixes (T17, T18, T20) |
 | M3.6 | done   | -        | -         | replan C1/2026-08-01: M2/M3 code-review cleanup batch (T9, T10, T16, T19, T21-T25, T27) |
 | M4.1 | done   | -        | -         | edit handoff (S10/D3): tea.ExecProcess release/resume + finishEdit re-render from disk |
-| M4.2 | todo   | -        | -         | replan C1/2026-08-01: scope grew (T15, T26 folded in), effort 2→3 |
+| M4.2 | done   | -        | -         | footer key hints (S11); T15 (activate read-error message) and T26 (empty-Roots-Nav guidance) folded in |
 | M5.1 | todo   | -        | -         |      |
 | M5.2 | todo   | -        | -         |      |
 | M5.3 | todo   | -        | -         |      |

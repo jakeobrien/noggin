@@ -267,8 +267,8 @@ func TestActivateOnAFolderIsANoOp(t *testing.T) {
 
 // TestActivateWithAReadErrorLeavesSessionRunning checks the watch called out
 // in the M2.2 handoff: a file that fails to load must not exit or crash the
-// session, and focus stays put so the failure is silent-but-safe rather than
-// silently wrong (surfacing it richly is M4.2's footer message work).
+// session, focus stays put, and the failure surfaces as a footer message
+// (T15/M4.2) rather than failing silently.
 func TestActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
 	root := &tree.Node{
 		Name: "root", Path: "/root", IsDir: true,
@@ -283,6 +283,9 @@ func TestActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
 	}
 	if m.viewer.label() != "" {
 		t.Errorf("viewer label = %q, want empty (nothing opened on error)", m.viewer.label())
+	}
+	if m.message == "" {
+		t.Error("message is empty after a failed activate, want a footer message")
 	}
 }
 

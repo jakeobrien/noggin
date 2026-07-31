@@ -118,9 +118,9 @@ func (m model) openDocument(d document) model {
 // activate opens the Files Nav's selected file as the active document,
 // moving focus to the viewer (M2.3). A folder or an empty pane is a no-op —
 // activating a folder is left for later, per the Files Nav's own
-// expand/collapse bindings. A read error leaves the session exactly as it
-// was rather than exiting it (S1's "silence is not an error" principle,
-// generalized here ahead of M3.1's launch-time version of the same rule).
+// expand/collapse bindings. A read error is a footer message rather than a
+// silent no-op (T15), the same "silence is not an error" shape as
+// activateRoot's own refusal below and S1's launch-time version of the rule.
 func (m model) activate() model {
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
@@ -128,6 +128,7 @@ func (m model) activate() model {
 	}
 	d, err := loadDocument(n.Path)
 	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
 		return m
 	}
 	return m.openDocument(d)
@@ -137,8 +138,8 @@ func (m model) activate() model {
 // re-rooting the Files Nav (S4; M3.4 verifies the open document survives
 // this) while leaving focus free to land in the Files Nav, same shape as
 // activate() above. A broken root (missing path) is refused with a footer
-// message rather than failing silently (S3) — unlike activate()'s read-error
-// path (T15, deferred to M4.2), S3 names this refusal explicitly.
+// message rather than failing silently (S3), the same shape activate() now
+// gives its own read-error path (T15).
 func (m model) activateRoot() model {
 	row, ok := m.roots.selectedRow()
 	if !ok {
@@ -254,6 +255,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.roots = m.roots.setSize(rootsContent.width, rootsContent.height)
 		return m, nil
 	case tea.KeyPressMsg:
+		// A transient message (D22) is displaced by the action it reports on;
+		// any keypress after that clears it (S11), whether or not this one
+		// sets a fresh message of its own.
+		m.message = ""
 		switch {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
@@ -425,11 +430,11 @@ func (m model) paneTitle(p pane) string {
 }
 
 // renderFooter draws the footer line: a transient message (D22) when one is
-// set, otherwise the focused pane's name and the quit key. Focus-aware key
-// hints, truncation and clear-on-next-keypress are M4.2's job; this is the
-// minimal display S3's "refused... with a footer message" needs now.
+// set, otherwise the focused pane's key hints (hintText), truncated to fit
+// (S11). Update clears m.message on every keypress, so a message shown here
+// never survives past the next key.
 func (m model) renderFooter(r rect) string {
-	text := m.focus.title() + " · " + keys.Quit.Help().Key + " " + keys.Quit.Help().Desc
+	text := hintText(m.focus, r.width)
 	if m.message != "" {
 		text = m.message
 	}
