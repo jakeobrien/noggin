@@ -174,3 +174,30 @@
   The cost is that a terminal which changes its background mid-session keeps the style it
   started with, which nobody will notice. Constrains M4.1: returning from `$EDITOR` must not
   re-query either.
+
+## D14: Adopt Charm v2 now, at the skeleton, not later
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-31
+- Context: C1 was planned against Bubble Tea v1.3.10 because v2 was pre-release at the time
+  (`PROGRESS.md` handoff). It is not any more: `bubbletea/v2` v2.0.8, `bubbles/v2` v2.1.1,
+  `lipgloss/v2` v2.0.5, `glamour/v2` v2.0.1 are all stable, under a new module path
+  (`charm.land/…`, not `github.com/charmbracelet/…`). bubbles v2 and lipgloss v2 hard-require
+  bubbletea v2, so this is one all-or-nothing swap.
+- Decision: Migrate all four to v2 as a new task M1.4, ahead of M2.1, before any further
+  surface is built. Re-scoped M5.1 down (3 → 2) because `viewport` v2 ships
+  `SetHighlights`/`HighlightNext`/`HighlightPrevious`/`EnsureVisible`. D13's rule ("no terminal
+  query after `Run()`") stands unchanged; only its cause is removed.
+- Why: Cost scales with surface, and surface is at its minimum — three tasks, ~600 lines of
+  non-test code, and the migration is mechanical (`View() tea.View`, `tea.KeyPressMsg` with
+  `Code`/`Text`, viewport getters, `lipgloss.Color` as a function). Paying it at M2.1 is
+  cheapest; paying it at M5 means redoing the tree, the roots panes and the footer. Staying on
+  v1 is the expensive option, not the safe one: v1 is now the dead branch, the D13 deadlock we
+  worked around is designed out of v2, `viewport`'s new highlight API is most of S8, and
+  `tea.WithWindowSize`/`WithColorProfile` relieve the pty-harness pain
+  (`findings/pty-verification.md`). Accepted risks: a young major with visible churn (8 patch
+  releases), a pre-1.0 `ultraviolet` dependency, and the pty recipe needing re-verification
+  against v2's different startup queries. Full migration surface, verified against the real
+  modules, in `findings/bubbletea-v2-migration.md`. This is a dependency decision, not a spec
+  change — no deliverable, criterion or key changes meaning.

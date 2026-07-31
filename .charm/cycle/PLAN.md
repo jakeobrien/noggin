@@ -12,6 +12,10 @@ where it isn't set correctly), not because it is currently broken here. Checks r
 + `gofmt -l` + `go test`; staticcheck/goimports/gopls are now available too but not mandated.
 See `findings/go-toolchain-env.md`.
 
+Library baseline: Charm v2 (`charm.land/{bubbletea,bubbles,lipgloss,glamour}/v2`) as of M1.4.
+M1.1-M1.3 were built against v1 and are migrated in place by that task; everything from M2.1
+onward is v2-only. See D14 and `findings/bubbletea-v2-migration.md`.
+
 ## M1 — Walking skeleton and Document Viewer
 
 Delivers: S7 (plus the frame every later milestone hangs off)
@@ -31,6 +35,14 @@ Delivers: S7 (plus the frame every later milestone hangs off)
   frontmatter, headings, a table, a fenced code block, nested and task lists and a blockquote
   renders styled with no frontmatter visible, all five scroll actions move the viewport, and
   launching with no path shows the empty-state text — effort: 3 (needs: M1.2)
+- **M1.4** — Migrate the skeleton to Charm v2 (`charm.land/{bubbletea,bubbles,lipgloss,glamour}/v2`),
+  one atomic swap (D14) — done when: no `github.com/charmbracelet/{bubbletea,bubbles,lipgloss,glamour}`
+  import remains, `make check` is clean, and M1.1's, M1.2's and M1.3's acceptance criteria all
+  still hold on v2 — including the frame at two terminal sizes, no key literal outside the
+  keymap file, the fixture document rendered with frontmatter hidden and all five scroll
+  actions working — with the pty harness re-verified against v2's startup queries and
+  `expandTabs` either justified or dropped against lipgloss v2's own tab handling — effort: 3
+  (needs: M1.3)
 
 ## M2 — Browsing the active root
 
@@ -100,7 +112,9 @@ cycle overruns, then M5.2, then M5.1.
   the matched line scrolled on screen and indicated — done when: a phrase in the last screen
   of a long fixture document is brought on screen and its line indicated, traversal wraps past
   the last match, an uppercase query stops matching lowercase, and dismissing leaves the
-  viewport where the last match was — effort: 3 (needs: M1.3)
+  viewport where the last match was — effort: 2 (re-scoped from 3 by D14: bubbles v2's
+  `viewport` provides `SetHighlights`, `HighlightNext`/`Previous` and `EnsureVisible`, so go
+  with the grain and use them rather than mapping offsets by hand) (needs: M1.3, M1.4)
 - **M5.2** — Navigator toggle: one key hides and restores the whole sidebar, the viewer
   re-wrapping to the width it gains — done when: the key hides the sidebar, document text
   re-wraps to full width, and the key restores the previous layout with the sidebar's selection

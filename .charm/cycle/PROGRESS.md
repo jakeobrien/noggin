@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M2.1
+Current task: M1.4
 
 ## Handoff
 
@@ -47,7 +47,25 @@ absent, `G` reaches the document's last line, `ctrl+d` reaches the code fence wi
 exceeding the terminal width and no tabs on screen, empty state on bare launch, exit 0 with the
 terminal restored.
 
-Next step: M2.1 — readable-file policy and tree walk. Nothing exists for it yet: no filesystem
+**Replanned 2026-07-31 (D14): M1.4 is inserted ahead of M2.1 and is now the cursor.** Charm v2
+went stable while we were building on v1, so the whole stack moves to
+`charm.land/{bubbletea,bubbles,lipgloss,glamour}/v2` in one atomic swap before any more surface
+accumulates. Read `findings/bubbletea-v2-migration.md` first — it has the verified API surface
+so you do not have to rediscover it. The short version of what touches our code: `View()`
+returns `tea.View` (`tea.NewView(s)`); `tea.KeyMsg` becomes an interface and `tea.KeyPressMsg`
+carries `Code rune` / `Text string` / `Mod`, which deletes `keymap.go`'s `namedKeys`/`keyMsg`
+table and changes how tests synthesise keys; `viewport.New` takes options and `Width`/`Height`/
+`YOffset` become getters/setters; `lipgloss.Color` is a function returning `color.Color`;
+`Style.Width()`/`Height()` now include the border, so re-verify `layout.go`'s geometry rather
+than trusting it; `glamour.WithStandardStyle` and `WithWordWrap` survive unchanged. The import
+path is `charm.land`, *not* `github.com/charmbracelet` — the old path has tags but fetching it
+fails. Two open questions for you to settle empirically: whether `expandTabs` is still needed
+(lipgloss v2 converts tabs itself) and what v2's pty startup queries are
+(`findings/pty-verification.md` was derived against v1 and needs re-verification, not just
+re-running). `tea.WithWindowSize` and `tea.WithColorProfile` may let some pty checks become
+plain unit tests.
+
+After that: M2.1 — readable-file policy and tree walk. Nothing exists for it yet: no filesystem
 package, no `.gitignore` handling, no allowlist. The criterion wants a unit test over a fixture
 tree (gitignored `.md` excluded, `.git/` absent, `.charm/notes.md` present, `main.go` absent,
 `README` present) and the allowlist in one declaration. `cmd/noggin/testdata/` already exists
@@ -56,10 +74,14 @@ surface, so it needs no pty work. Decide early whether to take a `.gitignore` de
 (`go-gitignore`, or shell out) or hand-roll — worth a findings note either way.
 
 Still relevant:
-- Bubble Tea v1.3.10 (v2 still pre-release); go with the grain (D1).
-- Glamour v1.0.0 dragged the direct `lipgloss` requirement up to the pseudo-version
-  `v1.1.1-0.20250404203927-76690c660834` and added chroma/goldmark/bluemonday/`x/net`. Noted
-  for security-review time, not a problem now.
+- Go with the grain (D1) — which, as of D14, means Charm v2, not the v1 pin this handoff
+  previously recorded.
+- D13's rule (no terminal query after `Run()`) still stands, but v2 removes its cause: Bubble
+  Tea owns terminal I/O and glamour v2 never queries. Keep resolving dark/light before `Run()`;
+  `tea.RequestBackgroundColor` is the in-program alternative but is unreliable under tmux/WSL2.
+- Glamour dragged the direct `lipgloss` requirement up to a pseudo-version and added
+  chroma/goldmark/bluemonday/`x/net`; v2 adds `charmbracelet/ultraviolet` (pre-1.0) and
+  `x/termios`. Noted for security-review time, not a problem now.
 - Sandbox Go toolchain fully working as of 2026-07-31; the Makefile's `unexport GOROOT` is
   defensive-only (`findings/go-toolchain-env.md`).
 
@@ -71,7 +93,8 @@ No blockers.
 |------|--------|----------|-----------|------|
 | M1.1 | done   | -        | -         |      |
 | M1.2 | done   | -        | -         |      |
-| M1.3 | done   | -        | -         |      |
+| M1.3 | done   | -        | -         | built on v1; migrated by M1.4 |
+| M1.4 | todo   | -        | -         | added by replan (D14) |
 | M2.1 | todo   | -        | -         |      |
 | M2.2 | todo   | -        | -         |      |
 | M2.3 | todo   | -        | -         |      |
