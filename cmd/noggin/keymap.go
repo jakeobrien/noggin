@@ -17,6 +17,11 @@ type keyMap struct {
 	PrevPane key.Binding
 	Quit     key.Binding
 
+	// Files Nav folder control (S5): open and close a folder in place.
+	// Selection moves with the shared LineUp/LineDown bindings.
+	Expand   key.Binding
+	Collapse key.Binding
+
 	// Document Viewer scrolling (S7): line, half-page, page, top, bottom.
 	LineUp       key.Binding
 	LineDown     key.Binding
@@ -41,6 +46,14 @@ var keys = keyMap{
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
+	),
+	Expand: key.NewBinding(
+		key.WithKeys("right", "l"),
+		key.WithHelp("→/l", "expand"),
+	),
+	Collapse: key.NewBinding(
+		key.WithKeys("left", "h"),
+		key.WithHelp("←/h", "collapse"),
 	),
 	LineUp: key.NewBinding(
 		key.WithKeys("up", "k"),

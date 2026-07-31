@@ -4,6 +4,8 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"noggin/internal/tree"
 )
 
 // pane identifies a focusable region of the frame.
@@ -42,11 +44,20 @@ type model struct {
 	width  int
 	height int
 	focus  pane
+	files  filesNav
 	viewer viewer
 }
 
 func newModel() model {
-	return model{focus: filesPane, viewer: newViewer()}
+	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer()}
+}
+
+// openFolder points the Files Nav at root and puts focus on it, which is what
+// browsing a folder means.
+func (m model) openFolder(root *tree.Node) model {
+	m.files = m.files.setRoot(root)
+	m.focus = m.resolveFocus(filesPane)
+	return m
 }
 
 // openDocument makes d the active document and puts focus on it, which is what
@@ -66,8 +77,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.focus = m.resolveFocus(m.focus)
-		content := computeLayout(m.width, m.height).viewer.content()
-		m.viewer = m.viewer.setSize(content.width, content.height)
+		l := computeLayout(m.width, m.height)
+		viewerContent := l.viewer.content()
+		m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
+		filesContent := l.files.content()
+		m.files = m.files.setSize(filesContent.width, filesContent.height)
 		return m, nil
 	case tea.KeyPressMsg:
 		switch {
@@ -80,11 +94,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focus = m.shiftFocus(-1)
 			return m, nil
 		}
-		// Scroll keys belong to whichever pane has focus; only the viewer
-		// claims them so far.
-		if m.focus == viewerPane {
+		// Movement keys belong to whichever pane has focus: the viewer scrolls,
+		// the Files Nav moves its selection and opens/closes folders.
+		switch m.focus {
+		case viewerPane:
 			if next, scrolled := m.viewer.scroll(msg); scrolled {
 				m.viewer = next
+				return m, nil
+			}
+		case filesPane:
+			if next, handled := m.files.handleKey(msg); handled {
+				m.files = next
 				return m, nil
 			}
 		}
@@ -173,7 +193,7 @@ func (m model) frame() string {
 	if l.navigatorWidth() > 0 {
 		navigator := lipgloss.JoinVertical(lipgloss.Left,
 			m.renderPane(rootsPane, l.roots, ""),
-			m.renderPane(filesPane, l.files, ""),
+			m.renderPane(filesPane, l.files, m.files.view()),
 		)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, navigator, body)
 	}

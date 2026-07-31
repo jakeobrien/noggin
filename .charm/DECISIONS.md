@@ -283,3 +283,27 @@
   gitignore subset and its deliberate omissions are documented in
   `findings/gitignore-matching.md`; if a real root reveals a gap the fix is a test case plus a
   few lines, not a dependency swap.
+
+## D19: M2.2 Files Nav — shared movement bindings, dedicated expand/collapse, expansion state layered over the immutable tree
+
+- Status: decided
+- Cycle: C1
+- Context: M2.2 needed key bindings for the Files Nav pane and a place to hold "which folders
+  are open / which row is selected", over `tree.Node` which is immutable data (M2.1 handoff).
+  It also needed a way for the running binary to actually show a tree, ahead of M3.1's root
+  resolution.
+- Decision: (1) **Selection movement reuses the shared `LineUp`/`LineDown` bindings** (up/k,
+  down/j) — focus gating routes the same physical key to the viewer's scroll or the Files
+  pane's move, so no duplicate up/down bindings enter the keymap. (2) **Expand/collapse are
+  the pane's own bindings** (`Expand` = right/l, `Collapse` = left/h) — a folder opens and
+  closes in place; a file or already-open/closed folder is a no-op. Activation (open a file)
+  is deliberately left to M2.3. (3) **Expansion/selection state lives in a `filesNav` struct**
+  (`cmd/noggin/files.go`), keyed by absolute `Path`, value-semantic (expand/collapse clone the
+  map) to match the type's immutable-update convention; `visibleRows` flattens the tree to its
+  open part and the root node itself is not a row. (4) **`main.go` grows temporary dir-argument
+  scaffolding** — a directory launches into the Files Nav, a file still opens the viewer — the
+  same shape as the existing bare-path document scaffolding, and flagged in-comment as replaced
+  wholesale by M3.1/M3.4.
+- Why: all reversible and contained (medium) so logged, not asked. Reusing the movement keys
+  goes with the grain of the existing focus-routing (D1). The dir scaffolding is the minimum to
+  make M2.2 demonstrable end-to-end (pty) without pre-empting M3's root contract.

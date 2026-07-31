@@ -1,0 +1,221 @@
+package main
+
+import (
+	"strings"
+	"testing"
+
+	"charm.land/lipgloss/v2"
+
+	"noggin/internal/tree"
+)
+
+// fixtureTree is a small tree shaped to exercise the pane: two nested folders
+// (one with content, one empty), files at the root, so top-level entries,
+// expansion and an empty folder can all be checked. Children are already
+// dirs-first then by name, matching what tree.Walk produces.
+func fixtureTree() *tree.Node {
+	return &tree.Node{
+		Name: "root", Path: "/root", IsDir: true,
+		Children: []*tree.Node{
+			{Name: "docs", Path: "/root/docs", IsDir: true, Children: []*tree.Node{
+				{Name: "guide.md", Path: "/root/docs/guide.md"},
+				{Name: "ref.md", Path: "/root/docs/ref.md"},
+			}},
+			{Name: "empty", Path: "/root/empty", IsDir: true},
+			{Name: "README.md", Path: "/root/README.md"},
+			{Name: "notes.txt", Path: "/root/notes.txt"},
+		},
+	}
+}
+
+// rowNames is the Name of each currently visible row, top to bottom.
+func rowNames(f filesNav) []string {
+	var names []string
+	for _, r := range f.visibleRows() {
+		names = append(names, r.node.Name)
+	}
+	return names
+}
+
+func newFiles(root *tree.Node) filesNav {
+	return newFilesNav().setRoot(root)
+}
+
+func TestFilesOpensWithTopLevelCollapsed(t *testing.T) {
+	f := newFiles(fixtureTree())
+	got := rowNames(f)
+	want := []string{"docs", "empty", "README.md", "notes.txt"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("opening rows = %v, want %v (only top-level, all collapsed)", got, want)
+	}
+	// A nested file must not be visible until its folder is opened.
+	for _, r := range f.visibleRows() {
+		if r.node.Name == "guide.md" {
+			t.Fatal("guide.md visible before docs was expanded")
+		}
+	}
+}
+
+func TestFilesEmptyFolderIsListed(t *testing.T) {
+	f := newFiles(fixtureTree())
+	if !containsRow(f, "empty") {
+		t.Fatal("empty folder not listed among top-level entries")
+	}
+	// Expanding it reveals nothing but leaves it listed (S6).
+	f = f.move(1) // select "empty"
+	if f.selectedNode().Name != "empty" {
+		t.Fatalf("selected = %q, want empty", f.selectedNode().Name)
+	}
+	f = f.expand()
+	got := rowNames(f)
+	want := []string{"docs", "empty", "README.md", "notes.txt"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("rows after expanding empty folder = %v, want %v", got, want)
+	}
+}
+
+func TestFilesExpandAndCollapseInPlace(t *testing.T) {
+	f := newFiles(fixtureTree()) // selection on "docs"
+	if f.selectedNode().Name != "docs" {
+		t.Fatalf("selection starts on %q, want docs", f.selectedNode().Name)
+	}
+
+	f = f.expand()
+	got := rowNames(f)
+	want := []string{"docs", "guide.md", "ref.md", "empty", "README.md", "notes.txt"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("rows after expanding docs = %v, want %v", got, want)
+	}
+	// Expansion is in place: docs is still the selected row, at the same index.
+	if f.selected != 0 || f.selectedNode().Name != "docs" {
+		t.Errorf("selection after expand = index %d (%q), want 0 (docs)", f.selected, f.selectedNode().Name)
+	}
+
+	f = f.collapse()
+	got = rowNames(f)
+	want = []string{"docs", "empty", "README.md", "notes.txt"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("rows after collapsing docs = %v, want %v", got, want)
+	}
+	if f.selectedNode().Name != "docs" {
+		t.Errorf("selection after collapse = %q, want docs", f.selectedNode().Name)
+	}
+}
+
+func TestFilesSelectionMovesAcrossExpandedSet(t *testing.T) {
+	f := newFiles(fixtureTree()).expand() // docs open; six visible rows
+
+	// Walk the whole expanded set top to bottom.
+	want := []string{"docs", "guide.md", "ref.md", "empty", "README.md", "notes.txt"}
+	for i, name := range want {
+		if f.selectedNode().Name != name {
+			t.Errorf("row %d selection = %q, want %q", i, f.selectedNode().Name, name)
+		}
+		if i < len(want)-1 {
+			f = f.move(1)
+		}
+	}
+
+	// Movement clamps at the bottom.
+	f = f.move(1)
+	if f.selectedNode().Name != "notes.txt" {
+		t.Errorf("moving down past the end = %q, want it to clamp on notes.txt", f.selectedNode().Name)
+	}
+
+	// And back up to the top, clamping there too.
+	for range want {
+		f = f.move(-1)
+	}
+	f = f.move(-1)
+	if f.selected != 0 || f.selectedNode().Name != "docs" {
+		t.Errorf("moving up past the top = index %d (%q), want 0 (docs)", f.selected, f.selectedNode().Name)
+	}
+}
+
+// TestFilesExpansionIsValueSemantic guards the immutable-update convention: a
+// retained copy of the pane must not see a later copy's expansion.
+func TestFilesExpansionIsValueSemantic(t *testing.T) {
+	before := newFiles(fixtureTree())
+	after := before.expand()
+	if containsRow(before, "guide.md") {
+		t.Error("expanding a later copy leaked into an earlier one (shared map)")
+	}
+	if !containsRow(after, "guide.md") {
+		t.Error("expand did not open the folder on the copy that asked for it")
+	}
+}
+
+func TestFilesViewFillsBoxAndMarksSelection(t *testing.T) {
+	f := newFiles(fixtureTree()).setSize(20, 6)
+	view := f.view()
+	lines := strings.Split(view, "\n")
+	if len(lines) != 6 {
+		t.Fatalf("view has %d lines, want 6 (the box height)", len(lines))
+	}
+	for i, line := range lines {
+		if w := lipgloss.Width(line); w != 20 {
+			t.Errorf("line %d width = %d, want 20", i, w)
+		}
+	}
+	// The selected (first) row carries the reverse-video SGR; a later row does
+	// not, so the selection is visibly distinct.
+	if !strings.Contains(lines[0], "docs") {
+		t.Errorf("first row = %q, want it to name docs", lines[0])
+	}
+	if !strings.Contains(lines[0], "\x1b[7m") {
+		t.Errorf("selected row = %q, want reverse-video SGR", lines[0])
+	}
+	if strings.Contains(lines[1], "\x1b[7m") {
+		t.Errorf("unselected row = %q, want no reverse-video SGR", lines[1])
+	}
+}
+
+func TestFilesEmptyStateWhenNoRoot(t *testing.T) {
+	f := newFilesNav().setSize(20, 6)
+	lines := strings.Split(f.view(), "\n")
+	if len(lines) != 6 {
+		t.Fatalf("empty-state view has %d lines, want 6", len(lines))
+	}
+	if !strings.Contains(f.view(), "No folder open") {
+		t.Errorf("empty-state view = %q, want the no-folder message", f.view())
+	}
+}
+
+// TestModelRoutesKeysToFocusedFilesPane checks the wiring: with focus on the
+// Files Nav, the pane's own keys move the selection and open a folder, and the
+// rendered navigator reflects it.
+func TestModelRoutesKeysToFocusedFilesPane(t *testing.T) {
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)
+	if m.focus != filesPane {
+		t.Fatalf("focus = %v, want filesPane after openFolder", m.focus)
+	}
+	if m.files.selectedNode().Name != "docs" {
+		t.Fatalf("selection = %q, want docs", m.files.selectedNode().Name)
+	}
+
+	// Expand docs, then move down onto its first child.
+	m = press(t, m, keys.Expand.Keys()[1])   // "l"
+	m = press(t, m, keys.LineDown.Keys()[1]) // "j"
+	if got := m.files.selectedNode().Name; got != "guide.md" {
+		t.Errorf("selection after expand+down = %q, want guide.md", got)
+	}
+	if !strings.Contains(m.frame(), "guide.md") {
+		t.Error("navigator frame does not show guide.md after expanding docs")
+	}
+
+	// Collapse from the parent hides it again.
+	m = press(t, m, keys.LineUp.Keys()[1])   // "k" back to docs
+	m = press(t, m, keys.Collapse.Keys()[1]) // "h"
+	if strings.Contains(m.frame(), "guide.md") {
+		t.Error("navigator frame still shows guide.md after collapsing docs")
+	}
+}
+
+func containsRow(f filesNav, name string) bool {
+	for _, r := range f.visibleRows() {
+		if r.node.Name == name {
+			return true
+		}
+	}
+	return false
+}

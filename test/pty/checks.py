@@ -9,6 +9,7 @@ from harness import *  # noqa: E402
 # Run from the repo root (see `make check-pty`).
 BINARY = "./bin/noggin"
 FIXTURE = "cmd/noggin/testdata/fixture.md"
+TREE = "cmd/noggin/testdata/tree"
 
 # D2 keeps key literals inside cmd/noggin/keymap.go, but a pty harness has to
 # put real bytes on the wire, and it is on the far side of a language boundary
@@ -24,6 +25,10 @@ KEY = {
     "HalfPageDown": b"\x04",    # keys.HalfPageDown: ctrl+d
     "PageUp":       b"\x02",    # keys.PageUp, second key: ctrl+b
     "Bottom":       b"G",       # keys.Bottom
+    "Down":         b"j",       # keys.LineDown, second key: j
+    "Up":           b"k",       # keys.LineUp, second key: k
+    "Expand":       b"l",       # keys.Expand, second key: l
+    "Collapse":     b"h",       # keys.Collapse, second key: h
 }
 
 # --- M1.1: starts, quits, restores the terminal ---------------------------
@@ -183,5 +188,45 @@ check("M1.3 empty state on bare launch",
       "No document open" in "\n".join(sc.raw_lines()))
 s.send(KEY["Quit"], 0.6)
 s.close()
+
+# --- M2.2: the Files Nav pane browses the active root ---------------------
+
+# The fixture tree sorts dirs-first then by name, so the Files pane opens on
+# docs, empty, README.md, notes.txt with every folder collapsed; docs/guide.md
+# stays hidden until docs is opened, and the content-free empty/ still lists.
+s = Session([BINARY, TREE], 80, 24)
+out = s.pump(1.5)
+body = "\n".join(screen_of(out, 80, 24).raw_lines())
+check("M2.2 Files pane opens showing top-level entries",
+      all(name in body for name in ["docs", "empty", "README.md", "notes.txt"]),
+      repr(body[:200]))
+check("M2.2 empty folder is listed", "empty" in body)
+check("M2.2 nested file hidden while its folder is collapsed",
+      "guide.md" not in body)
+
+# Focus starts in the Files pane, so its keys act without tabbing. Selection
+# opens on docs; expand reveals its children in place.
+s.send(KEY["Expand"], 0.5)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M2.2 expanding a folder reveals its children in place",
+      "guide.md" in body, repr(body[:200]))
+
+# Collapsing the same folder hides them again.
+s.send(KEY["Collapse"], 0.5)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M2.2 collapsing a folder hides its children again",
+      "guide.md" not in body, repr(body[:200]))
+
+# Selection moves across the visible set: re-open docs, step down onto a child,
+# and the reverse-video selection bar lands on it.
+s.send(KEY["Expand"], 0.4)
+s.send(KEY["Down"], 0.4)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M2.2 selection moves across the expanded set (guide.md still shown)",
+      "guide.md" in body)
+check("M2.2 reverse-video selection bar on the wire", b"\x1b[7m" in s.out)
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M2.2 exits 0 while browsing a folder", code == 0, f"exit {code}")
 
 done()

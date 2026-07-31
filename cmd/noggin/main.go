@@ -7,6 +7,8 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
+
+	"noggin/internal/tree"
 )
 
 func main() {
@@ -16,16 +18,32 @@ func main() {
 
 	m := newModel()
 
-	// Temporary launch handling: a bare path opens that document. M3.1 replaces
-	// this wholesale with the S1 launch contract, where arguments resolve the
+	// Temporary launch handling: a directory argument browses that folder in the
+	// Files Nav, a file argument opens that document. M3.1 replaces this
+	// wholesale with the S1 launch contract, where arguments resolve the
 	// session's roots and every rejection still yields a running session (D11).
 	if len(os.Args) > 1 {
-		doc, err := loadDocument(os.Args[1])
+		path := os.Args[1]
+		info, err := os.Stat(path)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "noggin:", err)
 			os.Exit(1)
 		}
-		m = m.openDocument(doc)
+		if info.IsDir() {
+			root, err := tree.Walk(path)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "noggin:", err)
+				os.Exit(1)
+			}
+			m = m.openFolder(root)
+		} else {
+			doc, err := loadDocument(path)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "noggin:", err)
+				os.Exit(1)
+			}
+			m = m.openDocument(doc)
+		}
 	}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {

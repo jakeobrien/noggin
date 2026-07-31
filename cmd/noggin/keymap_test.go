@@ -60,6 +60,8 @@ var namedKeys = map[string]rune{
 	"tab":    tea.KeyTab,
 	"up":     tea.KeyUp,
 	"down":   tea.KeyDown,
+	"left":   tea.KeyLeft,
+	"right":  tea.KeyRight,
 	"pgup":   tea.KeyPgUp,
 	"pgdown": tea.KeyPgDown,
 	"home":   tea.KeyHome,
