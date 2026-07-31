@@ -25,7 +25,12 @@ func main() {
 	// loadStarredRoots reads the S2 store (D7's os.UserConfigDir()); a fresh
 	// install with no store yet, same as a garbage one, is a first run.
 	res := resolveRoots(os.Args[1:], loadStarredRoots(), cwd)
-	m := newModel().applyResolution(res)
+	// storePath is resolved once here and threaded into the model so a Roots
+	// Nav star toggle (M3.3) persists without re-deriving os.UserConfigDir()
+	// on every keypress; an unresolvable config directory (storePath's own
+	// error) becomes "", the same degrade loadStarredRoots already applies.
+	path, _ := storePath()
+	m := newModel().withStorePath(path).applyResolution(res)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "noggin:", err)

@@ -33,7 +33,12 @@ OTHER = re.compile(rb"\x1b[()][0-9A-Za-z]|\x1b[=><]|\x1b[PX^_].*?\x1b\\")
 
 
 class Session:
-    def __init__(self, argv, cols=80, rows=24, term="xterm-256color"):
+    def __init__(self, argv, cols=80, rows=24, term="xterm-256color", env=None):
+        """env, if given, is applied on top of the inherited environment in
+        the child only (e.g. pointing $HOME/$XDG_CONFIG_HOME at an isolated
+        config dir for a Roots Nav starred-roots fixture) — the parent's own
+        environment is untouched.
+        """
         self.cols, self.rows = cols, rows
         self.out = b""
         self.pid, self.fd = pty.fork()
@@ -41,6 +46,8 @@ class Session:
             os.environ["TERM"] = term
             os.environ.pop("NO_COLOR", None)
             os.environ["COLORTERM"] = "truecolor"
+            if env:
+                os.environ.update(env)
             os.execvp(argv[0], argv)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ,
                     struct.pack("HHHH", rows, cols, 0, 0))

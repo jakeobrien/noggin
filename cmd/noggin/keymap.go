@@ -17,13 +17,21 @@ type keyMap struct {
 	PrevPane key.Binding
 	Quit     key.Binding
 
+	// Roots Nav actions (S3): selection moves with the shared LineUp/LineDown
+	// bindings; Star toggles the selected root's starred mark, persisted via
+	// the S2 store. Activate (below) also opens the selected root.
+	Star key.Binding
+
 	// Files Nav folder control (S5): open and close a folder in place.
 	// Selection moves with the shared LineUp/LineDown bindings.
 	Expand   key.Binding
 	Collapse key.Binding
 
-	// Activate opens the Files Nav's selected file as the active document and
-	// moves focus to the viewer (M2.3). A folder is left for later.
+	// Activate opens the selected entry: on the Files Nav, the selected file
+	// becomes the active document and focus moves to the viewer (M2.3); a
+	// folder is left for later. On the Roots Nav, the selected root becomes
+	// the active root (S3), refused with a footer message if its path is
+	// missing (broken).
 	Activate key.Binding
 
 	// Document Viewer scrolling (S7): line, half-page, page, top, bottom.
@@ -50,6 +58,10 @@ var keys = keyMap{
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),
+	),
+	Star: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "star"),
 	),
 	Expand: key.NewBinding(
 		key.WithKeys("right", "l"),

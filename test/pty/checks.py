@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from harness import *  # noqa: E402
@@ -30,7 +31,22 @@ KEY = {
     "Expand":       b"l",       # keys.Expand, second key: l
     "Collapse":     b"h",       # keys.Collapse, second key: h
     "Activate":     b"\r",      # keys.Activate: enter
+    "Star":         b"s",       # keys.Star
 }
+
+
+def config_env(home_dir):
+    """Env vars and the resulting starred-roots store path that make Go's
+    os.UserConfigDir() resolve under home_dir, mirroring the per-OS logic in
+    os/file.go: darwin ignores $XDG_CONFIG_HOME and uses $HOME/Library/
+    Application Support; other unix honours $XDG_CONFIG_HOME. Setting both
+    env vars works on either OS the harness might run under.
+    """
+    if sys.platform == "darwin":
+        cfg_dir = os.path.join(home_dir, "Library", "Application Support")
+    else:
+        cfg_dir = os.path.join(home_dir, ".config")
+    return {"HOME": home_dir, "XDG_CONFIG_HOME": cfg_dir}, os.path.join(cfg_dir, "noggin", "roots")
 
 # --- M1.1: starts, quits, restores the terminal ---------------------------
 
@@ -262,5 +278,98 @@ s.send(KEY["HalfPageDown"], 0.5)
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M2.3 exits 0 after activating a file", code == 0, f"exit {code}")
+
+# --- M3.3: the Roots Nav pane lists, marks, activates and stars roots -----
+
+# Two roots sharing a base name ("project") under different parents, plus a
+# starred path that is never created (the broken root). All three are
+# pre-starred so a bare launch shows them without any launch argument, per
+# S1 ("noggin -> starred roots only; the first is active").
+roots_base = tempfile.mkdtemp()
+root_admin = os.path.join(roots_base, "work", "admin", "project")
+root_other = os.path.join(roots_base, "other", "project")
+root_ghost = os.path.join(roots_base, "vault", "ghost")  # deliberately not created
+os.makedirs(root_admin)
+os.makedirs(root_other)
+
+home_dir = tempfile.mkdtemp()
+env, store_path = config_env(home_dir)
+os.makedirs(os.path.dirname(store_path))
+with open(store_path, "w") as f:
+    f.write(root_admin + "\n" + root_other + "\n" + root_ghost + "\n")
+
+s = Session([BINARY], 80, 24, env=env)
+out = s.pump(1.5)
+body = "\n".join(screen_of(out, 80, 24).raw_lines())
+
+check("M3.3 Roots pane lists all three starred roots",
+      body.count("project") == 2 and "ghost" in body, repr(body[:400]))
+check("M3.3 same-named roots distinguished by their parent path",
+      "admin" in body and "other" in body, repr(body[:400]))
+check("M3.3 a root whose path does not exist is marked broken",
+      "missing" in body, repr(body[:400]))
+
+# The first starred root (root_admin) resolved and walked cleanly, so it is
+# active and focus opens on the Files pane, same as a directory launch.
+footer = screen_of(s.out, 80, 24).lines()[-1]
+check("M3.3 bare launch with starred roots opens focused on Files",
+      footer.split(" \u00b7")[0] == "Files", repr(footer))
+
+# Tab back to the Roots pane before its own keys act.
+s.send(KEY["PrevPane"], 0.4)
+footer = screen_of(s.out, 80, 24).lines()[-1]
+check("M3.3 shift+tab from Files moves focus to Roots",
+      footer.split(" \u00b7")[0] == "Roots", repr(footer))
+
+
+def row_with(text, lines):
+    for line in lines:
+        if text in line:
+            return line
+    return ""
+
+
+lines = screen_of(s.out, 80, 24).raw_lines()
+admin_row = row_with("admin", lines)
+check("M3.3 active root is marked", "\u25cf" in admin_row, repr(admin_row))
+check("M3.3 starred roots are marked", "\u2605" in admin_row, repr(admin_row))
+
+# Star root_other (selection starts on root_admin; one Down reaches it),
+# unstarring it, and check the change is written through to the store file
+# (M3.2's toggleStore) as well as redrawn.
+s.send(KEY["Down"], 0.4)
+lines = screen_of(s.out, 80, 24).raw_lines()
+other_row_before = row_with("other", lines)
+check("M3.3 selection reaches the second root (other/project)",
+      "\u2605" in other_row_before, repr(other_row_before))
+
+s.send(KEY["Star"], 0.5)
+lines = screen_of(s.out, 80, 24).raw_lines()
+other_row_after = row_with("other", lines)
+check("M3.3 star key un-marks the selected root on screen",
+      "\u2605" not in other_row_after, repr(other_row_after))
+
+with open(store_path) as f:
+    stored = f.read()
+check("M3.3 unstarring persists: root_other dropped from the store file",
+      root_other not in stored and root_admin in stored and root_ghost in stored,
+      repr(stored))
+
+# Move onto the broken root and try to activate it: refused, with a footer
+# message naming the missing path, and the active root and Files pane both
+# stay as they were.
+s.send(KEY["Down"], 0.4)
+s.send(KEY["Activate"], 0.6)
+sc = screen_of(s.out, 80, 24)
+footer = sc.lines()[-1]
+lines = sc.raw_lines()
+check("M3.3 activating a broken root is refused with a footer message",
+      "ghost" in footer and "not activated" in footer, repr(footer))
+admin_row = row_with("admin", lines)
+check("M3.3 the active root did not change after the refusal",
+      "\u25cf" in admin_row, repr(admin_row))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M3.3 exits 0 after browsing and starring roots", code == 0, f"exit {code}")
 
 done()

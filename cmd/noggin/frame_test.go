@@ -210,6 +210,7 @@ func concrete(t *testing.T, m tea.Model) model {
 func allBindings() []key.Binding {
 	return []key.Binding{
 		keys.NextPane, keys.PrevPane, keys.Quit,
+		keys.Star,
 		keys.Expand, keys.Collapse, keys.Activate,
 		keys.LineUp, keys.LineDown,
 		keys.HalfPageUp, keys.HalfPageDown,

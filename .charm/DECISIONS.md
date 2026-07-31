@@ -359,3 +359,35 @@
   file trivially hand-editable per S2's explicit intent, at the cost of silently dropping a
   malformed line instead of reporting exactly which line was bad — acceptable since S2 asks for
   tolerance, not diagnostics.
+
+## D22: M3.3 Roots Nav pulls forward a minimal footer message, ahead of M4.2
+
+- Status: decided
+- Cycle: C1
+- Context: D20 parked S1's launch-rejection message on `model.message` with display deferred to
+  M4.2's footer work, and T15 deliberately left M2.3's file-read-error path silent for the same
+  reason. But M3.3's own acceptance criterion is explicit: "activating a broken root is refused
+  with a footer message" — S3 names the refusal, not just the internal state.
+- Decision: (1) **`renderFooter` now shows `m.message` when set**, falling back to the existing
+  focus+quit hint otherwise — the minimum needed to surface a refusal, not M4.2's full design
+  (focus-aware key hints, narrow-terminal truncation, clear-on-next-keypress all remain M4.2's
+  job). (2) As a side effect, S1's launch-time rejection message (parked since D20) is now also
+  visible on the first frame, since it uses the same field — a welcome side effect, not scope
+  creep: the field existed for exactly this. (3) **`activateRoot` clears `m.message` on success**
+  so a stale refusal does not linger once the user corrects it, but nothing else clears it yet
+  (e.g. switching panes) — that generalized behaviour is M4.2's "clears on next keypress".
+  (4) Roots Nav rendering: an active-root marker (`● `) and a starred marker (`★ `) as two-column
+  prefixes (mirrors the Files Nav's marker column), a broken root gets a literal ` (missing)`
+  suffix and a faint style rather than a symbol, and same-named roots are told apart by a
+  left-truncated parent path (`leftTruncate`, `…/work/admin/`) — the exact form S3 asks for.
+  (5) **Activate and Star are new/reused key bindings on the Roots Nav**: Activate (`enter`) is
+  reused from the Files Nav — both mean "open the selected thing" — and a new `Star` binding
+  (`s`) is added for the toggle, with cross-cutting effects (tree walk, disk I/O) handled in
+  `model.activateRoot`/`model.toggleStar` rather than `rootsNav.handleKey`, mirroring how the
+  Files Nav's own Activate is handled one level up (M2.3). (6) `model.roots` becomes the
+  `rootsNav` pane itself (selection cursor plus rows), replacing the placeholder
+  `model.{roots, activeRoot}` fields D20 introduced — nothing outside `model.go` referenced them.
+- Why: medium and reversible, so logged not asked. Showing the message now is what the plan
+  task's acceptance criterion requires; building M4.2's full footer redesign to get there would
+  be scope creep in the other direction. The marker/key choices are cosmetic and cheap to retune
+  under the provisional-keymap principle (D2's build-time-only constraint covers `Star` too).

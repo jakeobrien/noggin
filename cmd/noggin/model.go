@@ -49,16 +49,27 @@ type model struct {
 	files  filesNav
 	viewer viewer
 
-	// roots is the session's note sources (S1); activeRoot indexes the one the
-	// Files Nav is browsing, or -1 when none. message carries a launch-time
-	// rejection notice until M4.2's footer surfaces it.
-	roots      []root
-	activeRoot int
-	message    string
+	// roots is the session's note sources (S1): the Roots Nav pane and its
+	// selection, doubling as the record of which root is active. message
+	// carries a transient footer notice — a launch-time rejection (S1) or a
+	// refused action (e.g. activating a broken root, S3); M4.2 will add
+	// clear-on-next-keypress and richer hints, but showing it at all cannot
+	// wait for that milestone (see D22).
+	roots   rootsNav
+	message string
 }
 
 func newModel() model {
-	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), activeRoot: -1}
+	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), roots: newRootsNav("")}
+}
+
+// withStorePath sets the resolved starred-roots config path (M3.2's
+// storePath()) that a Roots Nav star toggle persists through. main.go
+// resolves it once at startup so a keypress never re-derives
+// os.UserConfigDir() itself.
+func (m model) withStorePath(path string) model {
+	m.roots.storePath = path
+	return m
 }
 
 // applyResolution installs an S1 launch resolution: the session's roots, which
@@ -66,8 +77,7 @@ func newModel() model {
 // active root or reading the document can fail; that becomes a message, never
 // an exit — the session always starts (S1's "silence is not an error").
 func (m model) applyResolution(res resolution) model {
-	m.roots = res.roots
-	m.activeRoot = res.active
+	m.roots = m.roots.setRoots(res.roots, res.active)
 	m.message = res.message
 
 	if path := res.activeRootPath(); path != "" {
@@ -121,6 +131,52 @@ func (m model) activate() model {
 	return m.openDocument(d)
 }
 
+// activateRoot makes the Roots Nav's selected entry the active root,
+// re-rooting the Files Nav (S4; M3.4 verifies the open document survives
+// this) while leaving focus free to land in the Files Nav, same shape as
+// activate() above. A broken root (missing path) is refused with a footer
+// message rather than failing silently (S3) — unlike activate()'s read-error
+// path (T15, deferred to M4.2), S3 names this refusal explicitly.
+func (m model) activateRoot() model {
+	row, ok := m.roots.selectedRow()
+	if !ok {
+		return m
+	}
+	if row.broken {
+		m.message = fmt.Sprintf("%s no longer exists; not activated", row.root.path)
+		return m
+	}
+	node, err := tree.Walk(row.root.path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot read %s: %v", row.root.path, err)
+		return m
+	}
+	m.roots = m.roots.activate(m.roots.selected)
+	m.message = ""
+	return m.openFolder(node)
+}
+
+// toggleStar flips the Roots Nav selection's starred mark and persists it via
+// the S2 store (M3.2's toggleStore), using the storePath resolved once at
+// startup (withStorePath). A config directory that could not be resolved
+// (m.roots.storePath == "", the same rare case loadStarredRoots degrades on)
+// still updates the pane's own display; there is simply nothing to write
+// through.
+func (m model) toggleStar() model {
+	row, ok := m.roots.selectedRow()
+	if !ok {
+		return m
+	}
+	if m.roots.storePath != "" {
+		if _, err := toggleStore(m.roots.storePath, row.root.path); err != nil {
+			m.message = fmt.Sprintf("cannot save starred roots: %v", err)
+			return m
+		}
+	}
+	m.roots = m.roots.toggleStarred(m.roots.selected)
+	return m
+}
+
 func (m model) Init() tea.Cmd {
 	return nil
 }
@@ -135,6 +191,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
 		filesContent := l.files.content()
 		m.files = m.files.setSize(filesContent.width, filesContent.height)
+		rootsContent := l.roots.content()
+		m.roots = m.roots.setSize(rootsContent.width, rootsContent.height)
 		return m, nil
 	case tea.KeyPressMsg:
 		switch {
@@ -161,6 +219,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if next, handled := m.files.handleKey(msg); handled {
 				m.files = next
+				return m, nil
+			}
+		case rootsPane:
+			if key.Matches(msg, keys.Activate) {
+				return m.activateRoot(), nil
+			}
+			if key.Matches(msg, keys.Star) {
+				return m.toggleStar(), nil
+			}
+			if next, handled := m.roots.handleKey(msg); handled {
+				m.roots = next
 				return m, nil
 			}
 		}
@@ -248,7 +317,7 @@ func (m model) frame() string {
 	body := m.renderPane(viewerPane, l.viewer, m.viewer.view())
 	if l.navigatorWidth() > 0 {
 		navigator := lipgloss.JoinVertical(lipgloss.Left,
-			m.renderPane(rootsPane, l.roots, ""),
+			m.renderPane(rootsPane, l.roots, m.roots.view()),
 			m.renderPane(filesPane, l.files, m.files.view()),
 		)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, navigator, body)
@@ -294,9 +363,14 @@ func (m model) paneTitle(p pane) string {
 	return p.title()
 }
 
-// renderFooter draws the footer line. Focus-aware hints and transient messages
-// land here in M4.2; for now it names the focused pane and the quit key.
+// renderFooter draws the footer line: a transient message (D22) when one is
+// set, otherwise the focused pane's name and the quit key. Focus-aware key
+// hints, truncation and clear-on-next-keypress are M4.2's job; this is the
+// minimal display S3's "refused... with a footer message" needs now.
 func (m model) renderFooter(r rect) string {
-	hint := m.focus.title() + " · " + keys.Quit.Help().Key + " " + keys.Quit.Help().Desc
-	return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(hint)
+	text := m.focus.title() + " · " + keys.Quit.Help().Key + " " + keys.Quit.Help().Desc
+	if m.message != "" {
+		text = m.message
+	}
+	return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
 }
