@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"noggin/internal/tree"
 )
 
 // TestRootsNavOpensOnActiveRootAndPreservesOrder checks that setRoots keeps
@@ -245,5 +247,80 @@ func TestToggleStarWithNoStorePathStillUpdatesDisplay(t *testing.T) {
 	row, ok := m.roots.selectedRow()
 	if !ok || !row.root.starred {
 		t.Errorf("selected row after toggleStar with no store path: ok=%v starred=%v, want true/true", ok, row.root.starred)
+	}
+}
+
+// TestActivateRootLeavesOpenDocumentUntouched is M3.4's acceptance criterion:
+// with a document open from root A, activating root B re-roots the Files Nav
+// (collapsed at top level, selection reset) while the viewer keeps showing A's
+// document at its previous scroll position, unmoved. This mostly falls out of
+// M3.3's activateRoot reusing openFolder (which only ever touches
+// m.files/m.focus) and filesNav.setRoot resetting expansion/selection — this
+// test is what proves it rather than leaving it an assumption.
+func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
+	rootA, err := tree.Walk("testdata/tree")
+	if err != nil {
+		t.Fatalf("walk testdata/tree: %v", err)
+	}
+	rootBPath := mkdir(t, filepath.Join(t.TempDir(), "root-b"))
+	writeFile(t, filepath.Join(rootBPath, "top.md"))
+	sub := mkdir(t, filepath.Join(rootBPath, "sub"))
+	writeFile(t, filepath.Join(sub, "nested.md"))
+
+	m := openedFixture(t, 80, 24)
+	if total := m.viewer.lineCount(); total <= m.viewer.height() {
+		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to preserve a scroll position over", total, m.viewer.height())
+	}
+	m.viewer.setOffset(3)
+	wantOffset, wantView := m.viewer.offset(), m.viewer.view()
+
+	// Root A open in the Files Nav, one folder expanded and selection off the
+	// top, so re-rooting to B has something to reset.
+	m = m.openFolder(rootA)
+	var docsPath string
+	for _, child := range rootA.Children {
+		if child.IsDir && child.Name == "docs" {
+			docsPath = child.Path
+		}
+	}
+	if docsPath == "" {
+		t.Fatalf("testdata/tree has no docs subfolder to expand")
+	}
+	m.files = m.files.withExpanded(docsPath, true)
+	m.files = m.files.move(1)
+	if len(m.files.expanded) == 0 || m.files.selected == 0 {
+		t.Fatalf("setup did not leave root A expanded/selected off the top")
+	}
+
+	m.roots = m.roots.setRoots([]root{{path: rootA.Path}, {path: rootBPath}}, 0)
+	m.roots = m.roots.move(1) // cursor onto root B; activating it makes it active
+
+	m = m.activateRoot()
+
+	if m.roots.active != 1 {
+		t.Fatalf("active root after activateRoot = %d, want 1 (root B)", m.roots.active)
+	}
+	if len(m.files.expanded) != 0 {
+		t.Errorf("Files Nav expansion after re-rooting = %v, want empty (collapsed at top level)", m.files.expanded)
+	}
+	if m.files.selected != 0 {
+		t.Errorf("Files Nav selection after re-rooting = %d, want 0", m.files.selected)
+	}
+	view := m.files.view()
+	if !strings.Contains(view, "top.md") || !strings.Contains(view, "sub") {
+		t.Errorf("Files Nav view after re-rooting = %q, want root B's top-level entries", view)
+	}
+	if strings.Contains(view, "nested.md") {
+		t.Errorf("Files Nav view after re-rooting = %q, want sub collapsed (nested.md not shown)", view)
+	}
+
+	if got := m.viewer.offset(); got != wantOffset {
+		t.Errorf("viewer offset after activating a different root = %d, want unchanged %d", got, wantOffset)
+	}
+	if got := m.viewer.view(); got != wantView {
+		t.Error("viewer content after activating a different root changed, want the open document unchanged")
+	}
+	if m.viewer.label() == "" {
+		t.Error("viewer lost its open document after activating a different root")
 	}
 }
