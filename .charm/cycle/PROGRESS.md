@@ -6,41 +6,20 @@ Current task: M3.1 (next: M3.2)
 
 Last reviewed: M1.4 (db8a2e6), 2026-08-01 — two-pass standards + spec-fidelity review of the
 whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T8 in
-`TRIAGE.md`. M1.5 (below) has not yet been through review/validate — its Status row is blank
-in both columns.
+`TRIAGE.md`. M1.5, M2.1, M2.2, M2.3 have since been validated (2026-07-31, see Handoff).
 
 ## Handoff
 
-M2.3 is done: activating a file makes it the active document. `model.activate()`
-(`cmd/noggin/model.go`) reads `m.files.selectedNode()`; a nil node or a directory is a no-op
-(folder-enter is deliberately left for later, per the plan's own note); a file is passed to
-`loadDocument` and, on success, into the existing `model.openDocument(d)` — which already
-moved focus to the viewer, so M2.3 added no new focus-routing logic there. A read error
-returns `m` unchanged rather than exiting: no footer-message plumbing exists yet (that's
-M4.2), so a failed activate is silent-but-safe rather than surfaced — worth revisiting once
-the footer can carry transient messages. `keys.Activate` (`enter`) is a new keymap binding,
-routed in `model.Update`'s `filesPane` case ahead of `filesNav.handleKey` so it does not need
-to flow through the pane's own `handleKey` (which only ever returns a `filesNav`, not a
-`model` — `openDocument`/`activate` need model-level access to the viewer). `keymap_test.go`
-gained an `"enter"` entry in `namedKeys` (T-Enter round-trips via `tea.KeyEnter`, same pattern
-as `tab`/`up`/etc.).
-
-Evidence: `make check` clean. Three new unit tests in `files_test.go`:
-`TestActivateOpensSelectedFileAndMovesFocus` (walks the real `testdata/tree` fixture — unlike
-the hand-built `fixtureTree`, whose nodes have no backing files, this one needs `loadDocument`
-to succeed — activates `README.md`, checks focus is `viewerPane`, the heading renders, the pane
-title names the file, and a subsequent `LineDown` moves the viewer's offset rather than a Files
-Nav selection), `TestActivateOnAFolderIsANoOp` (activating the initially-selected folder leaves
-focus on `filesPane` and the viewer unopened), `TestActivateWithAReadErrorLeavesSessionRunning`
-(a node pointing at a non-existent path leaves focus and the viewer untouched — no panic, no
-exit). `make check-pty` now 72 checks (was 67): launches the fixture tree, steps onto
-`README.md`, presses enter, and checks the footer reports `Document` focus, the file's heading
-is on screen, the pane title names it, a half-page-down does not error, and the session still
-exits 0.
-
-Not yet through review/validate (Status table blank for M2.1-M2.3). **M1.5 remains
-unvalidated** too — the M1→M2 gate was crossed with the user's go-ahead; validate
-M1.5/M2.1/M2.2/M2.3 together at the next checkpoint (M2 is now complete).
+M2 validated 2026-07-31 (fresh-context subagent, per charm-validate): `make check` and
+`make check-pty` (72/72) both clean; M1.5, M2.1, M2.2 and M2.3's acceptance criteria each
+independently confirmed against source and tests (not just "tests pass") — `keyPress`/
+`modifiers`/`namedKeys` test-only (keymap_test.go), `viewer_test.go` off `bubbles/viewport`
+internals, `pane.title()` divergence commented; M2.1's fixture exercises exactly the
+gitignored-.md/.git/.charm/main.go/README cases; M2.2's expand/collapse/selection/empty-folder
+cases all present; M2.3's activate-to-viewer-with-focus path covered by both unit and pty
+checks. No discrepancies found beyond the already-open low-severity TRIAGE items (T9-T15,
+all cosmetic/hardening, none touch these four criteria) — Status table's Validated column
+stamped for M1.5/M2.1/M2.2/M2.3; nothing added to TRIAGE, nothing flipped in Status.
 
 Next: **M3.1 — resolve the session's roots from the launch argument (S1).** This replaces,
 rather than supplements, `main.go`'s current temporary dir/file-argument scaffolding (dir →
@@ -79,10 +58,10 @@ No blockers.
 | M1.2 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
 | M1.3 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
 | M1.4 | done   | 2026-08-01 | 2026-07-31 | M1 complete and validated |
-| M1.5 | done   | 2026-07-31 | -       | two-pass review (T9, T10 logged); not yet validated |
-| M2.1 | done   | 2026-07-31 | -         | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14 |
-| M2.2 | done   | 2026-07-31 | -         | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks |
-| M2.3 | done   | 2026-07-31 | -         | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15 |
+| M1.5 | done   | 2026-07-31 | 2026-07-31 | two-pass review (T9, T10 logged); validated (fresh-context subagent) |
+| M2.1 | done   | 2026-07-31 | 2026-07-31 | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14; validated |
+| M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
+| M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
 | M3.1 | todo   | -        | -         |      |
 | M3.2 | todo   | -        | -         |      |
 | M3.3 | todo   | -        | -         |      |
