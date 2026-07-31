@@ -43,6 +43,12 @@ type keyMap struct {
 	PageDown     key.Binding
 	Top          key.Binding
 	Bottom       key.Binding
+
+	// Edit hands the active document to $EDITOR (S10, D3): noggin releases the
+	// terminal, resumes on exit and re-renders it from disk. Global, not
+	// pane-specific — with no document open it reports that instead of doing
+	// nothing (M4.1).
+	Edit key.Binding
 }
 
 // keys is the program's keymap.
@@ -106,5 +112,9 @@ var keys = keyMap{
 	Bottom: key.NewBinding(
 		key.WithKeys("end", "G"),
 		key.WithHelp("G", "bottom"),
+	),
+	Edit: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "edit"),
 	),
 }

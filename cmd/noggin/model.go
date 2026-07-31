@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -177,12 +179,65 @@ func (m model) toggleStar() model {
 	return m
 }
 
+// editFinishedMsg reports that $EDITOR has exited (S10, D3). path is the
+// document that was handed off, carried on the message rather than re-read
+// from m.viewer at delivery time, since focus and the open document could in
+// principle have changed while the terminal was away. err is any failure
+// starting or running the editor.
+type editFinishedMsg struct {
+	path string
+	err  error
+}
+
+// startEdit hands the active document to $EDITOR (falling back to vi),
+// releasing the terminal for the duration and resuming when it exits (D3).
+// It is global, not pane-specific: S10 names "the active document", not "the
+// focused pane". With no document open it reports that in the footer rather
+// than doing nothing.
+func (m model) startEdit() (model, tea.Cmd) {
+	if !m.viewer.doc.isOpen() {
+		m.message = "no document open to edit"
+		return m, nil
+	}
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+	path := m.viewer.doc.path
+	return m, tea.ExecProcess(exec.Command(editor, path), func(err error) tea.Msg {
+		return editFinishedMsg{path: path, err: err}
+	})
+}
+
+// finishEdit resumes after $EDITOR exits, re-rendering the edited document
+// from disk (D3's "no file watching" — this is the one explicit re-read) so
+// changes are immediately visible. Reusing loadDocument and openDocument keeps
+// this the same read-and-open path as M2.3's activate and S1's launch, rather
+// than a third copy of it. A failure to launch or a since-vanished file is a
+// footer message, not a crash — the same "silence is not an error" shape as
+// activate() and applyResolution().
+func (m model) finishEdit(msg editFinishedMsg) model {
+	if msg.err != nil {
+		m.message = fmt.Sprintf("edit failed: %v", msg.err)
+		return m
+	}
+	d, err := loadDocument(msg.path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", msg.path, err)
+		return m
+	}
+	m.message = ""
+	return m.openDocument(d)
+}
+
 func (m model) Init() tea.Cmd {
 	return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case editFinishedMsg:
+		return m.finishEdit(msg), nil
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.focus = m.resolveFocus(m.focus)
@@ -204,6 +259,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.PrevPane):
 			m.focus = m.shiftFocus(-1)
 			return m, nil
+		case key.Matches(msg, keys.Edit):
+			return m.startEdit()
 		}
 		// Movement keys belong to whichever pane has focus: the viewer scrolls,
 		// the Files Nav moves its selection and opens/closes folders.

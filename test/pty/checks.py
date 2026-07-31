@@ -32,6 +32,7 @@ KEY = {
     "Collapse":     b"h",       # keys.Collapse, second key: h
     "Activate":     b"\r",      # keys.Activate: enter
     "Star":         b"s",       # keys.Star
+    "Edit":         b"e",       # keys.Edit
 }
 
 
@@ -371,5 +372,56 @@ check("M3.3 the active root did not change after the refusal",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M3.3 exits 0 after browsing and starring roots", code == 0, f"exit {code}")
+
+# --- M4.1: edit hands the active document to $EDITOR and resumes -----------
+
+# A fake $EDITOR that appends a marker line to whatever file it is given,
+# standing in for a real editor session without needing one interactively.
+edit_dir = tempfile.mkdtemp()
+fake_editor = os.path.join(edit_dir, "fake-editor.sh")
+with open(fake_editor, "w") as f:
+    f.write('#!/bin/sh\necho "Appended by fake editor" >> "$1"\n')
+os.chmod(fake_editor, 0o755)
+
+# Short on purpose: the appended line must land within the viewport without
+# needing a scroll, since re-opening a document starts at the top.
+edit_doc = os.path.join(edit_dir, "doc.md")
+with open(edit_doc, "w") as f:
+    f.write("# Edit Handoff Fixture\n\nOriginal line.\n")
+
+s = Session([BINARY, edit_doc], 80, 24, env={"EDITOR": fake_editor})
+out = s.pump(1.5)
+body = "\n".join(screen_of(out, 80, 24).raw_lines())
+check("M4.1 document opens before editing",
+      "doc.md" in body and "Edit Handoff Fixture" in body, repr(body[:200]))
+
+s.send(KEY["Edit"], 1.5)
+sc = screen_of(s.out, 80, 24)
+lines = sc.raw_lines()
+body = "\n".join(lines)
+check("M4.1 noggin resumes with an intact frame after the editor exits",
+      len(lines) == 24 and all(len(l) == 80 for l in lines) and
+      lines[0].startswith("╭") and lines[-2].startswith("╰"),
+      f"{len(lines)} rows")
+check("M4.1 the appended line is visible on return, re-rendered from disk",
+      "Appended by fake editor" in body, repr(body[-200:]))
+
+with open(edit_doc) as f:
+    check("M4.1 the editor's write reached the real file on disk",
+          "Appended by fake editor" in f.read())
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M4.1 exits 0 after an edit round-trip", code == 0, f"exit {code}")
+
+# With no document open, the key reports that instead of doing nothing.
+s = Session([BINARY], 80, 24, env={"EDITOR": fake_editor})
+s.pump(1.2)
+s.send(KEY["Edit"], 0.6)
+footer = screen_of(s.out, 80, 24).lines()[-1]
+check("M4.1 editing with no document open reports it in the footer",
+      "no document open" in footer.lower(), repr(footer))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M4.1 exits 0 after the no-document-open report", code == 0, f"exit {code}")
 
 done()

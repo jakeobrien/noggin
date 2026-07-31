@@ -216,6 +216,7 @@ func allBindings() []key.Binding {
 		keys.HalfPageUp, keys.HalfPageDown,
 		keys.PageUp, keys.PageDown,
 		keys.Top, keys.Bottom,
+		keys.Edit,
 	}
 }
 

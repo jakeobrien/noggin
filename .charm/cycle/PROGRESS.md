@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M4.1 (next: M2.4, M3.5, M3.6, M4.2 — reordered by replan, see below)
+Current task: M2.4 (next: M3.5, M3.6, M4.2 — reordered by replan, see below)
 
 Last reviewed: M3.1-M3.4 (1bc7c04), 2026-07-31 — standards + spec-fidelity review of the M3
 milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been validated
@@ -10,15 +10,29 @@ milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been 
 
 ## Handoff
 
+M4.1 done (2026-08-01): the edit handoff. `keys.Edit` (`e`, global — not pane-scoped, since S10
+names "the active document" not "the focused pane") triggers `model.startEdit()`
+(cmd/noggin/model.go), which no-ops into a footer message ("no document open to edit") when
+nothing is open, otherwise shells out via `tea.ExecProcess(exec.Command($EDITOR or vi, path),
+...)` — v2's release/resume is automatic, no manual terminal-state juggling needed. On exit,
+`editFinishedMsg` (path + err) is handled by `model.finishEdit()`, which reuses `loadDocument`
+and `openDocument` (same path as M2.3's activate and S1's launch) rather than duplicating the
+read; an editor error or a since-vanished file degrades to a footer message, same shape as
+every other refusal in the app. D13's no-requery constraint holds without extra work:
+`markdownStyle` is a `sync.OnceValue`, so `finishEdit`'s re-render never touches the terminal.
+Evidence: `make check` clean (5 new unit tests in `cmd/noggin/edit_test.go` covering both
+refusal paths, the reload, and an editor-error/vanished-file pair); `make check-pty` clean (8
+new M4.1 checks — a fake `$EDITOR` script appends a line to a real temp file, the key round-
+trips it onto screen with the frame intact, the write is confirmed on disk, and the
+no-document-open report is confirmed in the footer). Committed.
+
 Replanned 2026-08-01 (charm-replan): TRIAGE.md's 19 open items (T9-T27) routed. Three new
 tasks added — **M2.4** (internal/tree hardening: T11-T14, D23's case-sensitivity call),
 **M3.5** (roots/messaging correctness fixes: T17, T18, T20), **M3.6** (M2/M3 code-review
 cleanup batch: T9, T10, T16, T19, T21-T25, T27) — and **M4.2**'s scope/acceptance grew to fold
 in T15 and T26 (effort 2→3). See D24 for the full rationale and D23 for the case-sensitivity
-decision. TRIAGE.md is now empty. None of this changes M4.1, which remains next up; M2.4/M3.5/
-M3.6 are cleanup on already-`done` work and can land whenever convenient before the M2/M3 code
-is considered closed out — recommend doing them right after M4.1 while that context is still
-fresh, before M4.2.
+decision. TRIAGE.md is now empty. M2.4/M3.5/M3.6 are cleanup on already-`done` work and can
+land whenever convenient before the M2/M3 code is considered closed out.
 
 M3 milestone (M3.1-M3.4) validated fresh-context (2026-07-31, source: charm-validate): all four
 PASS, no discrepancies vs. their PROGRESS.md claims. `make check` and `make check-pty` clean.
@@ -26,15 +40,9 @@ Strongest checks: M3.2's "survives a restart" ran as two separate real OS proces
 isolated `$HOME`/`$XDG_CONFIG_HOME`; M3.3/M3.4 were re-exercised end-to-end via pty against the
 real binary (cross-root byte-diff of the viewer pane), not just unit-level model assertions.
 
-Next: **M4.1 — Edit handoff: release the terminal to `$EDITOR` (fallback `vi`), resume on exit and
-re-render from disk (D3)** (needs M1.3). Acceptance: with `EDITOR` set to a script that appends a
-line, the edit key returns to noggin showing the appended line, and with no document open the
-footer reports that instead. Recall the standing constraint from D13/`glamour-in-bubbletea.md`:
-`markdownStyle` resolves dark/light once via `lipgloss.HasDarkBackground` before `Run()`; returning
-from `$EDITOR` must not re-query the terminal. Likely needs a `tea.ExecProcess`-style release/resume
-(check bubbletea v2's current API for this) plus a re-render-from-disk path that reuses `loadDocument`
-rather than duplicating it, and a footer message for the no-document case (`renderFooter` already
-supports `m.message`, per M3.3/D22).
+Next: **M2.4 — internal/tree hardening** (T11-T14, D23's case-sensitivity call; see D24 for
+the full routing rationale). M4.1's edit handoff is unrelated to this area, so no carryover
+context needed beyond what D24/TRIAGE already captured.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -69,7 +77,7 @@ No blockers.
 | M3.4 | done   | 2026-07-31 | 2026-07-31 | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
 | M3.5 | todo   | -        | -         | replan C1/2026-08-01: roots/messaging correctness fixes (T17, T18, T20) |
 | M3.6 | todo   | -        | -         | replan C1/2026-08-01: M2/M3 code-review cleanup batch (T9, T10, T16, T19, T21-T25, T27) |
-| M4.1 | todo   | -        | -         |      |
+| M4.1 | done   | -        | -         | edit handoff (S10/D3): tea.ExecProcess release/resume + finishEdit re-render from disk |
 | M4.2 | todo   | -        | -         | replan C1/2026-08-01: scope grew (T15, T26 folded in), effort 2→3 |
 | M5.1 | todo   | -        | -         |      |
 | M5.2 | todo   | -        | -         |      |
