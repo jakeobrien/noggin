@@ -23,23 +23,15 @@ type Node struct {
 // by name.
 //
 // root must be a directory; a file argument is M3.1's concern (cwd becomes the
-// root), not the walk's.
+// root), not the walk's. Walk does not stat root itself to special-case a
+// non-directory: walkDir's os.ReadDir fails naturally (ENOTDIR) and that error
+// propagates, which is all a caller-contract violation needs.
 func Walk(root string) (*Node, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
 	}
-	info, err := os.Stat(abs)
-	if err != nil {
-		return nil, err
-	}
 	node := &Node{Name: filepath.Base(abs), Path: abs, IsDir: true}
-	if !info.IsDir() {
-		// Defensive: callers pass directories. Return the bare node rather
-		// than walking a file.
-		node.IsDir = false
-		return node, nil
-	}
 	if err := walkDir(node, "", nil); err != nil {
 		return nil, err
 	}

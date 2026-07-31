@@ -32,6 +32,7 @@ func TestIgnoreMatch(t *testing.T) {
 		{"char class negation", "[!abc].md\n", "b.md", false, false},
 		{"double star spans dirs", "**/tmp\n", "a/b/tmp", true, true},
 		{"trailing double star", "logs/**\n", "logs/a/b.log", false, true},
+		{"escaped bang is a literal, not negation", `\!important.md` + "\n", "!important.md", false, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

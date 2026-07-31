@@ -10,9 +10,9 @@ import (
 )
 
 // readable is the single, trivially adjustable declaration of what noggin
-// considers a readable document (S6). Everything else the walk finds is a
-// folder (always shown) or ignored. Extensions are matched case-insensitively;
-// names match conventional extensionless documents.
+// considers a Readable file (S6, GLOSSARY.md). Everything else the walk finds
+// is a folder (always shown) or ignored. Both extensions and the conventional
+// extensionless names are matched case-insensitively (D23).
 //
 // This is deliberately the one place the allowlist lives — retuning what counts
 // as readable is an edit here and nowhere else.
@@ -32,12 +32,13 @@ var readable = struct {
 	},
 }
 
-// isReadable reports whether a file with the given base name is a document
-// noggin will show. Directories are not subject to this — they are always
-// listed (S6: folders with nothing readable are still shown).
+// isReadable reports whether a file with the given base name is a Readable
+// file (S6, GLOSSARY.md) noggin will show. Directories are not subject to
+// this — they are always listed (S6: folders with nothing readable are still
+// shown).
 func isReadable(name string) bool {
 	if ext := filepath.Ext(name); ext != "" {
 		return readable.exts[strings.ToLower(ext)]
 	}
-	return readable.names[name]
+	return readable.names[strings.ToUpper(name)]
 }

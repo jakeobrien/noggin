@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M2.4 (next: M3.5, M3.6, M4.2 — reordered by replan, see below)
+Current task: M3.5 (next: M3.6, M4.2 — reordered by replan, see below)
 
 Last reviewed: M3.1-M3.4 (1bc7c04), 2026-07-31 — standards + spec-fidelity review of the M3
 milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been validated
@@ -10,39 +10,24 @@ milestone; findings logged as T16-T26 in `TRIAGE.md`. M3.1-M3.4 have since been 
 
 ## Handoff
 
-M4.1 done (2026-08-01): the edit handoff. `keys.Edit` (`e`, global — not pane-scoped, since S10
-names "the active document" not "the focused pane") triggers `model.startEdit()`
-(cmd/noggin/model.go), which no-ops into a footer message ("no document open to edit") when
-nothing is open, otherwise shells out via `tea.ExecProcess(exec.Command($EDITOR or vi, path),
-...)` — v2's release/resume is automatic, no manual terminal-state juggling needed. On exit,
-`editFinishedMsg` (path + err) is handled by `model.finishEdit()`, which reuses `loadDocument`
-and `openDocument` (same path as M2.3's activate and S1's launch) rather than duplicating the
-read; an editor error or a since-vanished file degrades to a footer message, same shape as
-every other refusal in the app. D13's no-requery constraint holds without extra work:
-`markdownStyle` is a `sync.OnceValue`, so `finishEdit`'s re-render never touches the terminal.
-Evidence: `make check` clean (5 new unit tests in `cmd/noggin/edit_test.go` covering both
-refusal paths, the reload, and an editor-error/vanished-file pair); `make check-pty` clean (8
-new M4.1 checks — a fake `$EDITOR` script appends a line to a real temp file, the key round-
-trips it onto screen with the frame intact, the write is confirmed on disk, and the
-no-document-open report is confirmed in the footer). Committed.
+M2.4 done (2026-08-01): internal/tree hardening (T11-T14, D23). `tree.go`'s `Walk` dropped the
+dead non-directory branch entirely (T11) — it no longer stats `root` itself; a non-directory
+argument now fails naturally when `walkDir`'s `os.ReadDir` returns ENOTDIR, so the contract
+("root must be a directory") is enforced by the filesystem call that already needs to happen,
+not a redundant pre-check. `policy.go`'s doc comments now say "Readable file" (T12, matching
+GLOSSARY.md) instead of "readable document". `isReadable` matches the conventional
+extensionless names case-insensitively via `strings.ToUpper` (T13/D23), same shape as the
+already-case-insensitive extension path; locked by a new `policy_test.go`'s table-driven
+`TestIsReadable` (18 cases spanning both the extension and name paths, case variants, and
+negatives). `gitignore_test.go` gained the T14 case: `\!important.md` matches the literal name
+`!important.md` (the escape-handling code already did this correctly — the gap was test
+coverage, not behavior). Evidence: `make check` clean (`go test ./...` incl. the new
+`TestIsReadable` and the new `TestIgnoreMatch` subcase); `make check-pty` clean (all 59+
+checks, confirming M2/M3/M4 pty coverage is untouched by the internal/tree change). Committed.
 
-Replanned 2026-08-01 (charm-replan): TRIAGE.md's 19 open items (T9-T27) routed. Three new
-tasks added — **M2.4** (internal/tree hardening: T11-T14, D23's case-sensitivity call),
-**M3.5** (roots/messaging correctness fixes: T17, T18, T20), **M3.6** (M2/M3 code-review
-cleanup batch: T9, T10, T16, T19, T21-T25, T27) — and **M4.2**'s scope/acceptance grew to fold
-in T15 and T26 (effort 2→3). See D24 for the full rationale and D23 for the case-sensitivity
-decision. TRIAGE.md is now empty. M2.4/M3.5/M3.6 are cleanup on already-`done` work and can
-land whenever convenient before the M2/M3 code is considered closed out.
-
-M3 milestone (M3.1-M3.4) validated fresh-context (2026-07-31, source: charm-validate): all four
-PASS, no discrepancies vs. their PROGRESS.md claims. `make check` and `make check-pty` clean.
-Strongest checks: M3.2's "survives a restart" ran as two separate real OS processes sharing an
-isolated `$HOME`/`$XDG_CONFIG_HOME`; M3.3/M3.4 were re-exercised end-to-end via pty against the
-real binary (cross-root byte-diff of the viewer pane), not just unit-level model assertions.
-
-Next: **M2.4 — internal/tree hardening** (T11-T14, D23's case-sensitivity call; see D24 for
-the full routing rationale). M4.1's edit handoff is unrelated to this area, so no carryover
-context needed beyond what D24/TRIAGE already captured.
+Next: **M3.5 — roots/messaging correctness fixes** (T17, T18, T20; see D24 for the routing
+rationale). Unrelated to M2.4's area (internal/tree), so no carryover context needed beyond
+what's in the M3.5 PLAN.md entry itself. M3.6 and M4.2 follow after.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -70,7 +55,7 @@ No blockers.
 | M2.1 | done   | 2026-07-31 | 2026-07-31 | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14; validated |
 | M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
 | M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
-| M2.4 | todo   | -        | -         | replan C1/2026-08-01: internal/tree hardening (T11-T14, D23) |
+| M2.4 | done   | -        | -         | internal/tree hardening (T11-T14, D23): dead branch dropped, doc comments aligned, name matching case-insensitive, escape test added |
 | M3.1 | done   | 2026-07-31 | 2026-07-31 | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
 | M3.2 | done   | 2026-07-31 | 2026-07-31 | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
 | M3.3 | done   | 2026-07-31 | 2026-07-31 | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
