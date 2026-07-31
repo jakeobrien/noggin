@@ -66,10 +66,10 @@ No blockers.
 | M2.1 | done   | 2026-07-31 | 2026-07-31 | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14; validated |
 | M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
 | M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
-| M3.1 | done   | -        | -         | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
-| M3.2 | done   | -        | -         | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
-| M3.3 | done   | -        | -         | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
-| M3.4 | done   | -        | -         | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
+| M3.1 | done   | 2026-07-31 | -         | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
+| M3.2 | done   | 2026-07-31 | -         | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
+| M3.3 | done   | 2026-07-31 | -         | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
+| M3.4 | done   | 2026-07-31 | -         | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
 | M4.1 | todo   | -        | -         |      |
 | M4.2 | todo   | -        | -         |      |
 | M5.1 | todo   | -        | -         |      |
