@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M3.2 (next: M3.3)
+Current task: M3.3 (next: M3.4)
 
 Last reviewed: M1.4 (db8a2e6), 2026-08-01 — two-pass standards + spec-fidelity review of the
 whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T8 in
@@ -10,30 +10,32 @@ whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T
 
 ## Handoff
 
-M3.1 done (S1 launch contract). New `cmd/noggin/roots.go`: `resolveRoots(args, starred []string,
-cwd) resolution` — pure, stats only the single argument, returns the active root as a *path*.
-The starred roots are **injected** (D20), so M3.1 needs no store; `main.go` passes `nil` for now.
-`model.applyResolution` does the side-effecting walk (`tree.Walk`) and document read, downgrading
-any failure to `model.message` — no `os.Exit` on a bad path anymore (T7 resolved). Sub/parent
-detection is pure `filepath.Rel` on cleaned absolute paths, so a starred root need not exist on
-disk (matches S2). New minimal scaffolding for later: `root{path, starred}` type and
-`model.{roots, activeRoot, message}` fields, all for M3.2/M3.3 to build on.
+M3.2 done (starred-roots store, S2, D21). New `cmd/noggin/store.go`: `loadStore`/`saveStore`/
+`toggleStore` take an explicit path (testable without touching a real config dir); `storePath()`
+isolates `os.UserConfigDir()` (D7); `loadStarredRoots()` is the `main.go` entry point, folding a
+non-resolvable config dir into "no starred roots". Format is one absolute path per line, `#`
+comments and blanks ignored (same shape as the `.gitignore` files noggin already parses); a
+"garbage" line is anything that isn't a bare absolute path, dropped silently rather than erring
+— see D21 for why structural filtering was chosen over a stricter parseable format.
+`toggleStore` writes the whole list through on every call (load, flip, save) — no batching.
+`main.go` now calls `loadStarredRoots()` instead of passing `nil` into `resolveRoots`, so a real
+`~/.config/noggin/roots` (or platform equivalent) is live starting this task.
 
-Evidence: `make check` clean; `make check-pty` (all pass); `TestResolveRoots` covers all eight
-listed cases + a first-run bonus (9 subtests pass); pty spot-check confirmed `noggin /no/such/path`
-renders a session and quits exit 0 rather than exiting early. See D20 for the design rationale.
+Evidence: `make check` clean; `make check-pty` (all 59 pass, unaffected — no `noggin` config dir
+exists in the sandbox, so bare-launch pty checks still see zero starred roots). 9 new store
+tests: missing file, garbage file, comments/blanks ignored, missing-on-disk path kept unpruned,
+save creates the config dir, toggle-then-reload proves restart survival (the acceptance
+criterion in prose), toggle removes an already-starred path, and a cleared-`$HOME`/
+`$XDG_CONFIG_HOME` case proves `loadStarredRoots` degrades to empty rather than panicking.
 
-**Deferred to M4.2, not lost:** `model.message` is stored but not yet displayed — the footer that
-surfaces launch rejections is M4.2's. Until then a rejected launch starts silently (the message
-is on the model, ready to render). Also: the file-argument case dedupes cwd against starred by
-exact path only; it deliberately does **not** apply the sub/parent rejection logic to cwd,
-because S1 says a file opens "whether or not it falls inside any root."
-
-Next: **M3.2 — starred-roots store (S2, D7).** One plain hand-editable file under the user's
-config directory, tolerant load (missing/garbage → empty list, no error), star toggle written
-through, missing stored paths kept not pruned. This is what supplies the `starred []string` that
-M3.1's `resolveRoots` and `main.go` currently stub as `nil` — wiring the loaded list into
-`main.go` is part of landing M3.2. `os.UserConfigDir()` is the D7 config-dir source.
+Next: **M3.3 — Roots Nav pane (S3, needs M3.1+M3.2).** Ad-hoc root first then starred roots,
+each entry showing base name plus left-truncated parent path, active highlighted, starred
+marked, missing paths marked broken and not activatable; move / activate / toggle-star actions.
+Toggle-star is the first real caller of `toggleStore` — it will need the resolved `storePath()`
+threaded into the model (or a small wrapper) so the UI action can persist without re-deriving
+the path each time. Rendering follows M2.2's Files Nav pattern (a pane-local struct holding
+selection over an immutable list) but roots.go's `root` type already exists — M3.3 is display +
+interaction, not new data modeling.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -62,7 +64,7 @@ No blockers.
 | M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
 | M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
 | M3.1 | done   | -        | -         | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check |
-| M3.2 | todo   | -        | -         |      |
+| M3.2 | done   | -        | -         | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
 | M3.3 | todo   | -        | -         |      |
 | M3.4 | todo   | -        | -         |      |
 | M4.1 | todo   | -        | -         |      |

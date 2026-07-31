@@ -22,9 +22,9 @@ func main() {
 	if err != nil {
 		cwd = "."
 	}
-	// M3.2 will load the starred roots from the store; until then the session
-	// starts with none, so a bare launch is a first run.
-	res := resolveRoots(os.Args[1:], nil, cwd)
+	// loadStarredRoots reads the S2 store (D7's os.UserConfigDir()); a fresh
+	// install with no store yet, same as a garbage one, is a first run.
+	res := resolveRoots(os.Args[1:], loadStarredRoots(), cwd)
 	m := newModel().applyResolution(res)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {

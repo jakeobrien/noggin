@@ -331,3 +331,31 @@
   cut that lets M3.1 land and be fully tested before the store exists (go with the grain of the
   milestone order); parking the message honours "silence is not an error" without pre-empting
   M4.2's footer ownership.
+
+## D21: M3.2 starred-roots store is a line-based text file, garbage filtered by absolute-path shape, toggle writes through
+
+- Status: decided
+- Cycle: C1
+- Context: M3.2 needed a concrete on-disk format for S2's "one plain, hand-editable file" that
+  is tolerant of a missing or garbage file (empty list, no error) yet still round-trips a star
+  across a process restart, and does not prune paths that no longer exist on disk.
+- Decision: (1) **Format is one absolute path per line**, blank lines and `#`-prefixed comments
+  ignored — the same shape as the `.gitignore` files noggin already parses, so it stays
+  comfortable to hand-edit and repair. (2) **"Garbage" is defined structurally, not by trying
+  and failing to parse**: `loadStore` keeps only lines that are non-blank, non-comment, and pass
+  `filepath.IsAbs`; anything else (binary noise, relative paths, stray text) is silently
+  dropped rather than surfaced as an error, which is what makes a garbage file and a missing
+  file collapse to the same "empty list" outcome. (3) **No stat on load** — a stored path that
+  no longer exists on disk is returned unpruned, matching S2 and mirroring D20's sub/parent
+  detection not requiring the path to exist. (4) **`toggleStore` writes the whole list through
+  immediately** on every star/unstar (load, flip membership, save) rather than batching, so a
+  restart-survival test is just "call toggleStore, then loadStore again". (5) `storePath()`
+  isolates `os.UserConfigDir()` (D7) from the testable `loadStore`/`saveStore`/`toggleStore`
+  functions, which take an explicit path — tests never touch the real config directory.
+  `main.go`'s `loadStarredRoots()` folds a non-resolvable config directory into the same empty
+  result.
+- Why: medium and reversible (a file format with no consumers yet outside this store), so
+  logged not asked. Filtering by path shape rather than a stricter format (e.g. JSON) keeps the
+  file trivially hand-editable per S2's explicit intent, at the cost of silently dropping a
+  malformed line instead of reporting exactly which line was bad — acceptable since S2 asks for
+  tolerance, not diagnostics.
