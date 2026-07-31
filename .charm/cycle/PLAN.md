@@ -43,6 +43,14 @@ Delivers: S7 (plus the frame every later milestone hangs off)
   actions working — with the pty harness re-verified against v2's startup queries and
   `expandTabs` either justified or dropped against lipgloss v2's own tab handling — effort: 3
   (needs: M1.3)
+- **M1.5** — M1 code-review cleanup (T3-T5, D17): relocate the test-only key-parsing helpers
+  out of production code, stop tests reaching into `bubbles/viewport` internals, and comment
+  the intentional pane-title/glossary naming mismatch — done when: `keyPress`, `modifiers`,
+  `namedKeys` and their panic live only in `keymap_test.go` (not compiled into the shipped
+  binary), `viewer_test.go` asserts against noggin's own accessors (e.g. `offset()`,
+  `atBottom()`, `lineCount()`) rather than `bubbles/viewport.Model` fields, and `pane.title()`
+  carries a comment explaining its deliberate divergence from `GLOSSARY.md` — effort: 2
+  (needs: M1.4)
 
 ## M2 — Browsing the active root
 
@@ -68,11 +76,14 @@ Delivers: S5, S6
 Delivers: S1, S2, S3, S4
 
 - **M3.1** — Resolve the session's roots from the launch argument per S1, every rejection
-  producing a message and a session that still starts — done when: a table-driven test covers
-  bare launch, dir argument, file argument (cwd becomes the root, file becomes active), dir
-  that is already a starred root (no duplicate, becomes active), non-existent path,
-  subdirectory of a starred root (covering root becomes active), parent of a starred root,
-  and more than one argument — effort: 3 (needs: M1.1)
+  producing a message and a session that still starts — **replaces**, rather than
+  supplements, `main.go`'s pre-S1 bare-path scaffolding and its `os.Exit(1)`-on-bad-path
+  behaviour (T7): a bad path must become a rejection message plus a session that still
+  starts, per S1's "silence is not an error" principle, not a process exit — done when: a
+  table-driven test covers bare launch, dir argument, file argument (cwd becomes the root,
+  file becomes active), dir that is already a starred root (no duplicate, becomes active),
+  non-existent path, subdirectory of a starred root (covering root becomes active), parent of
+  a starred root, and more than one argument — effort: 3 (needs: M1.1)
 - **M3.2** — Starred-roots store: one plain hand-editable file under the user's config
   directory (D7), tolerant load, star toggle written through — done when: a star survives a
   process restart, a missing file and a garbage file each yield an empty root list with no

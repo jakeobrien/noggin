@@ -25,5 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T1 | build | low | .charm/cycle/findings/pty-verification.md:78 | D14 floated `tea.WithWindowSize`/`WithColorProfile` to turn pty checks into unit tests; not taken in M1.4 because unit tests already drive Update/View directly with a synthetic WindowSizeMsg and start no program, so the options buy nothing until a check needs a running program *and* deterministic colour. Revisit only if one does. | open |
-| T2 | build | low | test/pty/checks.py:16 | Key bytes in the pty harness are a second place that knows about keys (documented D2 carve-out, D15). If the keymap is retuned, this table must be retuned with it; there is no mechanical link, only the naming convention. | open |
+
+<!-- Empty as of this replan (2026-08-01). T1-T8 routed: T1, T2 dropped (already-handled,
+     see PROGRESS.md history / D15); T3-T5 → PLAN.md M1.5 (D17); T6 → ROADMAP.md Unscheduled;
+     T7 → PLAN.md M3.1 wording; T8 → PROGRESS.md Status table fixed directly. -->

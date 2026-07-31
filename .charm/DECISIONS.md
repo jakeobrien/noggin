@@ -242,3 +242,23 @@
   it is removed (`view height = 25, want 24`; "frame border intact while scrolling"). A defect
   that survives a library major and changes symptom is exactly the kind that needs a test whose
   failure mode is understood, not a comment asserting it is handled.
+
+## D17: M1 code-review nits (T3-T5) get one small cleanup task, not three
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-01
+- Context: The M1.1-M1.4 checkpoint review filed three related nits against already-`done`
+  M1 code: test-only key-parsing helpers (`keyPress`, `modifiers`, `namedKeys`) plus a
+  reachable `panic` live in `keymap.go`, a non-`_test.go` file, so they compile into the
+  shipped binary (T3, medium); tests reach two levels into `bubbles/viewport.Model` internals
+  instead of through noggin's own surface (T4, low); `pane.title()`'s abbreviations drift from
+  `GLOSSARY.md`'s terms with no comment explaining why (T5, low).
+- Decision: One new task, `M1.5`, covering all three — relocate the helpers to
+  `keymap_test.go`, add small `viewer` accessors so tests stop reaching into the third-party
+  model, and comment the glossary divergence. Scheduled ahead of `M2.1` since it is cheap
+  (effort 2) and touches code already fresh in mind from the review.
+- Why: T3 is medium (shipped-binary bloat plus a reachable panic in production code) so it
+  gets a decision entry per the escalation matrix; T4 and T5 are low but sit in the same
+  files and are one PR's worth of work, so bundling avoids three near-identical plan entries
+  for one afternoon of cleanup.

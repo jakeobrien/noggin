@@ -2,7 +2,11 @@
 
 ## Cursor
 
-Current task: M2.1
+Current task: M1.5 (next: M2.1)
+
+Last reviewed: M1.4 (db8a2e6), 2026-08-01 — two-pass standards + spec-fidelity review of the
+whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T8 in
+`TRIAGE.md`.
 
 ## Handoff
 
@@ -60,7 +64,23 @@ actionable findings (D2 spirit in the harness's key bytes, and untested modifier
 addressed — the harness now routes every key byte through one documented `KEY` table and
 exercises `shift+tab` and `ctrl+b` against the real v2 parser.
 
-Next: **M2.1 — readable-file policy and tree walk.** Nothing exists for it: no filesystem
+M1 validated 2026-07-31 (fresh-context subagent, independent of the M1.4 build session): M1.1-M1.4
+all PASS, every quantitative claim in this handoff and the findings (59 pty checks, 43/17 test
+counts, zero charmbracelet imports, zero key literals outside `keymap.go`, the `expandTabs`
+negative control) reproduced exactly on independent re-run. One residual gap, not a defect: the
+pty harness proxies terminal-restore behaviour via escape codes (`\x1b[?25h`, `\x1b[?2004l`) but
+a human has not visually confirmed a real terminal returns cleanly after `q`/`ctrl+c` — worth a
+manual spot-check during the dogfood week rather than blocking here.
+
+**Replan 2026-08-01:** triaged the M1.1-M1.4 checkpoint review's T1-T8 (`TRIAGE.md` is now
+empty). T3-T5 (test-only key helpers compiled into the shipped binary; tests reaching into
+`bubbles/viewport` internals; `pane.title()`/glossary drift) became `M1.5`, a small cleanup
+task (D17) inserted ahead of M2.1 — cheap and fresh from review. T6 (bare module path) went to
+`ROADMAP.md` Unscheduled. T7 amended M3.1's wording to make explicit that it *replaces* (not
+supplements) `main.go`'s pre-S1 `os.Exit(1)` scaffolding. T8's Status-table regression is fixed
+below. T1/T2 dropped as already-handled (self-documenting non-choices, no action pending).
+
+Next: **M1.5** first (see PLAN.md), then **M2.1 — readable-file policy and tree walk.** Nothing exists for it: no filesystem
 package, no `.gitignore` handling, no allowlist. The criterion wants a unit test over a fixture
 tree (gitignored `.md` excluded, `.git/` absent, `.charm/notes.md` present, `main.go` absent,
 `README` present) and the allowlist in one declaration. `cmd/noggin/testdata/` already holds the
@@ -83,17 +103,17 @@ Still relevant:
   security-review time.
 - Sandbox Go toolchain fully working; the Makefile's `unexport GOROOT` is defensive-only.
 
-Two low-severity items are open in `TRIAGE.md` (both from this task, neither blocking). No
-blockers.
+No blockers.
 
 ## Status
 
 | Key  | Status | Reviewed | Validated | Note |
 |------|--------|----------|-----------|------|
-| M1.1 | done   | -        | -         | re-verified on v2 by M1.4 |
-| M1.2 | done   | -        | -         | re-verified on v2 by M1.4 |
-| M1.3 | done   | -        | -         | re-verified on v2 by M1.4 |
-| M1.4 | done   | yes      | -         | M1 complete; validation due |
+| M1.1 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
+| M1.2 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
+| M1.3 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
+| M1.4 | done   | 2026-08-01 | 2026-07-31 | M1 complete and validated |
+| M1.5 | todo   | -        | -         | added by replan 2026-08-01 (T3-T5, D17) |
 | M2.1 | todo   | -        | -         |      |
 | M2.2 | todo   | -        | -         |      |
 | M2.3 | todo   | -        | -         |      |
