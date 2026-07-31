@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M2.1 (next: M2.2)
+Current task: M2.2 (next: M2.3)
 
 Last reviewed: M1.4 (db8a2e6), 2026-08-01 — two-pass standards + spec-fidelity review of the
 whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T8 in
@@ -11,28 +11,36 @@ in both columns.
 
 ## Handoff
 
-M1.5 is done (T3-T5, D17): the M1.1-M1.4 checkpoint review's cleanup items are closed.
-`keyPress`/`modifiers`/`namedKeys` moved out of `keymap.go` into a new `keymap_test.go` — `nm` on
-the built binary confirms neither symbol is linked in, and `keymap.go` itself compiles with no
-test-only imports left. `viewer_test.go` no longer touches `bubbles/viewport.Model` methods
-directly; `viewer` (`viewer.go`) now exposes `offset()`, `setOffset()`, `atBottom()`,
-`lineCount()`, `height()` and every test call site was switched to them (`rg '\.vp\.'
-*_test.go` — no matches). `pane.title()` (`model.go`) now carries a comment explaining it is a
-terse display label, not the `GLOSSARY.md` term ("Roots Nav"/"Files Nav"/"Document Viewer").
-Evidence: `make check` clean (build/vet/fmt/test, same 43 cases); `make check-pty` still 59/59 —
-neither change touches runtime behaviour. Not yet through review/validate (Status table blank);
-no functional risk expected since this was a pure refactor, but flag for the next checkpoint.
+M2.1 is done (D18, `findings/gitignore-matching.md`): the readable-file policy and tree walk
+live in a new `internal/tree` package. `Walk(root) (*Node, error)` returns a folder/file tree
+— dirs always listed (S6: empty/no-readable folders still shown), files only if readable,
+children sorted dirs-first then by name, `Path` absolute so M2.3's viewer can load without the
+root. The allowlist is **one declaration**: `var readable = struct{exts, names ...}` in
+`policy.go` (`.md`/`.markdown`/`.txt` + `README`/`LICENSE`/`CHANGELOG`, per S6). `.git` is
+excluded by a built-in name check; `.gitignore` is hand-rolled (`gitignore.go`) — an ignored
+directory is *pruned* (never descended), which is also why re-include-under-excluded-dir is
+impossible for free.
 
-Next: **M2.1 — readable-file policy and tree walk.** Nothing exists for it: no filesystem
-package, no `.gitignore` handling, no allowlist. The criterion wants a unit test over a fixture
-tree (gitignored `.md` excluded, `.git/` absent, `.charm/notes.md` present, `main.go` absent,
-`README` present) and the allowlist in one declaration. `cmd/noggin/testdata/` already holds the
-fixture document, so a fixture tree can live beside it — but note a gitignored file inside the
-repo's own tree is awkward to commit, so decide early how the fixture expresses "gitignored"
-(a `.gitignore` in the fixture dir plus a committed file the walker must exclude, rather than a
-genuinely untracked file). Pure Go, no TUI surface, so no pty work. Decide early whether to take
-a `.gitignore` dependency (`go-gitignore`, or shell out) or hand-roll — worth a findings note
-either way.
+Evidence: `make check` clean (build/vet/fmt/test); `TestWalkReadableSet` asserts the criterion
+set **exactly** via `reflect.DeepEqual` — `{LICENSE, README, .charm/notes.md, docs/guide.md,
+notes.txt}`: gitignored `ignored.md` excluded, `.git/` absent, `.charm/notes.md` present,
+`main.go` absent, `README` present, a gitignored `build/` dir pruned, `empty/` still listed.
+The gitignore matcher has its own 18-case table + negation + nested-precedence tests. Fixture
+is built programmatically under `t.TempDir()` (D18) — no committed fixture, no git-add
+awkwardness. `make check-pty` not run: pure Go, no TUI/runtime surface touched.
+
+Not yet through review/validate (Status table blank). Also **M1.5 remains unvalidated** — the
+M1→M2 gate was crossed with the user's go-ahead to build M2.1; validate M1.5 alongside M2 at
+the next checkpoint.
+
+Next: **M2.2 — Files Nav pane.** Render `tree.Node` in the Files Nav pane: open with only
+top-level entries (collapsed), move selection across the expanded set, expand/collapse a folder
+in place, and still list a folder with no readable content. This is the first consumer of
+`internal/tree` and the first TUI surface since M1 — so `make check-pty` is back in play, and
+end-to-end pane behaviour follows the `test/pty/` harness recipe. `Walk` gives absolute `Path`
+on every node; `Children` is already sorted (dirs first, then name). Note the pane needs an
+expansion/selection model layered over the static `Node` tree — the tree itself is immutable
+data, not UI state.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -56,8 +64,8 @@ No blockers.
 | M1.2 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
 | M1.3 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
 | M1.4 | done   | 2026-08-01 | 2026-07-31 | M1 complete and validated |
-| M1.5 | done   | -        | -         | see Handoff; build-only, not yet reviewed/validated |
-| M2.1 | todo   | -        | -         |      |
+| M1.5 | done   | 2026-07-31 | -       | two-pass review (T9, T10 logged); not yet validated |
+| M2.1 | done   | -        | -         | internal/tree: policy + walk + hand-rolled gitignore (D18) |
 | M2.2 | todo   | -        | -         |      |
 | M2.3 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |

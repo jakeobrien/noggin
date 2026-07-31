@@ -22,6 +22,10 @@
   **Re-verified under v2 in M1.4**: the deadlock is designed out (glamour v2 queries nothing),
   but `expandTabs` is still required — lipgloss v2 expands tabs in `Render` yet still measures a
   raw tab as one cell, so the frame now grows a row instead of overflowing the border.
+- `gitignore-matching.md` — why M2.1's walk hand-rolls `.gitignore` (dependency weight vs
+  shell-out's wrong-for-arbitrary-roots vs a testable subset), the exact subset covered, and
+  what is deliberately left out (global excludes, re-include under a pruned dir). Settled the
+  M2.1 handoff's open dependency question.
 - `go-toolchain-env.md` — **resolved 2026-07-31**: the sandbox's `GOROOT` was misset,
   breaking `go`; re-validated fresh and the container now has a working go1.26.5 toolchain,
   gcc/cgo, and gopls/staticcheck/goimports, no workaround needed. Kept for history and Charm

@@ -262,3 +262,24 @@
   gets a decision entry per the escalation matrix; T4 and T5 are low but sit in the same
   files and are one PR's worth of work, so bundling avoids three near-identical plan entries
   for one afternoon of cleanup.
+
+## D18: M2.1's walk hand-rolls .gitignore, lives in `internal/tree`, tests on a temp-dir fixture
+
+- Status: decided
+- Cycle: C1
+- Context: M2.1's handoff flagged three early calls: how to honour `.gitignore` (dependency,
+  shell-out, or hand-roll — "worth a findings note either way"); where the filesystem package
+  lives; and how the fixture expresses "gitignored" without the git-commit awkwardness of a
+  committed file matching its own fixture `.gitignore`.
+- Decision: (1) **Hand-roll** a focused `.gitignore` matcher (`internal/tree/gitignore.go`) —
+  shell-out (`git check-ignore`) only works inside a real worktree and consults the whole repo
+  ignore hierarchy, wrong for arbitrary roots; a dependency adds weight to a tracked dep graph
+  and neither candidate clearly beats a testable subset. (2) The walk lives in a new
+  **`internal/tree`** package (not `cmd/noggin`'s `package main`): pure, heavily unit-tested
+  logic that M2.2's Files Nav pane consumes. (3) The acceptance fixture is built
+  **programmatically under `t.TempDir()`**, not committed — hermetic and it sidesteps git
+  refusing to add a file its own fixture `.gitignore` ignores.
+- Why: all three are medium (reversible, contained) so they are logged, not asked. The
+  gitignore subset and its deliberate omissions are documented in
+  `findings/gitignore-matching.md`; if a real root reveals a gap the fix is a test case plus a
+  few lines, not a dependency swap.
