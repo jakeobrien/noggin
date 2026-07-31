@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // emptyViewerText is what the Document Viewer says when nothing is open (S7).
@@ -29,18 +29,22 @@ type viewer struct {
 }
 
 func newViewer() viewer {
-	vp := viewport.New(0, 0)
+	vp := viewport.New(viewport.WithWidth(0), viewport.WithHeight(0))
 	// The viewport's own KeyMap carries key literals; leaving it populated
 	// would put bindings outside keymap.go (D2) and duplicate the ones below.
 	vp.KeyMap = viewport.KeyMap{}
+	// v2 stops padding short content out to the viewport's height unless asked;
+	// the pane contract is a content box of exactly its size.
+	vp.FillHeight = true
 	return viewer{vp: vp}
 }
 
 // setSize sets the content box the viewer draws into, re-rendering (and so
 // re-wrapping) only when the width actually changed.
 func (v viewer) setSize(width, height int) viewer {
-	v.vp.Width, v.vp.Height = max(width, 0), max(height, 0)
-	if v.vp.Width != v.renderedWidth {
+	v.vp.SetWidth(max(width, 0))
+	v.vp.SetHeight(max(height, 0))
+	if v.vp.Width() != v.renderedWidth {
 		v = v.render()
 	}
 	return v
@@ -56,13 +60,13 @@ func (v viewer) open(d document) viewer {
 
 // render rebuilds the viewport's content from the document at the current width.
 func (v viewer) render() viewer {
-	v.renderedWidth = v.vp.Width
+	v.renderedWidth = v.vp.Width()
 	v.err = nil
 	if !v.doc.isOpen() {
 		v.vp.SetContent("")
 		return v
 	}
-	out, err := renderMarkdown(v.doc.src, v.vp.Width)
+	out, err := renderMarkdown(v.doc.src, v.vp.Width())
 	if err != nil {
 		v.err = err
 		v.vp.SetContent("")
@@ -86,7 +90,7 @@ var emptyViewerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 
 // view renders the viewer's content box at exactly its width x height.
 func (v viewer) view() string {
-	if v.vp.Width <= 0 || v.vp.Height <= 0 {
+	if v.vp.Width() <= 0 || v.vp.Height() <= 0 {
 		return ""
 	}
 	switch {
@@ -103,8 +107,8 @@ func (v viewer) view() string {
 // result is exactly the box's size — the same contract viewport.View() keeps.
 func (v viewer) fill(style lipgloss.Style, text string) string {
 	return style.
-		Width(v.vp.Width).Height(v.vp.Height).
-		MaxWidth(v.vp.Width).MaxHeight(v.vp.Height).
+		Width(v.vp.Width()).Height(v.vp.Height()).
+		MaxWidth(v.vp.Width()).MaxHeight(v.vp.Height()).
 		Render(text)
 }
 
@@ -128,7 +132,7 @@ var scrollActions = []struct {
 
 // scroll applies the scroll action msg is bound to, reporting whether it was
 // one.
-func (v viewer) scroll(msg tea.KeyMsg) (viewer, bool) {
+func (v viewer) scroll(msg tea.KeyPressMsg) (viewer, bool) {
 	for _, action := range scrollActions {
 		if key.Matches(msg, action.binding) {
 			action.move(&v.vp)

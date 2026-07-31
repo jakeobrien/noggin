@@ -201,3 +201,44 @@
   against v2's different startup queries. Full migration surface, verified against the real
   modules, in `findings/bubbletea-v2-migration.md`. This is a dependency decision, not a spec
   change — no deliverable, criterion or key changes meaning.
+
+## D15: The pty harness is a checked-in deliverable, not a scratch script
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-31
+- Context: `findings/pty-verification.md` calls the pty harness "the recipe for every later
+  end-to-end check", but the harness itself only ever existed in `/tmp`. M1.4 had to rebuild it
+  from scratch — the second time — and rebuilding it is where the time goes, not writing the
+  assertions: v2's cell-diffing renderer needs a ~90-line screen emulator (ECH, CUF, DCH, tabs)
+  before a single row can be measured, and a DCH bug in it masqueraded as a product focus bug.
+- Decision: the harness lives in the repo at `test/pty/{harness.py,checks.py}` and runs via
+  `make check-pty`, kept separate from `make check` because it needs a pty and is slower.
+  Key bytes in it are an explicit, documented D2 carve-out: one `KEY` table naming the binding
+  each byte stands for, because the harness is on the far side of a language boundary from
+  `keymap.go` and must put real bytes on the wire.
+- Why: it is the only thing that verifies what actually reaches a terminal — colour, cell
+  geometry, the startup handshake and the frame not overflowing the screen are all invisible to
+  `go test`, which sees no TTY. A verification asset that has to be reinvented every milestone
+  is not a verification asset. The cost is a Python dependency in the check path, which the
+  sandbox already has, and a second place that knows about keys.
+
+## D16: Keep `expandTabs` under v2, and keep a negative control on it
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-31
+- Context: D14 left open whether lipgloss v2's own tab handling made `expandTabs` redundant.
+  Tested rather than assumed: glamour v2 still emits literal tabs into code fences, and while
+  lipgloss v2 does expand them inside `Render`, `lipgloss.Width` still measures a raw tab as one
+  cell. The frame therefore grows a row taller than the terminal instead of overflowing the
+  pane border — same defect class, new symptom.
+- Decision: keep `expandTabs`, with `tabStop` documented as coinciding with lipgloss v2's
+  default `TabWidth`. Add `TestFrameStaysWithinTheTerminalWhileScrolling`, which walks the whole
+  document a page at a time and holds the frame to exactly the terminal's size — a single
+  screenful cannot see this, the offending row has to be scrolled to. `make check-pty` asserts
+  the same thing structurally (the top border must not scroll off).
+- Why: removing the call is a cheap, repeatable falsification of both guards, and both fail when
+  it is removed (`view height = 25, want 24`; "frame border intact while scrolling"). A defect
+  that survives a library major and changes symptom is exactly the kind that needs a test whose
+  failure mode is understood, not a comment asserting it is handled.

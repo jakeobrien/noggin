@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // pane identifies a focusable region of the frame.
@@ -63,7 +63,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		content := computeLayout(m.width, m.height).viewer.content()
 		m.viewer = m.viewer.setSize(content.width, content.height)
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
@@ -148,7 +148,16 @@ var (
 			Foreground(lipgloss.Color("245"))
 )
 
-func (m model) View() string {
+// View returns the frame. Bubble Tea v2 derives terminal state (alt screen,
+// cursor, mouse mode, window title) from the returned View on every render, so
+// every field left at its zero value is a deliberate "off": noggin draws inline
+// with no cursor, exactly as it did under v1.
+func (m model) View() tea.View {
+	return tea.NewView(m.frame())
+}
+
+// frame composes the three regions into the string View wraps.
+func (m model) frame() string {
 	if m.width <= 0 || m.height <= 0 {
 		return ""
 	}
@@ -172,6 +181,10 @@ func (m model) View() string {
 // renderPane draws one region at exactly r's outer size, border included: the
 // pane's title on the first content row, then content, which is expected to be
 // exactly r.content() in size.
+//
+// lipgloss v2 counts the border inside Width/Height (PR #451), so the region's
+// outer size is passed straight through rather than pre-deducting the border as
+// v1 required.
 func (m model) renderPane(p pane, r rect, content string) string {
 	if r.empty() {
 		return ""
@@ -180,9 +193,7 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	if m.focus == p {
 		style = focusedBorderStyle
 	}
-	box := style.
-		Width(max(r.width-2*paneBorderWidth, 0)).
-		Height(max(r.height-2*paneBorderWidth, 0))
+	box := style.Width(r.width).Height(r.height)
 	title := titleStyle.Render(m.paneTitle(p))
 	if content == "" {
 		return box.Render(title)

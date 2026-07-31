@@ -1,5 +1,23 @@
 # Driving Glamour from inside a Bubble Tea program
 
+> **Re-verified against Charm v2 in M1.4 (2026-07-31).** The deadlock below is genuinely gone:
+> glamour v2 has no `WithAutoStyle` and queries the terminal at no point. But **`expandTabs` is
+> still required** — that defect changed mechanism, not existence:
+>
+> - Glamour v2 still emits **6 literal tabs** into the fixture's rendered code fence.
+> - lipgloss v2 *does* convert tabs itself (`Style.TabWidth`, default 4) — but only inside
+>   `Render`. `lipgloss.Width("ab\tcd")` still returns **4**, not 8. The measurement is still
+>   wrong; only who is misled by it changed.
+> - New consequence: the viewport slices a tab-bearing line believing it three cells shorter
+>   than it draws, then the pane box expands the tab and **wraps the overflow onto an extra
+>   row** — the frame ends up one row taller than the terminal. (Under v1 the same undercount
+>   drew *through* the pane's right border.) On a real terminal this scrolls the top border off.
+> - Verified by removing the `expandTabs` call: `TestFrameStaysWithinTheTerminalWhileScrolling`
+>   fails with `view height = 25, want 24`, and `make check-pty` fails "frame border intact
+>   while scrolling" at both sizes. That removal is the standing negative control for the guard.
+> - `tabStop = 4` now coincides with lipgloss v2's default `TabWidth`, so the two agree on where
+>   a tab lands. Anything changing either must change both.
+
 Two things bite when Glamour renders inside a running Bubble Tea program, both found while
 building M1.3. Both are fixed in `cmd/noggin/document.go`; this is the why.
 

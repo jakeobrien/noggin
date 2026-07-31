@@ -24,3 +24,11 @@ check: build vet fmt test
 
 run:
 	go run ./cmd/noggin
+
+# End-to-end checks against the real binary in a pty. Separate from `check`
+# because they need a pty and are slower; they are the only way to verify what
+# actually reaches a terminal — colour, cell geometry and startup handshake are
+# all invisible to `go test` (see .charm/cycle/findings/pty-verification.md).
+.PHONY: check-pty
+check-pty: build
+	python3 test/pty/checks.py

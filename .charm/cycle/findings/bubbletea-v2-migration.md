@@ -122,3 +122,49 @@ lipgloss majors in the graph. Migrate the four together or not at all.
 - Local verification: `go get charm.land/{bubbletea,bubbles,lipgloss,glamour}/v2@latest`;
   `go doc` on `tea.Model`, `tea.View`, `tea.Key`, `tea.KeyPressMsg`, `viewport.Model`,
   `glamour.TermRendererOption`, `lipgloss.HasDarkBackground`, `lipgloss.Color`.
+
+## Settled by doing it (M1.4, 2026-07-31)
+
+The migration is done; this is what the note got right, wrong, and left open.
+
+**Right, and unchanged in practice:** the `charm.land` path rename, the all-or-nothing coupling,
+`View() tea.View` via `tea.NewView`, `tea.KeyPressMsg` with `Code`/`Text`/`Mod`, viewport's
+options constructor and getters/setters, `glamour.WithStandardStyle` + `WithWordWrap` surviving,
+`lipgloss.Color` as a function, and `ExecProcess` being untouched. `styles.{Dark,Light,NoTTY}Style`
+also survive. The whole swap was ~150 lines across 8 files with no design change.
+
+**Confirmed hazards that were real:**
+
+- **`Style.Width()`/`Height()` include the border.** `renderPane` had to stop pre-deducting
+  `2*paneBorderWidth` and pass the region's outer size straight through
+  (`model.go`). `layout.go` needed no change: `rect.content()` is about the box a pane's
+  *contents* get, which is a different quantity. Verified directly: a bordered
+  `Width(20).Height(5)` measures 20x5.
+- **`HasDarkBackground` takes file handles** — `lipgloss.HasDarkBackground(os.Stdin, os.Stdout)`.
+
+**Wrong, and worth correcting in the note above:** "lipgloss v2 converts `\t` to 4 spaces at
+render time … which may make our `expandTabs` redundant". It does convert them, but only inside
+`Render` — `lipgloss.Width` still measures a raw tab as one cell, so `expandTabs` is still
+required. See `glamour-in-bubbletea.md` for the mechanism and the negative control.
+
+**Undersold:** "the pty recipe needs re-verification". The startup query set changing was the
+small half. The renderer changing to ultraviolet's cell diffing means a harness must *emulate a
+screen* (ECH, CUF, DCH, tabs) rather than strip escapes — a stripped-escapes harness is wrong in
+both directions under v2. Full recipe in `pty-verification.md`.
+
+**Not in the note, and the one real friction point:** `key.Matches` compares `k.String()` to the
+binding's key strings, and Bubble Tea v2 ships **no public parser for its own key names** —
+`Key.Keystroke()` formats one way only, and ultraviolet's `stringKeyType` table is internal. So
+synthesising a key from a binding's name (which D2 requires, to keep key literals out of tests)
+means hand-rolling the inverse of `Keystroke`. That is `keyPress` in `keymap.go`, guarded by a
+round-trip test over every key in every binding plus a reflection check that no binding escapes
+the round trip. `Key.MatchString` exists and is exported, but takes the name — it does not help
+build a message.
+
+**Deferred, not taken:** `tea.WithWindowSize`/`WithColorProfile` for TTY-free tests. Unit tests
+already drive `Update`/`View` directly with a synthetic `WindowSizeMsg` and never start a
+program, so these options buy nothing today. See TRIAGE.
+
+**Dependency graph, after:** `termenv`, `muesli/{ansi,reflow,termenv}`, `go-osc52`, `go-isatty`,
+`go-localereader`, `coninput` and `x/cellbuf` all dropped out; `ultraviolet`, `x/termios` and
+`x/windows` came in. Net: 31 indirect deps down to 24.

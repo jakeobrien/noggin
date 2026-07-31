@@ -1,11 +1,13 @@
 package main
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // sizes exercised by the frame tests: a standard terminal and a large one.
@@ -55,7 +57,7 @@ func TestViewRendersThreeRegionsAtSize(t *testing.T) {
 	for _, s := range frameSizes {
 		t.Run(s.name, func(t *testing.T) {
 			m := sized(t, newModel(), s.width, s.height)
-			view := m.View()
+			view := m.View().Content
 
 			if got := lipgloss.Height(view); got != s.height {
 				t.Errorf("view height = %d, want %d", got, s.height)
@@ -102,9 +104,9 @@ func TestViewRendersThreeRegionsAtSize(t *testing.T) {
 
 func TestViewReflowsOnResize(t *testing.T) {
 	m := sized(t, newModel(), frameSizes[0].width, frameSizes[0].height)
-	first := m.View()
+	first := m.View().Content
 	m = sized(t, m, frameSizes[1].width, frameSizes[1].height)
-	second := m.View()
+	second := m.View().Content
 
 	if first == second {
 		t.Fatal("view did not change across a resize")
@@ -170,7 +172,7 @@ func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 func TestQuitBindings(t *testing.T) {
 	for _, k := range keys.Quit.Keys() {
 		m := sized(t, newModel(), 80, 24)
-		_, cmd := m.Update(keyMsg(k))
+		_, cmd := m.Update(keyPress(k))
 		if cmd == nil {
 			t.Fatalf("key %q produced no command, want quit", k)
 		}
@@ -190,7 +192,7 @@ func sized(t *testing.T, m model, width, height int) model {
 // press sends the named key to the model and returns the concrete result.
 func press(t *testing.T, m model, name string) model {
 	t.Helper()
-	next, _ := m.Update(keyMsg(name))
+	next, _ := m.Update(keyPress(name))
 	return concrete(t, next)
 }
 
@@ -201,4 +203,44 @@ func concrete(t *testing.T, m tea.Model) model {
 		t.Fatalf("Update returned %T, want model", m)
 	}
 	return got
+}
+
+// allBindings is every binding in the keymap. New bindings must be added here
+// so the round-trip below covers them.
+func allBindings() []key.Binding {
+	return []key.Binding{
+		keys.NextPane, keys.PrevPane, keys.Quit,
+		keys.LineUp, keys.LineDown,
+		keys.HalfPageUp, keys.HalfPageDown,
+		keys.PageUp, keys.PageDown,
+		keys.Top, keys.Bottom,
+	}
+}
+
+// TestKeyPressRoundTrip pins keyPress to Bubble Tea's own key naming. Bubble
+// Tea v2 has no public parser for the names its bindings are written in, so
+// keyPress inverts Key.Keystroke by hand; this asserts the inverse is exact for
+// every key the keymap actually uses, and that key.Matches — which compares
+// String() to the binding — therefore recognises a synthesised key.
+func TestKeyPressRoundTrip(t *testing.T) {
+	for _, b := range allBindings() {
+		for _, name := range b.Keys() {
+			msg := keyPress(name)
+			if got := msg.String(); got != name {
+				t.Errorf("keyPress(%q).String() = %q, want %q", name, got, name)
+			}
+			if !key.Matches(msg, b) {
+				t.Errorf("keyPress(%q) does not match the binding it came from", name)
+			}
+		}
+	}
+}
+
+// TestEveryBindingIsCovered guards the round-trip above against a binding being
+// added to the keymap and not to allBindings.
+func TestEveryBindingIsCovered(t *testing.T) {
+	want := reflect.TypeOf(keys).NumField()
+	if got := len(allBindings()); got != want {
+		t.Errorf("allBindings covers %d bindings, but keyMap has %d fields", got, want)
+	}
 }

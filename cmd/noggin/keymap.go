@@ -1,8 +1,11 @@
 package main
 
 import (
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"strings"
+	"unicode/utf8"
+
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 )
 
 // This file is the single place key literals may appear (D2: the keymap is
@@ -77,32 +80,60 @@ var keys = keyMap{
 	),
 }
 
-// keyMsg builds the tea.KeyMsg that a binding's key name corresponds to. It
-// lives here, beside the bindings, so that the names of non-rune keys stay
-// inside this file — callers (tests included) pass a binding's key rather than
-// spelling a key literal themselves.
-func keyMsg(name string) tea.KeyMsg {
-	if t, ok := namedKeys[name]; ok {
-		return tea.KeyMsg{Type: t}
+// keyPress builds the key press message that a binding's key name corresponds
+// to. It lives here, beside the bindings, so that the names of modifiers and
+// non-rune keys stay inside this file — callers (tests included) pass a
+// binding's key rather than spelling a key literal themselves.
+//
+// Bubble Tea v2 has no public parser for its own key names (`Key.Keystroke` is
+// one-way and ultraviolet's name table is internal), so this is the inverse of
+// that formatting, covering the modifiers and named keys `keys` above uses.
+// TestKeyPressRoundTrip asserts every key in every binding survives the round
+// trip, which is what stops this table drifting from the bindings.
+func keyPress(name string) tea.KeyPressMsg {
+	var k tea.Key
+	parts := strings.Split(name, "+")
+	for i, part := range parts {
+		// A trailing "+" part is the plus key itself, not a separator.
+		if mod, ok := modifiers[part]; ok && i < len(parts)-1 {
+			k.Mod |= mod
+			continue
+		}
+		if code, ok := namedKeys[part]; ok {
+			k.Code = code
+			continue
+		}
+		// Anything else must be a printable character, which carries Text as
+		// well as a code — that is what makes Key.String() report it verbatim.
+		code, size := utf8.DecodeRuneInString(part)
+		if size != len(part) {
+			panic("keymap: no key named " + part + "; add it to namedKeys")
+		}
+		k.Code, k.Text = code, part
 	}
-	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(name)}
+	// A modified printable key has no text: ctrl+c is a keystroke, not input.
+	if k.Mod&^tea.ModShift != 0 {
+		k.Text = ""
+	}
+	return tea.KeyPressMsg(k)
 }
 
-// namedKeys are the non-rune keys the bindings above use, by the name Bubble
-// Tea prints them under. Every key named in `keys` that is not a rune needs an
-// entry here.
-var namedKeys = map[string]tea.KeyType{
-	"tab":       tea.KeyTab,
-	"shift+tab": tea.KeyShiftTab,
-	"ctrl+c":    tea.KeyCtrlC,
-	"up":        tea.KeyUp,
-	"down":      tea.KeyDown,
-	"ctrl+u":    tea.KeyCtrlU,
-	"ctrl+d":    tea.KeyCtrlD,
-	"ctrl+b":    tea.KeyCtrlB,
-	"ctrl+f":    tea.KeyCtrlF,
-	"pgup":      tea.KeyPgUp,
-	"pgdown":    tea.KeyPgDown,
-	"home":      tea.KeyHome,
-	"end":       tea.KeyEnd,
+// modifiers are the modifier prefixes the bindings above use.
+var modifiers = map[string]tea.KeyMod{
+	"ctrl":  tea.ModCtrl,
+	"alt":   tea.ModAlt,
+	"shift": tea.ModShift,
+}
+
+// namedKeys are the non-printable keys the bindings above use, by the name
+// Bubble Tea prints them under. Every key named in `keys` that is not a
+// printable character needs an entry here.
+var namedKeys = map[string]rune{
+	"tab":    tea.KeyTab,
+	"up":     tea.KeyUp,
+	"down":   tea.KeyDown,
+	"pgup":   tea.KeyPgUp,
+	"pgdown": tea.KeyPgDown,
+	"home":   tea.KeyHome,
+	"end":    tea.KeyEnd,
 }

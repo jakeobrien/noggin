@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/lipgloss/v2"
 )
 
 const fixturePath = "testdata/fixture.md"
@@ -126,7 +126,7 @@ func TestRenderedFixtureHidesFrontmatterAndKeepsStructure(t *testing.T) {
 func TestViewerShowsTheOpenDocument(t *testing.T) {
 	const w, h = 80, 24
 	m := openedFixture(t, w, h)
-	view := m.View()
+	view := m.View().Content
 
 	if got := lipgloss.Height(view); got != h {
 		t.Errorf("view height = %d, want %d", got, h)
@@ -156,7 +156,7 @@ func TestViewerShowsTheOpenDocument(t *testing.T) {
 
 func TestEmptyStateWithNoDocumentOpen(t *testing.T) {
 	m := sized(t, newModel(), 80, 24)
-	if !strings.Contains(m.View(), emptyViewerText) {
+	if !strings.Contains(m.View().Content, emptyViewerText) {
 		t.Errorf("view with no document open does not contain %q", emptyViewerText)
 	}
 	if got := m.paneTitle(viewerPane); got != viewerPane.title() {
@@ -166,7 +166,7 @@ func TestEmptyStateWithNoDocumentOpen(t *testing.T) {
 
 func TestScrollActionsMoveTheViewport(t *testing.T) {
 	base := openedFixture(t, 80, 24)
-	page := base.viewer.vp.Height
+	page := base.viewer.vp.Height()
 	if total := base.viewer.vp.TotalLineCount(); total <= page {
 		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to scroll", total, page)
 	}
@@ -193,7 +193,7 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 				m := base
 				m.viewer.vp.SetYOffset(tc.start)
 				m = press(t, m, k)
-				if got := m.viewer.vp.YOffset; got != tc.want {
+				if got := m.viewer.vp.YOffset(); got != tc.want {
 					t.Errorf("%q from offset %d left offset %d, want %d", k, tc.start, got, tc.want)
 				}
 			}
@@ -205,10 +205,10 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 	if !m.viewer.vp.AtBottom() {
 		t.Error("bottom key did not reach the bottom of the document")
 	}
-	if !strings.Contains(m.View(), fixtureStructure["tail"]) {
+	if !strings.Contains(m.View().Content, fixtureStructure["tail"]) {
 		t.Errorf("view at the bottom does not show %q", fixtureStructure["tail"])
 	}
-	if m.View() == base.View() {
+	if m.View().Content == base.View().Content {
 		t.Error("scrolling to the bottom did not change the view")
 	}
 }
@@ -225,7 +225,7 @@ func TestScrollKeysOnlyActWhenTheViewerHasFocus(t *testing.T) {
 
 	for _, k := range keys.LineDown.Keys() {
 		next := press(t, m, k)
-		if next.viewer.vp.YOffset != 0 {
+		if next.viewer.vp.YOffset() != 0 {
 			t.Errorf("%q scrolled the viewer while %v had focus", k, m.focus)
 		}
 	}
@@ -247,7 +247,7 @@ func TestViewerRewrapsOnResize(t *testing.T) {
 		if got := tc.m.viewer.renderedWidth; got != want.width {
 			t.Errorf("%s: rendered at width %d, want %d", tc.name, got, want.width)
 		}
-		if got := tc.m.viewer.vp.Height; got != want.height {
+		if got := tc.m.viewer.vp.Height(); got != want.height {
 			t.Errorf("%s: viewport height = %d, want %d", tc.name, got, want.height)
 		}
 	}
@@ -255,5 +255,33 @@ func TestViewerRewrapsOnResize(t *testing.T) {
 	if narrow.viewer.vp.TotalLineCount() <= wide.viewer.vp.TotalLineCount() {
 		t.Errorf("narrowing the viewer did not re-wrap the document: %d lines at 120 columns, %d at 80",
 			wide.viewer.vp.TotalLineCount(), narrow.viewer.vp.TotalLineCount())
+	}
+}
+
+// TestFrameStaysWithinTheTerminalWhileScrolling walks the whole fixture a page
+// at a time and holds the frame to exactly the terminal's size at every stop.
+//
+// This is the assertion that catches content whose measured width is a lie:
+// lipgloss expands a literal tab to four spaces when it renders, so a
+// tab-bearing line the viewport sliced as three cells shorter than it draws
+// wraps inside the pane box and pushes the frame a row past the terminal. A
+// single screenful cannot see it — the offending row has to be scrolled to.
+func TestFrameStaysWithinTheTerminalWhileScrolling(t *testing.T) {
+	const w, h = 80, 24
+	m := openedFixture(t, w, h)
+	for step := 0; ; step++ {
+		view := m.View().Content
+		if got := lipgloss.Height(view); got != h {
+			t.Fatalf("step %d: view height = %d, want %d", step, got, h)
+		}
+		for i, line := range strings.Split(view, "\n") {
+			if got := lipgloss.Width(line); got != w {
+				t.Fatalf("step %d row %d: width = %d, want %d: %q", step, i, got, w, line)
+			}
+		}
+		if m.viewer.vp.AtBottom() {
+			return
+		}
+		m = press(t, m, keys.PageDown.Keys()[0])
 	}
 }

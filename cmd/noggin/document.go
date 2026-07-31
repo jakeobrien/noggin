@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/glamour/styles"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/glamour/v2"
+	"charm.land/glamour/v2/styles"
+	"charm.land/lipgloss/v2"
 	"golang.org/x/term"
 )
 
@@ -59,37 +59,44 @@ func stripFrontmatter(src []byte) []byte {
 
 // markdownStyle is the Glamour style to render with, decided once.
 //
-// Glamour's WithAutoStyle re-decides on every render, and deciding means asking
-// the terminal for its background colour (termenv OSC 11). Inside a running
-// Bubble Tea program that reply is swallowed by Bubble Tea's own input reader,
-// so the query never completes and the render blocks forever — the program
-// draws nothing. Making the same choice WithAutoStyle would, once and up front,
-// avoids the deadlock: lipgloss caches its own background lookup, and after that
-// no render touches the terminal.
+// Glamour v2 has no WithAutoStyle and never queries the terminal itself, so the
+// v1 deadlock this indirection was built around (D13) is gone. Deciding light
+// from dark still means an OSC 11 query, though — lipgloss.HasDarkBackground
+// now takes the file handles to do it on explicitly — and D13's rule stands: no
+// terminal query once Bubble Tea owns stdin. So the choice is still made once,
+// before Run(), rather than per render. main does that.
 //
-// It must be resolved before Bubble Tea takes over stdin; main does that.
+// The in-program alternative, tea.RequestBackgroundColor, is unreliable under
+// tmux and WSL2, which is the other reason to keep resolving it up front.
 var markdownStyle = sync.OnceValue(func() string {
 	if !term.IsTerminal(int(os.Stdout.Fd())) {
 		return styles.NoTTYStyle
 	}
-	if lipgloss.HasDarkBackground() {
+	if lipgloss.HasDarkBackground(os.Stdin, os.Stdout) {
 		return styles.DarkStyle
 	}
 	return styles.LightStyle
 })
 
 // tabStop is the column interval tabs are expanded to. Four is CommonMark's
-// own figure for how far a tab advances when it determines block structure.
+// own figure for how far a tab advances when it determines block structure, and
+// also lipgloss v2's default Style.TabWidth, so the two agree on where a tab
+// lands.
 const tabStop = 4
 
 // expandTabs replaces tabs with spaces out to the next tab stop.
 //
-// Glamour hands the contents of a code fence through verbatim, tabs included,
-// and a tab's rendered width is a property of the terminal, not the string —
-// lipgloss measures it as one cell. So a tab-indented code fence wraps short and
-// then draws straight through the pane's right border. Expanding first makes the
-// measured width the real one. Tab stops of four are also exactly how CommonMark
-// reads a leading tab, so this does not change how the markdown parses.
+// Glamour still hands the contents of a code fence through verbatim, tabs
+// included, and a tab's width is a property of the terminal, not the string —
+// lipgloss measures a raw tab as one cell. Under v2 the consequence changed
+// shape but not severity: lipgloss expands tabs to four spaces inside Render,
+// so the viewport slices the line believing it is three cells shorter than it
+// renders, and the pane box then wraps the overflow onto an extra row — the
+// frame grows past the terminal's height. (Under v1 the same undercount drew
+// through the pane's right border instead.) Expanding up front makes the
+// measured width the real one either way. Tab stops of four are also exactly
+// how CommonMark reads a leading tab, so this does not change how the markdown
+// parses.
 func expandTabs(src []byte) []byte {
 	if !bytes.ContainsRune(src, '\t') {
 		return src
