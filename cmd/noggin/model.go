@@ -36,10 +36,19 @@ type model struct {
 	width  int
 	height int
 	focus  pane
+	viewer viewer
 }
 
 func newModel() model {
-	return model{focus: filesPane}
+	return model{focus: filesPane, viewer: newViewer()}
+}
+
+// openDocument makes d the active document and puts focus on it, which is what
+// asking to read a document means.
+func (m model) openDocument(d document) model {
+	m.viewer = m.viewer.open(d)
+	m.focus = m.resolveFocus(viewerPane)
+	return m
 }
 
 func (m model) Init() tea.Cmd {
@@ -51,6 +60,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.focus = m.resolveFocus(m.focus)
+		content := computeLayout(m.width, m.height).viewer.content()
+		m.viewer = m.viewer.setSize(content.width, content.height)
 		return m, nil
 	case tea.KeyMsg:
 		switch {
@@ -62,6 +73,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.PrevPane):
 			m.focus = m.shiftFocus(-1)
 			return m, nil
+		}
+		// Scroll keys belong to whichever pane has focus; only the viewer
+		// claims them so far.
+		if m.focus == viewerPane {
+			if next, scrolled := m.viewer.scroll(msg); scrolled {
+				m.viewer = next
+				return m, nil
+			}
 		}
 	}
 	return m, nil
@@ -135,11 +154,11 @@ func (m model) View() string {
 	}
 	l := computeLayout(m.width, m.height)
 
-	body := m.renderPane(viewerPane, l.viewer)
+	body := m.renderPane(viewerPane, l.viewer, m.viewer.view())
 	if l.navigatorWidth() > 0 {
 		navigator := lipgloss.JoinVertical(lipgloss.Left,
-			m.renderPane(rootsPane, l.roots),
-			m.renderPane(filesPane, l.files),
+			m.renderPane(rootsPane, l.roots, ""),
+			m.renderPane(filesPane, l.files, ""),
 		)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, navigator, body)
 	}
@@ -150,8 +169,10 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, body, m.renderFooter(l.footer))
 }
 
-// renderPane draws one region at exactly r's outer size, border included.
-func (m model) renderPane(p pane, r rect) string {
+// renderPane draws one region at exactly r's outer size, border included: the
+// pane's title on the first content row, then content, which is expected to be
+// exactly r.content() in size.
+func (m model) renderPane(p pane, r rect, content string) string {
 	if r.empty() {
 		return ""
 	}
@@ -159,9 +180,25 @@ func (m model) renderPane(p pane, r rect) string {
 	if m.focus == p {
 		style = focusedBorderStyle
 	}
-	// The border occupies one cell on each side of the content box.
-	inner := style.Width(max(r.width-2, 0)).Height(max(r.height-2, 0))
-	return inner.Render(titleStyle.Render(p.title()))
+	box := style.
+		Width(max(r.width-2*paneBorderWidth, 0)).
+		Height(max(r.height-2*paneBorderWidth, 0))
+	title := titleStyle.Render(m.paneTitle(p))
+	if content == "" {
+		return box.Render(title)
+	}
+	return box.Render(title + "\n" + content)
+}
+
+// paneTitle is a pane's heading: its name, plus what it is currently showing
+// where that is worth saying.
+func (m model) paneTitle(p pane) string {
+	if p == viewerPane {
+		if label := m.viewer.label(); label != "" {
+			return p.title() + ": " + label
+		}
+	}
+	return p.title()
 }
 
 // renderFooter draws the footer line. Focus-aware hints and transient messages

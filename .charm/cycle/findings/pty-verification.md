@@ -22,6 +22,15 @@ worked because its `View()` returned a plain string, so no lipgloss renderer was
 instantiated and no query was emitted. `TERM=dumb` also sidesteps the handshake (and still
 emits SGR colour codes), which is the cheap fallback when only layout matters.
 
+**Answer every occurrence, not once per read.** Several components query independently and each
+blocks on its own reply, so a single chunk can carry two OSC 11 queries; replying once leaves
+the second caller hanging. Count the occurrences in the chunk and reply that many times.
+(M1.3 lost time to this masquerading as a product hang — the product hang was real too, but
+separate: see `glamour-in-bubbletea.md`.)
+
+**Rows are not always `\r\n`-separated.** Bubble Tea's frames mix `\n` and `\r\n`, so split
+drawn rows on `\r?\n` before measuring widths, and strip CSI *and* OSC sequences first.
+
 Working harness (Python `pty.fork` + `select`, TIOCSWINSZ for the size, respond to queries as
 they appear in each chunk): verified 2026-07-31 against `bin/noggin` at 80x24 and 100x30 —
 exit code 0 on `q`, `\x1b[?25h` / `\x1b[?2004l` present (terminal restored), focused border

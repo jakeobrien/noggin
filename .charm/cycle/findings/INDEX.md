@@ -6,6 +6,10 @@
 - `pty-verification.md` — driving the real binary from a pty needs the OSC 11 + cursor-position
   startup queries answered or it hangs; `go test` never sees colour. The recipe for every later
   end-to-end check.
+- `glamour-in-bubbletea.md` — `WithAutoStyle` queries the terminal at render time and deadlocks
+  against Bubble Tea's input reader (the program hangs with no frame); Glamour also leaks
+  literal tabs into rendered code fences, which lipgloss mis-measures. Both fixed in M1.3;
+  the general rule — resolve terminal queries before Bubble Tea starts — applies to M4.1.
 - `go-toolchain-env.md` — **resolved 2026-07-31**: the sandbox's `GOROOT` was misset,
   breaking `go`; re-validated fresh and the container now has a working go1.26.5 toolchain,
   gcc/cgo, and gopls/staticcheck/goimports, no workaround needed. Kept for history and Charm

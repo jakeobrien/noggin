@@ -6,6 +6,11 @@ package main
 const (
 	footerHeight = 1
 
+	// A pane is a border box with a title on its first content row; both eat
+	// into the space its contents get.
+	paneBorderWidth = 1
+	paneTitleHeight = 1
+
 	// navigatorPercent is the Navigator column's share of the terminal width,
 	// clamped to the min/max below; rootsPercent is the Roots Nav pane's share
 	// of the Navigator column's height.
@@ -37,6 +42,14 @@ type layout struct {
 // navigatorWidth is the width of the Navigator column, 0 when the terminal is
 // too narrow to carry one.
 func (l layout) navigatorWidth() int { return l.roots.width }
+
+// content is the box a pane's contents get: its region less border and title.
+func (r rect) content() rect {
+	return rect{
+		width:  max(r.width-2*paneBorderWidth, 0),
+		height: max(r.height-2*paneBorderWidth-paneTitleHeight, 0),
+	}
+}
 
 // computeLayout divides a terminal of width x height into the frame's regions.
 // A terminal too narrow for both columns drops the Navigator rather than

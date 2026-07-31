@@ -157,3 +157,20 @@
   deleting it: it's the historical record of a diagnosis that changed once already, and the
   recipe-side recommendations it made (drop `GOROOT` from ENV, checksum verification, etc.)
   remain open and unverified from inside the container either way.
+
+## D13: The markdown render style is resolved once at startup, not per render
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-31
+- Context: `glamour.WithAutoStyle()` re-resolves dark/light on every render by querying the
+  terminal's background colour. Inside a running Bubble Tea program the reply is consumed by
+  Bubble Tea's input reader, so the first render blocks forever and the program draws no frame
+  (`findings/glamour-in-bubbletea.md`).
+- Decision: Decide dark / light / no-TTY once, before Bubble Tea takes stdin, and pass Glamour
+  an explicit `WithStandardStyle`. More generally: no terminal query happens after the program
+  starts.
+- Why: Going with the grain (D1) means using the library's default until the default is a hang.
+  The cost is that a terminal which changes its background mid-session keeps the style it
+  started with, which nobody will notice. Constrains M4.1: returning from `$EDITOR` must not
+  re-query either.
