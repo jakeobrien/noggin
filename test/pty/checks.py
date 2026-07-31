@@ -373,6 +373,97 @@ check("M3.3 the active root did not change after the refusal",
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M3.3 exits 0 after browsing and starring roots", code == 0, f"exit {code}")
 
+# --- M3.2 (T27): a star survives a restart, across two real OS processes -
+
+# Hardens what was, through M3.2, an ad-hoc script: star an ad-hoc root in one
+# process, exit, then start a second, independent process against the same
+# isolated $HOME/$XDG_CONFIG_HOME and confirm the star is still there. Two
+# real OS processes, not two Sessions against one running binary, is the
+# point — it is the only way to actually exercise "survives a restart".
+persist_home = tempfile.mkdtemp()
+persist_env, persist_store = config_env(persist_home)
+persist_target = tempfile.mkdtemp()
+persist_name = os.path.basename(persist_target)
+
+s = Session([BINARY, persist_target], 80, 24, env=persist_env)
+s.pump(1.5)
+s.send(KEY["PrevPane"], 0.4)  # Files -> Roots (shift+tab)
+footer = screen_of(s.out, 80, 24).lines()[-1]
+check("M3.2 restart fixture: focus reaches Roots to star the ad-hoc root",
+      footer.split(" \u00b7")[0] == "Roots", repr(footer))
+
+s.send(KEY["Star"], 0.5)
+lines = screen_of(s.out, 80, 24).raw_lines()
+row = row_with(persist_name, lines)
+check("M3.2 restart fixture: star mark shows immediately", "\u2605" in row, repr(row))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M3.2 restart fixture: first process exits 0", code == 0, f"exit {code}")
+
+with open(persist_store) as f:
+    stored = f.read()
+check("M3.2 star written through to the store file by the first process",
+      persist_target in stored, repr(stored))
+
+s2 = Session([BINARY], 80, 24, env=persist_env)
+out2 = s2.pump(1.5)
+body2 = "\n".join(screen_of(out2, 80, 24).raw_lines())
+check("M3.2 star survives a restart across two separate OS processes",
+      persist_name in body2 and "\u2605" in body2, repr(body2[:300]))
+
+code2 = (s2.send(KEY["Quit"], 0.6), s2.close())[1]
+check("M3.2 restart fixture: second process exits 0", code2 == 0, f"exit {code2}")
+
+# --- M3.4 (T27): activating a different root leaves the open document -----
+# unchanged, end to end (byte-diff of the viewer pane against the real binary)
+
+rootb_base = tempfile.mkdtemp()
+rootb = os.path.join(rootb_base, "root-b")
+os.makedirs(rootb)
+with open(os.path.join(rootb, "other.md"), "w") as f:
+    f.write("# Root B\n\nDifferent content.\n")
+
+switch_home = tempfile.mkdtemp()
+switch_env, switch_store = config_env(switch_home)
+os.makedirs(os.path.dirname(switch_store))
+with open(switch_store, "w") as f:
+    f.write(rootb + "\n")
+
+s = Session([BINARY, TREE], 80, 24, env=switch_env)
+s.pump(1.5)
+for _ in range(2):
+    s.send(KEY["Down"], 0.4)
+s.send(KEY["Activate"], 0.6)
+lines_before = screen_of(s.out, 80, 24).raw_lines()
+check("M3.4 pty: README.md opens in the viewer before switching roots",
+      "Root Readme" in "\n".join(lines_before), repr(lines_before[:1]))
+
+# Byte-diff only the viewer's columns (right of the Navigator column's box
+# edge) so the check is not tripped up by the Files Nav or footer, which ARE
+# expected to change when the active root switches.
+nav_edge = lines_before[0].index("\u256e")  # box edge ╮ closing the nav column
+viewer_before = [line[nav_edge + 1:] for line in lines_before]
+
+s.send(KEY["NextPane"], 0.4)  # Document -> Roots (tab)
+footer = screen_of(s.out, 80, 24).lines()[-1]
+check("M3.4 pty: tab from the Document pane reaches Roots",
+      footer.split(" \u00b7")[0] == "Roots", repr(footer))
+
+s.send(KEY["Down"], 0.4)   # selection off the ad-hoc TREE root, onto root-b
+s.send(KEY["Activate"], 0.6)
+lines_after = screen_of(s.out, 80, 24).raw_lines()
+viewer_after = [line[nav_edge + 1:] for line in lines_after]
+
+check("M3.4 pty: viewer pane is byte-identical after activating a different root",
+      viewer_before == viewer_after,
+      f"first mismatch at row {next((i for i, (a, b) in enumerate(zip(viewer_before, viewer_after)) if a != b), None)}")
+body_after = "\n".join(lines_after)
+check("M3.4 pty: Files Nav re-rooted to root-b's entries",
+      "other.md" in body_after and "docs" not in body_after, repr(body_after[:200]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M3.4 pty: exits 0 after switching roots with a document open", code == 0, f"exit {code}")
+
 # --- M4.1: edit hands the active document to $EDITOR and resumes -----------
 
 # A fake $EDITOR that appends a marker line to whatever file it is given,

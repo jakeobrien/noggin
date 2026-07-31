@@ -4,10 +4,12 @@ import (
 	"charm.land/bubbles/v2/key"
 )
 
-// This file is the single place key literals may appear (D2: the keymap is
-// provisional and build-time-only). Every binding in the program is resolved
-// through `keys`; no other file names a key. Retuning the keymap is therefore a
-// one-file edit, and `rg` over the rest of the tree stays free of key strings.
+// This is the one production file key literals may appear in (D2). Every
+// binding in the program is resolved through `keys`; no other production file
+// names a key — keymap_test.go carries its own test-only key-encoding table
+// (see keyPress), exempt for the same reason its helpers are test-only.
+// Retuning the keymap is therefore a one-file edit, and `rg` over the rest of
+// the production tree stays free of key strings.
 
 // keyMap holds every binding the program understands. Help text lives with the
 // binding so the footer (S11) and help modal (S12) can be generated from it

@@ -115,11 +115,7 @@ func (f filesNav) handleKey(msg tea.KeyPressMsg) (filesNav, bool) {
 
 // move shifts the selection by delta rows, clamped to the visible set.
 func (f filesNav) move(delta int) filesNav {
-	rows := f.visibleRows()
-	if len(rows) == 0 {
-		return f
-	}
-	f.selected = clamp(f.selected+delta, 0, len(rows)-1)
+	f.selected = moveSelection(f.selected, delta, len(f.visibleRows()))
 	return f
 }
 
@@ -162,7 +158,7 @@ func (f filesNav) withExpanded(path string, open bool) filesNav {
 
 var (
 	filesSelectedStyle = lipgloss.NewStyle().Reverse(true)
-	emptyFilesStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	emptyFilesStyle    = lipgloss.NewStyle().Foreground(dimColor)
 )
 
 // view renders the pane's content box at exactly its width x height, the same
@@ -179,24 +175,9 @@ func (f filesNav) view() string {
 			MaxWidth(f.width).MaxHeight(f.height).
 			Render(emptyFilesText)
 	}
-
-	// Scroll just enough to keep the selection in view: the selected row sits
-	// at the bottom edge once the list is taller than the box.
-	offset := 0
-	if f.selected >= f.height {
-		offset = f.selected - f.height + 1
-	}
-
-	lines := make([]string, f.height)
-	for i := range lines {
-		idx := offset + i
-		if idx < len(rows) {
-			lines[i] = f.renderRow(rows[idx], idx == f.selected)
-		} else {
-			lines[i] = strings.Repeat(" ", f.width)
-		}
-	}
-	return strings.Join(lines, "\n")
+	return windowedView(f.width, f.height, f.selected, len(rows), func(idx int) string {
+		return f.renderRow(rows[idx], idx == f.selected)
+	})
 }
 
 // renderRow lays out one row: indent by depth, an expand/collapse marker for a

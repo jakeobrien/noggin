@@ -108,6 +108,26 @@ func TestResolveRoots(t *testing.T) {
 			},
 		},
 		{
+			// T22: resolveFile's own dedup path, distinct from resolveDir's (the
+			// case above) since a file argument never reaches resolveDir at all.
+			name: "file argument whose cwd is already a starred root is not duplicated",
+			build: func(t *testing.T) ([]string, []string, string) {
+				base := t.TempDir()
+				cwd := mkdir(t, filepath.Join(base, "proj"))
+				writeFile(t, filepath.Join(cwd, "note.md"))
+				other := mkdir(t, filepath.Join(base, "other"))
+				return []string{"note.md"}, []string{other, cwd}, cwd
+			},
+			check: func(t *testing.T, res resolution) {
+				wantLen(t, res, 2) // no duplicate ad-hoc root added for the cwd
+				wantActiveStarred(t, res, 1)
+				if got, want := res.docPath, filepath.Join(res.roots[1].path, "note.md"); got != want {
+					t.Errorf("docPath = %q, want %q", got, want)
+				}
+				wantClean(t, res)
+			},
+		},
+		{
 			name: "dir already a starred root is not duplicated and becomes active",
 			build: func(t *testing.T) ([]string, []string, string) {
 				base := t.TempDir()

@@ -81,7 +81,15 @@ func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) re
 // tree, reading a document) stay out of this pure decision.
 func resolveRoots(args []string, starred []string, cwd string) resolution {
 	roots := starredRoots(starred)
-	base := resolution{roots: roots, active: firstIndex(roots)}
+	// -1 (no active root) when there are none to be active; otherwise the
+	// first (S1's order puts the ad-hoc root, if any, ahead of these anyway,
+	// so this only matters for the bare-launch case where roots is starred
+	// roots alone).
+	active := -1
+	if len(roots) > 0 {
+		active = 0
+	}
+	base := resolution{roots: roots, active: active}
 
 	switch {
 	case len(args) == 0:
@@ -159,13 +167,6 @@ func starredRoots(paths []string) []root {
 		roots = append(roots, root{path: filepath.Clean(p), starred: true})
 	}
 	return roots
-}
-
-func firstIndex(roots []root) int {
-	if len(roots) == 0 {
-		return -1
-	}
-	return 0
 }
 
 // absPath resolves path against cwd when it is relative, then cleans it, so

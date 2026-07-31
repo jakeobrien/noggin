@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -28,11 +27,13 @@ type rootRow struct {
 // (S1's order — ad-hoc root first, then starred — is preserved as given,
 // never reordered here), independent of which root is active. storePath is
 // resolved once at startup (main.go's storePath(), threaded through
-// model.withStorePath) so a star toggle can persist without re-deriving
-// os.UserConfigDir() on every keypress; empty means the config directory
-// could not be resolved, in which case a toggle still updates the pane's own
-// display but has nothing to write through (T: rare — no $HOME/
-// $XDG_CONFIG_HOME, matching loadStarredRoots' own degrade-to-empty case).
+// model.withStorePath, not this type's constructor — a fresh pane never
+// starts with one, so newRootsNav takes no argument) so a star toggle can
+// persist without re-deriving os.UserConfigDir() on every keypress; empty
+// means the config directory could not be resolved, in which case a toggle
+// still updates the pane's own display but has nothing to write through.
+// That is an uncommon case — no $HOME or $XDG_CONFIG_HOME — matching
+// loadStarredRoots' own degrade-to-empty behavior for the same failure.
 type rootsNav struct {
 	rows     []rootRow
 	active   int // index into rows of the active root, or -1
@@ -43,8 +44,8 @@ type rootsNav struct {
 	width, height int
 }
 
-func newRootsNav(storePath string) rootsNav {
-	return rootsNav{active: -1, storePath: storePath}
+func newRootsNav() rootsNav {
+	return rootsNav{active: -1}
 }
 
 // setRoots installs a fresh roots list and which one is active, resetting the
@@ -125,17 +126,14 @@ func (r rootsNav) handleKey(msg tea.KeyPressMsg) (rootsNav, bool) {
 
 // move shifts the selection cursor by delta rows, clamped to the row set.
 func (r rootsNav) move(delta int) rootsNav {
-	if len(r.rows) == 0 {
-		return r
-	}
-	r.selected = clamp(r.selected+delta, 0, len(r.rows)-1)
+	r.selected = moveSelection(r.selected, delta, len(r.rows))
 	return r
 }
 
 var (
 	rootsActiveStyle = lipgloss.NewStyle().Bold(true)
 	rootsBrokenStyle = lipgloss.NewStyle().Faint(true)
-	emptyRootsStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	emptyRootsStyle  = lipgloss.NewStyle().Foreground(dimColor)
 )
 
 // view renders the pane's content box at exactly its width x height, the same
@@ -150,24 +148,7 @@ func (r rootsNav) view() string {
 			MaxWidth(r.width).MaxHeight(r.height).
 			Render(emptyRootsText)
 	}
-
-	// Scroll just enough to keep the selection in view, matching the Files
-	// Nav's window behaviour.
-	offset := 0
-	if r.selected >= r.height {
-		offset = r.selected - r.height + 1
-	}
-
-	lines := make([]string, r.height)
-	for i := range lines {
-		idx := offset + i
-		if idx < len(r.rows) {
-			lines[i] = r.renderRow(idx)
-		} else {
-			lines[i] = strings.Repeat(" ", r.width)
-		}
-	}
-	return strings.Join(lines, "\n")
+	return windowedView(r.width, r.height, r.selected, len(r.rows), r.renderRow)
 }
 
 // renderRow lays out one entry: an active marker, a starred marker, the base

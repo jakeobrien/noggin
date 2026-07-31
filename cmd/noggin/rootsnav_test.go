@@ -15,7 +15,7 @@ import (
 func TestRootsNavOpensOnActiveRootAndPreservesOrder(t *testing.T) {
 	a := mkdir(t, filepath.Join(t.TempDir(), "a"))
 	b := mkdir(t, filepath.Join(t.TempDir(), "b"))
-	r := newRootsNav("").setRoots([]root{{path: a}, {path: b, starred: true}}, 1)
+	r := newRootsNav().setRoots([]root{{path: a}, {path: b, starred: true}}, 1)
 
 	if got := []string{r.rows[0].root.path, r.rows[1].root.path}; !reflect.DeepEqual(got, []string{a, b}) {
 		t.Errorf("row order = %v, want %v (unreordered)", got, []string{a, b})
@@ -33,7 +33,7 @@ func TestRootsNavDistinguishesSameNamedRootsByParent(t *testing.T) {
 	a := mkdir(t, filepath.Join(base, "work", "admin", "project"))
 	b := mkdir(t, filepath.Join(base, "other", "project"))
 
-	r := newRootsNav("").setRoots([]root{{path: a}, {path: b}}, -1).setSize(60, 4)
+	r := newRootsNav().setRoots([]root{{path: a}, {path: b}}, -1).setSize(60, 4)
 	lines := strings.Split(r.view(), "\n")
 
 	if !strings.Contains(lines[0], "project") || !strings.Contains(lines[1], "project") {
@@ -56,7 +56,7 @@ func TestRootsNavMarksMissingPathBroken(t *testing.T) {
 	ok := mkdir(t, filepath.Join(t.TempDir(), "here"))
 	gone := filepath.Join(t.TempDir(), "gone")
 
-	r := newRootsNav("").setRoots([]root{{path: ok}, {path: gone}}, 0).setSize(40, 4)
+	r := newRootsNav().setRoots([]root{{path: ok}, {path: gone}}, 0).setSize(40, 4)
 	if r.rows[0].broken {
 		t.Error("an existing path was marked broken")
 	}
@@ -80,7 +80,7 @@ func TestRootsNavHighlightsActiveRoot(t *testing.T) {
 	a := mkdir(t, filepath.Join(t.TempDir(), "a"))
 	b := mkdir(t, filepath.Join(t.TempDir(), "b"))
 
-	r := newRootsNav("").setRoots([]root{{path: a}, {path: b}}, 1).setSize(40, 4)
+	r := newRootsNav().setRoots([]root{{path: a}, {path: b}}, 1).setSize(40, 4)
 	r = r.move(-1) // cursor back to row 0, active stays row 1
 
 	lines := strings.Split(r.view(), "\n")
@@ -103,7 +103,7 @@ func TestRootsNavStarredMarked(t *testing.T) {
 	a := mkdir(t, filepath.Join(t.TempDir(), "a"))
 	b := mkdir(t, filepath.Join(t.TempDir(), "b"))
 
-	r := newRootsNav("").setRoots([]root{{path: a}, {path: b, starred: true}}, -1).setSize(40, 4)
+	r := newRootsNav().setRoots([]root{{path: a}, {path: b, starred: true}}, -1).setSize(40, 4)
 	lines := strings.Split(r.view(), "\n")
 	if strings.Contains(lines[0], "★") {
 		t.Errorf("unstarred row 0 = %q, want no star mark", lines[0])
@@ -127,7 +127,7 @@ func TestRootsNavStarredMarked(t *testing.T) {
 func TestRootsNavMoveClampsAtEnds(t *testing.T) {
 	a := mkdir(t, filepath.Join(t.TempDir(), "a"))
 	b := mkdir(t, filepath.Join(t.TempDir(), "b"))
-	r := newRootsNav("").setRoots([]root{{path: a}, {path: b}}, 0)
+	r := newRootsNav().setRoots([]root{{path: a}, {path: b}}, 0)
 
 	r = r.move(-1)
 	if r.selected != 0 {
@@ -146,7 +146,7 @@ func TestRootsNavMoveClampsAtEnds(t *testing.T) {
 // TestRootsNavEmptyState checks the no-roots resting state (a bare launch
 // with no starred roots yet).
 func TestRootsNavEmptyState(t *testing.T) {
-	r := newRootsNav("").setSize(20, 4)
+	r := newRootsNav().setSize(20, 4)
 	lines := strings.Split(r.view(), "\n")
 	if len(lines) != 4 {
 		t.Fatalf("empty-state view has %d lines, want 4", len(lines))
@@ -174,6 +174,20 @@ func TestActivateRootRerootsFilesNavAndMovesFocus(t *testing.T) {
 	}
 	if !strings.Contains(m.files.view(), "README.md") {
 		t.Errorf("files view = %q, want testdata/tree's entries", m.files.view())
+	}
+}
+
+// TestActivateRootClearsStaleMessageOnSuccess is T21: a leftover footer
+// message from an earlier refusal (or any other action) must not survive a
+// successful activation and be misread as describing it.
+func TestActivateRootClearsStaleMessageOnSuccess(t *testing.T) {
+	m := sized(t, newModel(), 80, 24)
+	m.roots = m.roots.setRoots([]root{{path: "testdata/tree"}}, -1)
+	m.message = "a stale message from something earlier"
+
+	m = m.activateRoot()
+	if m.message != "" {
+		t.Errorf("message after a successful activateRoot = %q, want cleared", m.message)
 	}
 }
 
@@ -275,7 +289,7 @@ func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
 	if total := m.viewer.lineCount(); total <= m.viewer.height() {
 		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to preserve a scroll position over", total, m.viewer.height())
 	}
-	m.viewer.setOffset(3)
+	m.viewer = m.viewer.withOffset(3)
 	wantOffset, wantView := m.viewer.offset(), m.viewer.view()
 
 	// Root A open in the Files Nav, one folder expanded and selection off the

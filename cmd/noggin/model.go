@@ -62,7 +62,7 @@ type model struct {
 }
 
 func newModel() model {
-	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), roots: newRootsNav("")}
+	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), roots: newRootsNav()}
 }
 
 // withStorePath sets the resolved starred-roots config path (M3.2's
@@ -357,7 +357,7 @@ var (
 				BorderForeground(lipgloss.Color("205"))
 	titleStyle  = lipgloss.NewStyle().Bold(true)
 	footerStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("245"))
+			Foreground(dimColor)
 )
 
 // View returns the frame. Bubble Tea v2 derives terminal state (alt screen,

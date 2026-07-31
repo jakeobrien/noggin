@@ -81,10 +81,12 @@ func (v viewer) render() viewer {
 // offset is the viewport's current vertical scroll position, in rendered lines.
 func (v viewer) offset() int { return v.vp.YOffset() }
 
-// setOffset moves the viewport to a given scroll position directly, for tests
-// that need to start from a known offset rather than scroll there one action
-// at a time.
-func (v *viewer) setOffset(n int) { v.vp.SetYOffset(n) }
+// withOffset moves the viewport to a given scroll position directly, for
+// tests that need to start from a known offset rather than scroll there one
+// action at a time. A value receiver, like every other viewer method (T10) —
+// the pointer receiver this used to carry bought nothing here, since
+// SetYOffset already mutates the shared vp.Model by reference.
+func (v viewer) withOffset(n int) viewer { v.vp.SetYOffset(n); return v }
 
 // atBottom reports whether the viewport is scrolled to the end of the document.
 func (v viewer) atBottom() bool { return v.vp.AtBottom() }
@@ -103,7 +105,7 @@ func (v viewer) label() string {
 	return filepath.Base(v.doc.path)
 }
 
-var emptyViewerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+var emptyViewerStyle = lipgloss.NewStyle().Foreground(dimColor)
 
 // view renders the viewer's content box at exactly its width x height.
 func (v viewer) view() string {

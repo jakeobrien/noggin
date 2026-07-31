@@ -191,7 +191,7 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 			// Every key the action is bound to must perform it.
 			for _, k := range tc.binding.Keys() {
 				m := base
-				m.viewer.setOffset(tc.start)
+				m.viewer = m.viewer.withOffset(tc.start)
 				m = press(t, m, k)
 				if got := m.viewer.offset(); got != tc.want {
 					t.Errorf("%q from offset %d left offset %d, want %d", k, tc.start, got, tc.want)
