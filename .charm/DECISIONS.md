@@ -136,3 +136,24 @@
 - Why: Every later milestone needs something on screen to attach to, and a temporary path
   argument is a few lines that S1 subsumes. Putting the cut candidates last means an overrun
   is a stop, not a re-plan.
+
+## D12: Sandbox Go toolchain repair validated — workaround downgraded, not dropped
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-07-31
+- Context: `findings/go-toolchain-env.md` documented a broken `GOROOT` requiring every Go
+  command to run with it unset, no C compiler, and no gopls/staticcheck/goimports. The user
+  reported repairing the container and asked for validation.
+- Decision: An independent fresh-context validator confirmed all of it fixed — `go1.26.5` via
+  a real `/home/agent/.local/go`, working gcc/cgo, and gopls/staticcheck/goimports all present
+  and runnable, with a full build/vet/gofmt/test/module-fetch loop passing untouched. Updated
+  the finding, its index entry, `PLAN.md`'s build-environment note and M1.1 wording, and
+  `PROGRESS.md`'s handoff to reflect this. Kept the Makefile's `GOROOT` neutralisation as a
+  defensive default for host portability rather than ripping it out, since it's free insurance
+  and M1.1 isn't built yet.
+- Why: This is an environment fact change, not a spec change — no plan tasks, keys or
+  acceptance criteria needed re-scoping beyond wording. Kept the finding file rather than
+  deleting it: it's the historical record of a diagnosis that changed once already, and the
+  recipe-side recommendations it made (drop `GOROOT` from ENV, checksum verification, etc.)
+  remain open and unverified from inside the container either way.

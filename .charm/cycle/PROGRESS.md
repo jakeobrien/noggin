@@ -13,19 +13,23 @@ Next step: M1.1 — scaffold the Go module (module path `noggin`-ish, `cmd/noggi
 minimal Bubble Tea program.
 
 Gotchas for the first build session:
-- The sandbox's `GOROOT` points at a toolchain that isn't installed, breaking every `go`
-  call. Run Go commands with **`GOROOT` unset** (`env -u GOROOT go ...`, or `unexport GOROOT`
-  in the Makefile); the apt go 1.26.0 then self-locates. No `staticcheck`/`goimports`/`gopls`
-  and no C compiler here, so verification uses `go vet` + `gofmt -l` + `go test`. Module
+- **Resolved 2026-07-31**: the sandbox's `GOROOT` used to point at a toolchain that wasn't
+  installed, breaking every `go` call; the container has since been repaired and re-validated
+  fresh — `go` (go1.26.5), gcc/cgo, and `staticcheck`/`goimports`/`gopls` all now work with the
+  environment exactly as inherited, no `GOROOT`-unset needed. The Makefile's defensive
+  `GOROOT` neutralisation (`unexport GOROOT` or similar) is kept anyway for portability to a
+  host where it isn't set correctly, not because this container needs it now. Module
   downloads through the proxy work. See `findings/go-toolchain-env.md`.
 - Bubble Tea `@latest` resolves to v1.3.10 (v2 is pre-release); Glamour v1.0.0 is out. Take
   latest stable and go with the grain (D1).
 - M1.3 renders a document from a bare path argument; M3.1 replaces that ad-hoc argument
   handling with the real S1 launch contract (D11).
 
-No blockers. Pending on the user: sandbox image fixes (drop `GOROOT` from the go recipe ENV;
-confirm the VM runs `sandbox-pi-go` rather than base) — noted in the findings file; the
-unset-`GOROOT` workaround survives either outcome.
+No blockers. The sandbox image fix is done — the container now runs with a full go1.26.5
+toolchain, gcc/cgo, and the gopls/staticcheck/goimports tool belt (re-validated 2026-07-31).
+The finding's recipe recommendation to drop `GOROOT` from the ENV block was not literally
+followed (`GOROOT` is still set, just now pointing at a real directory) — harmless in
+practice, and not this cycle's concern either way.
 
 ## Status
 

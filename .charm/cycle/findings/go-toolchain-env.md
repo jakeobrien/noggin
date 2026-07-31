@@ -59,3 +59,28 @@ below.
    before extracting — the current pipe trusts the download outright.
 5. `go install ...@latest` for the tool belt makes the image non-reproducible; pin versions if
    that matters, or accept it deliberately.
+
+## Update — 2026-07-31: repaired, re-validated fresh
+
+The container has since been rebuilt/repaired (owner action outside this cycle). Re-tested
+from scratch with `GOROOT` left exactly as inherited (no unsetting), via an independent
+validator pass:
+
+- `/home/agent/.local/go` now exists as a genuine tarball install (`bin/go`, `src/`, `pkg/`,
+  `VERSION` = `go1.26.5`). `go env GOROOT` resolves to it and `go version` runs correctly
+  as-is — the GOROOT-unset workaround above is **no longer required in this container**.
+- `build-essential`/`gcc` is installed and functional; a cgo build (import `"C"`, call a C
+  function) compiles and runs end to end.
+- `gopls`, `staticcheck`, `goimports` are all present and runnable from `$GOBIN`
+  (`/home/agent/.local/bin`) — the tool-belt gap above is closed.
+- A full pure-Go loop (`go build ./...`, `go vet ./...`, `gofmt -l .`, `go test ./...`) and
+  module fetch through the proxy (`go get`, `go mod download`) all pass untouched.
+- **Discrepancy**: recommendation 1 above ("drop `GOROOT` from the go recipe's `ENV`") was
+  *not* followed — `GOROOT` is still set in the environment — but it now points at a real
+  directory, so the practical symptom is gone regardless. Recommendations 3–5 (arch-default,
+  checksum verification, pinned tool versions) are unverified from inside the container and
+  remain open recipe-side suggestions if anyone owns that work.
+- This file is kept for history; the workaround it documents is now a defensive default for
+  host portability (see `PLAN.md`'s M1 build-environment note), not an active requirement
+  here. Treat this finding as resolved for this container; do not re-derive the diagnosis
+  without re-checking, since the environment has already changed once.
