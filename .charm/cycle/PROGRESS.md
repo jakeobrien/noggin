@@ -80,9 +80,9 @@ No blockers.
 | M1.3 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
 | M1.4 | done   | 2026-08-01 | 2026-07-31 | M1 complete and validated |
 | M1.5 | done   | 2026-07-31 | -       | two-pass review (T9, T10 logged); not yet validated |
-| M2.1 | done   | -        | -         | internal/tree: policy + walk + hand-rolled gitignore (D18) |
-| M2.2 | done   | -        | -         | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks |
-| M2.3 | done   | -        | -         | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks |
+| M2.1 | done   | 2026-07-31 | -         | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14 |
+| M2.2 | done   | 2026-07-31 | -         | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks |
+| M2.3 | done   | 2026-07-31 | -         | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15 |
 | M3.1 | todo   | -        | -         |      |
 | M3.2 | todo   | -        | -         |      |
 | M3.3 | todo   | -        | -         |      |
