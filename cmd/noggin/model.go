@@ -19,6 +19,12 @@ const (
 // the Document Viewer.
 var paneOrder = []pane{rootsPane, filesPane, viewerPane}
 
+// title is the pane's heading, shown in its border and the footer. It is a
+// short display label, not the GLOSSARY.md term ("Roots Nav", "Files Nav",
+// "Document Viewer") — those name the pane in prose, but a title lives on a
+// single content row shared with the Active Document's own label
+// (paneTitle), so it stays terse on purpose rather than drifting to match the
+// glossary.
 func (p pane) title() string {
 	switch p {
 	case rootsPane:

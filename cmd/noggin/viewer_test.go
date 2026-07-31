@@ -166,11 +166,11 @@ func TestEmptyStateWithNoDocumentOpen(t *testing.T) {
 
 func TestScrollActionsMoveTheViewport(t *testing.T) {
 	base := openedFixture(t, 80, 24)
-	page := base.viewer.vp.Height()
-	if total := base.viewer.vp.TotalLineCount(); total <= page {
+	page := base.viewer.height()
+	if total := base.viewer.lineCount(); total <= page {
 		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to scroll", total, page)
 	}
-	bottom := base.viewer.vp.TotalLineCount() - page
+	bottom := base.viewer.lineCount() - page
 
 	for _, tc := range []struct {
 		name    string
@@ -191,9 +191,9 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 			// Every key the action is bound to must perform it.
 			for _, k := range tc.binding.Keys() {
 				m := base
-				m.viewer.vp.SetYOffset(tc.start)
+				m.viewer.setOffset(tc.start)
 				m = press(t, m, k)
-				if got := m.viewer.vp.YOffset(); got != tc.want {
+				if got := m.viewer.offset(); got != tc.want {
 					t.Errorf("%q from offset %d left offset %d, want %d", k, tc.start, got, tc.want)
 				}
 			}
@@ -202,7 +202,7 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 
 	// The last screen is reachable and is not the first screen.
 	m := press(t, base, keys.Bottom.Keys()[0])
-	if !m.viewer.vp.AtBottom() {
+	if !m.viewer.atBottom() {
 		t.Error("bottom key did not reach the bottom of the document")
 	}
 	if !strings.Contains(m.View().Content, fixtureStructure["tail"]) {
@@ -225,7 +225,7 @@ func TestScrollKeysOnlyActWhenTheViewerHasFocus(t *testing.T) {
 
 	for _, k := range keys.LineDown.Keys() {
 		next := press(t, m, k)
-		if next.viewer.vp.YOffset() != 0 {
+		if next.viewer.offset() != 0 {
 			t.Errorf("%q scrolled the viewer while %v had focus", k, m.focus)
 		}
 	}
@@ -247,14 +247,14 @@ func TestViewerRewrapsOnResize(t *testing.T) {
 		if got := tc.m.viewer.renderedWidth; got != want.width {
 			t.Errorf("%s: rendered at width %d, want %d", tc.name, got, want.width)
 		}
-		if got := tc.m.viewer.vp.Height(); got != want.height {
+		if got := tc.m.viewer.height(); got != want.height {
 			t.Errorf("%s: viewport height = %d, want %d", tc.name, got, want.height)
 		}
 	}
 
-	if narrow.viewer.vp.TotalLineCount() <= wide.viewer.vp.TotalLineCount() {
+	if narrow.viewer.lineCount() <= wide.viewer.lineCount() {
 		t.Errorf("narrowing the viewer did not re-wrap the document: %d lines at 120 columns, %d at 80",
-			wide.viewer.vp.TotalLineCount(), narrow.viewer.vp.TotalLineCount())
+			wide.viewer.lineCount(), narrow.viewer.lineCount())
 	}
 }
 
@@ -279,7 +279,7 @@ func TestFrameStaysWithinTheTerminalWhileScrolling(t *testing.T) {
 				t.Fatalf("step %d row %d: width = %d, want %d: %q", step, i, got, w, line)
 			}
 		}
-		if m.viewer.vp.AtBottom() {
+		if m.viewer.atBottom() {
 			return
 		}
 		m = press(t, m, keys.PageDown.Keys()[0])

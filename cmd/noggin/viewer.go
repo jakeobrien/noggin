@@ -78,6 +78,23 @@ func (v viewer) render() viewer {
 	return v
 }
 
+// offset is the viewport's current vertical scroll position, in rendered lines.
+func (v viewer) offset() int { return v.vp.YOffset() }
+
+// setOffset moves the viewport to a given scroll position directly, for tests
+// that need to start from a known offset rather than scroll there one action
+// at a time.
+func (v *viewer) setOffset(n int) { v.vp.SetYOffset(n) }
+
+// atBottom reports whether the viewport is scrolled to the end of the document.
+func (v viewer) atBottom() bool { return v.vp.AtBottom() }
+
+// lineCount is the number of rendered lines in the open document.
+func (v viewer) lineCount() int { return v.vp.TotalLineCount() }
+
+// height is the viewport's content height, in rows.
+func (v viewer) height() int { return v.vp.Height() }
+
 // label names the open document for the pane title, or is empty when none is.
 func (v viewer) label() string {
 	if !v.doc.isOpen() {
