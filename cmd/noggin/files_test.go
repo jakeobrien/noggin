@@ -211,6 +211,81 @@ func TestModelRoutesKeysToFocusedFilesPane(t *testing.T) {
 	}
 }
 
+// TestActivateOpensSelectedFileAndMovesFocus checks M2.3's wiring end to end:
+// selecting a real fixture file and pressing Activate loads it into the
+// viewer and moves focus there, and the viewer's own scroll keys then act on
+// it. fixtureTree's nodes are not backed by real files, so this walks the
+// checked-in testdata/tree fixture instead (loadDocument needs a real path).
+func TestActivateOpensSelectedFileAndMovesFocus(t *testing.T) {
+	root, err := tree.Walk("testdata/tree")
+	if err != nil {
+		t.Fatalf("tree.Walk(testdata/tree): %v", err)
+	}
+	m := sized(t, newModel().openFolder(root), 80, 24)
+
+	// docs sorts first (dirs-first, per fixtureTree's comment); step down onto
+	// README.md, a file, before activating.
+	for m.files.selectedNode().Name != "README.md" {
+		m = press(t, m, keys.LineDown.Keys()[1])
+	}
+
+	m = press(t, m, keys.Activate.Keys()[0])
+	if m.focus != viewerPane {
+		t.Fatalf("focus after activating a file = %v, want viewerPane", m.focus)
+	}
+	if !strings.Contains(m.viewer.view(), "Root Readme") {
+		t.Errorf("viewer content = %q, want it to show README.md's heading", m.viewer.view())
+	}
+	if !strings.Contains(m.viewer.label(), "README.md") {
+		t.Errorf("viewer label = %q, want it to name README.md", m.viewer.label())
+	}
+
+	// Scroll keys now act on the viewer, not the Files Nav.
+	before := m.viewer.offset()
+	m = press(t, m, keys.LineDown.Keys()[1])
+	if m.viewer.offset() == before && !m.viewer.atBottom() {
+		t.Errorf("scroll key after activate did not move the viewer (offset stayed %d)", before)
+	}
+}
+
+// TestActivateOnAFolderIsANoOp checks that M2.3 keeps activation file-only —
+// a folder's Activate key does nothing, per the plan's note that folder-enter
+// is left for later.
+func TestActivateOnAFolderIsANoOp(t *testing.T) {
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)
+	if !m.files.selectedNode().IsDir {
+		t.Fatalf("selection = %q, want a directory to start", m.files.selectedNode().Name)
+	}
+	m = press(t, m, keys.Activate.Keys()[0])
+	if m.focus != filesPane {
+		t.Errorf("focus after activating a folder = %v, want filesPane unchanged", m.focus)
+	}
+	if m.viewer.label() != "" {
+		t.Errorf("viewer label = %q, want empty (no document opened)", m.viewer.label())
+	}
+}
+
+// TestActivateWithAReadErrorLeavesSessionRunning checks the watch called out
+// in the M2.2 handoff: a file that fails to load must not exit or crash the
+// session, and focus stays put so the failure is silent-but-safe rather than
+// silently wrong (surfacing it richly is M4.2's footer message work).
+func TestActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
+	root := &tree.Node{
+		Name: "root", Path: "/root", IsDir: true,
+		Children: []*tree.Node{
+			{Name: "missing.md", Path: "/does/not/exist/missing.md"},
+		},
+	}
+	m := sized(t, newModel().openFolder(root), 80, 24)
+	m = press(t, m, keys.Activate.Keys()[0])
+	if m.focus != filesPane {
+		t.Errorf("focus after a failed activate = %v, want filesPane unchanged", m.focus)
+	}
+	if m.viewer.label() != "" {
+		t.Errorf("viewer label = %q, want empty (nothing opened on error)", m.viewer.label())
+	}
+}
+
 func containsRow(f filesNav, name string) bool {
 	for _, r := range f.visibleRows() {
 		if r.node.Name == name {

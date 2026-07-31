@@ -29,6 +29,7 @@ KEY = {
     "Up":           b"k",       # keys.LineUp, second key: k
     "Expand":       b"l",       # keys.Expand, second key: l
     "Collapse":     b"h",       # keys.Collapse, second key: h
+    "Activate":     b"\r",      # keys.Activate: enter
 }
 
 # --- M1.1: starts, quits, restores the terminal ---------------------------
@@ -228,5 +229,38 @@ check("M2.2 reverse-video selection bar on the wire", b"\x1b[7m" in s.out)
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M2.2 exits 0 while browsing a folder", code == 0, f"exit {code}")
+
+# --- M2.3: activating a file opens it in the viewer -----------------------
+
+# Selection opens on docs (a folder); step down onto README.md, a file, then
+# activate it.
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.5)
+for _ in range(2):
+    s.send(KEY["Down"], 0.4)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+footer_before = screen_of(s.out, 80, 24).lines()[-1]
+check("M2.3 selection reaches README.md before activating",
+      "README.md" in body and footer_before.split(" ·")[0] == "Files",
+      repr(footer_before))
+
+s.send(KEY["Activate"], 0.6)
+sc = screen_of(s.out, 80, 24)
+footer = sc.lines()[-1]
+body = "\n".join(sc.raw_lines())
+check("M2.3 activating a file moves focus to the Document pane",
+      footer.split(" ·")[0] == "Document", repr(footer))
+check("M2.3 activated file's content is rendered",
+      "Root Readme" in body, repr(body[:200]))
+check("M2.3 pane title names the activated file",
+      "README.md" in body)
+
+# Scroll keys now act on the viewer, not the Files Nav: half-page-down must
+# not move a Files Nav selection bar (there is none to move) and must not
+# error out; the exit below is the check that the session is still healthy.
+s.send(KEY["HalfPageDown"], 0.5)
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M2.3 exits 0 after activating a file", code == 0, f"exit {code}")
 
 done()

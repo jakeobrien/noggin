@@ -22,6 +22,10 @@ type keyMap struct {
 	Expand   key.Binding
 	Collapse key.Binding
 
+	// Activate opens the Files Nav's selected file as the active document and
+	// moves focus to the viewer (M2.3). A folder is left for later.
+	Activate key.Binding
+
 	// Document Viewer scrolling (S7): line, half-page, page, top, bottom.
 	LineUp       key.Binding
 	LineDown     key.Binding
@@ -54,6 +58,10 @@ var keys = keyMap{
 	Collapse: key.NewBinding(
 		key.WithKeys("left", "h"),
 		key.WithHelp("←/h", "collapse"),
+	),
+	Activate: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "open"),
 	),
 	LineUp: key.NewBinding(
 		key.WithKeys("up", "k"),

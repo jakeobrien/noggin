@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M2.3 (next: M3.1)
+Current task: M3.1 (next: M3.2)
 
 Last reviewed: M1.4 (db8a2e6), 2026-08-01 — two-pass standards + spec-fidelity review of the
 whole M1 milestone (no prior formal checkpoint existed); findings logged as T3-T8 in
@@ -11,42 +11,51 @@ in both columns.
 
 ## Handoff
 
-M2.2 is done (D19): the Files Nav pane is a `filesNav` struct (`cmd/noggin/files.go`) layered
-over the immutable `tree.Node`. Expansion state is a `map[string]bool` keyed by absolute
-`Path` (empty = all collapsed, S5); `selected` is an index into `visibleRows()`, which
-flattens the tree to just its open part (root's children at depth 0; a folder's children only
-when expanded — the root node itself is not a row). `view()` keeps the same content-box
-contract as the viewer (exactly width×height, selection kept on screen, reverse-video bar,
-empty-state text when no root). Movement reuses `LineUp`/`LineDown`; `Expand` (right/l) and
-`Collapse` (left/h) are new keymap bindings; expand/collapse clone the map (value-semantic,
-per T10's convention). Focus routing in `model.Update` sends keys to the viewer or the Files
-pane by focus. `main.go` grew temporary dir-argument scaffolding (dir → Files Nav, file →
-viewer), flagged in-comment as replaced by M3.1/M3.4.
+M2.3 is done: activating a file makes it the active document. `model.activate()`
+(`cmd/noggin/model.go`) reads `m.files.selectedNode()`; a nil node or a directory is a no-op
+(folder-enter is deliberately left for later, per the plan's own note); a file is passed to
+`loadDocument` and, on success, into the existing `model.openDocument(d)` — which already
+moved focus to the viewer, so M2.3 added no new focus-routing logic there. A read error
+returns `m` unchanged rather than exiting: no footer-message plumbing exists yet (that's
+M4.2), so a failed activate is silent-but-safe rather than surfaced — worth revisiting once
+the footer can carry transient messages. `keys.Activate` (`enter`) is a new keymap binding,
+routed in `model.Update`'s `filesPane` case ahead of `filesNav.handleKey` so it does not need
+to flow through the pane's own `handleKey` (which only ever returns a `filesNav`, not a
+`model` — `openDocument`/`activate` need model-level access to the viewer). `keymap_test.go`
+gained an `"enter"` entry in `namedKeys` (T-Enter round-trips via `tea.KeyEnter`, same pattern
+as `tab`/`up`/etc.).
 
-Evidence: `make check` clean. Unit tests (`files_test.go`, 8 tests over a hand-built
-`fixtureTree`): opens top-level-only with nested file hidden, empty folder listed (and stays
-listed when expanded), expand/collapse in place with selection unmoved, selection walks the
-whole expanded set and clamps at both ends, expansion is value-semantic, `view()` fills the
-box and marks the selection, empty-state when no root, and model-level key routing through
-focus. `make check-pty` now 67 checks (was 59): a committed fixture tree
-(`cmd/noggin/testdata/tree/`, empty folder held by a non-readable `.gitkeep`) launched via the
-binary — top-level entries shown, nested `guide.md` hidden until docs is expanded then hidden
-again on collapse, reverse-video selection bar on the wire, clean exit.
+Evidence: `make check` clean. Three new unit tests in `files_test.go`:
+`TestActivateOpensSelectedFileAndMovesFocus` (walks the real `testdata/tree` fixture — unlike
+the hand-built `fixtureTree`, whose nodes have no backing files, this one needs `loadDocument`
+to succeed — activates `README.md`, checks focus is `viewerPane`, the heading renders, the pane
+title names the file, and a subsequent `LineDown` moves the viewer's offset rather than a Files
+Nav selection), `TestActivateOnAFolderIsANoOp` (activating the initially-selected folder leaves
+focus on `filesPane` and the viewer unopened), `TestActivateWithAReadErrorLeavesSessionRunning`
+(a node pointing at a non-existent path leaves focus and the viewer untouched — no panic, no
+exit). `make check-pty` now 72 checks (was 67): launches the fixture tree, steps onto
+`README.md`, presses enter, and checks the footer reports `Document` focus, the file's heading
+is on screen, the pane title names it, a half-page-down does not error, and the session still
+exits 0.
 
-Not yet through review/validate (Status table blank). **M1.5 remains unvalidated** and M2.1
-(reviewed/validated blank) too — the M1→M2 gate was crossed with the user's go-ahead; validate
-M1.5/M2.1/M2.2 together at the next checkpoint.
+Not yet through review/validate (Status table blank for M2.1-M2.3). **M1.5 remains
+unvalidated** too — the M1→M2 gate was crossed with the user's go-ahead; validate
+M1.5/M2.1/M2.2/M2.3 together at the next checkpoint (M2 is now complete).
 
-Next: **M2.3 — activate a file.** Selecting a fixture file and pressing an activate key renders
-it in the viewer with focus moving to the viewer, and scroll keys then act on it. The pieces
-are in place: `filesNav.selectedNode()` returns the node under the selection (`Path` absolute,
-ready for `loadDocument`); `model.openDocument(d)` already loads a document, moves focus to the
-viewer and is what M2.3 should call; the viewer's scroll routing already fires on
-`focus == viewerPane`. Needs a new `Activate` binding (enter is the obvious choice, currently
-unbound) routed when `focus == filesPane` and the selected node is a file — a folder's enter
-could toggle expand, or M2.3 can keep activate file-only and leave folder-enter for later.
-Watch: `openDocument` takes a `document`, so activate must `loadDocument(selectedNode().Path)`
-and surface a read error rather than exit.
+Next: **M3.1 — resolve the session's roots from the launch argument (S1).** This replaces,
+rather than supplements, `main.go`'s current temporary dir/file-argument scaffolding (dir →
+`openFolder`, file → `openDocument`, both `os.Exit(1)` on error) — per T7 and the plan's own
+note, a bad path must become a rejection message plus a session that still starts, not a
+process exit. The table-driven cases the plan lists (bare launch, dir argument, file argument,
+already-starred dir, non-existent path, subdirectory of a starred root, parent of a starred
+root, more than one argument) imply a starred-roots concept that M3.2 (the store) has not been
+built yet — M3.1's acceptance criterion talks about "already a starred root" cases, so either
+M3.1 needs a minimal in-memory roots concept ahead of M3.2's persistent store, or those specific
+cases wait for M3.2 to land; worth a fresh read of S1's spec text before starting, since PLAN.md
+alone under-specifies the roots data shape at this boundary. No footer-message mechanism exists
+yet for rejections either (M4.2) — M3.1 will need to decide where a rejection message lives in
+the meantime (a temporary field on `model`, most likely) or explicitly punt display to M4.2 and
+just ensure the session still starts.
 
 Still relevant:
 - Go with the grain (D1) — now meaning Charm v2.
@@ -73,7 +82,7 @@ No blockers.
 | M1.5 | done   | 2026-07-31 | -       | two-pass review (T9, T10 logged); not yet validated |
 | M2.1 | done   | -        | -         | internal/tree: policy + walk + hand-rolled gitignore (D18) |
 | M2.2 | done   | -        | -         | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks |
-| M2.3 | todo   | -        | -         |      |
+| M2.3 | done   | -        | -         | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks |
 | M3.1 | todo   | -        | -         |      |
 | M3.2 | todo   | -        | -         |      |
 | M3.3 | todo   | -        | -         |      |

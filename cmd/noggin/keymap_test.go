@@ -58,6 +58,7 @@ var modifiers = map[string]tea.KeyMod{
 // printable character needs an entry here.
 var namedKeys = map[string]rune{
 	"tab":    tea.KeyTab,
+	"enter":  tea.KeyEnter,
 	"up":     tea.KeyUp,
 	"down":   tea.KeyDown,
 	"left":   tea.KeyLeft,

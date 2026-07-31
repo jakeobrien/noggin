@@ -68,6 +68,24 @@ func (m model) openDocument(d document) model {
 	return m
 }
 
+// activate opens the Files Nav's selected file as the active document,
+// moving focus to the viewer (M2.3). A folder or an empty pane is a no-op —
+// activating a folder is left for later, per the Files Nav's own
+// expand/collapse bindings. A read error leaves the session exactly as it
+// was rather than exiting it (S1's "silence is not an error" principle,
+// generalized here ahead of M3.1's launch-time version of the same rule).
+func (m model) activate() model {
+	n := m.files.selectedNode()
+	if n == nil || n.IsDir {
+		return m
+	}
+	d, err := loadDocument(n.Path)
+	if err != nil {
+		return m
+	}
+	return m.openDocument(d)
+}
+
 func (m model) Init() tea.Cmd {
 	return nil
 }
@@ -103,6 +121,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case filesPane:
+			if key.Matches(msg, keys.Activate) {
+				return m.activate(), nil
+			}
 			if next, handled := m.files.handleKey(msg); handled {
 				m.files = next
 				return m, nil
