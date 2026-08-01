@@ -2,7 +2,7 @@
 
 ## Cursor
 
-Current task: M5.1
+Current task: M5.2
 
 ## Handoff
 
@@ -15,11 +15,25 @@ M4.2 folded in T15/T26.
 T28 (open in TRIAGE.md) reconfirmed still live by direct reproduction: `resolveLaunch`
 drops an *absolute*-path launch argument on a `resolveCwd` failure even though it needs no
 cwd (`cmd/noggin/roots.go:64-72`); no regression test covers it. Needs replan before or
-alongside M5 work — not fixed by M3.5/M3.6.
+alongside M5 work — not fixed by M3.5/M3.6. Still open.
 
-M5 is next — the cut-candidate milestone (D8): if the cycle overruns, cut M5.3 (help modal)
-first, then M5.2 (navigator toggle), then M5.1 (find); otherwise build in PLAN.md's listed
-order, M5.1 first.
+M5.1 (find in document, S8) is done, not yet reviewed/validated: `cmd/noggin/find.go` +
+keymap.go (Find `/`, FindNext `n`, FindPrevious `N`, Cancel `esc`) + model.go wiring +
+footer prompt display; 8 unit tests (`find_test.go`) plus a new M5.1 pty section (5 checks).
+Acceptance verified directly: a tail phrase is brought on screen and its line reverse-videoed
+(unit + pty, real colour terminal), traversal wraps both directions (unit index assertions +
+a pty full-cycle check), an uppercase query stops matching lowercase, and Escape dismisses
+without moving the viewport.
+
+Building it surfaced a real correction to D14/`bubbletea-v2-migration.md`: bubbles v2's
+`viewport.Model.SetHighlights` computes the wrong line once any ANSI escape precedes a match
+(confirmed empirically against Glamour's real dark style — `go test` cannot see this, it never
+renders in colour). `find.go` uses `EnsureVisible`/`StyleLineFunc` directly instead, which are
+not implicated. Full writeup: `cycle/findings/viewport-search-ansi-offsets.md`. No TRIAGE.md
+item needed — the finding *is* the fix, already applied, not deferred work.
+
+M5.2 (navigator toggle) is next, then M5.3 (help modal) — the cut-candidate milestone (D8): if
+the cycle overruns, cut M5.3 first, then M5.2; M5.1 is no longer cuttable, it is done.
 
 Still relevant:
 - Go with the grain (D1) now means Charm v2.
@@ -53,6 +67,6 @@ No blockers.
 | M3.6 | done   | 2026-08-01 | 2026-08-01 | replan C1/2026-08-01: M2/M3 code-review cleanup batch (T9, T10, T16, T19, T21-T25, T27) |
 | M4.1 | done   | 2026-08-01 | 2026-08-01 | edit handoff (S10/D3): tea.ExecProcess release/resume + finishEdit re-render from disk |
 | M4.2 | done   | 2026-08-01 | 2026-08-01 | footer key hints (S11); T15 (activate read-error message) and T26 (empty-Roots-Nav guidance) folded in |
-| M5.1 | todo   | -        | -         |      |
+| M5.1 | done   | -        | -         | find in document (S8); find.go + keymap/model wiring; 8 unit tests + 5 pty checks; found and fixed a real bubbles/v2 SetHighlights bug along the way (see findings) |
 | M5.2 | todo   | -        | -         |      |
 | M5.3 | todo   | -        | -         |      |

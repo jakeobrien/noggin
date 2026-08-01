@@ -15,7 +15,7 @@ const emptyViewerText = "No document open. Pick a file in the Navigator."
 
 // viewer is the Document Viewer: the active document, its rendered form and the
 // scroll position within it. Navigation is viewport scrolling only — no cursor,
-// no selection (D4).
+// no selection (D4). find is the S8 in-document search state, layered on top.
 type viewer struct {
 	vp  viewport.Model
 	doc document
@@ -26,6 +26,8 @@ type viewer struct {
 
 	// err is a render failure, shown in the pane instead of the document.
 	err error
+
+	find find
 }
 
 func newViewer() viewer {
@@ -36,7 +38,7 @@ func newViewer() viewer {
 	// v2 stops padding short content out to the viewport's height unless asked;
 	// the pane contract is a content box of exactly its size.
 	vp.FillHeight = true
-	return viewer{vp: vp}
+	return viewer{vp: vp, find: newFind()}
 }
 
 // setSize sets the content box the viewer draws into, re-rendering (and so
@@ -59,9 +61,16 @@ func (v viewer) open(d document) viewer {
 }
 
 // render rebuilds the viewport's content from the document at the current width.
+//
+// A re-render invalidates any find in progress (M5.1): a resize re-wraps the
+// document, so every match's line number would be wrong, and a re-render also
+// means a different document is open (or the same one just re-read from disk,
+// M4.1) — either way, stale matches over content that no longer exists.
 func (v viewer) render() viewer {
 	v.renderedWidth = v.vp.Width()
 	v.err = nil
+	v.find = newFind()
+	v.vp.StyleLineFunc = nil
 	if !v.doc.isOpen() {
 		v.vp.SetContent("")
 		return v

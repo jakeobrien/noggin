@@ -30,3 +30,8 @@
   breaking `go`; re-validated fresh and the container now has a working go1.26.5 toolchain,
   gcc/cgo, and gopls/staticcheck/goimports, no workaround needed. Kept for history and Charm
   library versions at plan time.
+- `viewport-search-ansi-offsets.md` — M5.1: `viewport.Model.SetHighlights` drifts onto the
+  wrong line once any ANSI escape precedes a match — confirmed empirically against Glamour's
+  real (colour) style, invisible to `go test` because it never renders in colour. Corrects part
+  of D14/`bubbletea-v2-migration.md`'s "what it buys us". `EnsureVisible`/`StyleLineFunc` are
+  unaffected and are what `find.go` uses instead.

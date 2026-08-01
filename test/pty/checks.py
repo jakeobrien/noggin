@@ -33,6 +33,10 @@ KEY = {
     "Activate":     b"\r",      # keys.Activate: enter
     "Star":         b"s",       # keys.Star
     "Edit":         b"e",       # keys.Edit
+    "Find":         b"/",       # keys.Find
+    "FindNext":     b"n",       # keys.FindNext
+    "FindPrevious": b"N",       # keys.FindPrevious
+    "Cancel":       b"\x1b",    # keys.Cancel: esc
 }
 
 
@@ -583,5 +587,94 @@ check("M4.2 the message clears on the next keypress",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M4.2 exits 0 after the message-clear check", code == 0, f"exit {code}")
+
+# --- M5.1: find in document -------------------------------------------------
+
+# This is the check that matters most for M5.1: under a real pty, Glamour
+# renders the fixture with real ANSI colour (no-TTY styling is a go-test-only
+# fallback), and it is exactly that styling which drifts viewport.Model's own
+# SetHighlights out of alignment with the document's real line numbers
+# (findings/viewport-search-ansi-offsets.md). go test alone cannot catch that
+# — it never renders in colour — so this is the one place a regression would
+# actually show up.
+
+s = Session([BINARY, FIXTURE], 80, 24)
+s.pump(1.2)
+sc = screen_of(s.out, 80, 24)
+body_before = "\n".join(sc.raw_lines())
+check("M5.1 fixture opens at the top, tail not yet on screen",
+      "Reading Notes" in body_before and "final line of the fixture" not in body_before,
+      repr(body_before[:80]))
+
+query = b"final line of the fixture"
+s.send(KEY["Find"], 0.3)
+out = s.send(query, 0.6)
+sc = screen_of(s.out, 80, 24)
+body = "\n".join(sc.raw_lines())
+check("M5.1 an incremental query brings a tail phrase on screen",
+      "final line of the fixture" in body, repr(body[-200:]))
+check("M5.1 the matched line is indicated with reverse video",
+      b"\x1b[7m" in out, repr(out[-400:]))
+footer_editing = sc.lines()[-1]
+check("M5.1 the footer shows the query while it is being typed",
+      "final line of the fixture" in footer_editing, repr(footer_editing))
+
+s.send(KEY["Activate"], 0.4)  # commit
+footer_committed = screen_of(s.out, 80, 24).lines()[-1]
+check("M5.1 committing the query restores the normal footer",
+      "final line of the fixture" not in footer_committed, repr(footer_committed))
+
+scrolled_body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+s.send(KEY["Cancel"], 0.4)
+after_cancel = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M5.1 dismissing the find leaves the view where it was",
+      after_cancel == scrolled_body, repr(after_cancel[:80]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M5.1 exits 0 after a find round-trip", code == 0, f"exit {code}")
+
+# Traversal: a query with several hits, wrapping past the last one. The
+# fixture has 4 hits for "line", so a full cycle of 4 nexts returns to the
+# same match. Comparing against the frame right after commit would be
+# comparing two different arrival paths to that match (typing the query
+# converges on it incrementally, one keystroke at a time, each of which can
+# itself move the viewport — EnsureVisible only scrolls when a match is not
+# already on screen, so which frame you land on for a given match depends on
+# how you got there); comparing one next's frame against five nexts' frame
+# instead holds the arrival path fixed (always "press next") on both sides.
+s = Session([BINARY, FIXTURE], 80, 24)
+s.pump(1.2)
+s.send(KEY["Find"], 0.3)
+s.send(b"line", 0.4)
+s.send(KEY["Activate"], 0.3)
+
+# Two warm-up cycles settle the sequence of viewport positions into a fixed,
+# repeating one (EnsureVisible only scrolls when a match is not already on
+# screen, so the very first visit to each match can still be settling in);
+# from there, one more full cycle must reproduce the same frame.
+for _ in range(2 * 4):
+    s.send(KEY["FindNext"], 0.2)
+ref = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+for _ in range(4):
+    s.send(KEY["FindNext"], 0.2)
+wrapped = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M5.1 a full cycle of next-match traversal returns to the same match",
+      wrapped == ref, f"ref[:80]={ref[:80]!r} wrapped[:80]={wrapped[:80]!r}")
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M5.1 exits 0 after a traversal round-trip", code == 0, f"exit {code}")
+
+# Typing a character that is also a binding elsewhere (q, quit) must not
+# quit while the query has the keyboard.
+s = Session([BINARY, FIXTURE], 80, 24)
+s.pump(1.2)
+s.send(KEY["Find"], 0.3)
+s.send(b"q", 0.4)
+footer_q = screen_of(s.out, 80, 24).lines()[-1]
+check("M5.1 q types into the query instead of quitting",
+      "/q" in footer_q, repr(footer_q))
+
+code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
+check("M5.1 exits 0 after the quit-while-typing check", code == 0, f"exit {code}")
 
 done()

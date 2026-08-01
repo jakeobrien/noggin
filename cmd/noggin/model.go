@@ -214,6 +214,41 @@ func (m model) startEdit() (model, tea.Cmd) {
 	})
 }
 
+// startFind begins an S8 search over the active document, moving focus to
+// the viewer the same way activate() and activateRoot() do — the keys a
+// search needs next (typing, Cancel, Activate to commit) all target it. With
+// no document open it reports that instead, the same shape as startEdit.
+func (m model) startFind() (model, tea.Cmd) {
+	if !m.viewer.doc.isOpen() {
+		m.message = "no document open to find in"
+		return m, nil
+	}
+	next, cmd := m.viewer.startFind()
+	m.viewer = next
+	m.focus = m.resolveFocus(viewerPane)
+	return m, cmd
+}
+
+// handleFindInput is where a keypress goes while a find query has the
+// keyboard (m.viewer.findEditing()): Cancel dismisses it, Activate (enter)
+// commits it, and everything else — including keys bound elsewhere, like q
+// or the scroll keys — types into the query instead of acting on its usual
+// binding. That exclusivity is deliberate: a query for the word "question"
+// must not quit the program on its first letter.
+func (m model) handleFindInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, keys.Cancel):
+		m.viewer = m.viewer.cancelFind()
+		return m, nil
+	case key.Matches(msg, keys.Activate):
+		m.viewer = m.viewer.commitFind()
+		return m, nil
+	}
+	next, cmd := m.viewer.updateFindQuery(msg)
+	m.viewer = next
+	return m, cmd
+}
+
 // finishEdit resumes after $EDITOR exits, re-rendering the edited document
 // from disk (D3's "no file watching" — this is the one explicit re-read) so
 // changes are immediately visible. Reusing loadDocument and openDocument keeps
@@ -259,6 +294,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// any keypress after that clears it (S11), whether or not this one
 		// sets a fresh message of its own.
 		m.message = ""
+		// A find query in progress owns every key but Cancel and Activate
+		// (see handleFindInput); this must run before Quit and the rest below
+		// get a look at the keypress.
+		if m.viewer.findEditing() {
+			return m.handleFindInput(msg)
+		}
 		switch {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
@@ -270,6 +311,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case key.Matches(msg, keys.Edit):
 			return m.startEdit()
+		case key.Matches(msg, keys.Find):
+			return m.startFind()
+		case key.Matches(msg, keys.FindNext):
+			if m.viewer.hasFindMatches() {
+				m.viewer = m.viewer.findNext()
+			}
+			return m, nil
+		case key.Matches(msg, keys.FindPrevious):
+			if m.viewer.hasFindMatches() {
+				m.viewer = m.viewer.findPrevious()
+			}
+			return m, nil
 		}
 		// Movement keys belong to whichever pane has focus: the viewer scrolls,
 		// the Files Nav moves its selection and opens/closes folders.
@@ -429,11 +482,21 @@ func (m model) paneTitle(p pane) string {
 	return p.title()
 }
 
-// renderFooter draws the footer line: a transient message (D22) when one is
-// set, otherwise the focused pane's key hints (hintText), truncated to fit
-// (S11). Update clears m.message on every keypress, so a message shown here
-// never survives past the next key.
+// renderFooter draws the footer line: an in-progress find query (M5.1)
+// first, since it needs the keyboard and so must be shown; otherwise a
+// transient message (D22) when one is set; otherwise the focused pane's key
+// hints (hintText), truncated to fit (S11). Update clears m.message on every
+// keypress, so a message shown here never survives past the next key.
+//
+// The find prompt is not run through footerStyle's dim foreground: it is
+// already a complete rendering (textinput.Model.View(), cursor included) and
+// muting its own styling would fight it rather than match the other two
+// cases, which are plain, unstyled text until footerStyle colours them.
 func (m model) renderFooter(r rect) string {
+	if m.viewer.findEditing() {
+		return lipgloss.NewStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
+			Render(m.viewer.findView(r.width))
+	}
 	text := hintText(m.focus, r.width)
 	if m.message != "" {
 		text = m.message

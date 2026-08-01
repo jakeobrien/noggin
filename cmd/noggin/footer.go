@@ -18,7 +18,11 @@ func paneHints(p pane) []key.Binding {
 	case filesPane:
 		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.NextPane, keys.Edit}
 	default: // viewerPane
-		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Edit, keys.NextPane}
+		// FindNext/FindPrevious and Cancel are omitted: they only do anything
+		// once a search is active, and a hint for an inapplicable binding is
+		// worse than no hint (S12's help modal, M5.3, lists the full keymap
+		// regardless — that is the discoverability backstop for these).
+		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Edit, keys.NextPane}
 	}
 }
 

@@ -33,7 +33,9 @@ type keyMap struct {
 	// becomes the active document and focus moves to the viewer (M2.3); a
 	// folder is left for later. On the Roots Nav, the selected root becomes
 	// the active root (S3), refused with a footer message if its path is
-	// missing (broken).
+	// missing (broken). It also commits an in-progress find query (M5.1),
+	// the viewer's own use of the same physical key: "enter" always means
+	// "accept what is selected or typed".
 	Activate key.Binding
 
 	// Document Viewer scrolling (S7): line, half-page, page, top, bottom.
@@ -51,6 +53,23 @@ type keyMap struct {
 	// pane-specific — with no document open it reports that instead of doing
 	// nothing (M4.1).
 	Edit key.Binding
+
+	// Find starts an incremental search over the open document (S8, M5.1):
+	// global like Edit, and refused the same way with no document open.
+	// FindNext and FindPrevious step through the matches it produces,
+	// wrapping; Cancel dismisses a search in progress, leaving the view
+	// where it is. While the query is being typed, every other key types
+	// into it instead of acting on its usual binding — see
+	// model.handleFindInput.
+	Find         key.Binding
+	FindNext     key.Binding
+	FindPrevious key.Binding
+
+	// Cancel dismisses a modal or in-progress input without acting on it.
+	// M5.1 is its first use (dismissing a find query); a generic name and
+	// binding on purpose, since S12's help modal (M5.3) will need the same
+	// one-key dismissal.
+	Cancel key.Binding
 
 	// Help is the footer's help affordance (S11): the footer advertises it
 	// under truncation (M4.2) even before S12's modal exists to open on it —
@@ -124,6 +143,22 @@ var keys = keyMap{
 	Edit: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "edit"),
+	),
+	Find: key.NewBinding(
+		key.WithKeys("/"),
+		key.WithHelp("/", "find"),
+	),
+	FindNext: key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "next match"),
+	),
+	FindPrevious: key.NewBinding(
+		key.WithKeys("N"),
+		key.WithHelp("N", "prev match"),
+	),
+	Cancel: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "cancel"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),

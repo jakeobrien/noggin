@@ -196,6 +196,21 @@ func press(t *testing.T, m model, name string) model {
 	return concrete(t, next)
 }
 
+// typeText sends s to the model one rune at a time, as a find query's
+// keystrokes arrive (find.go's updateFindQuery) rather than as a keymap.go
+// binding — there is no binding for arbitrary typed text, so this builds the
+// tea.KeyPressMsg directly instead of going through keyPress, the same way
+// production code never does but a query's actual characters are not one of
+// the named keys D2 confines to keymap.go.
+func typeText(t *testing.T, m model, s string) model {
+	t.Helper()
+	for _, r := range s {
+		next, _ := m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+		m = concrete(t, next)
+	}
+	return m
+}
+
 func concrete(t *testing.T, m tea.Model) model {
 	t.Helper()
 	got, ok := m.(model)
@@ -217,6 +232,7 @@ func allBindings() []key.Binding {
 		keys.PageUp, keys.PageDown,
 		keys.Top, keys.Bottom,
 		keys.Edit,
+		keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
 		keys.Help,
 	}
 }
