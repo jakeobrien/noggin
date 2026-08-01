@@ -66,6 +66,13 @@ type model struct {
 	// wait for that milestone (see D22).
 	roots   rootsNav
 	message string
+
+	// helpOpen is the S12 Help Modal (M5.3): when set, it owns the keyboard
+	// (handleHelpInput) and the frame gains its overlay (overlayHelp), the
+	// same shape m.viewer.findEditing() gives an in-progress search — an
+	// exclusive input mode layered on top of the model's other state, not a
+	// pane of its own, so it never touches m.focus.
+	helpOpen bool
 }
 
 func newModel() model {
@@ -267,6 +274,33 @@ func (m model) handleFindInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// openHelp opens the S12 Help Modal for the focused pane's context. Unlike
+// toggleNavigator, this is one-directional — handleHelpInput is the only
+// path that closes it, so the main switch below only ever calls this when
+// m.helpOpen is already false (the helpOpen branch there returns early
+// otherwise). It never touches m.focus: the modal is a layer over the
+// frame, not a pane swap, so closing it always returns focus exactly where
+// it was without needing to save or restore it.
+func (m model) openHelp() model {
+	m.helpOpen = true
+	return m
+}
+
+// handleHelpInput is where a keypress goes while the Help Modal is open
+// (m.helpOpen): Help and Cancel both close it — Help because pressing the
+// affordance again is the natural undo, Cancel because it is the generic
+// one-key dismissal every modal in this program shares (see keymap.go's
+// Cancel doc). Everything else is a no-op: the modal owns the keyboard while
+// it is up, the same exclusivity handleFindInput gives an in-progress
+// search, so a keypress meant for the pane underneath cannot leak through
+// the modal by accident.
+func (m model) handleHelpInput(msg tea.KeyPressMsg) model {
+	if key.Matches(msg, keys.Help) || key.Matches(msg, keys.Cancel) {
+		m.helpOpen = false
+	}
+	return m
+}
+
 // finishEdit resumes after $EDITOR exits, re-rendering the edited document
 // from disk (D3's "no file watching" — this is the one explicit re-read) so
 // changes are immediately visible. Reusing loadDocument and openDocument keeps
@@ -309,6 +343,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.viewer.findEditing() {
 			return m.handleFindInput(msg)
 		}
+		if m.helpOpen {
+			return m.handleHelpInput(msg), nil
+		}
 		switch {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
@@ -320,6 +357,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case key.Matches(msg, keys.Navigator):
 			return m.toggleNavigator(), nil
+		case key.Matches(msg, keys.Help):
+			return m.openHelp(), nil
 		case key.Matches(msg, keys.Edit):
 			return m.startEdit()
 		case key.Matches(msg, keys.Find):
@@ -459,7 +498,18 @@ var (
 // every field left at its zero value is a deliberate "off": noggin draws inline
 // with no cursor, exactly as it did under v1.
 func (m model) View() tea.View {
-	return tea.NewView(m.frame())
+	return tea.NewView(m.render())
+}
+
+// render is the frame (frame()) plus, when the Help Modal is open
+// (m.helpOpen), its overlay on top (overlayHelp) — the one place that
+// composition happens, so View() itself stays a one-liner.
+func (m model) render() string {
+	frame := m.frame()
+	if !m.helpOpen || m.width <= 0 || m.height <= 0 {
+		return frame
+	}
+	return overlayHelp(frame, m.width, m.height, m.focus)
 }
 
 // frame composes the three regions into the string View wraps.

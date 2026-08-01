@@ -38,6 +38,7 @@ KEY = {
     "FindPrevious": b"N",       # keys.FindPrevious
     "Navigator":    b"\x0e",    # keys.Navigator: ctrl+n
     "Cancel":       b"\x1b",    # keys.Cancel: esc
+    "Help":         b"?",       # keys.Help
 }
 
 
@@ -736,5 +737,73 @@ check("M5.2 the selection survived the hide/restore cycle: README.md, not docs, 
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M5.2 exits 0 after the selection-intact check", code == 0, f"exit {code}")
+
+# --- M5.3: help modal --------------------------------------------------------
+
+# Reachable from the footer affordance (S12), and it lists the focused pane's
+# own keys: opened from Files, it must name Files' bindings (expand/collapse)
+# and not another pane's (star is Roots-only).
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.2)
+before = screen_of(s.out, 80, 24)
+before_lines = before.raw_lines()
+top_edge_before = before_lines[0]
+footer_before = before_lines[-1]
+check("M5.3 focus starts on Files",
+      footer_before.startswith("Files"), repr(footer_before))
+
+s.send(KEY["Help"], 0.5)
+opened = screen_of(s.out, 80, 24)
+opened_body = "\n".join(opened.raw_lines())
+check("M5.3 the modal names the focused pane's own context",
+      "Help: Files" in opened_body, repr(opened_body[:200]))
+check("M5.3 the modal lists a Files-only binding (expand)",
+      "expand" in opened_body, repr(opened_body[:200]))
+check("M5.3 the modal does not list a Roots-only binding (star)",
+      "star" not in opened_body, repr(opened_body[:200]))
+
+# It opens over the pane, not instead of it: the frame's own top border and
+# footer, outside the centered modal box, are still exactly what they were.
+check("M5.3 the top border is unchanged outside the modal",
+      opened.raw_lines()[0] == top_edge_before, repr(opened.raw_lines()[0]))
+check("M5.3 the footer is unchanged outside the modal",
+      opened.raw_lines()[-1] == footer_before, repr(opened.raw_lines()[-1]))
+
+# The modal owns the keyboard while open: a movement key must not reach the
+# Files Nav underneath (selection unaffected once the modal is dismissed).
+s.send(KEY["Down"], 0.3)
+s.send(KEY["Down"], 0.3)
+s.send(KEY["Cancel"], 0.5)
+restored = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M5.3 esc dismisses the modal, restoring the exact previous screen",
+      restored == "\n".join(before_lines), repr(restored[:80]))
+
+# The Help key itself dismisses it too (pressing the affordance again).
+s.send(KEY["Help"], 0.5)
+s.send(KEY["Help"], 0.5)
+restored_again = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M5.3 pressing Help again also dismisses the modal",
+      restored_again == "\n".join(before_lines), repr(restored_again[:80]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M5.3 exits 0 after a help round-trip", code == 0, f"exit {code}")
+
+# Opens over the Document Viewer too, with the viewer's own context (search
+# keys, not Files/Roots-only ones), proving "any pane" rather than one.
+s = Session([BINARY, FIXTURE], 80, 24)
+s.pump(1.2)
+s.send(KEY["Help"], 0.5)
+viewer_help = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M5.3 opened from the viewer, the modal names the Document context",
+      "Help: Document" in viewer_help, repr(viewer_help[:200]))
+check("M5.3 opened from the viewer, next/prev match are listed",
+      "next match" in viewer_help and "prev match" in viewer_help,
+      repr(viewer_help[:200]))
+check("M5.3 opened from the viewer, a Files/Roots-only binding is not listed",
+      "expand" not in viewer_help and "star" not in viewer_help,
+      repr(viewer_help[:200]))
+
+code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
+check("M5.3 exits 0 after the viewer-context help check", code == 0, f"exit {code}")
 
 done()
