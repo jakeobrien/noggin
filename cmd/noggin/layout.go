@@ -53,8 +53,10 @@ func (r rect) content() rect {
 
 // computeLayout divides a terminal of width x height into the frame's regions.
 // A terminal too narrow for both columns drops the Navigator rather than
-// rendering two unusable slivers.
-func computeLayout(width, height int) layout {
+// rendering two unusable slivers; hideNav drops it the same way regardless of
+// width, which is what the Navigator toggle (S9) hiding the sidebar means —
+// one width computation serves both the too-narrow case and the deliberate one.
+func computeLayout(width, height int, hideNav bool) layout {
 	if width <= 0 || height <= 0 {
 		return layout{}
 	}
@@ -64,9 +66,12 @@ func computeLayout(width, height int) layout {
 		body = 0
 	}
 
-	navWidth := clamp(width*navigatorPercent/100, minNavigatorWidth, maxNavigatorWidth)
-	if width-navWidth < minViewerWidth {
-		navWidth = 0
+	navWidth := 0
+	if !hideNav {
+		navWidth = clamp(width*navigatorPercent/100, minNavigatorWidth, maxNavigatorWidth)
+		if width-navWidth < minViewerWidth {
+			navWidth = 0
+		}
 	}
 
 	rootsHeight, filesHeight := splitHeight(body)

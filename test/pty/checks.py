@@ -36,6 +36,7 @@ KEY = {
     "Find":         b"/",       # keys.Find
     "FindNext":     b"n",       # keys.FindNext
     "FindPrevious": b"N",       # keys.FindPrevious
+    "Navigator":    b"\x0e",    # keys.Navigator: ctrl+n
     "Cancel":       b"\x1b",    # keys.Cancel: esc
 }
 
@@ -676,5 +677,64 @@ check("M5.1 q types into the query instead of quitting",
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("M5.1 exits 0 after the quit-while-typing check", code == 0, f"exit {code}")
+
+# --- M5.2: navigator toggle -------------------------------------------------
+
+s = Session([BINARY, FIXTURE], 80, 24)
+s.pump(1.2)
+before = screen_of(s.out, 80, 24)
+before_lines = before.raw_lines()
+before_body = "\n".join(before_lines)
+check("M5.2 the sidebar is present before toggling",
+      "Roots" in before_body and "Files" in before_body,
+      repr(before_lines[1]))
+nav_edge_before = before_lines[0].index("╮")
+
+out = s.send(KEY["Navigator"], 0.6)
+hidden = screen_of(s.out, 80, 24)
+hidden_lines = hidden.raw_lines()
+check("M5.2 toggling hides the whole sidebar",
+      "Roots" not in "\n".join(hidden_lines) and "Files" not in "\n".join(hidden_lines),
+      repr(hidden_lines[0]))
+check("M5.2 the document viewer's border now spans the full width",
+      hidden_lines[0][0] == "╭" and hidden_lines[0][-1] == "╮",
+      repr(hidden_lines[0]))
+check("M5.2 hiding the sidebar re-wraps the document to the width it gained",
+      hidden_lines[0].index("╮") > nav_edge_before, f"{hidden_lines[0].index('╮')} vs {nav_edge_before}")
+
+s.send(KEY["Navigator"], 0.6)
+restored = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M5.2 toggling again restores the exact previous layout",
+      restored == "\n".join(before_lines), repr(restored[:80]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M5.2 exits 0 after a navigator round-trip", code == 0, f"exit {code}")
+
+# The Files Nav's own selection must survive a hide/restore cycle. Toggling
+# moves focus off the Files pane (it is hidden, so it cannot hold focus, the
+# same rule a narrow-terminal resize follows); S9 says nothing about
+# restoring focus, only the sidebar's own selection, so PrevPane brings focus
+# back to Files deliberately before checking it. The selection survives iff
+# activating from it still opens README.md (row 2 of docs, empty, README.md,
+# notes.txt), not docs (row 0, the reset-to-top default).
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.2)
+for _ in range(2):
+    s.send(KEY["Down"], 0.3)  # docs -> empty -> README.md
+s.send(KEY["Navigator"], 0.5)
+s.send(KEY["Navigator"], 0.5)
+s.send(KEY["PrevPane"], 0.4)  # deliberately back to Files; S9 owes no focus
+footer_focus = screen_of(s.out, 80, 24).lines()[-1]
+check("M5.2 focus is back on Files before activating",
+      footer_focus.startswith("Files"), repr(footer_focus))
+
+s.send(KEY["Activate"], 0.5)
+opened = screen_of(s.out, 80, 24)
+check("M5.2 the selection survived the hide/restore cycle: README.md, not docs, opens",
+      "Document: README.md" in "\n".join(opened.raw_lines()),
+      repr(opened.raw_lines()[0]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M5.2 exits 0 after the selection-intact check", code == 0, f"exit {code}")
 
 done()

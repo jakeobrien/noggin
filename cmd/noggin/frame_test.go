@@ -22,7 +22,7 @@ var frameSizes = []struct {
 func TestComputeLayoutProportions(t *testing.T) {
 	for _, s := range frameSizes {
 		t.Run(s.name, func(t *testing.T) {
-			l := computeLayout(s.width, s.height)
+			l := computeLayout(s.width, s.height, false)
 
 			wantNav := clamp(s.width*navigatorPercent/100, minNavigatorWidth, maxNavigatorWidth)
 			if l.navigatorWidth() != wantNav {
@@ -68,7 +68,7 @@ func TestViewRendersThreeRegionsAtSize(t *testing.T) {
 				}
 			}
 
-			l := computeLayout(s.width, s.height)
+			l := computeLayout(s.width, s.height, false)
 			lines := strings.Split(view, "\n")
 
 			// Each Navigator pane occupies its own band of rows, so the two
@@ -151,7 +151,7 @@ func TestFocusMovesBetweenPanesAndBack(t *testing.T) {
 
 func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 	narrow := minNavigatorWidth + minViewerWidth - 1
-	l := computeLayout(narrow, 24)
+	l := computeLayout(narrow, 24, false)
 	if l.navigatorWidth() != 0 {
 		t.Fatalf("navigator width at %d columns = %d, want 0", narrow, l.navigatorWidth())
 	}
@@ -232,7 +232,7 @@ func allBindings() []key.Binding {
 		keys.PageUp, keys.PageDown,
 		keys.Top, keys.Bottom,
 		keys.Edit,
-		keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
+		keys.Find, keys.FindNext, keys.FindPrevious, keys.Navigator, keys.Cancel,
 		keys.Help,
 	}
 }

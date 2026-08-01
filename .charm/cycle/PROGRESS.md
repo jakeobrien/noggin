@@ -2,38 +2,35 @@
 
 ## Cursor
 
-Current task: M5.2
+Current task: M5.3
 
 ## Handoff
 
-M1-M4 done, committed and now fully validated (fresh-context subagent, 2026-08-01):
-M2.4, M3.5, M3.6, M4.1, M4.2 all PASS against their PLAN.md acceptance criteria — `make
-check` and `make check-pty` both clean, no discrepancy between PROGRESS.md's claims and
-observed behavior. M2.4, M3.5, M3.6 absorbed the M1-M3 review/validate backlog per D24;
-M4.2 folded in T15/T26.
+M5.2 (navigator toggle, S9) is done, not yet reviewed/validated: `keys.Navigator` (ctrl+n,
+D25) in keymap.go; `model.toggleNavigator`/`resize`/`layout` in model.go; `computeLayout`
+grew a `hideNav bool` third parameter (layout.go) so a hidden sidebar and a too-narrow
+terminal share the same width computation; `footer.go`'s `paneHints` advertises it on every
+pane alongside Edit. 4 unit tests (`navigator_test.go`) plus a new M5.2 pty section (8
+checks). Acceptance verified directly: the key hides the whole sidebar and the viewer's
+border now spans the full terminal width (unit layout-width assertions + pty border-position
+check), the open document actually re-wraps to fewer lines at the wider width (unit
+`lineCount` comparison + pty column-shift check), a second press restores the exact previous
+layout (unit struct equality + pty byte-identical screen), and the Files Nav's own selection
+survives a hide/restore cycle (unit `selected` index check + pty: after restoring, tabbing
+focus back to Files and activating still opens the file the moved selection pointed at, not
+the reset-to-top default). Toggling moves focus off a Navigator pane it can no longer land in
+(the same `resolveFocus` rule a narrow-terminal resize already follows) but does not restore
+focus on the way back — S9 only promises the sidebar's own selection survives, not focus, and
+no test depends on the latter.
 
-T28 (open in TRIAGE.md) reconfirmed still live by direct reproduction: `resolveLaunch`
-drops an *absolute*-path launch argument on a `resolveCwd` failure even though it needs no
-cwd (`cmd/noggin/roots.go:64-72`); no regression test covers it. Needs replan before or
-alongside M5 work — not fixed by M3.5/M3.6. Still open.
+T28 (open in TRIAGE.md) still live, unchanged this session: `resolveLaunch` drops an
+*absolute*-path launch argument on a `resolveCwd` failure even though it needs no cwd
+(`cmd/noggin/roots.go:64-72`); no regression test covers it. Needs replan before or alongside
+remaining M5 work — not touched by M5.1 or M5.2.
 
-M5.1 (find in document, S8) is done, not yet reviewed/validated: `cmd/noggin/find.go` +
-keymap.go (Find `/`, FindNext `n`, FindPrevious `N`, Cancel `esc`) + model.go wiring +
-footer prompt display; 8 unit tests (`find_test.go`) plus a new M5.1 pty section (5 checks).
-Acceptance verified directly: a tail phrase is brought on screen and its line reverse-videoed
-(unit + pty, real colour terminal), traversal wraps both directions (unit index assertions +
-a pty full-cycle check), an uppercase query stops matching lowercase, and Escape dismisses
-without moving the viewport.
-
-Building it surfaced a real correction to D14/`bubbletea-v2-migration.md`: bubbles v2's
-`viewport.Model.SetHighlights` computes the wrong line once any ANSI escape precedes a match
-(confirmed empirically against Glamour's real dark style — `go test` cannot see this, it never
-renders in colour). `find.go` uses `EnsureVisible`/`StyleLineFunc` directly instead, which are
-not implicated. Full writeup: `cycle/findings/viewport-search-ansi-offsets.md`. No TRIAGE.md
-item needed — the finding *is* the fix, already applied, not deferred work.
-
-M5.2 (navigator toggle) is next, then M5.3 (help modal) — the cut-candidate milestone (D8): if
-the cycle overruns, cut M5.3 first, then M5.2; M5.1 is no longer cuttable, it is done.
+M5.3 (help modal) is next — the last milestone and the cut candidate (D8): M5.1 and M5.2 are
+both done and no longer cuttable; if the cycle overruns from here the only lever left is
+cutting M5.3 itself.
 
 Still relevant:
 - Go with the grain (D1) now means Charm v2.
@@ -68,5 +65,5 @@ No blockers.
 | M4.1 | done   | 2026-08-01 | 2026-08-01 | edit handoff (S10/D3): tea.ExecProcess release/resume + finishEdit re-render from disk |
 | M4.2 | done   | 2026-08-01 | 2026-08-01 | footer key hints (S11); T15 (activate read-error message) and T26 (empty-Roots-Nav guidance) folded in |
 | M5.1 | done   | -        | -         | find in document (S8); find.go + keymap/model wiring; 8 unit tests + 5 pty checks; found and fixed a real bubbles/v2 SetHighlights bug along the way (see findings) |
-| M5.2 | todo   | -        | -         |      |
+| M5.2 | done   | -        | -         | navigator toggle (S9, D25); computeLayout gained hideNav; model.toggleNavigator/resize/layout; ctrl+n; 4 unit tests + 8 pty checks |
 | M5.3 | todo   | -        | -         |      |

@@ -65,6 +65,13 @@ type keyMap struct {
 	FindNext     key.Binding
 	FindPrevious key.Binding
 
+	// Navigator hides and restores the whole sidebar (Roots Nav and Files
+	// Nav), the Document Viewer re-wrapping to the width it gains (S9,
+	// M5.2). Global, like Edit and Find, and it never resets either
+	// Navigator pane's own selection — hiding and restoring leaves it
+	// exactly as it was.
+	Navigator key.Binding
+
 	// Cancel dismisses a modal or in-progress input without acting on it.
 	// M5.1 is its first use (dismissing a find query); a generic name and
 	// binding on purpose, since S12's help modal (M5.3) will need the same
@@ -155,6 +162,10 @@ var keys = keyMap{
 	FindPrevious: key.NewBinding(
 		key.WithKeys("N"),
 		key.WithHelp("N", "prev match"),
+	),
+	Navigator: key.NewBinding(
+		key.WithKeys("ctrl+n"),
+		key.WithHelp("ctrl+n", "sidebar"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),

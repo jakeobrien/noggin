@@ -51,6 +51,13 @@ type model struct {
 	files  filesNav
 	viewer viewer
 
+	// navigatorHidden is the S9 Navigator toggle: hides the whole sidebar
+	// (Roots Nav and Files Nav) and gives the Document Viewer the full width
+	// when set. It never touches either pane's own state (selection,
+	// expansion) — only the layout computed from it (see layout()) — so
+	// restoring it leaves that state exactly as it was (M5.2).
+	navigatorHidden bool
+
 	// roots is the session's note sources (S1): the Roots Nav pane and its
 	// selection, doubling as the record of which root is active. message
 	// carries a transient footer notice — a launch-time rejection (S1) or a
@@ -214,6 +221,17 @@ func (m model) startEdit() (model, tea.Cmd) {
 	})
 }
 
+// toggleNavigator flips the S9 Navigator toggle and re-lays-out the frame at
+// the current terminal size. Hiding moves focus off a Navigator pane it can
+// no longer land in, the same way a resize below the narrow-terminal
+// threshold does (resolveFocus); showing it again leaves focus exactly where
+// it was, since the Document Viewer stays visible throughout and the toggle
+// never touches either Navigator pane's own selection state.
+func (m model) toggleNavigator() model {
+	m.navigatorHidden = !m.navigatorHidden
+	return m.resize(m.width, m.height)
+}
+
 // startFind begins an S8 search over the active document, moving focus to
 // the viewer the same way activate() and activateRoot() do — the keys a
 // search needs next (typing, Cancel, Activate to commit) all target it. With
@@ -279,16 +297,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case editFinishedMsg:
 		return m.finishEdit(msg), nil
 	case tea.WindowSizeMsg:
-		m.width, m.height = msg.Width, msg.Height
-		m.focus = m.resolveFocus(m.focus)
-		l := computeLayout(m.width, m.height)
-		viewerContent := l.viewer.content()
-		m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
-		filesContent := l.files.content()
-		m.files = m.files.setSize(filesContent.width, filesContent.height)
-		rootsContent := l.roots.content()
-		m.roots = m.roots.setSize(rootsContent.width, rootsContent.height)
-		return m, nil
+		return m.resize(msg.Width, msg.Height), nil
 	case tea.KeyPressMsg:
 		// A transient message (D22) is displaced by the action it reports on;
 		// any keypress after that clears it (S11), whether or not this one
@@ -309,6 +318,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.PrevPane):
 			m.focus = m.shiftFocus(-1)
 			return m, nil
+		case key.Matches(msg, keys.Navigator):
+			return m.toggleNavigator(), nil
 		case key.Matches(msg, keys.Edit):
 			return m.startEdit()
 		case key.Matches(msg, keys.Find):
@@ -356,11 +367,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// resize sets the terminal size and re-lays-out the frame: resolving focus
+// onto a still-visible pane, then sizing each pane's content box from the
+// resulting layout (which also reflects the S9 Navigator toggle, see
+// layout()). Both a real terminal resize and toggleNavigator drive the frame
+// through this one path, so they reflow identically.
+func (m model) resize(width, height int) model {
+	m.width, m.height = width, height
+	m.focus = m.resolveFocus(m.focus)
+	l := m.layout()
+	viewerContent := l.viewer.content()
+	m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
+	filesContent := l.files.content()
+	m.files = m.files.setSize(filesContent.width, filesContent.height)
+	rootsContent := l.roots.content()
+	m.roots = m.roots.setSize(rootsContent.width, rootsContent.height)
+	return m
+}
+
+// layout is the frame's regions at the model's current terminal size and
+// Navigator visibility (S9).
+func (m model) layout() layout {
+	return computeLayout(m.width, m.height, m.navigatorHidden)
+}
+
 // visible reports whether a pane has a region to draw in at the current size.
-// A terminal too narrow for the Navigator column hides its panes (see
-// computeLayout), and focus must not land in one.
+// A terminal too narrow for the Navigator column, or the Navigator toggle
+// (S9) hiding it, both hide its panes (see computeLayout), and focus must
+// not land in one.
 func (m model) visible(p pane) bool {
-	l := computeLayout(m.width, m.height)
+	l := m.layout()
 	switch p {
 	case rootsPane:
 		return !l.roots.empty()
@@ -431,7 +467,7 @@ func (m model) frame() string {
 	if m.width <= 0 || m.height <= 0 {
 		return ""
 	}
-	l := computeLayout(m.width, m.height)
+	l := m.layout()
 
 	body := m.renderPane(viewerPane, l.viewer, m.viewer.view())
 	if l.navigatorWidth() > 0 {

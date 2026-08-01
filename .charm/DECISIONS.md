@@ -437,3 +437,19 @@
   correctness fixes (M3.5) separate from pure standards/duplication cleanup (M3.6) and from the
   tree-specific batch (M2.4) keeps each task's acceptance criterion checkable in one sitting,
   rather than one criterion trying to cover unrelated files and risk levels.
+
+## D25: M5.2 Navigator toggle binds to ctrl+n
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-02
+- Context: S9/M5.2 names the action ("one key hides and restores the whole sidebar") but not
+  the key. Every single-character mnemonic candidate was already taken (`n`/`N` by
+  FindNext/FindPrevious, `s` by Star, `b`/`h`/`l` by scroll and Files Nav navigation); `ctrl+b`
+  and `ctrl+f` are already PageUp/PageDown aliases.
+- Decision: `ctrl+n` ("Navigator"), advertised in the footer as "sidebar" for every pane
+  alongside Edit, the other global action already shown everywhere (footer.go's
+  `paneHints`).
+- Why: low risk and cheap to revisit \u2014 D2 confines every key literal to keymap.go, so
+  retuning this one binding later is a one-file, one-line change; no plan or test depends on
+  the specific key, only on the binding named `keys.Navigator` existing.

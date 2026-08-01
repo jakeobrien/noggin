@@ -243,7 +243,7 @@ func TestViewerRewrapsOnResize(t *testing.T) {
 		{"wide", wide, 120, 40},
 		{"narrow", narrow, 80, 24},
 	} {
-		want := computeLayout(tc.width, tc.height).viewer.content()
+		want := computeLayout(tc.width, tc.height, false).viewer.content()
 		if got := tc.m.viewer.renderedWidth; got != want.width {
 			t.Errorf("%s: rendered at width %d, want %d", tc.name, got, want.width)
 		}
