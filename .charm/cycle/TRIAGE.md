@@ -25,8 +25,3 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-
-<!-- Empty as of this replan (2026-08-01). T9-T27 routed: T12, T13, T14 → PLAN.md M2.4 (T13
-     also D23); T11 → PLAN.md M2.4 (drop-or-test the dead branch); T17, T18, T20 → PLAN.md
-     M3.5; T9, T10, T16, T19, T21, T22, T23, T24, T25, T27 → PLAN.md M3.6; T15, T26 → folded
-     into PLAN.md M4.2's acceptance criteria. Rationale for the batching in D24. -->

@@ -10,7 +10,11 @@
 - **Edit** — the handoff: release the terminal to `$EDITOR` on the Active Document, then resume
   and re-render. Not in-app editing.
 - **Files Nav** — the lower Navigator pane; the file tree of the Active Root.
+- **Focus** — which pane currently receives keyboard input. Exactly one pane at a time; most
+  keys route to the focused pane.
 - **Footer** — the persistent bottom bar: contextual key hints plus transient messages.
+- **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
+  footer's help affordance and dismissible with one key.
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
   vim-oriented. Provisional, like all bindings.
 - **Navigator** — the left sidebar: Roots Nav above, Files Nav below. Hideable.

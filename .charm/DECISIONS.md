@@ -267,6 +267,7 @@
 
 - Status: decided
 - Cycle: C1
+- Date: 2026-07-31
 - Context: M2.1's handoff flagged three early calls: how to honour `.gitignore` (dependency,
   shell-out, or hand-roll — "worth a findings note either way"); where the filesystem package
   lives; and how the fixture expresses "gitignored" without the git-commit awkwardness of a
@@ -288,6 +289,7 @@
 
 - Status: decided
 - Cycle: C1
+- Date: 2026-07-31
 - Context: M2.2 needed key bindings for the Files Nav pane and a place to hold "which folders
   are open / which row is selected", over `tree.Node` which is immutable data (M2.1 handoff).
   It also needed a way for the running binary to actually show a tree, ahead of M3.1's root
@@ -312,6 +314,7 @@
 
 - Status: decided
 - Cycle: C1
+- Date: 2026-07-31
 - Context: M3.1 resolves the session's roots from the launch argument (S1), but its acceptance
   cases ("already a starred root", "subdirectory of a starred root", "parent of a starred root")
   presuppose a starred-roots concept that M3.2's persistent store has not built yet. The handoff
@@ -336,6 +339,7 @@
 
 - Status: decided
 - Cycle: C1
+- Date: 2026-07-31
 - Context: M3.2 needed a concrete on-disk format for S2's "one plain, hand-editable file" that
   is tolerant of a missing or garbage file (empty list, no error) yet still round-trips a star
   across a process restart, and does not prune paths that no longer exist on disk.
@@ -364,6 +368,7 @@
 
 - Status: decided
 - Cycle: C1
+- Date: 2026-07-31
 - Context: D20 parked S1's launch-rejection message on `model.message` with display deferred to
   M4.2's footer work, and T15 deliberately left M2.3's file-read-error path silent for the same
   reason. But M3.3's own acceptance criterion is explicit: "activating a broken root is refused
@@ -409,8 +414,7 @@
   extension-matching behavior is the simpler rule to hold in one's head than "extensions
   normalize, names don't".
 
-## D24: C1's replan (2026-08-01) routes the M1-M3 review/validate backlog into three new
-tasks rather than a fourth cleanup-only milestone
+## D24: C1's replan (2026-08-01) routes the M1-M3 review/validate backlog into three new tasks rather than a fourth cleanup-only milestone
 
 - Status: decided
 - Cycle: C1

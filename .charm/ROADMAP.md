@@ -45,4 +45,4 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 - Backlinks; daily/zettelkasten note creation; simple in-app editing; outline re-ordering (from C1)
 - Audio input; encryption; git sync; wikipedia pane; agent chat pane (from C1)
 - Rename `go.mod`'s module path from the bare `noggin` to a resolvable path before
-  `go install`/external import ever needs it (from C1/T6, code review)
+  `go install`/external import ever needs it (from C1, code review)
