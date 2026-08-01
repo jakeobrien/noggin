@@ -25,3 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T28 | review | medium | cmd/noggin/roots.go:64-72 | M3.5/T20's `resolveLaunch` drops *any* launch argument on a `resolveCwd` failure (`cwdErr != nil && len(args) > 0`), not just a relative one — an absolute-path argument needs no cwd at all (see `absPath`'s `filepath.IsAbs` guard) but is still discarded, surfacing an undocumented rejection ('path argument ignored') outside S1's enumerated rejection list; the doc comment on `resolveLaunch` itself only claims the relative case. No test covers an absolute-path argument combined with a cwd failure. Recommend gating the drop on the argument actually being relative, and adding a regression test for the absolute-path+cwdErr case. | open |
