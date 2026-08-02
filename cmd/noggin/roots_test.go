@@ -296,6 +296,51 @@ func TestResolveLaunchDropsArgOnUnresolvableCwd(t *testing.T) {
 	}
 }
 
+// TestResolveLaunchKeepsAbsoluteDirArgOnUnresolvableCwd is T28: an absolute
+// directory argument never touches cwd once resolved (resolveDir does not
+// take it), so an unresolvable cwd must not drop it the way a relative
+// argument is dropped by TestResolveLaunchDropsArgOnUnresolvableCwd above.
+// An absolute *file* argument is a different story — resolveFile always
+// makes cwd its ad-hoc root — so this deliberately exercises the directory
+// case, the one needsCwd's doc comment says survives the failure.
+func TestResolveLaunchKeepsAbsoluteDirArgOnUnresolvableCwd(t *testing.T) {
+	base := t.TempDir()
+	dir := mkdir(t, filepath.Join(base, "notes"))
+	cwdErr := errors.New("getwd: no such file or directory")
+
+	res := resolveLaunch([]string{dir}, nil, "", cwdErr)
+
+	wantLen(t, res, 1)
+	if res.roots[0].path != dir || res.active != 0 {
+		t.Errorf("roots = %v, active = %d, want %s active despite the cwd failure", rootPaths(res), res.active, dir)
+	}
+	if strings.Contains(res.message, "ignored") {
+		t.Errorf("message = %q, implies the argument was dropped, but an absolute directory argument never needed cwd", res.message)
+	}
+}
+
+// TestResolveLaunchStillDropsAbsoluteFileArgOnUnresolvableCwd is T28's
+// counterpart: unlike a directory, a file argument's ad-hoc root is always
+// cwd (resolveFile) even when the file argument itself is absolute, so an
+// unresolvable cwd must still drop it — needsCwd's whole reason for stating
+// on the file argument rather than just checking IsAbs.
+func TestResolveLaunchStillDropsAbsoluteFileArgOnUnresolvableCwd(t *testing.T) {
+	base := t.TempDir()
+	doc := filepath.Join(mkdir(t, filepath.Join(base, "docs")), "note.md")
+	if err := os.WriteFile(doc, []byte("hi"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	cwdErr := errors.New("getwd: no such file or directory")
+
+	res := resolveLaunch([]string{doc}, nil, "", cwdErr)
+
+	wantLen(t, res, 0)
+	wantNoDoc(t, res)
+	if res.message == "" {
+		t.Error("want a message explaining the dropped argument")
+	}
+}
+
 // wantActiveStarred asserts the active root is the starred one at index i.
 func wantActiveStarred(t *testing.T, res resolution, i int) {
 	t.Helper()

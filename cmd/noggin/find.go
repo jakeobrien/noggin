@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"unicode"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -167,21 +168,39 @@ func findMatches(content, query string) []findMatch {
 		return nil
 	}
 	stripped := ansi.Strip(content)
+	smartCase := query == strings.ToLower(query)
+
+	// The case-insensitive path searches a folded copy of stripped rather
+	// than stripped itself, so found byte offsets land in the *folded*
+	// string's byte space, not stripped's -- folding is not always
+	// byte-length-preserving (the Kelvin sign U+212A, three bytes, folds to
+	// the single-byte 'k'), so treating those offsets as if they were
+	// stripped's own would misattribute a match once such a rune precedes it
+	// on the same line (T29). toOrig maps each folded byte offset back to
+	// stripped's, so start/end below are always in stripped's space
+	// regardless of which path ran.
 	haystack, needle := stripped, query
-	if query == strings.ToLower(query) {
-		haystack = strings.ToLower(haystack)
-		needle = strings.ToLower(needle)
+	var toOrig []int
+	if smartCase {
+		haystack, toOrig = foldLower(stripped)
+		needle = strings.ToLower(query)
 	}
 
-	var starts []int
+	var starts, ends []int
 	for pos := 0; ; {
 		idx := strings.Index(haystack[pos:], needle)
 		if idx < 0 {
 			break
 		}
-		start := pos + idx
+		hStart := pos + idx
+		hEnd := hStart + len(needle)
+		start, end := hStart, hEnd
+		if smartCase {
+			start, end = toOrig[hStart], toOrig[hEnd]
+		}
 		starts = append(starts, start)
-		pos = start + len(needle) // non-overlapping
+		ends = append(ends, end)
+		pos = hEnd // non-overlapping, in haystack's own byte space
 	}
 	if len(starts) == 0 {
 		return nil
@@ -189,9 +208,10 @@ func findMatches(content, query string) []findMatch {
 
 	// One linear pass over stripped, converting each (already-sorted) byte
 	// offset into a line and column by counting newlines up to it \u2014 done
-	// once here rather than per match, and done against the same string the
-	// offsets were found in, which is what keeps this correct where
-	// viewport.Model's own SetHighlights is not.
+	// once here rather than per match, and done against stripped itself (via
+	// start/end above, already translated back from haystack's space when
+	// they differ), which is what keeps this correct where viewport.Model's
+	// own SetHighlights is not.
 	matches := make([]findMatch, len(starts))
 	line, lineStart, pos := 0, 0, 0
 	for i, start := range starts {
@@ -205,10 +225,30 @@ func findMatches(content, query string) []findMatch {
 		matches[i] = findMatch{
 			line:     line,
 			colStart: start - lineStart,
-			colEnd:   start - lineStart + len(needle),
+			colEnd:   ends[i] - lineStart,
 		}
 	}
 	return matches
+}
+
+// foldLower lower-cases s rune by rune for findMatches' smart-case path,
+// returning alongside it a mapping (toOrig) from each byte offset in the
+// folded result back to the byte offset in s it came from, with a trailing
+// sentinel entry at len(folded) mapping to len(s) so a match ending at the
+// folded string's end still resolves. See findMatches' own comment for why
+// this mapping is necessary rather than optional (T29).
+func foldLower(s string) (folded string, toOrig []int) {
+	var b strings.Builder
+	toOrig = make([]int, 0, len(s)+1)
+	for i, r := range s {
+		before := b.Len()
+		b.WriteRune(unicode.ToLower(r))
+		for n := b.Len() - before; n > 0; n-- {
+			toOrig = append(toOrig, i)
+		}
+	}
+	toOrig = append(toOrig, len(s))
+	return b.String(), toOrig
 }
 
 // nearestMatch picks the first match at or after fromLine \u2014 incremental

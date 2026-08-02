@@ -56,21 +56,57 @@ func resolveCwd() (string, error) {
 
 // resolveLaunch is resolveRoots' main.go-facing wrapper: it folds a failed
 // working-directory lookup (cwdErr, from resolveCwd) into the launch outcome
-// instead of leaving that decision to the caller. Without a safe cwd to
-// anchor a relative argument against, the argument is dropped rather than
-// resolved against a bare "." (T20), and a message says so — unless
-// resolveRoots already produced one of its own (e.g. the too-many-arguments
-// case), which takes precedence since it is more specific.
+// instead of leaving that decision to the caller. Without a safe cwd, an
+// argument that actually depends on it is dropped rather than resolved
+// against a bare "." (T20), with a message saying so.
+//
+// "Actually depends on it" is needsCwd's job (T28): a cwd failure must not
+// drop an argument that does not need cwd at all — the too-many-arguments
+// case is refused by resolveRoots on its own count regardless of cwd, and
+// an absolute directory argument never touches cwd once resolved either.
+// When needsCwd says no, args passes through to resolveRoots untouched, so
+// any rejection it produces of its own (e.g. a bad path) is exactly what a
+// working cwd would also have produced.
 func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) resolution {
-	useArgs := args
-	if cwdErr != nil && len(args) > 0 {
-		useArgs = nil
-	}
-	res := resolveRoots(useArgs, starred, cwd)
-	if cwdErr != nil && len(args) > 0 && res.message == "" {
+	if cwdErr != nil && needsCwd(args, cwd) {
+		res := resolveRoots(nil, starred, cwd)
 		res.message = fmt.Sprintf("cannot determine working directory (%v); path argument ignored", cwdErr)
+		return res
 	}
-	return res
+	return resolveRoots(args, starred, cwd)
+}
+
+// needsCwd reports whether resolving args against cwd genuinely depends on
+// cwd being correct, so resolveLaunch knows when a resolveCwd failure
+// actually needs to drop the argument (T28) rather than doing so on every
+// failure regardless of relevance:
+//   - zero arguments never touch cwd; more than one is refused by
+//     resolveRoots on its count alone (T17), before cwd would ever be used;
+//   - a relative single argument cannot be resolved to an absolute path at
+//     all without cwd to anchor it (absPath, T20);
+//   - an absolute single argument that turns out to be a directory never
+//     touches cwd again once resolved (resolveDir does not take it);
+//   - but an absolute single argument that turns out to be a file still
+//     does: resolveFile always makes cwd the ad-hoc root, regardless of
+//     whether the file argument itself needed cwd to be found.
+//
+// The stat here duplicates the one resolveRoots will do on the same path
+// moments later; that is deliberate rather than threading cwd-failure state
+// into resolveRoots itself, which would complicate a function whose whole
+// point is a single, pure, S1-shaped decision, for a launch-time check that
+// runs once.
+func needsCwd(args []string, cwd string) bool {
+	if len(args) != 1 {
+		return false
+	}
+	if !filepath.IsAbs(args[0]) {
+		return true
+	}
+	info, err := os.Stat(args[0])
+	if err != nil {
+		return false // resolveRoots' own not-found rejection doesn't need cwd either
+	}
+	return !info.IsDir()
 }
 
 // resolveRoots applies the S1 launch contract. args is the command line beyond

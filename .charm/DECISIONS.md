@@ -525,3 +525,29 @@ deferral and one drop
   fix against — factoring an abstraction now would be speculative generalization for a
   modal count of two. T28, T29 and T34 earned their task because each is a genuine,
   testable behavior gap against what S1/S8/the confusion principle promise.
+
+## D28: T28's fix distinguishes a directory argument from a file argument, not just
+absolute from relative
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-02
+- Context: M5.4 built T28 (`resolveLaunch` dropping an absolute-path launch argument on a
+  `resolveCwd` failure it does not need). D27's framing — "only a relative one still gets
+  dropped" — holds for a directory argument (`resolveDir` never touches `cwd` once resolved)
+  but not for a file argument: `resolveFile` always makes `cwd` the ad-hoc root (S1), even
+  when the file argument itself is absolute, so dropping it on a `cwd` failure is still
+  correct there. A literal absolute-vs-relative check would have reintroduced T20's bare-"`.`"
+  bug for an absolute file argument.
+- Decision: `resolveLaunch` gained a `needsCwd(args, cwd)` helper that stats the single
+  argument (duplicating the stat `resolveRoots` does moments later) to tell directory from
+  file before deciding: zero or >1 arguments never need `cwd`; a relative argument always
+  does (T20); an absolute argument needs it only if it turns out to be a file. Locked in by
+  `TestResolveLaunchKeepsAbsoluteDirArgOnUnresolvableCwd` (survives) and
+  `TestResolveLaunchStillDropsAbsoluteFileArgOnUnresolvableCwd` (still drops) in
+  `roots_test.go`.
+- Why: low-risk, technical-correctness refinement of an already-accepted plan task, not a
+  scope or spec change — resolved by judgment per the escalation matrix rather than a
+  replan round-trip. The duplicate stat is a deliberate, cheap trade against threading
+  `cwdErr` into `resolveRoots` itself, which would complicate a function whose doc comment
+  already commits it to one pure, S1-shaped decision.

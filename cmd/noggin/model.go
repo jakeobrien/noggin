@@ -416,7 +416,21 @@ func (m model) resize(width, height int) model {
 	m.focus = m.resolveFocus(m.focus)
 	l := m.layout()
 	viewerContent := l.viewer.content()
+	// A width change re-renders the viewer (setSize), and a re-render
+	// silently drops any find in progress (viewer.render's doc comment) --
+	// fine when nothing was actively being typed, but a query mid-edit
+	// vanishing with no explanation violates S1/S8's "confusion is not
+	// allowed" (T34). Catch it here, the one path both a real terminal
+	// resize and toggleNavigator drive through, by comparing editing state
+	// before and after: toggleNavigator can never trigger this in practice
+	// (handleFindInput owns every key but Cancel/Activate while editing, so
+	// the Navigator binding never reaches it), but a tea.WindowSizeMsg is
+	// not gated the same way.
+	findWasEditing := m.viewer.findEditing()
 	m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
+	if findWasEditing && !m.viewer.findEditing() {
+		m.message = "window resized; search dismissed"
+	}
 	filesContent := l.files.content()
 	m.files = m.files.setSize(filesContent.width, filesContent.height)
 	rootsContent := l.roots.content()

@@ -3,6 +3,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 // TestFindLocatesAPhraseNearTheEndOfTheDocument is M5.1's headline
@@ -127,6 +129,35 @@ func TestFindDismissalLeavesTheViewWhereItIs(t *testing.T) {
 	}
 }
 
+// TestFindMatchesLineAttributionSurvivesCaseFoldLengthChange is T29:
+// findMatches' smart-case path lower-cases the haystack to search it, and
+// case folding is not always byte-length-preserving — the Kelvin sign
+// U+212A (three bytes) folds to the single-byte 'k'. A naive byte offset
+// found in the folded string, treated as if it were the original's own
+// offset, drifts once such a rune precedes a match on the same line, and
+// can misattribute the match to the wrong line entirely (not just the wrong
+// column) once the drift crosses a newline boundary — exactly what this
+// fixture forces: the Kelvin sign sits alone on line 0, so the drift pulls
+// the reported position back across the "\n" into line 0 unless findMatches
+// maps offsets back to the original string correctly.
+func TestFindMatchesLineAttributionSurvivesCaseFoldLengthChange(t *testing.T) {
+	const kelvin = "\u212A" // "K", folds to ASCII 'k' — 3 bytes down to 1
+	content := kelvin + "\nmatch"
+
+	matches := findMatches(content, "match")
+
+	if len(matches) != 1 {
+		t.Fatalf(`findMatches(%q, "match") = %d matches, want 1`, content, len(matches))
+	}
+	m := matches[0]
+	if m.line != 1 {
+		t.Errorf("line = %d, want 1 (the match is on the line after the Kelvin sign)", m.line)
+	}
+	if m.colStart != 0 || m.colEnd != 5 {
+		t.Errorf("colStart, colEnd = %d, %d, want 0, 5", m.colStart, m.colEnd)
+	}
+}
+
 // TestFindingWithNoDocumentOpenReportsIt mirrors startEdit's shape (M4.1):
 // a global action with nothing to act on says so instead of doing nothing.
 func TestFindingWithNoDocumentOpenReportsIt(t *testing.T) {
@@ -137,6 +168,48 @@ func TestFindingWithNoDocumentOpenReportsIt(t *testing.T) {
 	}
 	if !strings.Contains(m.message, "no document open") {
 		t.Errorf("message = %q, want it to report no document open", m.message)
+	}
+}
+
+// TestWindowResizeMidFindEditSurfacesMessage is T34: a real terminal resize
+// (tea.WindowSizeMsg) that changes the viewer's width re-renders it, which
+// re-wraps the document and so invalidates any find in progress (viewer.go's
+// render doc comment) — including one still being typed. Silently dropping
+// it back then would be the only lose-state path in the program with no
+// footer message; model.resize must report it instead.
+func TestWindowResizeMidFindEditSurfacesMessage(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	m = press(t, m, "/")
+	m = typeText(t, m, "final")
+	if !m.viewer.findEditing() {
+		t.Fatal("test setup: find is not editing")
+	}
+
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
+	m = concrete(t, next)
+
+	if m.viewer.findEditing() {
+		t.Fatal("test setup: resize did not actually invalidate the find (width unchanged?)")
+	}
+	if !strings.Contains(m.message, "resize") && !strings.Contains(m.message, "search") {
+		t.Errorf("message = %q, want it to explain the dismissed search", m.message)
+	}
+}
+
+// TestWindowResizeWithNoFindInProgressLeavesMessageAlone checks the guard on
+// the fix above does not fire when there was nothing to lose: a resize with
+// no find in progress must not manufacture a message out of nothing.
+func TestWindowResizeWithNoFindInProgressLeavesMessageAlone(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	if m.viewer.findEditing() {
+		t.Fatal("test setup: find should not be editing")
+	}
+
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
+	m = concrete(t, next)
+
+	if m.message != "" {
+		t.Errorf("message = %q, want no message from a resize with no find in progress", m.message)
 	}
 }
 
