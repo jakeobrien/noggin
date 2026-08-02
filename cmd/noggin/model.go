@@ -234,9 +234,14 @@ func (m model) startEdit() (model, tea.Cmd) {
 // threshold does (resolveFocus); showing it again leaves focus exactly where
 // it was, since the Document Viewer stays visible throughout and the toggle
 // never touches either Navigator pane's own selection state.
+//
+// It drives the same resize path a real tea.WindowSizeMsg does (both re-lay
+// out the frame and can invalidate a find, see resize's doc comment), but is
+// not itself a resize — resizeCauseNavigatorToggle keeps resize's own
+// dismissed/cleared messages honest about which one actually happened (T45).
 func (m model) toggleNavigator() model {
 	m.navigatorHidden = !m.navigatorHidden
-	return m.resize(m.width, m.height)
+	return m.resize(m.width, m.height, resizeCauseNavigatorToggle)
 }
 
 // startFind begins an S8 search over the active document, moving focus to
@@ -331,7 +336,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case editFinishedMsg:
 		return m.finishEdit(msg), nil
 	case tea.WindowSizeMsg:
-		return m.resize(msg.Width, msg.Height), nil
+		return m.resize(msg.Width, msg.Height, resizeCauseWindow), nil
 	case tea.KeyPressMsg:
 		// A transient message (D22) is displaced by the action it reports on;
 		// any keypress after that clears it (S11), whether or not this one
@@ -410,12 +415,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// resizeCause names what drove a call to resize, so its dismissed/cleared
+// find messages (below) can say what actually happened instead of
+// hardcoding "window resized" even when the real trigger was a Navigator
+// toggle (T45) — both drive the frame through this one path (see resize's
+// doc comment), but they are not the same event, and the footer must not
+// claim one for the other.
+type resizeCause string
+
+const (
+	resizeCauseWindow          resizeCause = "window resized"
+	resizeCauseNavigatorToggle resizeCause = "sidebar toggled"
+)
+
 // resize sets the terminal size and re-lays-out the frame: resolving focus
 // onto a still-visible pane, then sizing each pane's content box from the
 // resulting layout (which also reflects the S9 Navigator toggle, see
 // layout()). Both a real terminal resize and toggleNavigator drive the frame
-// through this one path, so they reflow identically.
-func (m model) resize(width, height int) model {
+// through this one path, so they reflow identically; cause records which of
+// the two actually happened, for the messages below.
+func (m model) resize(width, height int, cause resizeCause) model {
 	m.width, m.height = width, height
 	m.focus = m.resolveFocus(m.focus)
 	l := m.layout()
@@ -438,15 +457,18 @@ func (m model) resize(width, height int) model {
 	// hasFindMatches() catches that case the same way, checked after the
 	// editing case so a find that was both editing and matched (the normal
 	// case) reports the more specific "search dismissed" message once, not
-	// both.
+	// both. Either message leads with cause (T45) rather than assuming a
+	// resize: toggleNavigator can in fact reach the committed-find branch
+	// (unlike the mid-edit one above, nothing gates it), so the message must
+	// name whichever of the two actually fired.
 	findWasEditing := m.viewer.findEditing()
 	findHadMatches := m.viewer.hasFindMatches()
 	m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
 	switch {
 	case findWasEditing && !m.viewer.findEditing():
-		m.message = "window resized; search dismissed"
+		m.message = fmt.Sprintf("%s; search dismissed", cause)
 	case findHadMatches && !m.viewer.hasFindMatches():
-		m.message = "window resized; search cleared"
+		m.message = fmt.Sprintf("%s; search cleared", cause)
 	}
 	filesContent := l.files.content()
 	m.files = m.files.setSize(filesContent.width, filesContent.height)

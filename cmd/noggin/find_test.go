@@ -270,6 +270,39 @@ func TestWindowResizeAfterCommittedFindSurfacesMessage(t *testing.T) {
 	}
 }
 
+// TestNavigatorToggleAfterCommittedFindNamesTheToggleNotAResize is T45: T43's
+// resize guard above catches a committed find lost to toggleNavigator (it
+// drives the very same resize path), but until this fix it did so by always
+// saying "window resized" even when the real trigger was ctrl+n — a
+// factually wrong footer message that violates SPEC.md's "confusion is not
+// allowed" worse than silence would. This drives the committed find through
+// the Navigator toggle itself, not a tea.WindowSizeMsg, and asserts the
+// message names the sidebar toggle rather than a resize.
+func TestNavigatorToggleAfterCommittedFindNamesTheToggleNotAResize(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	m = press(t, m, "/")
+	m = typeText(t, m, "final")
+	m = press(t, m, "enter")
+	if m.viewer.findEditing() {
+		t.Fatal("test setup: enter did not commit the find")
+	}
+	if !m.viewer.hasFindMatches() {
+		t.Fatal("test setup: committed find has no matches to lose")
+	}
+
+	m = press(t, m, "ctrl+n")
+
+	if m.viewer.hasFindMatches() {
+		t.Fatal("test setup: toggling the Navigator did not actually invalidate the committed find (width unchanged?)")
+	}
+	if strings.Contains(m.message, "resize") {
+		t.Errorf("message = %q, claims a resize happened, but the trigger was ctrl+n", m.message)
+	}
+	if !strings.Contains(m.message, "sidebar") && !strings.Contains(m.message, "toggle") {
+		t.Errorf("message = %q, want it to name the sidebar toggle as the actual cause", m.message)
+	}
+}
+
 // TestFindQueryCapturesEveryKeyWhileEditing checks that a query character
 // which is also a binding elsewhere (q, the quit key) types into the query
 // instead of acting on its binding.

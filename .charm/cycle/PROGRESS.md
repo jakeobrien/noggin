@@ -2,22 +2,24 @@
 
 ## Cursor
 
-Current task: M5.8 (T45, T46; D30) — not yet built, no blockers. Supersedes T44 (dropped, see
-D30). Still outstanding once M5.8 lands: M5.6 and M5.7's first code-review `Reviewed` stamp
-(every other key in that span already carries one) — likely what lets the cycle close.
+M5.8 built this session (T45, T46; D30) — done. All of M5.1-M5.8 are now built and validated;
+M5.6 and M5.7 are still missing their first code-review `Reviewed` stamp (every other key in
+the M1-M5 span already carries one) — a fresh-context two-pass review of the M5.6/M5.7/M5.8
+diff together is the natural next step, likely what lets the cycle close.
 
 ## Handoff
 
-M5.7 (T38-T41; D29) built and validated this session: `needsCwd`'s unused `cwd` param dropped,
-`findMatches`' span-translation named as an `origSpan` helper, `resolveLaunch` gained
-zero/many-arg `cwdErr` tests, and a fold-within-the-match regression test was added. T39/T41
-proven meaningful by reverting and re-running; `make check` + `make check-pty` (59 checks)
-green throughout, no behavior change.
-
-The follow-on review/validate pass on M5.6 then surfaced T44 (validate, coverage question),
-T45 (review, a factually wrong "window resized" message on the `toggleNavigator` path T44
-asked about) and T46 (review, an untested `resolveLaunch` branch) — routed by this replan into
-M5.8 (D30); TRIAGE.md is empty again.
+M5.8 (T45, T46; D30) built this session: `resize` now takes a `resizeCause` (`resizeCauseWindow`
+= "window resized", `resizeCauseNavigatorToggle` = "sidebar toggled") threaded from both call
+sites (`Update`'s `tea.WindowSizeMsg` case, `toggleNavigator`), so its dismissed/cleared find
+messages name whichever actually fired instead of hardcoding "window resized" (T45); a new
+test drives a committed find through `ctrl+n` (not a `tea.WindowSizeMsg`) and asserts the
+message names the sidebar toggle, proven meaningful by reverting the cause value and re-running
+(it then failed on the stale wording). `resolveLaunch` gained
+`TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd` (T46), covering the one
+absolute-not-found-arg-plus-unresolvable-cwd branch T37's stat-reuse refactor added with no
+test of its own — traced by hand as correct, and the new test confirms it without any code
+change. `make check` + `make check-pty` (59 checks) green throughout. TRIAGE.md remains empty.
 
 Still relevant:
 - Go with the grain (D1) now means Charm v2; D13's no-terminal-query-after-`Run()` rule
@@ -55,3 +57,4 @@ Still relevant:
 | M5.5 | done   | 2026-08-02 | 2026-08-02 | replan C1/2026-08-02 (D27): M5-review standards cleanup (T30, T32, T33, T35); em-dash re-encode in find.go/navigator_test.go, keymap.go Cancel/Help tense fix, viewer.find renamed findState, FindNext/FindPrevious global-dispatch comment; cosmetic only, no behavior change; two-pass fresh-context review (2026-08-02) confirmed T30/T32/T33/T35 complete with no leftovers, found T43 (adjacent, pre-existing, not a regression) |
 | M5.6 | done   | 2026-08-02 | 2026-08-02 | replan C1/2026-08-03 (D29): roots/find correctness fixes (T37, T43) — needsCwd/resolveLaunch now share one stat via resolvePathArg/baseResolution; model.resize's hasFindMatches check surfaces "search cleared" for a committed find lost to a re-render; new test proven to fail pre-fix; validate (2026-08-02) found T43's acceptance text names resize-or-Navigator-toggle but only resize is directly tested (T44 logged); fresh-context two-pass review (2026-08-02) confirmed T37/T43 delivered as specified but found T45 (the toggleNavigator path T44 flagged as untested does fire, and produces a factually wrong "window resized" message) and T46 (T37's refactor added an untested not-found-absolute-arg code path) |
 | M5.7 | done   | 2026-08-02 | 2026-08-02 | replan C1/2026-08-03 (D29): standards/test-hardening cleanup (T38, T39, T40, T41); needsCwd's cwd param dropped, findMatches' span shape named as origSpan, resolveLaunch gained zero/many-arg cwdErr tests, fold-within-match regression test added; fresh-context two-pass review (2026-08-02) confirmed T38-T41 complete with no leftovers, no fidelity issues |
+| M5.8 | done   | —          | —          | replan C1/2026-08-03 (D30): resize/toggleNavigator message-cause fix (T45) and resolveLaunch test-coverage gap (T46) — resize takes a resizeCause (window vs sidebar-toggle) threaded from both call sites so its dismissed/cleared messages name the real trigger; new test drives a committed find through ctrl+n and asserts the message names the sidebar toggle, not a resize, proven meaningful by reverting; TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd added, confirming T37's absolute-not-found-plus-unresolvable-cwd branch behaves correctly; make check + check-pty (59) green, no other behavior change |

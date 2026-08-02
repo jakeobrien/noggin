@@ -381,6 +381,35 @@ func TestResolveLaunchIgnoresCwdErrWithTooManyArguments(t *testing.T) {
 	wantRejected(t, res)
 }
 
+// TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd is T46: T37's
+// stat-reuse refactor gave needsCwd an absolute-argument branch that stats
+// the path itself; when that stat comes back not-found, needsCwd reports
+// needs=false (its own doc comment: "resolveRoots' own not-found rejection
+// doesn't need cwd either") and hands the stat error to resolvePathArg via
+// resolveLaunch's stated branch. No existing test drove that path — T37's
+// refactor was traced by hand, not proven by a test — so this locks in that
+// an absolute argument which does not exist still gets resolveRoots' usual
+// "no such path" rejection even though cwd is unresolvable, not a
+// cwd-failure message that would misattribute the cause.
+func TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd(t *testing.T) {
+	base := t.TempDir()
+	star := mkdir(t, filepath.Join(base, "star"))
+	missing := filepath.Join(base, "missing.md")
+	cwdErr := errors.New("getwd: no such file or directory")
+
+	res := resolveLaunch([]string{missing}, []string{star}, "", cwdErr)
+
+	wantLen(t, res, 1)
+	wantActiveStarred(t, res, 0)
+	wantNoDoc(t, res)
+	if !strings.Contains(res.message, "no such path") {
+		t.Errorf("message = %q, want resolveRoots' usual not-found rejection", res.message)
+	}
+	if strings.Contains(res.message, "working directory") {
+		t.Errorf("message = %q, want the not-found rejection, not a cwd-failure message", res.message)
+	}
+}
+
 // wantActiveStarred asserts the active root is the starred one at index i.
 func wantActiveStarred(t *testing.T, res resolution, i int) {
 	t.Helper()
