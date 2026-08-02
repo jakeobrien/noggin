@@ -53,14 +53,14 @@ func TestFindTraversalWraps(t *testing.T) {
 	m = typeText(t, m, "line")
 	m = press(t, m, "enter")
 
-	n := len(m.viewer.find.matches)
+	n := len(m.viewer.findState.matches)
 	if n < 2 {
 		t.Fatalf(`fixture has %d match(es) for "line", want at least 2 to test traversal`, n)
 	}
-	start := m.viewer.find.current
+	start := m.viewer.findState.current
 
 	m = press(t, m, "n")
-	if got := m.viewer.find.current; got != (start+1)%n {
+	if got := m.viewer.findState.current; got != (start+1)%n {
 		t.Errorf("after one next, current = %d, want %d", got, (start+1)%n)
 	}
 
@@ -68,21 +68,21 @@ func TestFindTraversalWraps(t *testing.T) {
 	for i := 0; i < n-1; i++ {
 		m = press(t, m, "n")
 	}
-	if got := m.viewer.find.current; got != start {
+	if got := m.viewer.findState.current; got != start {
 		t.Fatalf("after n-1 more nexts, current = %d, want back at %d", got, start)
 	}
 	m = press(t, m, "n")
-	if got := m.viewer.find.current; got != (start+1)%n {
+	if got := m.viewer.findState.current; got != (start+1)%n {
 		t.Errorf("next past the last match did not wrap to the first: current = %d, want %d", got, (start+1)%n)
 	}
 
 	// And previous from there wraps back the other way.
 	m = press(t, m, "N")
-	if got := m.viewer.find.current; got != start {
+	if got := m.viewer.findState.current; got != start {
 		t.Errorf("previous did not wrap back: current = %d, want %d", got, start)
 	}
 	m = press(t, m, "N")
-	if got := m.viewer.find.current; got != n-1 {
+	if got := m.viewer.findState.current; got != n-1 {
 		t.Errorf("previous past the first match did not wrap to the last: current = %d, want %d", got, n-1)
 	}
 }
@@ -94,14 +94,14 @@ func TestFindIsSmartCase(t *testing.T) {
 
 	m = press(t, m, "/")
 	m = typeText(t, m, "final")
-	if n := len(m.viewer.find.matches); n != 1 {
+	if n := len(m.viewer.findState.matches); n != 1 {
 		t.Fatalf(`lowercase "final" matched %d times, want 1`, n)
 	}
 
 	m = press(t, m, "esc")
 	m = press(t, m, "/")
 	m = typeText(t, m, "Final")
-	if n := len(m.viewer.find.matches); n != 0 {
+	if n := len(m.viewer.findState.matches); n != 0 {
 		t.Errorf(`uppercase "Final" matched %d times against lowercase text, want 0`, n)
 	}
 }
@@ -223,7 +223,7 @@ func TestFindQueryCapturesEveryKeyWhileEditing(t *testing.T) {
 	if !m.viewer.findEditing() {
 		t.Fatal("typing q while editing a find query exited find mode")
 	}
-	if got := m.viewer.find.input.Value(); got != "q" {
+	if got := m.viewer.findState.input.Value(); got != "q" {
 		t.Errorf("query = %q, want %q", got, "q")
 	}
 }

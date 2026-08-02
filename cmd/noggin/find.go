@@ -22,7 +22,7 @@ import (
 // silently drifts once any ANSI escape precedes the match, which every
 // Glamour-styled document does. EnsureVisible and StyleLineFunc, the two
 // primitives that actually move and mark the viewport, take a line number
-// directly and are not implicated \u2014 findMatches below computes that line
+// directly and are not implicated — findMatches below computes that line
 // number correctly instead, against the escape-stripped content, and this
 // file drives EnsureVisible/StyleLineFunc with it.
 type find struct {
@@ -41,7 +41,7 @@ type find struct {
 }
 
 // findMatch is one occurrence of a query, located in the rendered content's
-// own line space \u2014 the viewport's SoftWrap is off (viewer.go's render already
+// own line space — the viewport's SoftWrap is off (viewer.go's render already
 // wraps to the pane width), so this is directly the viewport's line index,
 // not a further wrapping of it.
 type findMatch struct {
@@ -57,80 +57,80 @@ func newFind() find {
 }
 
 // startFind begins a new query, focusing the input (S8's "/-style"). Any
-// previous query is discarded \u2014 like vim's "/", a fresh search starts empty
+// previous query is discarded — like vim's "/", a fresh search starts empty
 // rather than reusing the last one.
 func (v viewer) startFind() (viewer, tea.Cmd) {
-	v.find = newFind()
-	v.find.editing = true
-	cmd := v.find.input.Focus()
+	v.findState = newFind()
+	v.findState.editing = true
+	cmd := v.findState.input.Focus()
 	return v, cmd
 }
 
 // updateFindQuery routes one keypress into the query input, then recomputes
-// matches and re-applies the current one \u2014 the "incremental" of "incremental
+// matches and re-applies the current one — the "incremental" of "incremental
 // search" (S8).
 func (v viewer) updateFindQuery(msg tea.KeyPressMsg) (viewer, tea.Cmd) {
-	next, cmd := v.find.input.Update(msg)
-	v.find.input = next
-	v.find.matches = findMatches(v.vp.GetContent(), v.find.input.Value())
-	v.find.current = nearestMatch(v.find.matches, v.vp.YOffset())
+	next, cmd := v.findState.input.Update(msg)
+	v.findState.input = next
+	v.findState.matches = findMatches(v.vp.GetContent(), v.findState.input.Value())
+	v.findState.current = nearestMatch(v.findState.matches, v.vp.YOffset())
 	return v.applyCurrentMatch(), cmd
 }
 
 // commitFind ends editing but keeps the matches and the current one
 // indicated, so FindNext/FindPrevious keep working after Enter.
 func (v viewer) commitFind() viewer {
-	v.find.editing = false
-	v.find.input.Blur()
+	v.findState.editing = false
+	v.findState.input.Blur()
 	return v
 }
 
 // cancelFind dismisses the search entirely: no query, no matches, no
-// indication. The viewport itself is untouched \u2014 S8's "dismissal that
-// leaves the view where it is" \u2014 whatever EnsureVisible last did to it stands.
+// indication. The viewport itself is untouched — S8's "dismissal that
+// leaves the view where it is" — whatever EnsureVisible last did to it stands.
 func (v viewer) cancelFind() viewer {
-	v.find = newFind()
+	v.findState = newFind()
 	v.vp.StyleLineFunc = nil
 	return v
 }
 
 // findEditing reports whether the query currently has the keyboard.
-func (v viewer) findEditing() bool { return v.find.editing }
+func (v viewer) findEditing() bool { return v.findState.editing }
 
 // hasFindMatches reports whether FindNext/FindPrevious have anything to do.
-func (v viewer) hasFindMatches() bool { return len(v.find.matches) > 0 }
+func (v viewer) hasFindMatches() bool { return len(v.findState.matches) > 0 }
 
 // findNext and findPrevious step the indicated match, wrapping past either
 // end (S8).
 func (v viewer) findNext() viewer {
-	if len(v.find.matches) == 0 {
+	if len(v.findState.matches) == 0 {
 		return v
 	}
-	v.find.current = (v.find.current + 1) % len(v.find.matches)
+	v.findState.current = (v.findState.current + 1) % len(v.findState.matches)
 	return v.applyCurrentMatch()
 }
 
 func (v viewer) findPrevious() viewer {
-	if len(v.find.matches) == 0 {
+	if len(v.findState.matches) == 0 {
 		return v
 	}
-	v.find.current = (v.find.current - 1 + len(v.find.matches)) % len(v.find.matches)
+	v.findState.current = (v.findState.current - 1 + len(v.findState.matches)) % len(v.findState.matches)
 	return v.applyCurrentMatch()
 }
 
 // applyCurrentMatch scrolls the current match on screen (EnsureVisible) and
-// marks its line (StyleLineFunc) \u2014 S8's "the view scrolls so the match's
+// marks its line (StyleLineFunc) — S8's "the view scrolls so the match's
 // line is on screen and that line is indicated." Line-level indication, not
 // the character-exact kind S8 calls desirable-but-not-required: the whole
 // line is reverse-videoed rather than just the matched span, which sidesteps
 // viewport.Model's own column highlighting (SetHighlights) and the ANSI-offset
 // drift it would reintroduce (see the find type's doc comment).
 func (v viewer) applyCurrentMatch() viewer {
-	if v.find.current < 0 || v.find.current >= len(v.find.matches) {
+	if v.findState.current < 0 || v.findState.current >= len(v.findState.matches) {
 		v.vp.StyleLineFunc = nil
 		return v
 	}
-	m := v.find.matches[v.find.current]
+	m := v.findState.matches[v.findState.current]
 	v.vp.EnsureVisible(m.line, m.colStart, m.colEnd)
 	line := m.line
 	v.vp.StyleLineFunc = func(i int) lipgloss.Style {
@@ -145,13 +145,13 @@ func (v viewer) applyCurrentMatch() viewer {
 // findView renders the query prompt at width, for the footer to show in
 // place of key hints while editing (model.renderFooter).
 func (v viewer) findView(width int) string {
-	v.find.input.SetWidth(width)
-	return v.find.input.View()
+	v.findState.input.SetWidth(width)
+	return v.findState.input.View()
 }
 
 // findMatches locates every occurrence of query in content, in line order.
-// content is the viewport's own GetContent() \u2014 rendered, ANSI-styled markdown
-// \u2014 but matching happens against ansi.Strip(content): searching the styled
+// content is the viewport's own GetContent() — rendered, ANSI-styled markdown
+// — but matching happens against ansi.Strip(content): searching the styled
 // bytes directly risks a query matching inside an SGR escape by coincidence
 // (an escape sequence ends in the literal byte 'm'), and would in any case
 // produce the same byte-offset-drift problem described on the find type.
@@ -207,7 +207,7 @@ func findMatches(content, query string) []findMatch {
 	}
 
 	// One linear pass over stripped, converting each (already-sorted) byte
-	// offset into a line and column by counting newlines up to it \u2014 done
+	// offset into a line and column by counting newlines up to it — done
 	// once here rather than per match, and done against stripped itself (via
 	// start/end above, already translated back from haystack's space when
 	// they differ), which is what keeps this correct where viewport.Model's
@@ -251,8 +251,8 @@ func foldLower(s string) (folded string, toOrig []int) {
 	return b.String(), toOrig
 }
 
-// nearestMatch picks the first match at or after fromLine \u2014 incremental
-// search moves forward as you type, like vim's \u2014 wrapping to the first
+// nearestMatch picks the first match at or after fromLine — incremental
+// search moves forward as you type, like vim's — wrapping to the first
 // match overall if none is. Returns -1 for no matches at all.
 func nearestMatch(matches []findMatch, fromLine int) int {
 	for i, m := range matches {

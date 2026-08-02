@@ -234,7 +234,7 @@ func TestHelpUnreachableWhileFindEditing(t *testing.T) {
 	if m.helpOpen {
 		t.Error("Help opened while a find query had the keyboard")
 	}
-	if got := m.viewer.find.input.Value(); got != "?" {
+	if got := m.viewer.findState.input.Value(); got != "?" {
 		t.Errorf("query = %q, want %q (the ? typed into it)", got, "?")
 	}
 }

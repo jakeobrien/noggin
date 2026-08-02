@@ -2,34 +2,29 @@
 
 ## Cursor
 
-Current task: none — M5.4 built this session. Next up: M5.5, then the accumulated
-`Reviewed`/`Validated` gaps across M3.1, M3.5, M4.2, M5.1-M5.4, before the cycle can close.
+Current task: none — M5.5 built this session. Next up: the accumulated `Reviewed`/
+`Validated` gaps across M3.1, M3.5, M4.2, M5.1-M5.5, before the cycle can close.
 
 ## Handoff
 
-M5.4 built and done this session (T28, T29, T34; D27, and D28 for a T28 scope refinement):
+M5.5 built and done this session (T30, T32, T33, T35 — standards cleanup, all cosmetic,
+no behavior change):
 
-- T28 (`roots.go`): `resolveLaunch` no longer drops an absolute launch argument on a
-  `resolveCwd` failure it doesn't need. The real fault line is directory-vs-file, not
-  absolute-vs-relative (D28) — new `needsCwd(args, cwd)` stats the argument to tell them
-  apart: an absolute directory never touches `cwd` again once resolved (`resolveDir`), but a
-  file argument's ad-hoc root is always `cwd` (`resolveFile`), so it is still correctly
-  dropped even when absolute.
-- T29 (`find.go`): `findMatches`' smart-case path lower-cased the whole document and searched
-  that copy directly; case folding is not byte-length-preserving (Kelvin sign U+212A, 3
-  bytes, folds to 1-byte 'k'), so a found offset there could misattribute a match to the
-  wrong line. New `foldLower` returns a byte-offset mapping back to the original string
-  alongside the folded one; line/col are now always computed in the original's space.
-- T34 (`model.go`): `resize()` compares `m.viewer.findEditing()` before/after `setSize` and
-  sets a footer message when the resize's re-render (which already silently invalidates any
-  find, per `viewer.render`) dropped a query being actively typed. `toggleNavigator` shares
-  this path but can never trigger it (`handleFindInput` owns the keyboard while editing).
+- T30: the 13 `\u2014` occurrences in `find.go`/`navigator_test.go` were literal six-character
+  escape text — re-encoded to the actual em dash.
+- T32: `keymap.go`'s `Cancel`/`Help` doc comments described S12's help modal (M5.3) in future
+  tense; reworded to past/present tense now that the modal exists.
+- T33: `viewer`'s `find` field renamed to `findState` (struct type `find`/`newFind()`
+  unchanged) — mechanical rename across `viewer.go`/`find.go`/`find_test.go`/`help_test.go`.
+- T35: added a comment at `model.go`'s `FindNext`/`FindPrevious` dispatch confirming they are
+  intentionally global like `Find`, not scoped to viewer focus.
 
-Evidence: `make check` and `make check-pty` (59 checks) both green; each new test
-independently confirmed to fail against the pre-fix code via `git stash` on the one changed
-file. Cleared `Reviewed` back to `-` for M3.1, M3.5, M4.2, M5.1, M5.2, M5.3 (their reviewed
-code in `roots.go`/`find.go`/`model.go` changed this session); M3.6 left alone — its own
-`roots.go` diff doesn't overlap what changed here.
+Evidence: `make check` and `make check-pty` (59 checks) both green; grep confirms zero leftover
+`\u2014` escape text and zero stray `.find`/`find:` references. No behavior changed, so no
+`Reviewed` stamps needed clearing beyond what M5.4 already cleared.
+
+Next: the accumulated `Reviewed`/`Validated` gaps across M3.1, M3.5, M4.2, M5.1-M5.5 — likely
+a code-review + validate pass before the cycle can close. No blockers.
 
 Still relevant:
 - Go with the grain (D1) now means Charm v2; D13's no-terminal-query-after-`Run()` rule
@@ -38,11 +33,6 @@ Still relevant:
   `charmbracelet/x/ansi` direct and pulled in `atotto/clipboard` indirectly (unused) — noted
   for security-review time.
 - Sandbox Go toolchain fully working; the Makefile's `unexport GOROOT` is defensive-only.
-
-Next: M5.5 (T30, T32, T33, T35 — standards cleanup), then the accumulated `Reviewed`/
-`Validated` gaps across M3.1, M3.5, M4.2, M5.1-M5.4 before the cycle can close.
-
-No blockers.
 
 ## Status
 
@@ -69,4 +59,4 @@ No blockers.
 | M5.2 | done   | -      | -         | navigator toggle (S9, D25); computeLayout gained hideNav; model.toggleNavigator/resize/layout; ctrl+n; 4 unit tests + 8 pty checks; fresh-context two-pass review logged T29-T36; model.go's resize() changed by M5.4 (T34) — Reviewed cleared, needs re-covering |
 | M5.3 | done   | -      | -         | help modal (S12, D26); help.go (helpBindings/helpBox/overlayHelp, lipgloss v2 Layer/Compositor); model.go helpOpen/openHelp/handleHelpInput; 10 unit tests + 11 pty checks; self fresh-context review found and fixed an unclamped-overlay overflow bug; independent fresh-context two-pass review found no fidelity issues, logged T29-T36 (mostly M5.1-scoped); model.go changed by M5.4 (T34) — Reviewed cleared, needs re-covering |
 | M5.4 | done   | -      | -         | M5-review correctness/UX fixes (T28, T29, T34; D28): resolveLaunch/needsCwd in roots.go (T28), findMatches/foldLower in find.go (T29), model.resize's find-editing check (T34); 8 new/changed unit tests, each proven to fail against the pre-fix code by reverting; full check + check-pty (59) green; cleared M3.1/M3.5/M4.2/M5.1/M5.2/M5.3's Reviewed stamps (roots.go/find.go/model.go all changed since) |
-| M5.5 | planned | -      | -         | replan C1/2026-08-02 (D27): M5-review standards cleanup (T30, T32, T33, T35) |
+| M5.5 | done    | -      | -         | replan C1/2026-08-02 (D27): M5-review standards cleanup (T30, T32, T33, T35); em-dash re-encode in find.go/navigator_test.go, keymap.go Cancel/Help tense fix, viewer.find renamed findState, FindNext/FindPrevious global-dispatch comment; cosmetic only, no behavior change |

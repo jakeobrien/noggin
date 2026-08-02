@@ -363,6 +363,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.startEdit()
 		case key.Matches(msg, keys.Find):
 			return m.startFind()
+		// FindNext and FindPrevious are global like Find itself, not scoped to
+		// viewer focus: stepping through matches is meaningless anywhere else,
+		// but the query lives in the Document Viewer regardless of which pane
+		// currently has focus.
 		case key.Matches(msg, keys.FindNext):
 			if m.viewer.hasFindMatches() {
 				m.viewer = m.viewer.findNext()

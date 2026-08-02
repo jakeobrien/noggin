@@ -64,7 +64,7 @@ func TestNavigatorToggleRewrapsTheOpenDocument(t *testing.T) {
 
 // TestNavigatorToggleKeepsTheSidebarsSelectionIntact moves the Files Nav
 // selection, hides the sidebar, restores it, and checks the selection never
-// moved \u2014 hiding must not reset either Navigator pane's own state, only its
+// moved — hiding must not reset either Navigator pane's own state, only its
 // visibility.
 func TestNavigatorToggleKeepsTheSidebarsSelectionIntact(t *testing.T) {
 	m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)

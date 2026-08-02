@@ -73,15 +73,15 @@ type keyMap struct {
 	Navigator key.Binding
 
 	// Cancel dismisses a modal or in-progress input without acting on it.
-	// M5.1 is its first use (dismissing a find query); a generic name and
-	// binding on purpose, since S12's help modal (M5.3) will need the same
+	// M5.1's first use was dismissing a find query; a generic name and
+	// binding on purpose, since S12's help modal (M5.3) uses the same
 	// one-key dismissal.
 	Cancel key.Binding
 
-	// Help is the footer's help affordance (S11): the footer advertises it
-	// under truncation (M4.2) even before S12's modal exists to open on it —
-	// the binding and its hint text are what M5.3 wires a modal onto, not a
-	// new contract this milestone invents.
+	// Help is the footer's help affordance (S11): the footer advertised it
+	// under truncation (M4.2) before S12's modal existed to open on it —
+	// M5.3 wired the modal onto this binding and its hint text, not a new
+	// contract of its own.
 	Help key.Binding
 }
 

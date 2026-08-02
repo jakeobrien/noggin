@@ -15,7 +15,7 @@ const emptyViewerText = "No document open. Pick a file in the Navigator."
 
 // viewer is the Document Viewer: the active document, its rendered form and the
 // scroll position within it. Navigation is viewport scrolling only — no cursor,
-// no selection (D4). find is the S8 in-document search state, layered on top.
+// no selection (D4). findState is the S8 in-document search state, layered on top.
 type viewer struct {
 	vp  viewport.Model
 	doc document
@@ -27,7 +27,7 @@ type viewer struct {
 	// err is a render failure, shown in the pane instead of the document.
 	err error
 
-	find find
+	findState find
 }
 
 func newViewer() viewer {
@@ -38,7 +38,7 @@ func newViewer() viewer {
 	// v2 stops padding short content out to the viewport's height unless asked;
 	// the pane contract is a content box of exactly its size.
 	vp.FillHeight = true
-	return viewer{vp: vp, find: newFind()}
+	return viewer{vp: vp, findState: newFind()}
 }
 
 // setSize sets the content box the viewer draws into, re-rendering (and so
@@ -69,7 +69,7 @@ func (v viewer) open(d document) viewer {
 func (v viewer) render() viewer {
 	v.renderedWidth = v.vp.Width()
 	v.err = nil
-	v.find = newFind()
+	v.findState = newFind()
 	v.vp.StyleLineFunc = nil
 	if !v.doc.isOpen() {
 		v.vp.SetContent("")
