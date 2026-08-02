@@ -64,14 +64,23 @@ func resolveCwd() (string, error) {
 // drop an argument that does not need cwd at all — the too-many-arguments
 // case is refused by resolveRoots on its own count regardless of cwd, and
 // an absolute directory argument never touches cwd once resolved either.
-// When needsCwd says no, args passes through to resolveRoots untouched, so
-// any rejection it produces of its own (e.g. a bad path) is exactly what a
-// working cwd would also have produced.
+// When needsCwd says no, args passes through to resolveRoots, but via
+// resolvePathArg with needsCwd's own stat result (when it took one) rather
+// than letting resolveRoots stat the same path a second time — the TOCTOU
+// window a second, independent stat would open (T37).
 func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) resolution {
-	if cwdErr != nil && needsCwd(args, cwd) {
+	if cwdErr == nil {
+		return resolveRoots(args, starred, cwd)
+	}
+	needs, info, statErr, stated := needsCwd(args, cwd)
+	if needs {
 		res := resolveRoots(nil, starred, cwd)
 		res.message = fmt.Sprintf("cannot determine working directory (%v); path argument ignored", cwdErr)
 		return res
+	}
+	if stated {
+		p := absPath(args[0], cwd)
+		return resolvePathArg(args[0], p, info, statErr, cwd, baseResolution(starred))
 	}
 	return resolveRoots(args, starred, cwd)
 }
@@ -90,23 +99,25 @@ func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) re
 //     does: resolveFile always makes cwd the ad-hoc root, regardless of
 //     whether the file argument itself needed cwd to be found.
 //
-// The stat here duplicates the one resolveRoots will do on the same path
-// moments later; that is deliberate rather than threading cwd-failure state
-// into resolveRoots itself, which would complicate a function whose whole
-// point is a single, pure, S1-shaped decision, for a launch-time check that
-// runs once.
-func needsCwd(args []string, cwd string) bool {
+// When the single-absolute-argument case takes a stat to decide, it returns
+// that stat result (info, statErr, stated=true) so resolveLaunch can hand it
+// to resolvePathArg instead of letting resolveRoots stat the same path again
+// moments later (T37 — an independent second stat is a TOCTOU window, not
+// just wasted work). stated is false whenever no stat was taken (zero or
+// multiple args, or a relative single argument), in which case there is
+// nothing to reuse and resolveLaunch falls through to resolveRoots as before.
+func needsCwd(args []string, cwd string) (needs bool, info os.FileInfo, statErr error, stated bool) {
 	if len(args) != 1 {
-		return false
+		return false, nil, nil, false
 	}
 	if !filepath.IsAbs(args[0]) {
-		return true
+		return true, nil, nil, false
 	}
-	info, err := os.Stat(args[0])
-	if err != nil {
-		return false // resolveRoots' own not-found rejection doesn't need cwd either
+	info, statErr = os.Stat(args[0])
+	if statErr != nil {
+		return false, nil, statErr, true // resolveRoots' own not-found rejection doesn't need cwd either
 	}
-	return !info.IsDir()
+	return !info.IsDir(), info, nil, true
 }
 
 // resolveRoots applies the S1 launch contract. args is the command line beyond
@@ -116,16 +127,7 @@ func needsCwd(args []string, cwd string) bool {
 // root is a path for the caller to walk — the side-effecting steps (walking a
 // tree, reading a document) stay out of this pure decision.
 func resolveRoots(args []string, starred []string, cwd string) resolution {
-	roots := starredRoots(starred)
-	// -1 (no active root) when there are none to be active; otherwise the
-	// first (S1's order puts the ad-hoc root, if any, ahead of these anyway,
-	// so this only matters for the bare-launch case where roots is starred
-	// roots alone).
-	active := -1
-	if len(roots) > 0 {
-		active = 0
-	}
-	base := resolution{roots: roots, active: active}
+	base := baseResolution(starred)
 
 	switch {
 	case len(args) == 0:
@@ -140,14 +142,39 @@ func resolveRoots(args []string, starred []string, cwd string) resolution {
 
 	p := absPath(args[0], cwd)
 	info, err := os.Stat(p)
+	return resolvePathArg(args[0], p, info, err, cwd, base)
+}
+
+// baseResolution is the resolution every path-argument branch starts from:
+// the starred roots, with the first one active when there are any (-1
+// otherwise). "-1 when there are none to be active; otherwise the first" is
+// safe because S1's order puts the ad-hoc root, if any, ahead of these
+// anyway, so this only matters for the bare-launch case where roots is
+// starred roots alone. Shared by resolveRoots and resolveLaunch's
+// already-stat'd single-argument path (T37), so both build the same base.
+func baseResolution(starred []string) resolution {
+	roots := starredRoots(starred)
+	active := -1
+	if len(roots) > 0 {
+		active = 0
+	}
+	return resolution{roots: roots, active: active}
+}
+
+// resolvePathArg finishes resolving a single path argument once its stat
+// result (info, err) is already known — the not-found/directory/file
+// branching resolveRoots itself performs right after its own stat, and that
+// resolveLaunch also drives with needsCwd's stat instead of taking a second,
+// independent one on the same path (T37).
+func resolvePathArg(arg, p string, info os.FileInfo, err error, cwd string, base resolution) resolution {
 	if err != nil {
-		base.message = fmt.Sprintf("cannot open %s: no such path", args[0])
+		base.message = fmt.Sprintf("cannot open %s: no such path", arg)
 		return base
 	}
 	if info.IsDir() {
 		return resolveDir(p, base)
 	}
-	return resolveFile(p, cwd, roots)
+	return resolveFile(p, cwd, base.roots)
 }
 
 // resolveDir handles a directory argument against the starred roots in base.

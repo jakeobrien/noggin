@@ -430,10 +430,23 @@ func (m model) resize(width, height int) model {
 	// (handleFindInput owns every key but Cancel/Activate while editing, so
 	// the Navigator binding never reaches it), but a tea.WindowSizeMsg is
 	// not gated the same way.
+	//
+	// The same re-render just as silently drops a *committed* find (T43):
+	// editing is already false post-Enter, so the check above alone misses
+	// it, but applyCurrentMatch's indication and FindNext/FindPrevious's
+	// traversal are exactly as lost as an in-progress query would be.
+	// hasFindMatches() catches that case the same way, checked after the
+	// editing case so a find that was both editing and matched (the normal
+	// case) reports the more specific "search dismissed" message once, not
+	// both.
 	findWasEditing := m.viewer.findEditing()
+	findHadMatches := m.viewer.hasFindMatches()
 	m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
-	if findWasEditing && !m.viewer.findEditing() {
+	switch {
+	case findWasEditing && !m.viewer.findEditing():
 		m.message = "window resized; search dismissed"
+	case findHadMatches && !m.viewer.hasFindMatches():
+		m.message = "window resized; search cleared"
 	}
 	filesContent := l.files.content()
 	m.files = m.files.setSize(filesContent.width, filesContent.height)

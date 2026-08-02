@@ -213,6 +213,36 @@ func TestWindowResizeWithNoFindInProgressLeavesMessageAlone(t *testing.T) {
 	}
 }
 
+// TestWindowResizeAfterCommittedFindSurfacesMessage is T43: unlike the
+// mid-edit case T34 covers, committing a find (Enter) clears findEditing
+// but keeps its matches and indication (commitFind's doc comment) for
+// FindNext/FindPrevious to keep using. A resize's re-render drops those
+// matches exactly as it would an in-progress query, but T34's guard alone
+// misses it since editing was already false — this must be caught too,
+// not silently dropped.
+func TestWindowResizeAfterCommittedFindSurfacesMessage(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	m = press(t, m, "/")
+	m = typeText(t, m, "final")
+	m = press(t, m, "enter")
+	if m.viewer.findEditing() {
+		t.Fatal("test setup: enter did not commit the find")
+	}
+	if !m.viewer.hasFindMatches() {
+		t.Fatal("test setup: committed find has no matches to lose")
+	}
+
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
+	m = concrete(t, next)
+
+	if m.viewer.hasFindMatches() {
+		t.Fatal("test setup: resize did not actually invalidate the committed find (width unchanged?)")
+	}
+	if !strings.Contains(m.message, "resize") && !strings.Contains(m.message, "search") {
+		t.Errorf("message = %q, want it to explain the cleared search", m.message)
+	}
+}
+
 // TestFindQueryCapturesEveryKeyWhileEditing checks that a query character
 // which is also a binding elsewhere (q, the quit key) types into the query
 // instead of acting on its binding.
