@@ -21,7 +21,7 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 
 | Key | Name               | Status  | Outcome / intent | Archive |
 |-----|--------------------|---------|------------------|---------|
-| C1  | read-across-roots  | active  | `noggin .` — saved + ad-hoc roots, switch between them, browse a tree, read rendered markdown, hand off to the editor | - |
+| C1  | read-across-roots  | done    | Delivered all 12 spec'd deliverables (S1–S12) across 26 plan tasks; none of D8's pre-agreed cuts were needed | `archive/C1-2026-08-read-across-roots/` |
 | C2  | find               | planned | Telescope-grade fuzzy filename find and grep with preview, scoped to a root or all roots | - |
 | C3  | compare            | planned | More than one document on screen at once, with keyboard targeting | - |
 | C4  | recall             | planned | The session remembers: document history, starred documents, recent, wiki-links | - |
@@ -37,12 +37,11 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 - User-configurable keybindings (from C1; keymap is build-time-only for now)
 - Modifier-multiplied navigation acceleration, 5×/15×/50× (from C1; half-page/page may suffice)
 - Move the starred-roots store from config to a data location once it stops needing hand edits (from C1)
-- Persisted (cross-session) document history (from C1 vision triage)
 - Browse-by-results: send finder results to the Files Nav (from C1)
 - Select mode + copy in the Document Viewer (from C1)
 - "Follow" mode: auto-preview on selection change (from C1)
 - Search over documents opened this session; repeat-last-search (from C1)
-- Backlinks; daily/zettelkasten note creation; simple in-app editing; outline re-ordering (from C1)
+- Backlinks; daily/zettelkasten note creation; outline re-ordering (from C1)
 - Audio input; encryption; git sync; wikipedia pane; agent chat pane (from C1)
 - Rename `go.mod`'s module path from the bare `noggin` to a resolvable path before
   `go install`/external import ever needs it (from C1, code review)

@@ -596,7 +596,7 @@ check("M4.2 exits 0 after the message-clear check", code == 0, f"exit {code}")
 # renders the fixture with real ANSI colour (no-TTY styling is a go-test-only
 # fallback), and it is exactly that styling which drifts viewport.Model's own
 # SetHighlights out of alignment with the document's real line numbers
-# (findings/viewport-search-ansi-offsets.md). go test alone cannot catch that
+# (.charm/knowledge/viewport-search-ansi-offsets.md). go test alone cannot catch that
 # — it never renders in colour — so this is the one place a regression would
 # actually show up.
 

@@ -17,7 +17,7 @@ import (
 //
 // A match's position is computed once, directly, rather than through
 // viewport.Model's own SetHighlights/HighlightNext/HighlightPrevious
-// (findings/viewport-search-ansi-offsets.md): those walk byte offsets against
+// (.charm/knowledge/viewport-search-ansi-offsets.md): those walk byte offsets against
 // the *styled* content viewport.Model.GetContent() returns, and that walk
 // silently drifts once any ANSI escape precedes the match, which every
 // Glamour-styled document does. EnsureVisible and StyleLineFunc, the two

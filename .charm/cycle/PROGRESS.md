@@ -1,70 +1,35 @@
-# Progress — C1 read-across-roots
+# Progress — C2 find
+
+<!-- Per-cycle. Cursor and statuses ONLY — no work summaries (git history carries those).
+     The Handoff section is the single exception: overwrite it each session, never append.
+     Statuses: todo | in-progress | done | blocked | deferred.
+     Blocked rows reference the DECISIONS.md / TRIAGE.md item they wait on — the set of
+     blocked rows is the cycle's blocking-issue list.
+
+     Reviewed / Validated columns: date (yyyy-mm-dd) the task was last covered by code
+     review / validate, or `-` if it never has been. Set per task key, by the role that
+     performed the check — or the parent that dispatched it as a subagent — for exactly the
+     tasks that check actually covered, never assumed for a whole milestone. This is what
+     makes reviewed/validated state accurate across replans that insert tasks earlier,
+     partial mid-milestone checks, and skipped end-of-milestone gates — a single cycle-wide
+     checkpoint can't represent any of those. Clear a cell back to `-` when the task's code
+     changes after that date (fix-ups, reopened work) — it needs re-covering. -->
 
 ## Cursor
 
-M5.8 built this session (T45, T46; D30) — done and now validated (fresh-context subagent,
-2026-08-02); still missing its first code-review `Reviewed` stamp. M5.1-M5.7 are all built,
-reviewed and validated; M5.6 and M5.7 already carry their first `Reviewed` stamp, from the
-same 2026-08-02 review (fcce6cb) that surfaced T45/T46 in the first place — that pass covered
-their diff and does not need repeating. M5.8 alone still needs a code-review pass on its own
-diff (model.go, find_test.go, roots_test.go from commit 5af2a12) — the natural next step,
-likely what lets the cycle close.
+Current task: <key>
 
 ## Handoff
 
-M5.8 (T45, T46; D30) built this session: `resize` now takes a `resizeCause` (`resizeCauseWindow`
-= "window resized", `resizeCauseNavigatorToggle` = "sidebar toggled") threaded from both call
-sites (`Update`'s `tea.WindowSizeMsg` case, `toggleNavigator`), so its dismissed/cleared find
-messages name whichever actually fired instead of hardcoding "window resized" (T45); a new
-test drives a committed find through `ctrl+n` (not a `tea.WindowSizeMsg`) and asserts the
-message names the sidebar toggle, proven meaningful by reverting the cause value and re-running
-(it then failed on the stale wording). `resolveLaunch` gained
-`TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd` (T46), covering the one
-absolute-not-found-arg-plus-unresolvable-cwd branch T37's stat-reuse refactor added with no
-test of its own — traced by hand as correct, and the new test confirms it without any code
-change. `make check` + `make check-pty` green throughout.
+<!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
+     state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Since this build: an independent fresh-context validate pass confirmed both T45 and T46 as
-specified (reproduced the revert-proof for T45; traced T46's branch by hand) — see the
-Status table's M5.8 row. That pass also opened and this replan closed TRIAGE T48 (the
-"(59)" check-count this table quoted for M5.4 was stale since M5.4 itself; real count is
-148 — fixed here and in `findings/pty-verification.md`/`INDEX.md`). M5.8 still needs its
-code-review pass — the last gap before the cycle can close.
-
-Still relevant:
-- Go with the grain (D1) now means Charm v2; D13's no-terminal-query-after-`Run()` rule
-  stands (`markdownStyle` resolves dark/light before `Run()`).
-- Dependency graph: 31 → 24 indirect deps on the v2 migration; M5.1 added
-  `charmbracelet/x/ansi` direct and pulled in `atotto/clipboard` indirectly (unused) — noted
-  for security-review time.
-- Sandbox Go toolchain fully working; the Makefile's `unexport GOROOT` is defensive-only.
+<current-state snapshot>
 
 ## Status
 
-| Key  | Status | Reviewed   | Validated  | Note |
-|------|--------|------------|------------|-------|
-| M1.1 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
-| M1.2 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
-| M1.3 | done   | 2026-08-01 | 2026-07-31 | re-verified on v2 by M1.4 |
-| M1.4 | done   | 2026-08-01 | 2026-07-31 | M1 complete and validated |
-| M1.5 | done   | 2026-07-31 | 2026-07-31 | two-pass review (T9, T10 logged); validated (fresh-context subagent) |
-| M2.1 | done   | 2026-07-31 | 2026-07-31 | internal/tree: policy + walk + hand-rolled gitignore (D18); review found T11-T14; validated |
-| M2.2 | done   | 2026-07-31 | 2026-07-31 | Files Nav pane: filesNav over immutable tree (D19); 8 unit tests + 8 pty checks; validated |
-| M2.3 | done   | 2026-07-31 | 2026-07-31 | Activate binding (enter): filesNav → loadDocument → openDocument; 3 unit tests + 5 pty checks; review found T15; validated |
-| M2.4 | done   | 2026-08-01 | 2026-08-01 | internal/tree hardening (T11-T14, D23): dead branch dropped, doc comments aligned, name matching case-insensitive, escape test added |
-| M3.1 | done   | 2026-08-02 | 2026-08-02 | S1 launch contract; roots.go resolveRoots (D20, T7 fixed); 9 subtests + pty spot-check; re-covered by the 2026-08-02 review of the M5.4 diff to roots.go (found T37, T38, T40) |
-| M3.2 | done   | 2026-07-31 | 2026-07-31 | starred-roots store (D21); store.go load/save/toggle + loadStarredRoots wired into main.go; 9 tests |
-| M3.3 | done   | 2026-07-31 | 2026-07-31 | Roots Nav pane (D22); rootsnav.go + model.{activateRoot,toggleStar}; 11 unit tests + 26 pty checks |
-| M3.4 | done   | 2026-07-31 | 2026-07-31 | test-only: proved via `TestActivateRootLeavesOpenDocumentUntouched`, no prod code change |
-| M3.5 | done   | 2026-08-02 | 2026-08-02 | replan C1/2026-08-01: roots/messaging correctness fixes (T17, T18, T20); review found T28 (fixed by M5.4); re-covered by the 2026-08-02 review of the M5.4 diff to roots.go (found T37, T38, T40) |
-| M3.6 | done   | 2026-08-01 | 2026-08-01 | replan C1/2026-08-01: M2/M3 code-review cleanup batch (T9, T10, T16, T19, T21-T25, T27) |
-| M4.1 | done   | 2026-08-01 | 2026-08-01 | edit handoff (S10/D3): tea.ExecProcess release/resume + finishEdit re-render from disk |
-| M4.2 | done   | 2026-08-02 | 2026-08-02 | footer key hints (S11); T15 (activate read-error message) and T26 (empty-Roots-Nav guidance) folded in; re-covered by the 2026-08-02 review of the M5.4 diff to model.go (found T43, adjacent not blocking) |
-| M5.1 | done   | 2026-08-02 | 2026-08-02 | find in document (S8); find.go + keymap/model wiring; 8 unit tests + 5 pty checks; found and fixed a real bubbles/v2 SetHighlights bug along the way (see findings); fresh-context two-pass review logged T29-T36; re-covered by the 2026-08-02 review of the M5.4/M5.5 diff to find.go (found T39, T41, T43) |
-| M5.2 | done   | 2026-08-02 | 2026-08-02 | navigator toggle (S9, D25); computeLayout gained hideNav; model.toggleNavigator/resize/layout; ctrl+n; 4 unit tests + 8 pty checks; fresh-context two-pass review logged T29-T36; re-covered by the 2026-08-02 review of the M5.4 diff to model.go's resize() (found T43, adjacent not blocking) |
-| M5.3 | done   | 2026-08-02 | 2026-08-02 | help modal (S12, D26); help.go (helpBindings/helpBox/overlayHelp, lipgloss v2 Layer/Compositor); model.go helpOpen/openHelp/handleHelpInput; 10 unit tests + 11 pty checks; self fresh-context review found and fixed an unclamped-overlay overflow bug; independent fresh-context two-pass review found no fidelity issues, logged T29-T36 (mostly M5.1-scoped); re-covered by the 2026-08-02 review of the M5.4 diff to model.go (no help.go-specific findings; help.go itself not re-diffed since it was untouched by M5.4/M5.5) |
-| M5.4 | done   | 2026-08-02 | 2026-08-02 | M5-review correctness/UX fixes (T28, T29, T34; D28): resolveLaunch/needsCwd in roots.go (T28), findMatches/foldLower in find.go (T29), model.resize's find-editing check (T34); 8 new/changed unit tests, each proven to fail against the pre-fix code by reverting; full check + check-pty green; cleared M3.1/M3.5/M4.2/M5.1/M5.2/M5.3's Reviewed stamps (roots.go/find.go/model.go all changed since); two-pass fresh-context review (2026-08-02) found T37-T41 (standards) and T42 (spec fidelity, PLAN.md text stale against D28) — no blocking fidelity gaps, T28/T29/T34 confirmed delivered as D27/D28 describe |
-| M5.5 | done   | 2026-08-02 | 2026-08-02 | replan C1/2026-08-02 (D27): M5-review standards cleanup (T30, T32, T33, T35); em-dash re-encode in find.go/navigator_test.go, keymap.go Cancel/Help tense fix, viewer.find renamed findState, FindNext/FindPrevious global-dispatch comment; cosmetic only, no behavior change; two-pass fresh-context review (2026-08-02) confirmed T30/T32/T33/T35 complete with no leftovers, found T43 (adjacent, pre-existing, not a regression) |
-| M5.6 | done   | 2026-08-02 | 2026-08-02 | replan C1/2026-08-03 (D29): roots/find correctness fixes (T37, T43) — needsCwd/resolveLaunch now share one stat via resolvePathArg/baseResolution; model.resize's hasFindMatches check surfaces "search cleared" for a committed find lost to a re-render; new test proven to fail pre-fix; validate (2026-08-02) found T43's acceptance text names resize-or-Navigator-toggle but only resize is directly tested (T44 logged); fresh-context two-pass review (2026-08-02) confirmed T37/T43 delivered as specified but found T45 (the toggleNavigator path T44 flagged as untested does fire, and produces a factually wrong "window resized" message) and T46 (T37's refactor added an untested not-found-absolute-arg code path) |
-| M5.7 | done   | 2026-08-02 | 2026-08-02 | replan C1/2026-08-03 (D29): standards/test-hardening cleanup (T38, T39, T40, T41); needsCwd's cwd param dropped, findMatches' span shape named as origSpan, resolveLaunch gained zero/many-arg cwdErr tests, fold-within-match regression test added; fresh-context two-pass review (2026-08-02) confirmed T38-T41 complete with no leftovers, no fidelity issues |
-| M5.8 | done   | —          | 2026-08-02 | replan C1/2026-08-03 (D30): resize/toggleNavigator message-cause fix (T45) and resolveLaunch test-coverage gap (T46) — resize takes a resizeCause (window vs sidebar-toggle) threaded from both call sites so its dismissed/cleared messages name the real trigger; new test drives a committed find through ctrl+n and asserts the message names the sidebar toggle, not a resize, proven meaningful by reverting (independently reproduced by validate); TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd added, confirming T37's absolute-not-found-plus-unresolvable-cwd branch behaves correctly (traced by hand, confirmed by validate); make check + check-pty green, no other behavior change; still needs a code-review pass |
+| Key  | Status      | Reviewed | Validated | Note                              |
+|------|-------------|----------|-----------|------------------------------------|
+| M1.1 | done        | -        | -         |                                    |
+| M1.2 | in-progress | -        | -         |                                    |
+| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |

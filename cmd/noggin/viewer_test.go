@@ -22,7 +22,7 @@ var frontmatterLines = []string{
 // rendered: a heading, a table, a code fence, nested and task lists, and a
 // blockquote. Colour is not asserted — under `go test` there is no TTY, so
 // Glamour uses its no-TTY style and lipgloss emits no escapes
-// (findings/pty-verification.md). Styling is verified in a pty instead.
+// (.charm/knowledge/pty-verification.md). Styling is verified in a pty instead.
 var fixtureStructure = map[string]string{
 	"heading":     "Reading Notes",
 	"table row":   "Shown in the pane title",

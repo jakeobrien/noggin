@@ -1,5 +1,7 @@
 # YAML frontmatter and Glamour rendering
 
+As of: C1
+
 Question: what does a note with YAML frontmatter look like rendered through Glamour, and
 what does it cost to hide it? (Asked while specifying C1/S7.)
 
@@ -26,7 +28,8 @@ what does it cost to hide it? (Asked while specifying C1/S7.)
 
 ## Consequence
 
-Pre-strip before rendering, mirroring Glow. Zero new dependencies.
+Pre-strip before rendering, mirroring Glow (see `.charm/DECISIONS.md` D5). Zero new
+dependencies.
 
 Relevant later: when tags arrive (C5), tag parsing reads the frontmatter block separately from
 rendering — stripping for display does not preclude parsing for metadata. If frontmatter

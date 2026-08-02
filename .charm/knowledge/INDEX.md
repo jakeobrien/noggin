@@ -16,4 +16,16 @@
      trap. A file that contradicts the code is a TRIAGE.md item, not a silent edit. Keep
      this tier small; nothing archives it automatically. -->
 
-- `<topic>.md` — <one line: what it covers and why it still matters> (as of C<n>)
+- `frontmatter-rendering.md` — Glamour ignores YAML frontmatter and CommonMark mis-renders it
+  as an H2; cited by `document.go` at the frontmatter-stripping code. (as of C1)
+- `gitignore-matching.md` — why the tree walk hand-rolls `.gitignore` instead of a dependency
+  or shell-out, the subset covered, and what's deliberately left out; cited by
+  `internal/tree/gitignore.go`. (as of C1)
+- `go-toolchain-env.md` — this sandbox's Go toolchain constraints, resolved 2026-07-31; cited
+  by the Makefile. Re-check before trusting if the environment changes again. (as of C1)
+- `pty-verification.md` — the recipe for driving the real binary from a pty under Charm v2
+  (startup handshake, cell-diffing screen emulation, border-scroll height check); cited by
+  the Makefile and `viewer_test.go`. The basis for every `make check-pty` addition. (as of C1)
+- `viewport-search-ansi-offsets.md` — bubbles v2's `viewport.SetHighlights` drifts off-line
+  against ANSI-styled content; why `find.go` computes match lines itself instead. Re-check
+  before ever reaching for `SetHighlights` again. (as of C1)

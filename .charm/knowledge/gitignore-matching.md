@@ -1,6 +1,8 @@
 # .gitignore matching for the tree walk
 
-Question: how should M2.1's walk honour `.gitignore` — a dependency, shell-out, or
+As of: C1
+
+Question: how should the tree walk honour `.gitignore` — a dependency, shell-out, or
 hand-rolled? And what subset does a read-only browse actually need? (Asked building M2.1.)
 
 ## The choice
@@ -11,12 +13,12 @@ hand-rolled? And what subset does a read-only browse actually need? (Asked build
   git repos at all; a fixture tree under `t.TempDir()` is not a worktree. Also needs `git` on
   PATH at runtime.
 - **A dependency adds weight to a tracked concern.** The dep graph is watched for
-  security-review (PROGRESS.md notes the v2 migration's churn). `sabhiram/go-gitignore` is tiny
-  but has its own `**`/anchoring gaps; go-git's `plumbing/format/gitignore` is more correct but
-  drags in go-git. Neither is clearly better than a focused hand-roll for our subset.
+  security-review. `sabhiram/go-gitignore` is tiny but has its own `**`/anchoring gaps;
+  go-git's `plumbing/format/gitignore` is more correct but drags in go-git. Neither is clearly
+  better than a focused hand-roll for our subset.
 - **Hand-rolled, chosen.** `internal/tree/gitignore.go`, ~40 significant lines. We own the
-  behaviour and test it directly (`gitignore_test.go`, 18 match cases + negation + nested
-  precedence).
+  behaviour and test it directly (`gitignore_test.go`, 18+ match cases + negation + nested
+  precedence). See `.charm/DECISIONS.md` D18 for the package-placement rationale.
 
 ## Subset covered (what a browse needs)
 
@@ -37,7 +39,7 @@ hand-rolled? And what subset does a read-only browse actually need? (Asked build
   excluded by a built-in name check in the walk, independent of any `.gitignore`.
 - **Re-including a file under an already-excluded directory.** git forbids it and so do we, for
   free: an ignored directory is *pruned* in `walkDir` (never descended), so its children are
-  never evaluated. This is also why S6's "folders with nothing readable are still shown" holds
+  never evaluated. This is also why "folders with nothing readable are still shown" holds
   only for *non-ignored* folders — an ignored dir is gone entirely.
 - **Exotically escaped class internals / `[a-z]` range edge cases** beyond straight pass-through
   to `regexp`. Real `.gitignore`s in doc trees don't lean on these; add cases to

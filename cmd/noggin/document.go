@@ -42,7 +42,7 @@ var frontmatterFence = regexp.MustCompile(`(?m)^---[ \t]*\r?\n`)
 //
 // Glamour has no frontmatter support and CommonMark reads the closing `---` as
 // a setext heading underline, so an unstripped block renders as a spurious H2
-// above the document's real title (D5, findings/frontmatter-rendering.md). Glow
+// above the document's real title (D5, .charm/knowledge/frontmatter-rendering.md). Glow
 // solves this by slicing the bytes off before rendering and so do we — no YAML
 // parsing, no extra dependency.
 //

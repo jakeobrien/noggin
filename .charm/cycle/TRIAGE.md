@@ -1,4 +1,4 @@
-# Triage — C1 read-across-roots
+# Triage — C2 find
 
 <!-- Per-cycle triage INBOX for actionable items surfaced out-of-band: code-review and
      validate findings, bugs / in-scope issues discovered during build that were not
@@ -25,3 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T1 | review | high | `src/foo.ts:42` | <one-line description + concrete recommendation> | open |

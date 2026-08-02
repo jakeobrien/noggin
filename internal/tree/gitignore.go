@@ -10,10 +10,10 @@ import (
 // `.gitignore` files, comments, negation (`!`), directory-only (trailing `/`),
 // anchoring (a leading or embedded `/`), and the wildcards `*`, `?`, `[...]`
 // and `**` — rather than take a dependency (the dep graph is a tracked
-// concern, see .charm/cycle/PROGRESS.md) or shell out to `git check-ignore`
-// (which only works inside a real git worktree, wrong for arbitrary roots).
+// concern for security-review) or shell out to `git check-ignore` (which only
+// works inside a real git worktree, wrong for arbitrary roots).
 //
-// See .charm/cycle/findings/gitignore-matching.md for the semantics covered and
+// See .charm/knowledge/gitignore-matching.md for the semantics covered and
 // the ones deliberately left out.
 
 // ignorePattern is one compiled `.gitignore` line.
