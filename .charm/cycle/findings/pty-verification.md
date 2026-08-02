@@ -75,14 +75,18 @@ program *and* deterministic colour, which none currently does.
 
 ## Current coverage
 
-`make check-pty`: 59 checks, all passing at 80x24 and 100x30 — startup handshake, first frame
+`make check-pty` had 59 checks as of M1.4 (2026-07-31) — startup handshake, first frame
 before input, exit 0 and terminal restored (`\x1b[?25h`, `\x1b[?2004l`) on both `q` and
 `ctrl+c`, exact frame geometry, all three regions, focused/unfocused border colour on the wire,
 the full focus cycle read off the footer in both directions (which also exercises Bubble Tea's
 real decoding of `tab` and `shift+tab`, something the synthetic `keyPress` helper cannot
 vouch for), resize reflow, the fixture rendered with frontmatter absent and no literal tab on
 screen, half-page scrolling to the code fence and `G` to the last line with the border intact
-throughout, `ctrl+b` paging back, and the empty state on bare launch.
+throughout, `ctrl+b` paging back, and the empty state on bare launch. Every later milestone
+(M2-M5) added its own pty checks on top of this (Roots/Files Nav, find, help modal, navigator
+toggle, etc.) that were never folded back into this enumeration; the count alone was
+re-verified at 148 as of the M5.8 validate pass (2026-08-02, TRIAGE T48) but the list above is
+not re-derived past M1.4 — read it as the harness's origin story, not current coverage.
 
 Key bytes in `checks.py` are a deliberate, documented D2 carve-out: the harness is on the far
 side of a language boundary from `keymap.go`, so they live in one `KEY` table naming the

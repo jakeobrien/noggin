@@ -5,6 +5,8 @@
 - **Active Root** — the one Root whose contents the Files Nav is showing. Exactly one at a time.
 - **Ad-hoc Root** — a Root supplied by the command line for this session only, not persisted.
   Listed first because it was named deliberately. At most one per session (C1).
+- **Broken Root** — a Root whose path no longer exists on disk. Still listed and its starred
+  state kept, but marked and cannot be activated.
 - **Committed Find** — a Find query locked in with Activate, as distinct from one still being
   edited. Its match and indication persist until dismissed or the viewport is forced to
   re-render (e.g. a terminal resize or a Navigator toggle).

@@ -14,7 +14,8 @@
   different queries (BEL-terminated OSC 11, Primary DA, two DECRQM; no cursor-position report)
   and, more importantly, v2's cell-diffing renderer means a harness must emulate a screen
   (ECH/CUF/DCH/tabs) rather than strip escapes. The harness is now checked in at `test/pty/`,
-  run by `make check-pty` — 59 checks. The recipe for every later end-to-end check.
+  run by `make check-pty` — 59 checks as of M1.4, 148 as of M5.8 (never re-enumerated in
+  between). The recipe for every later end-to-end check.
 - `glamour-in-bubbletea.md` — `WithAutoStyle` queries the terminal at render time and deadlocks
   against Bubble Tea's input reader (the program hangs with no frame); Glamour also leaks
   literal tabs into rendered code fences, which lipgloss mis-measures. Both fixed in M1.3;

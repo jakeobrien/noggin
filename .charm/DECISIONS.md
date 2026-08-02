@@ -450,7 +450,7 @@
 - Decision: `ctrl+n` ("Navigator"), advertised in the footer as "sidebar" for every pane
   alongside Edit, the other global action already shown everywhere (footer.go's
   `paneHints`).
-- Why: low risk and cheap to revisit \u2014 D2 confines every key literal to keymap.go, so
+- Why: low risk and cheap to revisit — D2 confines every key literal to keymap.go, so
   retuning this one binding later is a one-file, one-line change; no plan or test depends on
   the specific key, only on the binding named `keys.Navigator` existing.
 
@@ -466,15 +466,15 @@
 - Decision: lipgloss v2 ships a cell-based `Layer`/`Compositor`/`Canvas` (undocumented in the
   quick-reference used at plan time, found in the vendored source). `help.go`'s `overlayHelp`
   builds the already-rendered frame as one full-size layer (z0) and the modal box as a
-  second, centered, smaller layer (z1), and renders the compositor \u2014 the pane underneath
+  second, centered, smaller layer (z1), and renders the compositor — the pane underneath
   stays pixel-visible around the modal's edges. The modal itself is content from
   `bubbles/help`'s `FullHelpView` (going with the grain, D1) fed `helpBindings(pane)`, a
   fuller-than-footer list that includes what `paneHints` deliberately omits (PrevPane; for
-  the viewer, Cancel/FindNext/FindPrevious \u2014 see footer.go's comment). Input is trapped the
+  the viewer, Cancel/FindNext/FindPrevious — see footer.go's comment). Input is trapped the
   same way `handleFindInput` traps an in-progress search: while `m.helpOpen`, only Help or
   Cancel do anything, everything else (including Quit) is swallowed. Fresh-context review
   (code-reviewer subagent) caught that a Compositor sizes its output canvas to the union of
-  every layer's bounds, not the base layer's own size \u2014 an unclamped modal taller/wider than
+  every layer's bounds, not the base layer's own size — an unclamped modal taller/wider than
   the terminal (e.g. the viewer's full binding list on a short terminal) would grow the
   rendered frame past what `View()`'s no-alt-screen drawing can show correctly. Fixed by
   wrapping the modal box in `lipgloss.NewStyle().MaxWidth(width).MaxHeight(height)` before
@@ -483,7 +483,7 @@
 - Why: true compositing is the only way to keep the pane visible around the modal, which is
   what "opens over" means; going with the grain (D1) again rather than hand-splicing strings.
   The canvas round-trip re-serializes SGR runs and trims trailing padding on unaffected rows
-  \u2014 cosmetically identical on a real terminal, but byte-different, which is why
+  — cosmetically identical on a real terminal, but byte-different, which is why
   `help_test.go`'s overlay test compares `ansi.Strip`'d, trailing-space-trimmed lines rather
   than raw bytes. This round-trip only ever runs while the modal is open (`render()` skips it
   otherwise), so it cannot affect any other milestone's byte-exact frame comparisons.
