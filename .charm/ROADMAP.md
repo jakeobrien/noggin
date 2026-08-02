@@ -46,3 +46,6 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 - Audio input; encryption; git sync; wikipedia pane; agent chat pane (from C1)
 - Rename `go.mod`'s module path from the bare `noggin` to a resolvable path before
   `go install`/external import ever needs it (from C1, code review)
+- A shared exclusive-input-mode dispatch abstraction across modals (currently hand-duplicated
+  per modal in model.go) — only worth it if a third modal is ever added; none planned in C1
+  (from C1, code review T31)

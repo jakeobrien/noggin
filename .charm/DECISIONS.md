@@ -488,3 +488,40 @@ full-screen replacement
   `help_test.go`'s overlay test compares `ansi.Strip`'d, trailing-space-trimmed lines rather
   than raw bytes. This round-trip only ever runs while the modal is open (`render()` skips it
   otherwise), so it cannot affect any other milestone's byte-exact frame comparisons.
+
+## D27: C1's replan (2026-08-02) routes the M5 review backlog into two new tasks, one
+deferral and one drop
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-02
+- Context: TRIAGE.md had accumulated 9 open items (T28, carried over from the M3.5 review;
+  T29-T36, from the M5.1-M5.3 fresh-context two-pass review) — three medium correctness/UX
+  bugs (T28, T29, T34 by final judgment; T30 and T31 were reporter-rated medium but assessed
+  lower here), the rest low standards nits or an informational dependency note. None
+  invalidate the spec or plan shape.
+- Decision: split by nature, mirroring D17/D24's precedent of one bundled cleanup task per
+  batch rather than nine near-identical plan entries. **M5.4** (correctness/UX fixes, effort
+  2): T28 (`resolveLaunch` drops an absolute-path launch argument on a `resolveCwd` failure
+  it doesn't need — outside S1's enumerated rejections), T29 (`findMatches`' smart-case path
+  can misattribute a match's line when a case fold changes a rune's byte length — the exact
+  bug class `find.go`'s own doc comment says it exists to avoid), T34 (a resize mid-find-edit
+  silently drops the query with no footer message, unlike every other lose-state path in the
+  codebase). **M5.5** (standards cleanup, effort 1): T30 (13 literal `\u2014` escape-text
+  occurrences instead of real em-dashes), T32 (stale future-tense help-modal comments now
+  that M5.3 shipped), T33 (`viewer.find` field shares its name with its own type), T35 (an
+  intent comment for FindNext/Previous's global dispatch). **Deferred** to `ROADMAP.md`
+  Unscheduled: T31 (no shared exclusive-input-mode abstraction across modals) — real
+  observation, but only bites if a third modal is ever added, and none is planned in C1.
+  **Dropped**: T36 (M5.1's new indirect dependency) — already covered by `PROGRESS.md`'s
+  existing dependency-graph-for-security-review note; folded the specific detail into that
+  note rather than opening a separate item.
+- Why: medium and reversible — it grows the plan by 3 effort points against a cycle that
+  already has cut candidates (D8) to absorb overruns, though M5 (the last milestone, all cut
+  candidates already built) has no further room to cut into, so logged not asked. T30 and
+  T31 were downgraded from the reporter's medium rating on inspection: T30 is purely a
+  comment-encoding inconsistency with no functional effect (cheap enough to fold into the
+  standards batch rather than a dedicated task), and T31 has no live second occurrence to
+  fix against — factoring an abstraction now would be speculative generalization for a
+  modal count of two. T28, T29 and T34 earned their task because each is a genuine,
+  testable behavior gap against what S1/S8/the confusion principle promise.

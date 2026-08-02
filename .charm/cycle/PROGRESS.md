@@ -2,57 +2,47 @@
 
 ## Cursor
 
-Current task: none — M5 (the plan's last milestone) is now all `done`; M5.3 needs
-`code-review`/`charm-validate` (fresh context) like M5.1/M5.2 before the cycle can close.
+Current task: none — replan (2026-08-02) triaged the M5-review TRIAGE backlog into M5.4 and
+M5.5. Next up: M5.4, then M5.5, then the still-outstanding M5.1-M5.3 `Validated` stamps,
+before the cycle can close.
 
 ## Handoff
 
-M5.3 (help modal, S12) is done: `keys.Help` (already existed) and `keys.Cancel` open/close
-it. New `cmd/noggin/help.go`: `helpBindings(pane)` (a fuller-than-footer per-pane binding
-list — reuses `scrollActions` for the viewer, includes what `paneHints` deliberately omits:
-PrevPane, and for the viewer Cancel/FindNext/FindPrevious), `helpBox` (renders via
-`bubbles/help`'s `FullHelpView`, D1), and `overlayHelp` (true cell compositing via lipgloss
-v2's `Layer`/`Compositor`/`Canvas` — undocumented in the plan-time reference, found in
-vendored source; D26). `model.go` gained `helpOpen bool`, `openHelp`/`handleHelpInput`
-(same exclusivity shape as `handleFindInput` — while open, only Help/Cancel act, everything
-else including Quit is swallowed), and `render()` (View's new indirection: `frame()` plus
-the overlay when open). 10 unit tests (`help_test.go`) + a new M5.3 pty section (11 checks).
-Acceptance verified directly: opens over any pane without moving focus (all three panes
-checked, unit + pty), lists exactly that pane's own bindings and not another's (unit
-`helpBox` content checks + pty, both Files and Document contexts), and Cancel or Help itself
-closes it, restoring the exact previous frame with focus untouched (unit byte-identical
-`View().Content` + pty byte-identical screen, mirroring M5.2's round-trip proof).
+Replan (2026-08-02) triaged all 9 open TRIAGE items (T28, carried over from the M3.5 review;
+T29-T36, from the M5.1-M5.3 fresh-context two-pass review):
 
-A fresh-context code-review pass (subagent, both standards and spec-fidelity) on this task
-before marking it done found and I fixed in the same session: a `Compositor` sizes its
-output canvas to the union of every layer's bounds, not the base layer's own size, so an
-unclamped modal taller/wider than the terminal (e.g. the viewer's full 18-binding list on a
-short terminal) grew the rendered frame past what `View()`'s no-alt-screen drawing can show
-— fixed by clamping the box with `lipgloss.MaxWidth`/`MaxHeight` before compositing
-(`TestHelpOverlayNeverExceedsTheTerminal` locks it in); the modal's border color duplicated
-`focusedBorderStyle`'s (now a distinct 214); `toggleHelp` was renamed `openHelp` (it never
-toggled off, only `handleHelpInput` closes it); and Quit-while-open coverage was added (unit
-+ implicitly by the modal's own exclusivity design). No other findings. Not yet
-independently reviewed/validated (see Status table) — this was self-review before marking
-done, not the fresh-context `code-reviewer`/`charm-validate` pass the Status table still
-needs.
+- Accepted as **M5.4** (correctness/UX, effort 2): T28 (`resolveLaunch` drops an
+  absolute-path launch argument on a `resolveCwd` failure it doesn't need), T29
+  (`findMatches`' smart-case path can misattribute a match's line when a rune's case fold
+  changes its byte length), T34 (a resize mid-find-edit silently drops the query with no
+  footer message).
+- Accepted as **M5.5** (standards cleanup, effort 1): T30 (13 literal `\u2014` escapes
+  instead of real em-dashes), T32 (stale future-tense help-modal comments in keymap.go now
+  that M5.3 shipped), T33 (`viewer.find` field shadows its own type's name), T35
+  (undocumented intent: FindNext/Previous dispatch globally like Find).
+- Deferred to `ROADMAP.md` Unscheduled: T31 (no shared exclusive-input-mode abstraction
+  across modals) — real observation, but only bites if a third modal is ever added, and none
+  is planned in C1.
+- Dropped: T36 (M5.1's new indirect dependency) — already covered by this doc's existing
+  dependency-graph note for security-review time; folded the specific detail in below rather
+  than opening a separate item.
 
-T28 (open in TRIAGE.md) still live, unchanged this session: `resolveLaunch` drops an
-*absolute*-path launch argument on a `resolveCwd` failure even though it needs no cwd
-(`cmd/noggin/roots.go:64-72`); no regression test covers it. Needs replan — not touched by
-any M5 task.
-
-All of M1-M5 is now `done`. Next: M5.1-M5.3 each still need `Reviewed`/`Validated` stamps
-(M5.1/M5.2 were already self-noted as pending; M5.3 above) before the cycle can close per
-cycle-state's "current milestone all done with any row's Validated blank" rule.
+Logged as D27. `TRIAGE.md` is now empty. M5.4/M5.5 touch files (`roots.go`, `find.go`,
+`viewer.go`, `model.go`, `keymap.go`, `navigator_test.go`) already `Reviewed` under
+M3.1/M3.5/M4.2/M5.1/M5.2/M5.3 — once built, check whether those tasks' `Reviewed` cells
+still hold or need clearing back to `-` per the doc-map rule (code changed since the stamp).
+M5.1-M5.3 still need their fresh-context `Validated` stamps before the cycle can close,
+independent of M5.4/M5.5.
 
 Still relevant:
 - Go with the grain (D1) now means Charm v2.
 - D13's rule (no terminal query after `Run()`) stands; v2 removed its original cause, but
   `markdownStyle` still resolves dark/light via `lipgloss.HasDarkBackground` before `Run()`.
   M4.1's edit handoff already respects this; M5 work must too.
-- Dependency graph shrank on the v2 migration (31 → 24 indirect deps) — noted for
-  security-review time.
+- Dependency graph shrank on the v2 migration (31 → 24 indirect deps); M5.1 added
+  `charmbracelet/x/ansi` as a direct dependency and pulled in `atotto/clipboard` indirectly
+  via `bubbles/v2/textinput` (unused) — noted for security-review time (T36, dropped as its
+  own item, folded in here).
 - Sandbox Go toolchain fully working; the Makefile's `unexport GOROOT` is defensive-only.
 
 No blockers.
@@ -81,3 +71,5 @@ No blockers.
 | M5.1 | done   | 2026-08-01 | -         | find in document (S8); find.go + keymap/model wiring; 8 unit tests + 5 pty checks; found and fixed a real bubbles/v2 SetHighlights bug along the way (see findings); fresh-context two-pass review logged T29-T36 |
 | M5.2 | done   | 2026-08-01 | -         | navigator toggle (S9, D25); computeLayout gained hideNav; model.toggleNavigator/resize/layout; ctrl+n; 4 unit tests + 8 pty checks; fresh-context two-pass review logged T29-T36 |
 | M5.3 | done   | 2026-08-01 | -         | help modal (S12, D26); help.go (helpBindings/helpBox/overlayHelp, lipgloss v2 Layer/Compositor); model.go helpOpen/openHelp/handleHelpInput; 10 unit tests + 11 pty checks; self fresh-context review found and fixed an unclamped-overlay overflow bug; independent fresh-context two-pass review found no fidelity issues, logged T29-T36 (mostly M5.1-scoped) |
+| M5.4 | planned | -      | -         | replan C1/2026-08-02 (D27): M5-review correctness/UX fixes (T28, T29, T34) |
+| M5.5 | planned | -      | -         | replan C1/2026-08-02 (D27): M5-review standards cleanup (T30, T32, T33, T35) |

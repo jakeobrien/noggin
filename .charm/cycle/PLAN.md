@@ -170,3 +170,22 @@ cycle overruns, then M5.2, then M5.1.
   affordance and dismissible with one key — done when: the modal opens over any pane, lists
   the bindings that pane's keymap actually defines, and one key closes it returning focus
   where it was — effort: 2 (needs: M4.2)
+- **M5.4** — M5 review correctness/UX fixes (T28, T29, T34; replan C1/2026-08-02): three
+  places where behavior diverges from what S1/S8 promise or fails silently against the
+  "confusion is not allowed" principle — done when: `resolveLaunch` no longer drops an
+  absolute-path launch argument on a `resolveCwd` failure it doesn't need (only a relative
+  one still gets dropped), with a regression test covering an absolute-path argument plus a
+  failing cwd (T28); `findMatches`' smart-case path no longer misattributes a match to the
+  wrong line when a rune's case fold changes its byte length, with a regression test using a
+  length-changing fold (e.g. Kelvin sign U+212A) preceding a match (T29); and a
+  `tea.WindowSizeMsg` arriving mid-edit of a find query surfaces a footer message when it
+  resets the in-progress search, with a test covering the path (T34) — effort: 2
+  (needs: M5.1, M3.1, M3.5)
+- **M5.5** — M5 review standards cleanup (T30, T32, T33, T35; replan C1/2026-08-02): four
+  low-risk nits from the M5 fresh-context review — done when: all 13 literal `\u2014`
+  escape-text occurrences in `find.go`/`navigator_test.go` are re-encoded to the real
+  em-dash character (T30); `keymap.go`'s `Cancel`/`Help` doc comments no longer describe the
+  help modal in future tense (T32); `viewer.find`'s field is renamed so it no longer shares
+  its name with its own type (T33); and a one-line comment on `FindNext`/`FindPrevious`'s
+  dispatch confirms they are intentionally global like `Find`, not scoped to viewer focus
+  (T35) — effort: 1 (needs: M5.1, M5.2, M5.3)
