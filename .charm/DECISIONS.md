@@ -454,8 +454,7 @@
   retuning this one binding later is a one-file, one-line change; no plan or test depends on
   the specific key, only on the binding named `keys.Navigator` existing.
 
-## D26: M5.3 Help Modal is real cell compositing via lipgloss v2's Canvas/Layer, not a
-full-screen replacement
+## D26: M5.3 Help Modal is real cell compositing via lipgloss v2's Canvas/Layer, not a full-screen replacement
 
 - Status: decided
 - Cycle: C1
@@ -489,8 +488,7 @@ full-screen replacement
   than raw bytes. This round-trip only ever runs while the modal is open (`render()` skips it
   otherwise), so it cannot affect any other milestone's byte-exact frame comparisons.
 
-## D27: C1's replan (2026-08-02) routes the M5 review backlog into two new tasks, one
-deferral and one drop
+## D27: C1's replan (2026-08-02) routes the M5 review backlog into two new tasks, one deferral and one drop
 
 - Status: decided
 - Cycle: C1
@@ -526,8 +524,7 @@ deferral and one drop
   modal count of two. T28, T29 and T34 earned their task because each is a genuine,
   testable behavior gap against what S1/S8/the confusion principle promise.
 
-## D28: T28's fix distinguishes a directory argument from a file argument, not just
-absolute from relative
+## D28: T28's fix distinguishes a directory argument from a file argument, not just absolute from relative
 
 - Status: decided
 - Cycle: C1
@@ -552,8 +549,7 @@ absolute from relative
   `cwdErr` into `resolveRoots` itself, which would complicate a function whose doc comment
   already commits it to one pure, S1-shaped decision.
 
-## D29: C1's replan (2026-08-03) routes the M5.4/M5.5-diff review backlog into two new
-tasks and one direct documentation fix
+## D29: C1's replan (2026-08-03) routes the M5.4/M5.5-diff review backlog into two new tasks and one direct documentation fix
 
 - Status: decided
 - Cycle: C1
@@ -585,8 +581,7 @@ tasks and one direct documentation fix
   amending stale prose that already correctly cites the real fix (D28) is a documentation
   correction, not work requiring an acceptance criterion and effort estimate.
 
-## D30: C1's replan (2026-08-03) routes the M5.6 validate/review follow-up (T44/T45) and one
-review test-gap (T46) into one new task; T44 dropped as superseded
+## D30: C1's replan (2026-08-03) routes the M5.6 validate/review follow-up (T44/T45) and one review test-gap (T46) into one new task; T44 dropped as superseded
 
 - Status: decided
 - Cycle: C1

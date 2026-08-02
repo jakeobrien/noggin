@@ -19,13 +19,13 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 
 ## Cycles
 
-| Key | Name             | Status  | Outcome / intent                                                            | Archive |
-|-----|------------------|---------|-----------------------------------------------------------------------------|---------|
-| C1  | read-across-roots | active  | `noggin .` — saved + ad-hoc roots, switch between them, browse a tree, read rendered markdown, hand off to the editor | -       |
-| C2  | find              | planned | Telescope-grade fuzzy filename find and grep with preview, scoped to a root or all roots | -       |
-| C3  | compare           | planned | More than one document on screen at once, with keyboard targeting           | -       |
-| C4  | recall            | planned | The session remembers: document history, starred documents, recent, wiki-links | -       |
-| C5  | organize          | planned | Non-hierarchical structure and document shape: tags, outline, file management | -       |
+| Key | Name               | Status  | Outcome / intent | Archive |
+|-----|--------------------|---------|------------------|---------|
+| C1  | read-across-roots  | active  | `noggin .` — saved + ad-hoc roots, switch between them, browse a tree, read rendered markdown, hand off to the editor | - |
+| C2  | find               | planned | Telescope-grade fuzzy filename find and grep with preview, scoped to a root or all roots | - |
+| C3  | compare            | planned | More than one document on screen at once, with keyboard targeting | - |
+| C4  | recall             | planned | The session remembers: document history, starred documents, recent, wiki-links | - |
+| C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
 
 ## Unscheduled
 

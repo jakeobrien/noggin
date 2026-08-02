@@ -100,7 +100,7 @@ Delivers: S1, S2, S3, S4
   error, and a stored path that no longer exists is still loaded — effort: 2
 - **M3.3** — Roots Nav pane: ad-hoc root first then starred roots, each entry showing base
   name plus left-truncated parent path, active highlighted, starred marked, missing paths
-  marked broken and not activatable; move / activate / toggle-star actions — done when two
+  marked broken and not activatable; move / activate / toggle-star actions — done when: two
   same-named roots are visually distinguishable by their parent paths, the star mark toggles
   and persists, and activating a broken root is refused with a footer message — effort: 3
   (needs: M3.1, M3.2)

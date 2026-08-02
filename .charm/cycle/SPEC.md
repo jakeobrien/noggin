@@ -69,9 +69,9 @@ editor and does not modify files.
 - **S7 — Document Viewer.** The active document rendered as styled markdown, wrapped to pane
   width, at the quality bar Glow sets (Glamour): headings, tables, code fences with syntax
   highlighting, nested and task lists, blockquotes, rules, emphasis. YAML frontmatter is
-  **hidden**, not rendered. Navigation is **viewport
-  scrolling only** — line, half-page, page, top, bottom. There is no cursor, no selection and
-  no copy. With no document open, the pane says so.
+  **hidden**, not rendered. Navigation is **viewport scrolling only** — line, half-page, page,
+  top, bottom. There is no cursor, no selection and no copy. With no document open, the pane
+  says so.
 - **S8 — Find in document.** A `/`-style incremental search over the open document with
   next/previous match traversal that wraps, and dismissal that leaves the view where it is.
   Case-insensitive unless the query contains uppercase. A match is **located**: the view
