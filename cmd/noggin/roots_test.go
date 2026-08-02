@@ -341,6 +341,46 @@ func TestResolveLaunchStillDropsAbsoluteFileArgOnUnresolvableCwd(t *testing.T) {
 	}
 }
 
+// TestResolveLaunchIgnoresCwdErrWithNoArguments is T40: needsCwd's doc
+// comment claims zero arguments never touch cwd, so a resolveCwd failure
+// must not manufacture a rejection message out of a launch that was never
+// going to use cwd in the first place.
+func TestResolveLaunchIgnoresCwdErrWithNoArguments(t *testing.T) {
+	base := t.TempDir()
+	star := mkdir(t, filepath.Join(base, "star"))
+	cwdErr := errors.New("getwd: no such file or directory")
+
+	res := resolveLaunch(nil, []string{star}, "", cwdErr)
+
+	wantLen(t, res, 1)
+	wantActiveStarred(t, res, 0)
+	wantNoDoc(t, res)
+	wantClean(t, res)
+}
+
+// TestResolveLaunchIgnoresCwdErrWithTooManyArguments is T40's other half:
+// needsCwd's doc comment also claims more than one argument is refused by
+// resolveRoots on its count alone before cwd would ever be used, so a
+// resolveCwd failure must not pre-empt that count-based rejection with its
+// own "path argument ignored" message.
+func TestResolveLaunchIgnoresCwdErrWithTooManyArguments(t *testing.T) {
+	base := t.TempDir()
+	star := mkdir(t, filepath.Join(base, "star"))
+	one := mkdir(t, filepath.Join(base, "one"))
+	two := mkdir(t, filepath.Join(base, "two"))
+	cwdErr := errors.New("getwd: no such file or directory")
+
+	res := resolveLaunch([]string{one, two}, []string{star}, "", cwdErr)
+
+	wantLen(t, res, 1)
+	wantActiveStarred(t, res, 0)
+	wantNoDoc(t, res)
+	if strings.Contains(res.message, "working directory") {
+		t.Errorf("message = %q, want resolveRoots' own count-based rejection, not a cwd-failure message", res.message)
+	}
+	wantRejected(t, res)
+}
+
 // wantActiveStarred asserts the active root is the starred one at index i.
 func wantActiveStarred(t *testing.T, res resolution, i int) {
 	t.Helper()

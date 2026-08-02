@@ -72,7 +72,7 @@ func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) re
 	if cwdErr == nil {
 		return resolveRoots(args, starred, cwd)
 	}
-	needs, info, statErr, stated := needsCwd(args, cwd)
+	needs, info, statErr, stated := needsCwd(args)
 	if needs {
 		res := resolveRoots(nil, starred, cwd)
 		res.message = fmt.Sprintf("cannot determine working directory (%v); path argument ignored", cwdErr)
@@ -85,10 +85,10 @@ func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) re
 	return resolveRoots(args, starred, cwd)
 }
 
-// needsCwd reports whether resolving args against cwd genuinely depends on
-// cwd being correct, so resolveLaunch knows when a resolveCwd failure
-// actually needs to drop the argument (T28) rather than doing so on every
-// failure regardless of relevance:
+// needsCwd reports whether resolving args genuinely depends on cwd being
+// correct, so resolveLaunch knows when a resolveCwd failure actually needs
+// to drop the argument (T28) rather than doing so on every failure
+// regardless of relevance:
 //   - zero arguments never touch cwd; more than one is refused by
 //     resolveRoots on its count alone (T17), before cwd would ever be used;
 //   - a relative single argument cannot be resolved to an absolute path at
@@ -99,6 +99,11 @@ func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) re
 //     does: resolveFile always makes cwd the ad-hoc root, regardless of
 //     whether the file argument itself needed cwd to be found.
 //
+// Only the last two cases (a single absolute argument) need to look at the
+// argument itself; none needs cwd's own value to decide, so cwd is not a
+// parameter here (T38) — resolveLaunch still has it in scope to hand to
+// resolvePathArg afterwards.
+//
 // When the single-absolute-argument case takes a stat to decide, it returns
 // that stat result (info, statErr, stated=true) so resolveLaunch can hand it
 // to resolvePathArg instead of letting resolveRoots stat the same path again
@@ -106,7 +111,7 @@ func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) re
 // just wasted work). stated is false whenever no stat was taken (zero or
 // multiple args, or a relative single argument), in which case there is
 // nothing to reuse and resolveLaunch falls through to resolveRoots as before.
-func needsCwd(args []string, cwd string) (needs bool, info os.FileInfo, statErr error, stated bool) {
+func needsCwd(args []string) (needs bool, info os.FileInfo, statErr error, stated bool) {
 	if len(args) != 1 {
 		return false, nil, nil, false
 	}

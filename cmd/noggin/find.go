@@ -194,10 +194,7 @@ func findMatches(content, query string) []findMatch {
 		}
 		hStart := pos + idx
 		hEnd := hStart + len(needle)
-		start, end := hStart, hEnd
-		if smartCase {
-			start, end = toOrig[hStart], toOrig[hEnd]
-		}
+		start, end := origSpan(hStart, hEnd, smartCase, toOrig)
 		starts = append(starts, start)
 		ends = append(ends, end)
 		pos = hEnd // non-overlapping, in haystack's own byte space
@@ -229,6 +226,18 @@ func findMatches(content, query string) []findMatch {
 		}
 	}
 	return matches
+}
+
+// origSpan translates a [hStart, hEnd) span found in haystack's byte space
+// back into stripped's, when haystack is actually a folded copy of stripped
+// (smartCase) rather than stripped itself. Pulled out of findMatches' search
+// loop so the translation is a single, named step rather than a bare
+// variable pair that only sometimes gets overwritten (T39).
+func origSpan(hStart, hEnd int, smartCase bool, toOrig []int) (start, end int) {
+	if !smartCase {
+		return hStart, hEnd
+	}
+	return toOrig[hStart], toOrig[hEnd]
 }
 
 // foldLower lower-cases s rune by rune for findMatches' smart-case path,

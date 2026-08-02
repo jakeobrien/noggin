@@ -2,27 +2,31 @@
 
 ## Cursor
 
-Current task: none — M5.6 built and done this session. Next up: build M5.7
-(standards/test-hardening), then the remaining `Reviewed`/`Validated` gaps across M3.1, M3.5,
-M4.2, M5.1-M5.7, before the cycle can close.
+Current task: none — M5.7 built and done this session. Next up: the accumulated
+`Reviewed`/`Validated` gaps across M3.1, M3.5, M4.2, M5.1-M5.7 (a code-review + validate pass)
+before the cycle can close; M5.7 itself still needs both stamps.
 
 ## Handoff
 
-M5.6 (T37, T43; D29) built and done this session: `needsCwd` now returns its stat result
-(`info, statErr, stated`) and `resolveLaunch` threads it through a new `resolvePathArg` helper
-(shared with `resolveRoots`, plus a `baseResolution` helper both use) instead of letting
-`resolveRoots` stat the same absolute path a second time (T37, TOCTOU). `model.resize`'s
-findEditing guard (T34) now also snapshots `hasFindMatches()` and reports "window resized;
-search cleared" when a *committed* find's matches are dropped by a re-render, not just an
-in-progress one (T43). New test `TestWindowResizeAfterCommittedFindSurfacesMessage`, proven to
-fail pre-fix by reverting `model.go` alone. `needsCwd`'s signature change is internal only —
-no test calls it directly, only via `resolveLaunch`, matching T40's plan note. `make check` and
-`make check-pty` (59 checks) both green; all prior `TestResolveRoots`/`resolveLaunch` tests
-pass unchanged.
+M5.7 (T38, T39, T40, T41; D29) built and done this session, all four low-risk nits from the
+2026-08-02 M5.4/M5.5 diff review: `needsCwd` dropped its unused `cwd` parameter (T38, doc
+comment now explains why cwd was never needed rather than claiming symmetry); `findMatches`'
+span-translation step is now a named `origSpan(hStart, hEnd, smartCase, toOrig)` helper instead
+of an always-declared, sometimes-overwritten `start, end := hStart, hEnd` pair (T39);
+`resolveLaunch` gained `TestResolveLaunchIgnoresCwdErrWithNoArguments` and
+`TestResolveLaunchIgnoresCwdErrWithTooManyArguments`, locking in `needsCwd`'s zero/many-args
+claims at the `resolveLaunch` level (T40); `find_test.go` gained
+`TestFindMatchesLineAttributionSurvivesFoldWithinTheMatch`, covering a match that itself spans
+a fold-length-changing rune (Kelvin sign) rather than one merely preceding it on the line
+(T41). T39/T41 are refactor/coverage-only — proven meaningful by temporarily reverting
+`origSpan` to `return hStart, hEnd` unconditionally: both the pre-existing T29 test and the new
+T41 test failed against that reversion, confirming both now guard the same real drift. `make
+check` and `make check-pty` (59 checks) both green; no behavior change, no prior test's
+expectations altered.
 
-Next: build M5.7 (standards/test-hardening, T38-T41), then the accumulated
-`Reviewed`/`Validated` gaps across M3.1, M3.5, M4.2, M5.1-M5.7 — a code-review + validate pass
-before the cycle can close. No blockers.
+Next: a code-review + validate pass covering the `Reviewed`/`Validated` gaps across M3.1, M3.5,
+M4.2, M5.1-M5.7 (M5.6/M5.7 also still need their own first Reviewed/Validated stamps) — likely
+the step that lets this cycle close. No blockers.
 
 Still relevant:
 - Go with the grain (D1) now means Charm v2; D13's no-terminal-query-after-`Run()` rule
@@ -59,4 +63,4 @@ Still relevant:
 | M5.4 | done   | 2026-08-02 | -         | M5-review correctness/UX fixes (T28, T29, T34; D28): resolveLaunch/needsCwd in roots.go (T28), findMatches/foldLower in find.go (T29), model.resize's find-editing check (T34); 8 new/changed unit tests, each proven to fail against the pre-fix code by reverting; full check + check-pty (59) green; cleared M3.1/M3.5/M4.2/M5.1/M5.2/M5.3's Reviewed stamps (roots.go/find.go/model.go all changed since); two-pass fresh-context review (2026-08-02) found T37-T41 (standards) and T42 (spec fidelity, PLAN.md text stale against D28) — no blocking fidelity gaps, T28/T29/T34 confirmed delivered as D27/D28 describe |
 | M5.5 | done    | 2026-08-02 | -         | replan C1/2026-08-02 (D27): M5-review standards cleanup (T30, T32, T33, T35); em-dash re-encode in find.go/navigator_test.go, keymap.go Cancel/Help tense fix, viewer.find renamed findState, FindNext/FindPrevious global-dispatch comment; cosmetic only, no behavior change; two-pass fresh-context review (2026-08-02) confirmed T30/T32/T33/T35 complete with no leftovers, found T43 (adjacent, pre-existing, not a regression) |
 | M5.6 | done    | -          | -         | replan C1/2026-08-03 (D29): roots/find correctness fixes (T37, T43) — needsCwd/resolveLaunch now share one stat via resolvePathArg/baseResolution; model.resize's hasFindMatches check surfaces "search cleared" for a committed find lost to a re-render; new test proven to fail pre-fix |
-| M5.7 | planned | -          | -         | replan C1/2026-08-03 (D29): standards/test-hardening cleanup (T38, T39, T40, T41) |
+| M5.7 | done    | -          | -         | replan C1/2026-08-03 (D29): standards/test-hardening cleanup (T38, T39, T40, T41); needsCwd's cwd param dropped, findMatches' span shape named as origSpan, resolveLaunch gained zero/many-arg cwdErr tests, fold-within-match regression test added |

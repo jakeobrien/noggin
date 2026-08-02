@@ -158,6 +158,33 @@ func TestFindMatchesLineAttributionSurvivesCaseFoldLengthChange(t *testing.T) {
 	}
 }
 
+// TestFindMatchesLineAttributionSurvivesFoldWithinTheMatch is T41: the case
+// above covers a fold-length-changing rune preceding a match on the same
+// line; this covers one the match itself spans, so the fold happens between
+// hStart and hEnd rather than before either of them, exercising origSpan's
+// translation of both ends of the same span rather than just offsets ahead
+// of it.
+func TestFindMatchesLineAttributionSurvivesFoldWithinTheMatch(t *testing.T) {
+	const kelvin = "\u212A" // "K", folds to ASCII 'k' — 3 bytes down to 1
+	content := "line one\n" + kelvin + "elvin"
+
+	matches := findMatches(content, "kelvin")
+
+	if len(matches) != 1 {
+		t.Fatalf(`findMatches(%q, "kelvin") = %d matches, want 1`, content, len(matches))
+	}
+	m := matches[0]
+	if m.line != 1 {
+		t.Errorf("line = %d, want 1 (the match is on the second line)", m.line)
+	}
+	// stripped's own byte space: the Kelvin sign is 3 bytes, so colEnd must
+	// land at 8 (3 + len("elvin")), not 6 (len("kelvin") in the folded,
+	// byte-length-1 space) — the exact drift origSpan exists to prevent.
+	if m.colStart != 0 || m.colEnd != 8 {
+		t.Errorf("colStart, colEnd = %d, %d, want 0, 8 (in stripped's byte space, not the folded haystack's)", m.colStart, m.colEnd)
+	}
+}
+
 // TestFindingWithNoDocumentOpenReportsIt mirrors startEdit's shape (M4.1):
 // a global action with nothing to act on says so instead of doing nothing.
 func TestFindingWithNoDocumentOpenReportsIt(t *testing.T) {
