@@ -173,14 +173,15 @@ cycle overruns, then M5.2, then M5.1.
 - **M5.4** — M5 review correctness/UX fixes (T28, T29, T34; replan C1/2026-08-02): three
   places where behavior diverges from what S1/S8 promise or fails silently against the
   "confusion is not allowed" principle — done when: `resolveLaunch` no longer drops an
-  absolute-path launch argument on a `resolveCwd` failure it doesn't need (only a relative
-  one still gets dropped), with a regression test covering an absolute-path argument plus a
-  failing cwd (T28); `findMatches`' smart-case path no longer misattributes a match to the
-  wrong line when a rune's case fold changes its byte length, with a regression test using a
-  length-changing fold (e.g. Kelvin sign U+212A) preceding a match (T29); and a
-  `tea.WindowSizeMsg` arriving mid-edit of a find query surfaces a footer message when it
-  resets the in-progress search, with a test covering the path (T34) — effort: 2
-  (needs: M5.1, M3.1, M3.5)
+  absolute-path *directory* launch argument on a `resolveCwd` failure it doesn't need — an
+  absolute *file* argument still needs `cwd` and still gets dropped, per D28's more precise
+  rule than this bullet's own original framing — with a regression test covering an
+  absolute-path directory argument plus a failing cwd (T28); `findMatches`' smart-case path
+  no longer misattributes a match to the wrong line when a rune's case fold changes its byte
+  length, with a regression test using a length-changing fold (e.g. Kelvin sign U+212A)
+  preceding a match (T29); and a `tea.WindowSizeMsg` arriving mid-edit of a find query
+  surfaces a footer message when it resets the in-progress search, with a test covering the
+  path (T34) — effort: 2 (needs: M5.1, M3.1, M3.5)
 - **M5.5** — M5 review standards cleanup (T30, T32, T33, T35; replan C1/2026-08-02): four
   low-risk nits from the M5 fresh-context review — done when: all 13 literal `\u2014`
   escape-text occurrences in `find.go`/`navigator_test.go` are re-encoded to the real
@@ -189,3 +190,24 @@ cycle overruns, then M5.2, then M5.1.
   its name with its own type (T33); and a one-line comment on `FindNext`/`FindPrevious`'s
   dispatch confirms they are intentionally global like `Find`, not scoped to viewer focus
   (T35) — effort: 1 (needs: M5.1, M5.2, M5.3)
+- **M5.6** — Roots/find correctness fixes (T37, T43; replan C1/2026-08-03): two places where
+  the code's stated invariant is technically racy or incomplete, both cheap to close — done
+  when: `needsCwd`'s stat result is threaded through to `resolveRoots` (or `resolveLaunch`
+  performs one stat and passes it to both), removing the independent second stat T37 flags as
+  a TOCTOU window, with the existing table-driven tests still passing; and a resize or
+  Navigator toggle arriving after a find match is committed (post-Enter, indicated via
+  `applyCurrentMatch`) either preserves the match/indication or surfaces a footer message
+  instead of silently discarding it (T43), extending T34's `findEditing()` resize guard to
+  also check `hasFindMatches()`, with a test covering the committed-find resize path —
+  effort: 2 (needs: M3.1, M3.5, M5.1, M5.4)
+- **M5.7** — Review standards/test-hardening cleanup (T38, T39, T40, T41; replan
+  C1/2026-08-03): four low-risk nits from the 2026-08-02 M5.4/M5.5 diff review — done when:
+  `needsCwd`'s unused `cwd` parameter is dropped, or a comment documents why it's kept for
+  signature symmetry with `resolveRoots` (T38); `findMatches`' always-declare/
+  sometimes-overwrite `start, end := hStart, hEnd` shape is replaced with a small
+  `origSpan`-style helper, or a comment justifies the current shape (T39); `resolveLaunch`
+  gains test cases for a `cwdErr != nil` with zero launch arguments and with more than one,
+  locking in `needsCwd`'s documented claims at the `resolveLaunch` level, not just
+  `needsCwd`'s own (T40); and `findMatches`' fold-length-change regression test gains a case
+  where the match itself spans a fold-length-changing rune (e.g. Kelvin sign U+212A), not
+  just a fold preceding one (T41) — effort: 1 (needs: M5.4, M5.5)

@@ -2,9 +2,10 @@
 
 ## Cursor
 
-Current task: none — a fresh-context two-pass code review closed the `Reviewed` gap this
-session. Next up: the remaining `Validated` gaps across M5.1-M5.5, then charm-replan to triage
-T37-T43, before the cycle can close.
+Current task: none — charm-replan (2026-08-03) triaged T37-T43, closing the `TRIAGE.md`
+inbox. Next up: build M5.6 (correctness) and M5.7 (standards/test-hardening), then the
+remaining `Validated` gaps across M5.1-M5.5 and M5.6/M5.7 themselves, before the cycle can
+close.
 
 ## Handoff
 
@@ -38,8 +39,17 @@ Evidence: `make check` and `make check-pty` (59 checks) both green; grep confirm
 `\u2014` escape text and zero stray `.find`/`find:` references. No behavior changed, so no
 `Reviewed` stamps needed clearing beyond what M5.4 already cleared.
 
-Next: the accumulated `Reviewed`/`Validated` gaps across M3.1, M3.5, M4.2, M5.1-M5.5 — likely
-a code-review + validate pass before the cycle can close. No blockers.
+Replan (2026-08-03, D29) routed the M5.4/M5.5-diff review's seven open items: T37 (roots.go
+double-stat TOCTOU) and T43 (a committed find silently dropped on resize/Navigator-toggle,
+adjacent to T34) became **M5.6** (correctness, effort 2); T38 (needsCwd's unused `cwd` param),
+T39 (find.go stylistic), T40/T41 (test-coverage gaps) became **M5.7** (standards/
+test-hardening, effort 1); T42 (PLAN.md's M5.4 bullet stale against D28) was fixed directly by
+amending that bullet's prose in place, no task needed. `TRIAGE.md` is now empty. No spec or
+plan-shape changes — see D29.
+
+Next: build M5.6 and M5.7, then the accumulated `Reviewed`/`Validated` gaps across M3.1, M3.5,
+M4.2, M5.1-M5.5 (and M5.6/M5.7 once built) — a code-review + validate pass before the cycle
+can close. No blockers.
 
 Still relevant:
 - Go with the grain (D1) now means Charm v2; D13's no-terminal-query-after-`Run()` rule
@@ -75,3 +85,5 @@ Still relevant:
 | M5.3 | done   | 2026-08-02 | -         | help modal (S12, D26); help.go (helpBindings/helpBox/overlayHelp, lipgloss v2 Layer/Compositor); model.go helpOpen/openHelp/handleHelpInput; 10 unit tests + 11 pty checks; self fresh-context review found and fixed an unclamped-overlay overflow bug; independent fresh-context two-pass review found no fidelity issues, logged T29-T36 (mostly M5.1-scoped); re-covered by the 2026-08-02 review of the M5.4 diff to model.go (no help.go-specific findings; help.go itself not re-diffed since it was untouched by M5.4/M5.5) |
 | M5.4 | done   | 2026-08-02 | -         | M5-review correctness/UX fixes (T28, T29, T34; D28): resolveLaunch/needsCwd in roots.go (T28), findMatches/foldLower in find.go (T29), model.resize's find-editing check (T34); 8 new/changed unit tests, each proven to fail against the pre-fix code by reverting; full check + check-pty (59) green; cleared M3.1/M3.5/M4.2/M5.1/M5.2/M5.3's Reviewed stamps (roots.go/find.go/model.go all changed since); two-pass fresh-context review (2026-08-02) found T37-T41 (standards) and T42 (spec fidelity, PLAN.md text stale against D28) — no blocking fidelity gaps, T28/T29/T34 confirmed delivered as D27/D28 describe |
 | M5.5 | done    | 2026-08-02 | -         | replan C1/2026-08-02 (D27): M5-review standards cleanup (T30, T32, T33, T35); em-dash re-encode in find.go/navigator_test.go, keymap.go Cancel/Help tense fix, viewer.find renamed findState, FindNext/FindPrevious global-dispatch comment; cosmetic only, no behavior change; two-pass fresh-context review (2026-08-02) confirmed T30/T32/T33/T35 complete with no leftovers, found T43 (adjacent, pre-existing, not a regression) |
+| M5.6 | planned | -          | -         | replan C1/2026-08-03 (D29): roots/find correctness fixes (T37, T43) — needsCwd/resolveRoots single-stat, committed-find survives resize/Navigator-toggle |
+| M5.7 | planned | -          | -         | replan C1/2026-08-03 (D29): standards/test-hardening cleanup (T38, T39, T40, T41) |

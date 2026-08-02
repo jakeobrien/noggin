@@ -551,3 +551,36 @@ absolute from relative
   replan round-trip. The duplicate stat is a deliberate, cheap trade against threading
   `cwdErr` into `resolveRoots` itself, which would complicate a function whose doc comment
   already commits it to one pure, S1-shaped decision.
+
+## D29: C1's replan (2026-08-03) routes the M5.4/M5.5-diff review backlog into two new
+tasks and one direct documentation fix
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-03
+- Context: TRIAGE.md held 7 open items (T37-T43) from the 2026-08-02 fresh-context two-pass
+  review of M5.4/M5.5's own diff — one medium (T37), the rest low. None invalidate the spec
+  or plan shape.
+- Decision: mirroring D24/D27's precedent of one bundled task per batch by nature rather than
+  seven near-identical entries. **M5.6** (correctness, effort 2): T37 (`resolveLaunch`'s
+  `needsCwd` and `resolveRoots` each stat the same launch argument independently — a narrow
+  TOCTOU window that could reintroduce T20's bare-`.` bug; fix is to thread one stat through
+  both rather than add a race test) and T43 (a *committed* find match, not just one still
+  being edited, is silently dropped by any width-changing resize or Navigator toggle — the
+  same "confusion is not allowed" gap T34 closed for the mid-edit case, left open for the
+  post-Enter case; pre-existing since M5.1, not a regression). **M5.7** (standards/
+  test-hardening, effort 1): T38 (`needsCwd`'s unused `cwd` parameter), T39 (`findMatches`'
+  always-declare/sometimes-overwrite span shape), T40 (`resolveLaunch` test gap for
+  `cwdErr != nil` at zero/many args), T41 (T29's regression test doesn't cover a match that
+  itself spans a fold-length-changing rune, only one preceding it). **T42** (PLAN.md's M5.4
+  bullet text stale against D28's more precise fix) is not a plan task at all — fixed directly
+  by amending that bullet's prose in place, since the divergence is in the plan's own
+  documentation, not in code.
+- Why: medium and reversible — 3 effort points against a cycle with no further cut room
+  (D27), so logged not asked. T37 earned medium severity's DECISIONS.md citation because it is
+  a genuine, if narrow, correctness gap against a stated invariant; T43 is low severity but
+  bundled with it because both are small, same-shaped "finish what T34/T28 started" fixes to
+  the roots/find code T37 also touches. T38-T41 are cosmetic or test-coverage-only, no
+  behavior change, same class as M5.5's batch. T42 skipped PLAN.md task machinery entirely:
+  amending stale prose that already correctly cites the real fix (D28) is a documentation
+  correction, not work requiring an acceptance criterion and effort estimate.
