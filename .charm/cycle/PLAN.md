@@ -211,3 +211,14 @@ cycle overruns, then M5.2, then M5.1.
   `needsCwd`'s own (T40); and `findMatches`' fold-length-change regression test gains a case
   where the match itself spans a fold-length-changing rune (e.g. Kelvin sign U+212A), not
   just a fold preceding one (T41) — effort: 1 (needs: M5.4, M5.5)
+- **M5.8** — Validate/review follow-ups on M5.6/M5.7 (T45, T46; replan C1/2026-08-03, D30):
+  one correctness/messaging fix and one test-coverage gap, both cheap — done when: `resize`'s
+  "window resized; search dismissed/cleared" messages no longer claim a resize happened when
+  the actual trigger was `toggleNavigator` — thread the real cause through (e.g. a `cause`
+  parameter distinguishing "window resized" from a Navigator-toggle-shaped phrasing) so the
+  footer message matches what actually happened — with a test driving a committed find through
+  `ctrl+n` (not a `tea.WindowSizeMsg`) and asserting the message names the sidebar toggle, not
+  a resize (T45, deepens and resolves T44's open coverage question); and `resolveLaunch` gains
+  `TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd`, covering an absolute, not-found
+  single launch argument combined with an unresolvable `cwd` — the one branch T37's stat-reuse
+  refactor added that no existing test exercises (T46) — effort: 2 (needs: M5.6, M5.7)

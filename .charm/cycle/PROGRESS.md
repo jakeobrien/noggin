@@ -2,13 +2,17 @@
 
 ## Cursor
 
-Current task: none — the validate half of the accumulated `Reviewed`/`Validated` gaps across
-M3.1, M3.5, M4.2, M5.1-M5.7 is now closed (fresh-context subagent, 2026-08-02): `make check`
-(100/100) and `make check-pty` (148/148) both green, and every task's acceptance-criterion
-sub-clause independently re-derived and confirmed against current code — no failures, no
-PROGRESS.md claim contradicted. Next up: the matching code-review half for M5.6 and M5.7
-(their first Reviewed stamp; every other key in that span already carries one) before the
-cycle can close.
+Current task: M5.8 (T45, T46; D30) — new since this replan (2026-08-03). Sourced from M5.6's
+own validate/review pass: T44 (validate) asked whether the untested toggleNavigator-driven
+path of M5.6/T43's guard needed its own test; T45 (review) answered that by proving the path
+fires and produces a factually wrong "window resized" message when the real trigger was
+`toggleNavigator`, which supersedes T44 (dropped). T46 (review) is a small, unrelated
+test-coverage gap in `resolveLaunch` from the same review pass, bundled in per the usual
+one-task-per-batch precedent. Not yet built. No blockers.
+
+Still outstanding after M5.8 lands: the matching code-review half for M5.6 and M5.7 (their
+first `Reviewed` stamp; every other key in that span already carries one) before the cycle
+can close — M5.8 itself will also need its own first review/validate pass once built.
 
 ## Handoff
 

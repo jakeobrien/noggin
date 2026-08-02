@@ -584,3 +584,36 @@ tasks and one direct documentation fix
   behavior change, same class as M5.5's batch. T42 skipped PLAN.md task machinery entirely:
   amending stale prose that already correctly cites the real fix (D28) is a documentation
   correction, not work requiring an acceptance criterion and effort estimate.
+
+## D30: C1's replan (2026-08-03) routes the M5.6 validate/review follow-up (T44/T45) and one
+review test-gap (T46) into one new task; T44 dropped as superseded
+
+- Status: decided
+- Cycle: C1
+- Date: 2026-08-03
+- Context: TRIAGE.md held three open items from M5.6's validate and its fresh-context
+  review: T44 (validate) flagged that M5.6/T43's own acceptance text names "a resize **or**
+  Navigator toggle" but only the resize path has a dedicated test, and asked replan to decide
+  whether a toggleNavigator-driven test is worth adding. T45 (review, medium) went further and
+  proved by a temporary test that toggling the Navigator after committing a find sets
+  `m.message = "window resized; search cleared"` even though no resize occurred — `resize`'s
+  dismissed/cleared messages hardcode "window resized" regardless of whether the real trigger
+  was a `tea.WindowSizeMsg` or `toggleNavigator`, so the footer is now factually wrong on
+  exactly the path T44 asked about. T46 (review, low) found T37's stat-reuse refactor added an
+  absolute-not-found-arg-plus-unresolvable-cwd branch in `resolveLaunch` with no test of its
+  own, traced by hand to behave correctly.
+- Decision: **T44 dropped as superseded** — T45's investigation answers T44's coverage
+  question directly (the shared code path does fire, and does so incorrectly), so there is
+  nothing left for a standalone toggleNavigator-driven test to prove once T45 lands; a
+  correct-message test on that same path is T45's own acceptance criterion, not a second
+  task. **New task M5.8** (`resize`'s message must not claim a resize happened when the
+  actual cause was a Navigator toggle, T45; plus `resolveLaunch`'s missing
+  absolute-not-found + unresolvable-cwd test case, T46) — bundled per the D17/D24/D27/D29
+  precedent of one task per batch. Effort 2.
+- Why: medium and reversible — 2 effort points against a cycle already past its cut room
+  (D27, D29), so logged not asked. T45 earns the DECISIONS.md citation because a wrong footer
+  message is a direct violation of the spec's own "confusion is not allowed" principle
+  (SPEC.md's Principles) — worse than the silence it would otherwise be logging over. T46 is
+  bundled alongside it rather than given its own task because it is a one-test, no-behavior-
+  change addition in an adjacent file already touched by this cycle's roots.go correctness
+  work (M5.6/M5.7), the same reasoning D29 used to bundle T37 and T43 together.
