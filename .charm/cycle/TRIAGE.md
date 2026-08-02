@@ -25,8 +25,9 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T44 | validate | low | find_test.go (TestWindowResizeAfterCommittedFindSurfacesMessage); model.go:237 toggleNavigator | M5.6/T43's acceptance text names "a resize **or** Navigator toggle" arriving after a committed find, but only the raw-resize path has a dedicated test; `toggleNavigator` calls the same guarded `model.resize`, so the behavior is very likely correct, but the criterion isn't 1:1 covered. Decide: add a toggleNavigator-driven test, or accept given the shared code path. | open |
 
-<!-- Empty: T37-T43 (the 2026-08-02 code review of M5.4/M5.5's own diff) were routed by
+<!-- T37-T43 (the 2026-08-02 code review of M5.4/M5.5's own diff) were routed by
      replan C1/2026-08-03 — T37 and T43 to a new PLAN.md task M5.6 (correctness), T38-T41 to
      a new PLAN.md task M5.7 (standards/test-hardening), T42 fixed directly in PLAN.md's own
      M5.4 bullet text (a documentation accuracy fix, not code); see D29. T28-T36 from the
