@@ -1,9 +1,11 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 )
 
 // TestPickerOpensFromEveryFocusAndNavigatorHidden is M2.1's "reachable from
@@ -201,5 +203,226 @@ func TestPickerCancelDoesNotType(t *testing.T) {
 
 	if m.picker.open {
 		t.Error("picker.open = true after Cancel, want false")
+	}
+}
+
+// pickerRoot puts a fixture Root full of files whose names share a prefix
+// behind an already-open Picker, so a query can be typed a character at a
+// time and actually have something to find. Returns the model and the Root's
+// path.
+func pickerRoot(t *testing.T) (model, string) {
+	t.Helper()
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, "report.md"), "quarterly report\n")
+	writeFileContent(t, filepath.Join(dir, "reporting.md"), "reporting notes\n")
+	writeFileContent(t, filepath.Join(dir, "other.md"), "unrelated\n")
+
+	m := openedFixture(t, 80, 24)
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	return m, dir
+}
+
+// typePickerQuery types s into the open Picker one rune at a time, returning
+// the model and the query generation (picker.seq) each keystroke left behind
+// — i.e. the generation each keystroke's debounce timer will report when it
+// matures. Deliberately does not run the returned Cmds: a real tea.Tick
+// would sleep pickerSearchDebounce, and what the timers deliver is exactly
+// these seqs (pickerSearchMsg), which deliverPickerTicks then plays back.
+func typePickerQuery(t *testing.T, m model, s string) (model, []int) {
+	t.Helper()
+	var seqs []int
+	for _, r := range s {
+		next, _ := m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+		m = concrete(t, next)
+		seqs = append(seqs, m.picker.seq)
+	}
+	return m, seqs
+}
+
+// deliverPickerTicks plays back each scheduled debounce timer in order, as
+// the real timers would fire, and runs any search they dispatch to
+// completion (feeding its results message back into the model, as Bubble Tea
+// would). Returns the model and how many searches were actually dispatched —
+// a non-nil Cmd from a pickerSearchMsg is precisely "this timer issued a
+// search", since dispatchPickerSearch returns nil for every superseded one.
+func deliverPickerTicks(t *testing.T, m model, seqs []int) (model, int) {
+	t.Helper()
+	searches := 0
+	for _, seq := range seqs {
+		next, cmd := m.Update(pickerSearchMsg{seq: seq})
+		m = concrete(t, next)
+		if cmd == nil {
+			continue
+		}
+		searches++
+		msg, ok := cmd().(pickerResultsMsg)
+		if !ok {
+			t.Fatalf("search for seq %d produced %T, want pickerResultsMsg", seq, cmd())
+		}
+		next, _ = m.Update(msg)
+		m = concrete(t, next)
+	}
+	return m, searches
+}
+
+// TestPickerSearchIsDebouncedAndShowsOnlyTheFinalQuery is M2.4's acceptance
+// criterion, verbatim: fast successive queries (a query typed a character at
+// a time, with no pause long enough for a debounce to mature) leave the
+// displayed results corresponding to the final query only, and issue fewer
+// searches than there were keystrokes. It also pins the "the Prompt never
+// blocks" half: typing itself searches nothing at all — no results exist
+// until a timer matures.
+func TestPickerSearchIsDebouncedAndShowsOnlyTheFinalQuery(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	const query = "repor"
+	m, seqs := typePickerQuery(t, m, query)
+
+	if m.picker.input.Value() != query {
+		t.Fatalf("prompt = %q, want %q; setup is broken", m.picker.input.Value(), query)
+	}
+	if m.picker.results.query != "" || m.picker.searching {
+		t.Errorf("typing alone searched: results = %+v, searching = %v; want neither",
+			m.picker.results, m.picker.searching)
+	}
+
+	m, searches := deliverPickerTicks(t, m, seqs)
+
+	if searches != 1 {
+		t.Errorf("dispatched %d searches for %d keystrokes, want exactly 1", searches, len(seqs))
+	}
+	if searches >= len(query) {
+		t.Errorf("dispatched %d searches for %d keystrokes, want fewer", searches, len(query))
+	}
+	if m.picker.results.query != query {
+		t.Errorf("displayed results answer %q, want the final query %q", m.picker.results.query, query)
+	}
+	if m.picker.searching {
+		t.Error("searching = true after results landed, want false")
+	}
+	var names []string
+	for _, f := range m.picker.results.files {
+		names = append(names, filepath.Base(f.path))
+	}
+	want := []string{"report.md", "reporting.md"}
+	if !equalStrings(sortedCopy(names), sortedCopy(want)) {
+		t.Errorf("results = %v, want %v", names, want)
+	}
+}
+
+// TestPickerDiscardsStaleResults is the discard half of M2.4 from the other
+// side: a search that was genuinely dispatched (the user paused) but reports
+// back after the query moved on must not be displayed, even for a frame.
+func TestPickerDiscardsStaleResults(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repo")
+	next, cmd := m.Update(pickerSearchMsg{seq: seqs[len(seqs)-1]})
+	m = concrete(t, next)
+	if cmd == nil {
+		t.Fatal("the settled query dispatched no search; setup is broken")
+	}
+	if !m.picker.searching {
+		t.Error("searching = false while a dispatched search is in flight, want true")
+	}
+
+	// The user types on while rg is still working, then its results land.
+	m, _ = typePickerQuery(t, m, "rt")
+	next, _ = m.Update(cmd())
+	m = concrete(t, next)
+
+	if m.picker.results.query != "" {
+		t.Errorf("displayed stale results for %q; prompt is now %q",
+			m.picker.results.query, m.picker.input.Value())
+	}
+}
+
+// TestPickerDiscardsResultsFromAnEarlierOpen is why picker.seq survives
+// dismissal (dismissPicker): a search dispatched by one Picker can report
+// back after it is dismissed and another opened, and those results belong to
+// neither.
+func TestPickerDiscardsResultsFromAnEarlierOpen(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repo")
+	next, cmd := m.Update(pickerSearchMsg{seq: seqs[len(seqs)-1]})
+	m = concrete(t, next)
+	if cmd == nil {
+		t.Fatal("the settled query dispatched no search; setup is broken")
+	}
+
+	m = press(t, m, keys.Cancel.Keys()[0])
+	m, _ = m.openPicker()
+	next, _ = m.Update(cmd())
+	m = concrete(t, next)
+
+	if m.picker.results.query != "" {
+		t.Errorf("results from before the dismissal survived into a fresh Picker: %+v", m.picker.results)
+	}
+	if m.picker.searching {
+		t.Error("a fresh Picker reports searching = true, want false")
+	}
+}
+
+// TestPickerEmptyPromptClearsResultsAndSearchesNothing: deleting a query back
+// to nothing must not leave the old query's results on display, and must not
+// dispatch a search for the empty string (which rg would match against every
+// line of every file — see grepFiles).
+func TestPickerEmptyPromptClearsResultsAndSearchesNothing(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repor")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.files) == 0 {
+		t.Fatalf("setup is broken: %d searches, %d results", searches, len(m.picker.results.files))
+	}
+
+	// Backspace is not a keymap.go binding (it belongs to the textinput), so
+	// the keypress is built here rather than via keyPress.
+	var deleted []int
+	for range "repor" {
+		next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+		m = concrete(t, next)
+		deleted = append(deleted, m.picker.seq)
+	}
+	if m.picker.input.Value() != "" {
+		t.Fatalf("prompt = %q after deleting the query, want empty", m.picker.input.Value())
+	}
+	if m.picker.results.query != "" || len(m.picker.results.files) != 0 {
+		t.Errorf("results survived an emptied prompt: %+v", m.picker.results)
+	}
+
+	m, searches = deliverPickerTicks(t, m, deleted)
+	if searches != 0 {
+		t.Errorf("dispatched %d searches for an empty prompt, want 0", searches)
+	}
+}
+
+// TestPickerCursorKeysDoNotRestartTheSearch: a key the Prompt consumes
+// without changing the query (a cursor move) must not open a new query
+// generation, or it would discard the results of a search for a query that
+// is still current.
+func TestPickerCursorKeysDoNotRestartTheSearch(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repor")
+	m, _ = deliverPickerTicks(t, m, seqs)
+	before := m.picker.seq
+	results := m.picker.results
+
+	m = press(t, m, "left")
+	m = press(t, m, "home")
+
+	if m.picker.seq != before {
+		t.Errorf("picker.seq = %d after cursor moves, want %d (unchanged)", m.picker.seq, before)
+	}
+	if m.picker.results.query != results.query || len(m.picker.results.files) != len(results.files) {
+		t.Errorf("results changed on a cursor move: %+v, want %+v", m.picker.results, results)
 	}
 }

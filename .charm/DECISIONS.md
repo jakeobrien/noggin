@@ -589,3 +589,30 @@
   silently violate S2 for any query containing "j", "k", "g", or "G", which real search terms
   routinely do; picking disjoint keys up front avoids relitigating this once M3.1 gives
   Results selection something to actually move.
+
+## D41: Picker search is a trailing-edge debounce over a monotonic query generation
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: M2.4 needed the first genuinely async work in the codebase (no in-repo precedent —
+  `findings/codebase-picker-integration.md`): the Prompt must never block on rg, in-flight
+  searches must be debounced, and results for a superseded query must never be displayed.
+  Bubble Tea gives no way to cancel a `tea.Cmd` once started, so "discard" has to happen on
+  arrival, not at the source.
+- Decision: one `picker.seq` counter, incremented by every change to what would be searched
+  (a keystroke now; M5.1/M5.2's mode/Scope switch later). Each change schedules a
+  `tea.Tick(120ms)` carrying its seq (`pickerSearchMsg`); a matured timer dispatches the real
+  search only if its seq is still current, and a returning `pickerResultsMsg` is applied only
+  if its seq is still current. Same comparison serves both debounce and stale-discard. The
+  counter is monotonic for the model's life — `dismissPicker`/`openPicker` bump it instead of
+  resetting, so a search in flight across a dismissal cannot be accepted by the next Picker.
+  The search Cmd is a pure function of copied-in values (`pickerSearchCmd`), touching no model
+  state, since it runs concurrently with `Update`.
+- Why: low-risk, reversible and entirely internal (no spec surface), so logged not asked. One
+  counter is cheaper than the alternatives — a cancellable `context` threaded into M1's search
+  layer (which would make it Bubble-Tea-aware for no gain, since the goroutine's result still
+  has to be dropped on arrival) or a leading-edge debounce (which would search the first
+  keystroke of every burst, i.e. the least useful query). 120ms is a build-time judgment call,
+  not spec'd; S8's "no memory" is untouched because a generation count carries no information
+  about mode, Scope or query.

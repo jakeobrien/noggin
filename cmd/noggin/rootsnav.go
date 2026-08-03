@@ -65,6 +65,22 @@ func (r rootsNav) setRoots(roots []root, active int) rootsNav {
 	return r
 }
 
+// rootList is the session's roots in pane order, without the pane's own
+// per-row display state (the broken mark) — the (roots, active) shape the
+// search layer takes (scope.go's liveRootsInScope). The pane is where the
+// session's roots actually live after applyResolution, so a Picker search
+// reads them from here rather than the model keeping a second copy that
+// could drift. broken is deliberately dropped: the search layer re-resolves
+// liveness itself at search time, since this pane's mark is a snapshot taken
+// when the roots were set (see rootRow).
+func (r rootsNav) rootList() []root {
+	roots := make([]root, len(r.rows))
+	for i, row := range r.rows {
+		roots[i] = row.root
+	}
+	return roots
+}
+
 // pathMissing reports whether path cannot be stat'd — the pane's definition
 // of "broken" (S3). It does not distinguish "does not exist" from other stat
 // failures (e.g. permission denied): either way the root is unusable to

@@ -11,3 +11,6 @@
   modal dispatch, `render()`/Compositor overlay, the Find surface a grep hand-off would reuse,
   test/pty conventions, and the two new-ground gaps (no async `tea.Cmd` precedent; rg line
   numbers vs rendered viewport lines). Written at plan time.
+- `async-cmd-testing.md` — the generation-counter shape of the Picker's debounced async
+  search (D41) and how it is tested without sleeps, goroutines or a test seam: synthesize the
+  tick messages, treat a non-nil Cmd as "a search was issued", call the search Cmd inline.

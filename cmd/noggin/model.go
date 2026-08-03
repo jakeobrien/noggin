@@ -355,6 +355,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case editFinishedMsg:
 		return m.finishEdit(msg), nil
+	// The Picker's two async messages (M2.4). Neither is a keypress, so
+	// neither clears m.message (S11 ties that to the user's next key, not to
+	// a timer maturing or a background search reporting back), and both are
+	// gated on the Picker still being open inside their handlers rather than
+	// here — a message can outlive the modal that asked for it.
+	case pickerSearchMsg:
+		return m.dispatchPickerSearch(msg)
+	case pickerResultsMsg:
+		return m.applyPickerResults(msg), nil
 	case tea.WindowSizeMsg:
 		return m.resize(msg.Width, msg.Height, resizeCauseWindow), nil
 	case tea.KeyPressMsg:

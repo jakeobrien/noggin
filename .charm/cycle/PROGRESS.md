@@ -17,48 +17,49 @@
 
 ## Cursor
 
-Current task: M2.4
+Current task: M2.5
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.3 done: always-typing input dispatch (S2). `handlePickerInput` (picker.go) now mirrors
-`updateFindQuery`'s shape — a switch of non-typing keys (`Cancel` dismisses; `Activate`, two
-new arrow-only `PickerUp`/`PickerDown` bindings, the Document Viewer's existing
-`PageUp`/`PageDown`/`HalfPageUp`/`HalfPageDown` reused as-is for Preview scrolling, and two new
-`PickerMode` (`tab`)/`PickerScope` (`shift+tab`) bindings are all recognized and swallowed, with
-no action yet — M3.1/M3.2/M5.1/M5.2 wire those) — then falls through to
-`m.picker.input.Update(msg)` for everything else, typing it into the Prompt regardless of what
-it binds to elsewhere. D40 records why the new bindings are arrow/Tab/Shift+Tab rather than
-reusing `LineUp`/`Top` etc. as-is: those double up a letter (`j`/`k`/`g`/`G`), which would break
-S2 the moment a query contained one.
+M2.4 done: async, debounced search dispatch — the codebase's first genuinely concurrent
+`tea.Cmd`. Design is D41: one monotonic `picker.seq` generation counter; every change to what
+would be searched bumps it and schedules `tea.Tick(120ms)` carrying that seq
+(`pickerSearchMsg`); a matured timer dispatches the real search only if its seq is still
+current (that is the debounce), and a returning `pickerResultsMsg` is applied only if its seq
+is still current (that is the stale-discard). `openPicker`/`dismissPicker` bump seq rather than
+zeroing it, so a search in flight across a dismissal cannot be accepted by the next Picker —
+the one field S8's "replace the whole struct" hygiene deliberately carries over, documented as
+carrying no user-visible information. `pickerSearchCmd` is a pure function of copied-in values
+(roots, active, mode, scope, query) because it runs concurrently with `Update`.
 
-Footer/Help coverage (the task's other half): `paneHints`/`helpBindings` now list `keys.Picker`
-in every pane (D39's binding is now discoverable); `footer.go` gained `pickerHints`/
-`pickerHintText`, sharing a new `truncatedHintText` helper with `hintText` rather than a second
-truncation loop; `model.renderFooter` swaps to `pickerHintText` while `m.picker.open`. Help
-Modal itself stays unreachable while the Picker is open — same precedent as Find (`?` types
-into the Prompt instead), verified by a new test mirroring `TestHelpUnreachableWhileFindEditing`.
+New state: `picker.seq`, `picker.searching`, `picker.results pickerResults{query, mode, scope,
+files, grep, truncated}`. Results are labelled with what they answer *for* — M2.5's status /
+empty states read those labels rather than assuming results match the current Prompt, and
+`searching` is what distinguishes "found nothing" from "still looking". Nothing renders any of
+it yet (M2.5/M3.1 do). `rootsNav.rootList()` is new: the search layer's `(roots, active)` shape
+read from the pane that already owns the session's roots, so no second copy can drift.
 
-Updated `TestPickerModalLeavesTheFrameVisibleAroundIt` (M2.2's test): its "footer unchanged"
-assertion no longer holds now that the footer legitimately changes with the Picker (intentional,
-not overlay leakage) — narrowed to the top-row/any-row-changed checks, footer content now
-covered by the new `TestFooterShowsPickerHintsWhileOpen`.
+Gotchas: an empty Prompt is refused in both `queuePickerSearch` and `dispatchPickerSearch` (rg
+with an empty pattern matches every line of every file); a keystroke the textinput consumes
+without changing the query (cursor moves) must not bump seq, or it would discard a live search
+for a still-current query — both have tests. The 3-character threshold is *not* here; it is
+M2.5's criterion.
 
-Tests: `picker_test.go` (typing a string containing `j`/`k`/`g`/`/` lands intact in the Prompt
-with no side effects on the doc/viewer/help; every non-typing key stays open with an empty
-Prompt; Cancel still dismisses), `footer_test.go`/`help_test.go` (Picker named from every pane's
-hints/help; `pickerHintText` names Picker actions not the focused pane's; footer swap on
-open/dismiss). `go test ./...`, `make check`, `make check-pty` all green — pty suite unaffected
-(no dedicated Picker pty coverage yet, M7.1's job).
+Tests (`picker_test.go`, 5 new): no sleeps, no goroutines, no test seam — see
+`findings/async-cmd-testing.md`. Ticks are synthesized from each keystroke's recorded seq and
+played back; "a search was issued" is observable as `Update` returning a non-nil Cmd for a
+`pickerSearchMsg`; the search Cmd is called inline against a real rg over a `t.TempDir()` Root.
+Evidence for the criterion: typing "repor" (5 keystrokes) dispatches exactly 1 search and the
+displayed results answer "repor". `make check` and `make check-pty` both green.
 
-Next step: M2.4 — search dispatch as async work (debounced, stale-query results discarded).
-First `tea.Cmd`/goroutine work in the codebase (no in-repo precedent, per
-codebase-picker-integration.md) — read that finding's "no async precedent" section before
-starting; `main.go`'s single `tea.ExecProcess` $EDITOR handoff is blocking and not a usable
-shape here.
+Next step: M2.5 — status and empty states (mode/Scope indicator, sub-threshold message, no
+results, truncated-at-cap, ripgrep-unavailable), including "no search issued for a 1- or
+2-character query". The threshold belongs in `queuePickerSearch`/`dispatchPickerSearch`
+alongside the existing empty-Prompt refusal; `m.ripgrep` (model.go) already carries S14's
+availability and reason.
 
 ## Status
 
@@ -71,7 +72,7 @@ shape here.
 | M2.1 | done   | -        | -         |      |
 | M2.2 | done   | -        | -         |      |
 | M2.3 | done   | -        | -         |      |
-| M2.4 | todo   | -        | -         |      |
+| M2.4 | done   | -        | -         |      |
 | M2.5 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |
 | M3.2 | todo   | -        | -         |      |
