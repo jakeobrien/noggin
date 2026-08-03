@@ -57,14 +57,23 @@ M4.3/M4.4 address that.
 
 M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
 
+M1 validated 2026-08-03 (fresh-context subagent, functional): all four criteria pass, `make
+check`/`make check-pty` green with real rg 15.1.0. Verdict pass-with-known-gaps — TRIAGE T1
+(ARG_MAX silence in grep's file-list argv) and T4 (M1.1's rg-absent launch property has no
+automated test) both confirmed still open and accurately describe present code, but neither
+falls under any M1 task's literal acceptance criterion, so neither blocks M1's sign-off; T4's
+underlying property was independently confirmed by hand (rg-absent pty run) though the repo's
+test suite still lacks it. No PROGRESS status flips and no new TRIAGE items — both already
+tracked correctly. See D38-adjacent handoff above for the implementation itself.
+
 ## Status
 
 | Key  | Status | Reviewed | Validated | Note |
 |------|--------|----------|-----------|------|
-| M1.1 | done   | -        | -         |      |
-| M1.2 | done   | -        | -         |      |
-| M1.3 | done   | -        | -         |      |
-| M1.4 | done   | -        | -         |      |
+| M1.1 | done   | 2026-08-03 | 2026-08-03 |  |
+| M1.2 | done   | 2026-08-03 | 2026-08-03 |  |
+| M1.3 | done   | 2026-08-03 | 2026-08-03 |  |
+| M1.4 | done   | 2026-08-03 | 2026-08-03 |  |
 | M2.1 | todo   | -        | -         |      |
 | M2.2 | todo   | -        | -         |      |
 | M2.3 | todo   | -        | -         |      |
