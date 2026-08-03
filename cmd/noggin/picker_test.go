@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"charm.land/bubbles/v2/key"
+)
 
 // TestPickerOpensFromEveryFocusAndNavigatorHidden is M2.1's "reachable from
 // every Focus including while the Navigator is hidden" (S1): pressing the
@@ -117,5 +121,85 @@ func TestPickerOwnsKeyboardWhileOpen(t *testing.T) {
 	got := concrete(t, next)
 	if !got.picker.open {
 		t.Error("picker.open = false after \"q\" while open, want true (q must not quit)")
+	}
+}
+
+// TestPickerTypesEveryPrintableKeyIncludingBindingsElsewhere is M2.3's own
+// acceptance criterion, verbatim: a string containing characters that are
+// bindings elsewhere ("j"/"k" move selection on every Nav pane, "g" is
+// Top, "/" starts Find) must land entirely in the Prompt, with none of
+// those side effects firing — the same "always typing" guarantee
+// updateFindQuery already gives Find, now given to the Picker (S2).
+func TestPickerTypesEveryPrintableKeyIncludingBindingsElsewhere(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	m, _ = m.openPicker()
+	beforeDoc := m.viewer.doc.path
+	beforeOffset := m.viewer.offset()
+
+	const query = "jog/report"
+	m = typeText(t, m, query)
+
+	if got := m.picker.input.Value(); got != query {
+		t.Errorf("prompt = %q, want %q", got, query)
+	}
+	if !m.picker.open {
+		t.Error("picker.open = false after typing, want true")
+	}
+	if m.viewer.doc.path != beforeDoc {
+		t.Errorf("active document changed to %q while typing, want unchanged (%q)", m.viewer.doc.path, beforeDoc)
+	}
+	if m.viewer.offset() != beforeOffset {
+		t.Errorf("viewer scroll offset changed to %d while typing, want unchanged (%d)", m.viewer.offset(), beforeOffset)
+	}
+	if m.viewer.findEditing() {
+		t.Error("\"/\" in the query started a Find, want it to only type")
+	}
+	if m.helpOpen {
+		t.Error("typing opened the Help Modal, want it to stay closed")
+	}
+}
+
+// TestPickerNonTypingKeysDoNotType is S2's other half: Cancel, Activate,
+// PickerUp/PickerDown, the Preview scroll keys and PickerMode/PickerScope
+// are all non-printable (D2's "always typing" only ever binds printable
+// keystrokes), so none of them should ever reach the Prompt — checked here
+// for every one but Cancel, which this task's earlier acceptance criterion
+// (M2.1's dismiss-on-Cancel) already covers by making the Picker close
+// instead.
+func TestPickerNonTypingKeysDoNotType(t *testing.T) {
+	nonTyping := []key.Binding{
+		keys.Activate, keys.PickerUp, keys.PickerDown,
+		keys.PageUp, keys.PageDown, keys.HalfPageUp, keys.HalfPageDown,
+		keys.PickerMode, keys.PickerScope,
+	}
+	for _, b := range nonTyping {
+		for _, k := range b.Keys() {
+			m := openedFixture(t, 80, 24)
+			m, _ = m.openPicker()
+
+			m = press(t, m, k)
+
+			if !m.picker.open {
+				t.Errorf("key %q closed the picker, want it to stay open", k)
+				continue
+			}
+			if got := m.picker.input.Value(); got != "" {
+				t.Errorf("key %q typed %q into the prompt, want it to type nothing", k, got)
+			}
+		}
+	}
+}
+
+// TestPickerCancelDoesNotType is Cancel's own version of the check above,
+// kept separate since Cancel's effect is dismissal (m.picker.open becomes
+// false) rather than "stays open, nothing typed".
+func TestPickerCancelDoesNotType(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	m, _ = m.openPicker()
+
+	m = press(t, m, keys.Cancel.Keys()[0])
+
+	if m.picker.open {
+		t.Error("picker.open = true after Cancel, want false")
 	}
 }

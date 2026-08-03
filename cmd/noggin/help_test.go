@@ -238,3 +238,33 @@ func TestHelpUnreachableWhileFindEditing(t *testing.T) {
 		t.Errorf("query = %q, want %q (the ? typed into it)", got, "?")
 	}
 }
+
+// TestHelpUnreachableWhilePickerOpen is the Picker's own version of the
+// check above (S2's "always typing" applies to it exactly the same way):
+// "?" types into the Prompt rather than opening Help, since handlePickerInput
+// runs before the Help binding is ever consulted (model.Update).
+func TestHelpUnreachableWhilePickerOpen(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	m, _ = m.openPicker()
+	m = typeText(t, m, "?")
+	if m.helpOpen {
+		t.Error("Help opened while the Picker had the keyboard")
+	}
+	if got := m.picker.input.Value(); got != "?" {
+		t.Errorf("prompt = %q, want %q (the ? typed into it)", got, "?")
+	}
+}
+
+// TestHelpBindingsNameThePickerFromEveryPane is helpBindings' half of D39's
+// "M2.3 makes the [ctrl+p] binding... discoverable": the Help Modal's
+// full binding list for every pane now names the Picker, the same
+// always-available-regardless-of-focus treatment Edit/Navigator already
+// get.
+func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
+	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+		box := helpBox(p)
+		if !strings.Contains(box, "picker") {
+			t.Errorf("pane %v: help modal = %q, want it to name the picker", p, box)
+		}
+	}
+}

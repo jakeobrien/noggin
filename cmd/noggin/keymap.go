@@ -91,6 +91,25 @@ type keyMap struct {
 	// Cancel is its one-key dismissal, the same generic binding Find and
 	// the Help Modal already share.
 	Picker key.Binding
+
+	// PickerUp and PickerDown move the open Picker's Results selection
+	// (S2, M2.3). Nav Keys' shared LineUp/LineDown (above) deliberately
+	// are not reused here: their "k"/"j" alternates are printable, and
+	// S2's "every printable keystroke goes to the Prompt" means the
+	// Picker cannot treat them as movement the way every other pane
+	// does — only the arrow keys survive that rule, so these bind to
+	// them alone.
+	PickerUp   key.Binding
+	PickerDown key.Binding
+
+	// PickerMode and PickerScope switch the open Picker's mode (File ↔
+	// Grep, S7) and Scope (Active Root ↔ All Roots, S7) in place, without
+	// touching the Prompt (M2.3 reserves them as non-typing; M5.1/M5.2
+	// give them their actions). Tab/Shift+Tab rather than a letter, for
+	// the same reason PickerUp/PickerDown avoid "j"/"k": both are
+	// non-printable, so typing a query is never at odds with switching.
+	PickerMode  key.Binding
+	PickerScope key.Binding
 }
 
 // keys is the program's keymap.
@@ -186,5 +205,21 @@ var keys = keyMap{
 	Picker: key.NewBinding(
 		key.WithKeys("ctrl+p"),
 		key.WithHelp("ctrl+p", "picker"),
+	),
+	PickerUp: key.NewBinding(
+		key.WithKeys("up"),
+		key.WithHelp("↑", "up"),
+	),
+	PickerDown: key.NewBinding(
+		key.WithKeys("down"),
+		key.WithHelp("↓", "down"),
+	),
+	PickerMode: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "mode"),
+	),
+	PickerScope: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tab", "scope"),
 	),
 }

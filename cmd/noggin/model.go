@@ -652,9 +652,11 @@ func (m model) paneTitle(p pane) string {
 
 // renderFooter draws the footer line: an in-progress find query (M5.1)
 // first, since it needs the keyboard and so must be shown; otherwise a
-// transient message (D22) when one is set; otherwise the focused pane's key
-// hints (hintText), truncated to fit (S11). Update clears m.message on every
-// keypress, so a message shown here never survives past the next key.
+// transient message (D22) when one is set; otherwise the open Picker's own
+// hints (pickerHintText, M2.3) when it is open, or the focused pane's key
+// hints (hintText) otherwise, truncated to fit (S11). Update clears
+// m.message on every keypress, so a message shown here never survives past
+// the next key.
 //
 // The find prompt is not run through footerStyle's dim foreground: it is
 // already a complete rendering (textinput.Model.View(), cursor included) and
@@ -666,6 +668,14 @@ func (m model) renderFooter(r rect) string {
 			Render(m.viewer.findView(r.width))
 	}
 	text := hintText(m.focus, r.width)
+	// The open Picker (S2, M2.3) owns the keyboard the same exclusive way a
+	// find-in-progress does, but unlike Find it does not take over the
+	// footer row itself (its own Prompt already renders inside the modal) --
+	// it only swaps which hints the footer shows, from the pane underneath's
+	// to the Picker's own.
+	if m.picker.open {
+		text = pickerHintText(r.width)
+	}
 	if m.message != "" {
 		text = m.message
 	}

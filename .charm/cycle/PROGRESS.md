@@ -17,52 +17,48 @@
 
 ## Cursor
 
-Current task: M2.3
+Current task: M2.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.2 done: new `cmd/noggin/picker_view.go` — `pickerLayout{prompt, results, preview rect}` and
-`computePickerLayout(width, height)` size the modal itself (80%/80% of the terminal, clamped
-to `minPickerWidth`/`minPickerHeight` and never above the terminal's own size), splitting the
-remaining body between Results/Preview via `splitPickerWidth` (layout.go's `splitHeight`
-fallback shape, even split if a proportional share would starve either side). `renderPicker`
-composes a focused-style bordered Prompt (textinput via `promptView`, the same
-"SetWidth-then-View on an addressable local copy" shape `find.go`'s `findView` already uses)
-over Results/Preview boxes side by side — both empty/untitled-content placeholders for now
-(M3.1/M3.2 wire real content; M2.5 wires the status/empty-state text). `overlayPicker` is
-`overlayHelp`'s clamp-then-`lipgloss.NewCompositor` shape reused verbatim for the Picker.
-Extracted the shared box-drawing (`renderBox`) out of `model.renderPane` so both call the same
-code rather than duplicating the border+title+content shape a third time. Wired into
-`model.render()`: a three-way switch (plain frame / `overlayHelp` / `overlayPicker`) replacing
-the old two-way one — Help and Picker are mutually exclusive by Update's existing gating, so
-at most one overlay ever applies. Visually spot-checked with an ad-hoc debug print (removed
-before commit): the modal composites correctly over the live frame, centered, frame borders
-visible around its edges, Prompt cursor visible.
+M2.3 done: always-typing input dispatch (S2). `handlePickerInput` (picker.go) now mirrors
+`updateFindQuery`'s shape — a switch of non-typing keys (`Cancel` dismisses; `Activate`, two
+new arrow-only `PickerUp`/`PickerDown` bindings, the Document Viewer's existing
+`PageUp`/`PageDown`/`HalfPageUp`/`HalfPageDown` reused as-is for Preview scrolling, and two new
+`PickerMode` (`tab`)/`PickerScope` (`shift+tab`) bindings are all recognized and swallowed, with
+no action yet — M3.1/M3.2/M5.1/M5.2 wire those) — then falls through to
+`m.picker.input.Update(msg)` for everything else, typing it into the Prompt regardless of what
+it binds to elsewhere. D40 records why the new bindings are arrow/Tab/Shift+Tab rather than
+reusing `LineUp`/`Top` etc. as-is: those double up a letter (`j`/`k`/`g`/`G`), which would break
+S2 the moment a query contained one.
 
-Tests: `picker_view_test.go` — renders all three regions (Results/Preview by title text,
-Prompt/Results/Preview rects non-empty from `computePickerLayout`) at 80x24/120x40/40x10;
-never exceeds the terminal at those same sizes plus degenerate ones down to 1x1 and 0x0
-(`TestComputePickerLayoutNeverExceedsTheTerminal`); frame stays visible around the modal's
-edges (`TestHelpOverlayLeavesTheFrameVisibleAroundIt`'s exact shape). `go test ./...`,
-`make check`, `make check-pty` all green — pty suite unaffected (no pty coverage for the
-Picker yet, M7.1's job); the `renderPane` refactor caused no visible/behavioral change per
-the unchanged pty output.
+Footer/Help coverage (the task's other half): `paneHints`/`helpBindings` now list `keys.Picker`
+in every pane (D39's binding is now discoverable); `footer.go` gained `pickerHints`/
+`pickerHintText`, sharing a new `truncatedHintText` helper with `hintText` rather than a second
+truncation loop; `model.renderFooter` swaps to `pickerHintText` while `m.picker.open`. Help
+Modal itself stays unreachable while the Picker is open — same precedent as Find (`?` types
+into the Prompt instead), verified by a new test mirroring `TestHelpUnreachableWhileFindEditing`.
 
-Next step: M2.3 — always-typing input dispatch: every printable key types into the Prompt;
-selection movement, Preview scrolling, Activate and Cancel are on non-typing keys; Footer and
-Help Modal cover the Picker's actions. `handlePickerInput` (picker.go) currently only handles
-Cancel and swallows everything else — this task routes the rest into `p.input.Update(msg)`
-(find.go's `updateFindQuery` is the precedent: run the query through textinput.Update, then
-recompute) and adds the movement/scroll/mode/Scope-switch bindings this milestone's later
-tasks (M5.1/M5.2) will act on. `footer.go`'s `paneHints`/`alwaysHints` and `help.go`'s
-`helpBindings` are the precedent for the Footer/Help coverage half — note the Picker has no
-`pane`, so whatever dispatches those will need a Picker-shaped variant, not a `pane` case.
+Updated `TestPickerModalLeavesTheFrameVisibleAroundIt` (M2.2's test): its "footer unchanged"
+assertion no longer holds now that the footer legitimately changes with the Picker (intentional,
+not overlay leakage) — narrowed to the top-row/any-row-changed checks, footer content now
+covered by the new `TestFooterShowsPickerHintsWhileOpen`.
 
-M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep if the cycle
-runs long.
+Tests: `picker_test.go` (typing a string containing `j`/`k`/`g`/`/` lands intact in the Prompt
+with no side effects on the doc/viewer/help; every non-typing key stays open with an empty
+Prompt; Cancel still dismisses), `footer_test.go`/`help_test.go` (Picker named from every pane's
+hints/help; `pickerHintText` names Picker actions not the focused pane's; footer swap on
+open/dismiss). `go test ./...`, `make check`, `make check-pty` all green — pty suite unaffected
+(no dedicated Picker pty coverage yet, M7.1's job).
+
+Next step: M2.4 — search dispatch as async work (debounced, stale-query results discarded).
+First `tea.Cmd`/goroutine work in the codebase (no in-repo precedent, per
+codebase-picker-integration.md) — read that finding's "no async precedent" section before
+starting; `main.go`'s single `tea.ExecProcess` $EDITOR handoff is blocking and not a usable
+shape here.
 
 ## Status
 
@@ -74,7 +70,7 @@ runs long.
 | M1.4 | done   | 2026-08-03 | 2026-08-03 |  |
 | M2.1 | done   | -        | -         |      |
 | M2.2 | done   | -        | -         |      |
-| M2.3 | todo   | -        | -         |      |
+| M2.3 | done   | -        | -         |      |
 | M2.4 | todo   | -        | -         |      |
 | M2.5 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |

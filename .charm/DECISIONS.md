@@ -561,3 +561,31 @@
   (VS Code, Sublime, etc.) and collides with nothing already bound. M2.3 (Footer/Help Modal
   coverage) and M2.2 (layout) are the tasks that make the binding visible/discoverable; this
   task only wires the state machine.
+
+## D40: The Picker's own non-typing keys are arrows/Tab/Shift+Tab, never a letter
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: Building M2.3 (always-typing input dispatch). S2 requires selection movement,
+  Preview scrolling, mode switch and Scope switch to happen on keys that do not type, but
+  names no specific keys. Every pane's existing movement bindings (`LineUp`/`LineDown`,
+  `Top`/`Bottom`) double up a letter (`j`/`k`/`g`/`G`, GLOSSARY's "Nav Keys") with the arrow
+  equivalent — reusing them as-is inside the Picker would mean those letters could never be
+  typed into a query, breaking S2's "every printable keystroke goes to the Prompt" the moment
+  a query contains one.
+- Decision: two new bindings, `PickerUp`/`PickerDown`, bound to the arrow keys only (no
+  letter alternate) for Results selection. Preview scrolling reuses the Document Viewer's
+  existing `PageUp`/`PageDown`/`HalfPageUp`/`HalfPageDown` as-is — already non-printable
+  (`pgup`/`pgdn`/`ctrl+u`/`ctrl+d`, `ctrl+b`/`ctrl+f`), so no second copy is needed. Mode and
+  Scope switch get two more new bindings, `PickerMode` (`tab`) and `PickerScope`
+  (`shift+tab`) — a modified key carries no `Text` (confirmed against `keyPress`'s own
+  round-trip, keymap_test.go), so, like every other binding here, it can never collide with a
+  typed character. All four new bindings are reserved as non-typing by this task
+  (`handlePickerInput` recognizes and swallows them); M3.1/M3.2 give Results/Preview
+  selection and scrolling their actions, M5.1/M5.2 give Mode/Scope theirs.
+- Why: low-risk and reversible (four keymap.go entries, no stored state), so logged rather
+  than asked. The alternative — reusing `LineUp`/`LineDown`/`Top`/`Bottom` as-is — would
+  silently violate S2 for any query containing "j", "k", "g", or "G", which real search terms
+  routinely do; picking disjoint keys up front avoids relitigating this once M3.1 gives
+  Results selection something to actually move.

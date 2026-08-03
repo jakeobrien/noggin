@@ -69,14 +69,39 @@ func (m model) dismissPicker() model {
 }
 
 // handlePickerInput is where a keypress goes while the Picker is open
-// (m.picker.open): Cancel dismisses it. Typing into the Prompt and every
-// other Picker action (selection movement, mode/Scope switch, Activate) is
-// M2.2 onward's job — until then the Picker owns the keyboard the same
-// exclusive way handleHelpInput's modal does (a keypress meant for the pane
-// underneath must not leak through), but has nothing else to do with it yet.
+// (m.picker.open): S2's "always-typing" shape, the same one
+// updateFindQuery already gives Find (find.go) — every key but a fixed set
+// of non-typing ones falls through to m.picker.input.Update, typing the
+// keystroke into the Prompt regardless of what it is bound to everywhere
+// else (a query for "jog" must not move a selection or switch mode on its
+// second letter).
+//
+// The non-typing set is exactly S2's list: Cancel dismisses; Activate,
+// PickerUp/PickerDown (Results selection), PageUp/PageDown/HalfPageUp/
+// HalfPageDown (Preview scrolling, reused as-is from the Document Viewer's
+// own scroll bindings — they are already non-printable, so nothing about
+// "always typing" requires a second copy) and PickerMode/PickerScope (mode/
+// Scope switch) are all recognised and swallowed here. Selection, preview
+// and mode/Scope switching have no state to act on yet — M3.1/M3.2 give
+// Results/Preview content and M5.1/M5.2 give mode/Scope their actions — so
+// today these keys do nothing beyond not typing, which is this task's whole
+// job (M2.3): reserving them as non-typing before there is anything to move.
 func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if key.Matches(msg, keys.Cancel) {
+	switch {
+	case key.Matches(msg, keys.Cancel):
 		return m.dismissPicker(), nil
+	case key.Matches(msg, keys.Activate),
+		key.Matches(msg, keys.PickerUp),
+		key.Matches(msg, keys.PickerDown),
+		key.Matches(msg, keys.PageUp),
+		key.Matches(msg, keys.PageDown),
+		key.Matches(msg, keys.HalfPageUp),
+		key.Matches(msg, keys.HalfPageDown),
+		key.Matches(msg, keys.PickerMode),
+		key.Matches(msg, keys.PickerScope):
+		return m, nil
 	}
-	return m, nil
+	next, cmd := m.picker.input.Update(msg)
+	m.picker.input = next
+	return m, cmd
 }

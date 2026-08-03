@@ -86,7 +86,13 @@ func TestPickerModalNeverExceedsTheTerminal(t *testing.T) {
 // pane": the exact TestHelpOverlayLeavesTheFrameVisibleAroundIt shape,
 // checking that the pane underneath the modal is still showing outside its
 // bounding box, proving real cell compositing rather than a full-screen
-// replacement.
+// replacement. The footer row is deliberately not asserted unchanged here
+// (unlike the Help Modal's own version of this test): M2.3 makes the
+// footer itself show the Picker's own hints while it is open (S2), so that
+// row is expected to change as part of opening the Picker, not proof the
+// overlay leaked past its bounds — TestFooterShowsPickerHintsWhileOpen
+// covers that change directly; this test keeps only the top row (never
+// touched by either the footer swap or the centered modal at 80x24).
 func TestPickerModalLeavesTheFrameVisibleAroundIt(t *testing.T) {
 	m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)
 	beforeLines := plainLines(m.View().Content)
@@ -99,10 +105,6 @@ func TestPickerModalLeavesTheFrameVisibleAroundIt(t *testing.T) {
 	}
 	if afterLines[0] != beforeLines[0] {
 		t.Errorf("top row changed under the modal overlay:\nbefore: %q\nafter:  %q", beforeLines[0], afterLines[0])
-	}
-	if strings.TrimRight(afterLines[len(afterLines)-1], " ") != strings.TrimRight(beforeLines[len(beforeLines)-1], " ") {
-		t.Errorf("footer row changed under the modal overlay:\nbefore: %q\nafter:  %q",
-			beforeLines[len(beforeLines)-1], afterLines[len(afterLines)-1])
 	}
 	changed := false
 	for i := range afterLines {

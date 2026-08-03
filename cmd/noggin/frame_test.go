@@ -234,6 +234,7 @@ func allBindings() []key.Binding {
 		keys.Edit,
 		keys.Find, keys.FindNext, keys.FindPrevious, keys.Navigator, keys.Cancel,
 		keys.Help, keys.Picker,
+		keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
 	}
 }
 

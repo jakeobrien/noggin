@@ -14,29 +14,36 @@ import (
 // inapplicable binding is worse than no hint") but belong here, since this
 // modal is the discoverability backstop that comment promises. The viewer's
 // scroll bindings are pulled from scrollActions (viewer.go) rather than
-// re-listed by hand, per that slice's own comment.
+// re-listed by hand, per that slice's own comment. keys.Picker is added to
+// every case for the same reason (D39/M2.3): opening the Picker is global
+// and reachable from any Focus, so its binding belongs in the discoverability
+// backstop everywhere, the same way Edit/Navigator already are — the
+// Picker's *own* keys (PickerUp/PickerMode/...) are not listed here, since
+// the Help Modal is unreachable while the Picker owns the keyboard (see
+// handlePickerInput; the same precedent as Find, which the Help Modal
+// likewise never lists find-editing-specific state for).
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{
 			keys.Activate, keys.Star, keys.LineUp, keys.LineDown,
-			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator,
+			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
 			keys.Help, keys.Quit,
 		}
 	case filesPane:
 		return []key.Binding{
 			keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown,
-			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator,
+			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
 			keys.Help, keys.Quit,
 		}
 	default: // viewerPane
-		bindings := make([]key.Binding, 0, len(scrollActions)+10)
+		bindings := make([]key.Binding, 0, len(scrollActions)+11)
 		for _, a := range scrollActions {
 			bindings = append(bindings, a.binding)
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
-			keys.Edit, keys.Navigator, keys.NextPane, keys.PrevPane,
+			keys.Edit, keys.Navigator, keys.Picker, keys.NextPane, keys.PrevPane,
 			keys.Help, keys.Quit,
 		)
 	}
