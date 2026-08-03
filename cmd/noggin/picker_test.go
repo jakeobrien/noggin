@@ -9,6 +9,8 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+
+	"noggin/internal/tree"
 )
 
 // TestPickerOpensFromEveryFocusAndNavigatorHidden is M2.1's "reachable from
@@ -278,6 +280,65 @@ func TestPickerSelectionResetsOnFreshResults(t *testing.T) {
 
 	if m.picker.selected != 0 {
 		t.Errorf("selected = %d after fresh results landed, want reset to 0", m.picker.selected)
+	}
+}
+
+// TestPickerActivateOpensResultAsActiveDocumentOnly is M3.3's own
+// acceptance criterion, verbatim: activating a Result belonging to a
+// non-active Root makes it the Active Document while the Active Root, the
+// Files Nav tree's expansion and its selection are all unchanged — S10's
+// "does not change the Active Root, and does not move, expand or re-select
+// the Files Nav tree", checked against a Result whose Root is deliberately
+// not the active one.
+func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
+	rootA := t.TempDir()
+	rootB := t.TempDir()
+	writeFileContent(t, filepath.Join(rootA, "existing.md"), "root A doc\n")
+	writeFileContent(t, filepath.Join(rootA, "other.md"), "root A other\n")
+	fileB := filepath.Join(rootB, "report.md")
+	writeFileContent(t, fileB, "root B report\n")
+
+	nodeA, err := tree.Walk(rootA)
+	if err != nil {
+		t.Fatalf("walking %s: %v", rootA, err)
+	}
+
+	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
+	m.roots = m.roots.setRoots([]root{{path: rootA}, {path: rootB}}, 0)
+	m = m.openFolder(nodeA)
+	m.files = m.files.move(1) // off the tree's initial selection
+	wantSelected := m.files.selected
+	wantExpanded := len(m.files.expanded)
+
+	m, _ = m.openPicker()
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  fileMode,
+		scope: activeRootScope,
+		files: []pickerFile{{root: root{path: rootB}, path: fileB}},
+	}
+	m.picker.selected = 0
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.picker.open {
+		t.Error("picker.open = true after Activate, want dismissed")
+	}
+	if got.viewer.doc.path != fileB {
+		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, fileB)
+	}
+	if got.roots.active != 0 {
+		t.Errorf("Active Root index = %d, want unchanged 0 (rootA)", got.roots.active)
+	}
+	if got.files.selected != wantSelected {
+		t.Errorf("Files Nav selection = %d, want unchanged %d", got.files.selected, wantSelected)
+	}
+	if len(got.files.expanded) != wantExpanded {
+		t.Errorf("Files Nav expansion changed: %d entries, want unchanged %d", len(got.files.expanded), wantExpanded)
+	}
+	if got.files.root.Path != rootA {
+		t.Errorf("Files Nav root = %q, want unchanged %q", got.files.root.Path, rootA)
 	}
 }
 

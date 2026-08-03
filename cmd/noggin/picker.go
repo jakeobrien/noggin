@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -397,6 +398,40 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 	return m
 }
 
+// activatePicker is S10's Activate: the currently-previewed File Result
+// becomes the Active Document, the same and only path openDocument already
+// gives activate() (Files Nav) and the launch-time resolution
+// (applyResolution) — it touches m.viewer/m.focus alone, never m.roots or
+// m.files, which is what "does not change the Active Root, and does not
+// move, expand or re-select the Files Nav tree" means concretely: a
+// Result's Root need not be the Active Root (S10), and this never calls
+// openFolder or touches m.roots.active to make it so.
+//
+// Reuses pickerPreviewCandidate rather than a second selection lookup —
+// "the Result the Preview is showing" and "the Result Activate would open"
+// are the same question (M3.2's own handoff note), so a fresh generation's
+// rows can no more be activated than they can leak into the Preview.
+// grepMode has no candidate yet (M4.1 wires it); until then Activate is a
+// no-op in Grep mode, same as the Prompt/Results already are.
+//
+// A read error surfaces as a footer message rather than refusing to close
+// the modal — activate()'s own "silence is not an error" shape (T15) — the
+// Picker is dismissed either way since there is nothing further for it to
+// do once a Result has been chosen.
+func (m model) activatePicker() model {
+	f, ok := m.picker.pickerPreviewCandidate()
+	if !ok {
+		return m
+	}
+	d, err := loadDocument(f.path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", f.path, err)
+		return m.dismissPicker()
+	}
+	m = m.openDocument(d)
+	return m.dismissPicker()
+}
+
 // handlePickerInput is where a keypress goes while the Picker is open
 // (m.picker.open): S2's "always-typing" shape, the same one
 // updateFindQuery already gives Find (find.go) — every key but a fixed set
@@ -411,10 +446,10 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 // reused as-is from the Document Viewer's own scroll bindings — they are
 // already non-printable, so nothing about "always typing" requires a second
 // copy) and PickerMode/PickerScope (mode/Scope switch) are all recognised and
-// swallowed here. Activate, Preview scrolling and mode/Scope switching still
-// have no state to act on — M3.2/M3.3 give Activate and Preview their
-// actions, M5.1/M5.2 give mode/Scope theirs — so today those keys do nothing
-// beyond not typing (M2.3's original job, for the whole set).
+// swallowed here. Activate now opens the previewed Result and dismisses the
+// Picker (M3.3, activatePicker); Preview scrolling and mode/Scope switching
+// still have no state to act on — M5.1/M5.2 give mode/Scope theirs — so
+// today those keys do nothing beyond not typing (M2.3's original job).
 func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
@@ -437,8 +472,9 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.HalfPageDown):
 		m.picker.preview.HalfPageDown()
 		return m, nil
-	case key.Matches(msg, keys.Activate),
-		key.Matches(msg, keys.PickerMode),
+	case key.Matches(msg, keys.Activate):
+		return m.activatePicker(), nil
+	case key.Matches(msg, keys.PickerMode),
 		key.Matches(msg, keys.PickerScope):
 		return m, nil
 	}

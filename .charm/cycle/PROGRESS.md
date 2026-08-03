@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.3
+Current task: M4.1
 
 ## Handoff
 
@@ -139,10 +139,27 @@ PageDowns (`YOffset() > 0`) then PageUps back down. `make check` and `make check
 green (pty run above is the full existing suite, unmodified — M3.2 added no new pty check;
 the Picker modal has none yet).
 
-Next step: M3.3 — activate a File Result: it becomes the Active Document and nothing else
-moves (Active Root, Files Nav tree expansion/selection unchanged). `picker.pickerPreviewCandidate`
-is reusable for "which file would Activate open". M1.4a/M1.4b/M2.3a are queued but not
-blocking — pick them up opportunistically or before M7 hardening.
+M3.3 done — Activate (`activatePicker`, picker.go) now opens the currently-previewed File
+Result as the Active Document and dismisses the Picker: `openDocument(d)` touches only
+`m.viewer`/`m.focus`, exactly the same and only path `activate()` (Files Nav) and
+`applyResolution` already use, which is what "does not change the Active Root, and does not
+move, expand or re-select the Files Nav tree" means concretely — a Result's Root need not be
+the Active Root (S10), and this never calls `openFolder` or touches `m.roots.active` to make
+it so. Reuses `pickerPreviewCandidate` rather than a second selection lookup — "the Result the
+Preview is showing" and "the Result Activate would open" are the same question. A read error
+surfaces as a footer message (activate()'s own "silence is not an error" shape, T15) but still
+dismisses the Picker, since there is nothing further for it to do once a Result is chosen.
+grepMode has no candidate yet (M4.1 wires it), so Activate stays a no-op there until then.
+
+Evidence for the criterion: `TestPickerActivateOpensResultAsActiveDocumentOnly` (picker_test.go)
+opens a two-Root fixture with the Files Nav on rootA (selection moved off its initial index),
+opens the Picker on a synthesized Result belonging to rootB, presses Activate, and asserts in
+one place: Picker dismissed, Active Document = rootB's file, Active Root index unchanged,
+Files Nav selection/expansion/root all unchanged. `make check` and `make check-pty` both green.
+
+Next step: M4.1 — wire Grep mode to M1.4 (file, line number, matching line per row, truncated
+to the pane). M1.4a/M1.4b/M2.3a are queued but not blocking — pick them up opportunistically or
+before M7 hardening.
 
 ## Status
 
@@ -162,7 +179,7 @@ blocking — pick them up opportunistically or before M7 hardening.
 | M2.3a| todo   | -        | -         | D46 (TRIAGE T5); M2.3 re-validates once done |
 | M3.1 | done   | -        | -         |      |
 | M3.2 | done   | -        | -         |      |
-| M3.3 | todo   | -        | -         |      |
+| M3.3 | done   | -        | -         |      |
 | M4.1 | todo   | -        | -         |      |
 | M4.2 | todo   | -        | -         |      |
 | M4.3 | todo   | -        | -         |      |
