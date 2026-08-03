@@ -311,6 +311,46 @@ func TestGrepFilesCapsAndReportsTruncation(t *testing.T) {
 	}
 }
 
+// TestGrepFilesBatchesAcrossArgSizeLimit: with grepArgMaxBytes shrunk to
+// force one file per rg invocation, grepFiles still finds matches in files
+// from every batch, merged as if it had run in a single invocation
+// (TRIAGE T1 / D43, M1.4a) — a small injected limit exercises the same
+// batching boundary a real ARG_MAX overflow would, cheaply. A genuine
+// no-match under the same batching still reports "no results", not
+// something conflated with a batch that failed to run.
+func TestGrepFilesBatchesAcrossArgSizeLimit(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	const fileCount = 6
+	var want []string
+	for i := 0; i < fileCount; i++ {
+		p := writeFileContent(t, filepath.Join(dir, fmt.Sprintf("file-%d.md", i)), fmt.Sprintf("needle %d\n", i))
+		want = append(want, fmt.Sprintf("%s:1:needle %d", p, i))
+	}
+	sort.Strings(want)
+	roots := []root{{path: dir}}
+
+	orig := grepArgMaxBytes
+	grepArgMaxBytes = 1 // forces a new batch for every file
+	defer func() { grepArgMaxBytes = orig }()
+
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
+	if truncated {
+		t.Fatalf("grepFiles() truncated = true, want false")
+	}
+	if got := grepLines(results); !equalStrings(got, want) {
+		t.Fatalf("grepFiles() with batching = %v, want %v", got, want)
+	}
+
+	noMatch, truncated := grepFiles(roots, 0, activeRootScope, "absent")
+	if truncated {
+		t.Fatalf("grepFiles(\"absent\") truncated = true, want false")
+	}
+	if len(noMatch) != 0 {
+		t.Fatalf("grepFiles(\"absent\") = %v, want no results", grepLines(noMatch))
+	}
+}
+
 func sortedCopy(s []string) []string {
 	out := append([]string(nil), s...)
 	sort.Strings(out)

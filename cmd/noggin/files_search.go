@@ -121,6 +121,48 @@ type grepResult struct {
 	text string
 }
 
+// grepArgMaxBytes bounds the total byte length of file-path arguments a
+// single rg invocation may receive (TRIAGE T1 / D43): grepFiles used to
+// pass every file in Scope as a literal CLI argument to one rg call, so an
+// All Roots search over a large tree could push the argument list past the
+// OS's ARG_MAX — and cmd.Output()'s resulting exec error was silently
+// folded into the same "no results" path as a genuine no-match, with no
+// signal the search hadn't actually run. batchFilePaths splits the file
+// list into groups that stay comfortably under this limit, well below
+// real-world ARG_MAX values on both Linux (single-digit MB) and macOS
+// (historically ~256KB), so the failure mode is avoided rather than
+// detected after the fact. It's a var, not a const, purely so a test can
+// shrink it to force multiple batches without needing an unwieldy number
+// of real files.
+var grepArgMaxBytes = 128 * 1024
+
+// batchFilePaths splits files into groups whose combined path byte length
+// stays at or under maxBytes per group, preserving files' relative order
+// within and across batches — grepFiles's cap/truncation contract does not
+// depend on batch boundaries, but a stable order keeps behaviour
+// deterministic. Never produces an empty batch; a single file whose own
+// path exceeds maxBytes still gets a (oversized) batch of its own rather
+// than being dropped.
+func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
+	var batches [][]pickerFile
+	var current []pickerFile
+	size := 0
+	for _, f := range files {
+		added := len(f.path) + 1 // +1: argv separator overhead, not exact
+		if len(current) > 0 && size+added > maxBytes {
+			batches = append(batches, current)
+			current = nil
+			size = 0
+		}
+		current = append(current, f)
+		size += added
+	}
+	if len(current) > 0 {
+		batches = append(batches, current)
+	}
+	return batches
+}
+
 // grepFiles searches query literally (S4: rg's --fixed-strings, so regex
 // metacharacters in a half-typed query are just characters — D29) with
 // smart case across the Readable files in scope: rg's own --smart-case
@@ -138,17 +180,37 @@ type grepResult struct {
 // those files is what makes grep agree with the File Picker's own view of
 // Scope, rather than re-deriving (and risking disagreeing with) it.
 //
-// Returns one grepResult per matching line, in rg's own order, capped at
-// pickerResultCap with the same truncation-flag shape as fuzzyFiles (S12).
-// An empty file set or an empty query short-circuits to no results without
-// invoking rg at all — an empty query would otherwise be an empty-pattern
-// rg run, which matches every line of every file, not "nothing to search".
+// The file list is run through rg in batches (batchFilePaths, grepBatch)
+// rather than one invocation (D43/M1.4a) — see grepArgMaxBytes. Batches are
+// merged in order and pickerResultCap/truncation (S12, matching fuzzyFiles)
+// is applied across that merged total, not per batch, so a match count that
+// only exceeds the cap once batches are combined is still reported
+// correctly as truncated. An empty file set or an empty query short-circuits
+// to no results without invoking rg at all — an empty query would otherwise
+// be an empty-pattern rg run, which matches every line of every file, not
+// "nothing to search".
 func grepFiles(roots []root, active int, scope pickerScope, query string) (results []grepResult, truncated bool) {
 	files := listFiles(roots, active, scope)
 	if len(files) == 0 || query == "" {
 		return nil, false
 	}
 
+	for _, batch := range batchFilePaths(files, grepArgMaxBytes) {
+		for _, r := range grepBatch(batch, query) {
+			if len(results) == pickerResultCap {
+				return results, true
+			}
+			results = append(results, r)
+		}
+	}
+	return results, false
+}
+
+// grepBatch runs a single rg invocation over exactly the given files (one
+// batch from batchFilePaths) and returns every matching line, uncapped —
+// grepFiles is what applies pickerResultCap, across the merged results of
+// every batch.
+func grepBatch(files []pickerFile, query string) []grepResult {
 	byPath := make(map[string]pickerFile, len(files))
 	args := make([]string, 0, len(files)+5)
 	args = append(args, "--fixed-strings", "--smart-case", "--json", "--", query)
@@ -160,12 +222,16 @@ func grepFiles(roots []root, active int, scope pickerScope, query string) (resul
 	cmd := exec.Command(ripgrepBinary, args...)
 	out, err := cmd.Output()
 	if err != nil {
-		// rg exits non-zero both for "no matches" and for a run it could not
-		// complete; either is absorbed as "no results" (same shape rgFiles
-		// gives an unreadable Root, M1.2), not an error surfaced to the user.
-		return nil, false
+		// rg exits non-zero both for "no matches in this batch" and for a
+		// run it could not complete; either is absorbed as "no results from
+		// this batch" (same shape rgFiles gives an unreadable Root, M1.2),
+		// not an error surfaced to the user. grepArgMaxBytes' batching is
+		// what keeps this from being an ARG_MAX exec failure in practice,
+		// rather than something detected and distinguished here.
+		return nil
 	}
 
+	var results []grepResult
 	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
 		var msg rgJSONMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil || msg.Type != "match" {
@@ -175,17 +241,13 @@ func grepFiles(roots []root, active int, scope pickerScope, query string) (resul
 		if !ok {
 			continue
 		}
-		if len(results) == pickerResultCap {
-			truncated = true
-			break
-		}
 		results = append(results, grepResult{
 			file: file,
 			line: msg.Data.LineNumber,
 			text: strings.TrimRight(msg.Data.Lines.Text, "\n"),
 		})
 	}
-	return results, truncated
+	return results
 }
 
 // rgJSONMessage is the subset of one line of rg's `--json` JSON-Lines output
