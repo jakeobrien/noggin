@@ -25,3 +25,12 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+
+<!-- Inbox empty: T6-T12 triaged 2026-08-03 (charm-replan). Routing:
+     T6  -> PLAN M3.2a, D48 (accepted, material)
+     T7  -> PLAN M3.3a, D49 (accepted, batch)
+     T8  -> PLAN M3.3a, D49 (accepted, batch)
+     T9  -> PLAN M3.3b, D49 (accepted, batch)
+     T10 -> PLAN M3.1a, D50 (accepted, scope judgment)
+     T11 -> PLAN M7.1a (accepted, low-cost housekeeping)
+     T12 -> PLAN M3.2b (accepted, low-cost housekeeping) -->

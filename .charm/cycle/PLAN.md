@@ -101,14 +101,39 @@ Delivers: S3, S9 (file preview), S10 (activate)
 - **M3.1** — Wire the File Picker to M1.3; each Result row shows the file's Root and its path
   relative to that Root — done when: a fixture with same-named files in two Roots renders two
   distinguishable rows, ordered by match strength — effort: 2 (needs: M1.3, M2.5)
+- **M3.1a** — Disambiguate Root labels in File Picker rows when two Roots share a basename
+  (TRIAGE T10 / D50): reuse `rootsNav.renderRow`'s left-truncated-parent disambiguation
+  strategy in `pickerFileRow` instead of the bare `filepath.Base(f.root.path)` — done when: a
+  fixture with two Roots sharing a basename but different parents renders distinguishable Root
+  labels in File Picker rows, matching `rootsNav`'s own disambiguation behavior for the same
+  case — effort: 2 (needs: M3.1)
 - **M3.2** — Preview pane renders the selected Result's file as raw, unrendered text from the
   top, scrollable, following selection changes — done when: a test shows the preview content
   matches the file's raw bytes (no Glamour styling), starts at line 1, scrolls on the scroll
   keys, and re-targets when the selection moves — effort: 2 (needs: M3.1)
+- **M3.2a** — Fix `dismissPicker`'s preview-size reset (TRIAGE T6 / D48): `dismissPicker` must
+  preserve/restore the Preview viewport's Width/Height the same way `openPicker` carries them
+  over, so opening the Picker a second time without an intervening `tea.WindowSizeMsg` doesn't
+  render an empty 0x0 preview for the rest of the session — done when: a test drives
+  open → dismiss → reopen with no resize in between and asserts the Preview pane still renders
+  at its prior size — effort: 2 (needs: M3.2). Address before M4.2, which reuses this preview
+  mechanism.
+- **M3.2b** — Pin `syncPreview`'s error-content fallback string (TRIAGE T12): add a test
+  asserting the exact `"preview unavailable: " + err.Error()` text, matching
+  picker_view_test.go's existing convention of pinning user-visible strings — effort: 1
+  (needs: M3.2)
 - **M3.3** — Activate a File Result: it becomes the Active Document and nothing else moves —
   done when: after activating a Result belonging to a non-active Root, a test asserts the Active
   Document changed while the Active Root, the Files Nav tree's expansion and its selection are
   unchanged — effort: 2 (needs: M3.2)
+- **M3.3a** — Add missing `activatePicker` test coverage (TRIAGE T7, T8): a read-error case
+  (file removed/unreadable between listing and Activate, mirroring
+  `TestActivateWithAReadErrorLeavesSessionRunning`'s shape) and a Grep-mode no-op case
+  (Activate pressed with `mode = grepMode` asserts no state change) — done when: both cases have
+  a passing test in picker_test.go — effort: 2 (needs: M3.3)
+- **M3.3b** — Strengthen `TestPickerActivateOpensResultAsActiveDocumentOnly`'s expansion
+  assertion (TRIAGE T9): assert `m.files.expanded` key/set equality, not just cardinality, so a
+  same-count substitution would fail the test — effort: 1 (needs: M3.3)
 
 ## M4 — Grep Picker end to end
 
@@ -175,3 +200,7 @@ Delivers: S14 (documented), cycle-level acceptance
   the requirement, its ignore-rule consequence and the keys, every command/example in it is
   verified against the binary, and each SPEC.md cycle-level acceptance bullet is confirmed or
   raised in TRIAGE.md — effort: 2 (needs: M7.1)
+- **M7.1a** — Terminology and string-pinning housekeeping (TRIAGE T11): standardize
+  "Results region"/"Results column" comments (picker_view.go, picker.go) on GLOSSARY.md's
+  fixed term "Results list" — done when: no comment in the Picker's code uses either variant —
+  effort: 1 (needs: none; opportunistic, no dependency)

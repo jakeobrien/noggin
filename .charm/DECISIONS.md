@@ -718,6 +718,70 @@
   is named `input`, not `prompt` — the one place this milestone's code diverges from the
   pattern where `mode`/`scope` match `pickerMode`/`pickerScope` exactly.
 - Decision: Wontfix. Keep `input` as the field name.
+
+## D48: `dismissPicker`'s one-sided preview-size carry-over is a real regression, promoted to a plan task
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T6 (review, high): `dismissPicker` (cmd/noggin/picker.go:190-215) resets
+  `m.picker` to `newPicker()`'s fresh 0x0 preview viewport and never restores the previous
+  preview Width/Height, unlike `openPicker` (picker.go:158-175), which explicitly carries them
+  over per its own "no memory except terminal-size fields" comment. `model.resize` only
+  re-sizes the preview on `tea.WindowSizeMsg`/navigator-toggle, so opening the Picker a second
+  time without an intervening resize leaves the Preview pane rendering empty (0x0) for the rest
+  of the session — M3.2/S9 ("Preview pane renders … scrollable") silently breaks on the second
+  open. No existing test exercises dismiss-then-reopen without a resize.
+- Decision: Accept as a plan task (M3.2a): `dismissPicker` preserves/restores
+  `preview.Width()/Height()` the same way `openPicker` does, plus a regression test for
+  dismiss→reopen with no intervening resize. Flagged to land before M4.2, which reuses the same
+  preview mechanism for grep's matched-line view.
+- Why: high risk (a documented S9 acceptance criterion breaks on ordinary repeated use, not an
+  edge case) on a mechanism M4.2/M4.3 are about to build on — worth fixing at the source before
+  a second Picker mode inherits the same bug.
+
+## D49: `activatePicker`'s untested read-error/grep-no-op paths and a weak expansion assertion, promoted to small plan tasks
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T7/T8/T9 (review, medium), all in `cmd/noggin/picker.go`'s `activatePicker`
+  (M3.3) and its test coverage: (T7) the read-error path (file removed/unreadable between
+  listing and Activate) mirrors `activate()`'s tested error shape but has no picker_test.go
+  equivalent, despite M3.3's own doc comment calling out the behavior explicitly; (T8) the
+  claim "Activate is a no-op in Grep mode" is asserted only in a code comment, untested, right
+  before M4.1 is about to make Grep mode real; (T9) `TestPickerActivateOpensResultAsActiveDocumentOnly`
+  asserts the Files Nav tree's expansion is unchanged by comparing set *cardinality*
+  (`len(got.files.expanded) != wantExpanded`) rather than identity, so a regression that swapped
+  one expanded node for another at the same count would still pass.
+- Decision: Accept as two small plan tasks: M3.3a (T7 read-error test + T8 grep-no-op test) and
+  M3.3b (T9's key/set equality fix). Both are test-only additions/fixes, no production code
+  change implied.
+- Why: medium risk each — T7/T8 are unverified assumptions about already-shipped behavior that
+  M4.1 is about to build directly on top of (grep mode's Activate semantics in particular); T9
+  is a real gap in the exact acceptance criterion M3.3 claims to satisfy. Cheap to close now,
+  before M4.x compounds on unverified ground.
+
+## D50: Root-name collisions across Picker rows are in scope for C2, promoted to a plan task
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T10 (review, medium): `pickerFileRow` (cmd/noggin/picker_view.go, ~208-220)
+  labels a Result's Root with `filepath.Base(f.root.path)` only, so two Roots sharing a base
+  directory name (different parents) render identical, ambiguous rows for same-named files in
+  each — exactly the ambiguity S3 asks the Root label to resolve ("shows the file's Root and
+  its path relative to that Root, so same-named files are distinguishable"). The code comment
+  deferred this as out of this cycle's fixtures, a build-time call rather than something S3's
+  text itself scopes out. `rootsNav.renderRow` already carries a left-truncated-parent
+  disambiguation strategy for this exact case, unused here.
+- Decision: In scope. Accept as a plan task (M3.1a): reuse `rootsNav.renderRow`'s
+  disambiguation strategy in `pickerFileRow` rather than leaving the gap as an
+  implementation-comment-only call or pushing it to Unscheduled.
+- Why: this isn't a rare edge for noggin's own north star — personal notes, work notes and
+  per-project docs plausibly share folder basenames (`notes`, `docs`) across different parents
+  — and the fix reuses an existing, already-correct strategy rather than authoring a new one,
+  so the cost is low relative to closing a real gap in S3's stated purpose.
 - Why: low risk/value — the field wraps `bubbles/textinput.Model` generically, and `input`
   names what it *is* (a textinput wrapper) while "Prompt" names what it *means* in the UI;
   the two are allowed to diverge where a field wraps a third-party type generically. Renaming
