@@ -17,19 +17,49 @@
 
 ## Cursor
 
-Current task: <key>
+Current task: M1.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-<current-state snapshot>
+Cycle just planned; no C2 code written yet. Working tree is C1's, clean.
+
+Next step: M1.1 — detect `ripgrep` at startup, carry availability + reason in session state,
+without touching the launch path.
+
+Read before building UI (M2 onward): `findings/codebase-picker-integration.md`. Two known
+new-ground gaps: (1) no async/`tea.Cmd`/debounce precedent exists anywhere in the repo —
+M2.4 invents it; (2) ripgrep's raw-file line numbers do not correspond to the Document
+Viewer's rendered/wrapped line numbers — D34 records how M4.3/M4.4 address that.
+
+M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
 
 ## Status
 
-| Key  | Status      | Reviewed | Validated | Note                              |
-|------|-------------|----------|-----------|------------------------------------|
-| M1.1 | done        | -        | -         |                                    |
-| M1.2 | in-progress | -        | -         |                                    |
-| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |
+| Key  | Status | Reviewed | Validated | Note |
+|------|--------|----------|-----------|------|
+| M1.1 | todo   | -        | -         |      |
+| M1.2 | todo   | -        | -         |      |
+| M1.3 | todo   | -        | -         |      |
+| M1.4 | todo   | -        | -         |      |
+| M2.1 | todo   | -        | -         |      |
+| M2.2 | todo   | -        | -         |      |
+| M2.3 | todo   | -        | -         |      |
+| M2.4 | todo   | -        | -         |      |
+| M2.5 | todo   | -        | -         |      |
+| M3.1 | todo   | -        | -         |      |
+| M3.2 | todo   | -        | -         |      |
+| M3.3 | todo   | -        | -         |      |
+| M4.1 | todo   | -        | -         |      |
+| M4.2 | todo   | -        | -         |      |
+| M4.3 | todo   | -        | -         |      |
+| M4.4 | todo   | -        | -         |      |
+| M5.1 | todo   | -        | -         |      |
+| M5.2 | todo   | -        | -         |      |
+| M5.3 | todo   | -        | -         |      |
+| M6.1 | todo   | -        | -         | pre-agreed cut (D32) |
+| M6.2 | todo   | -        | -         | pre-agreed cut (D32) |
+| M7.1 | todo   | -        | -         |      |
+| M7.2 | todo   | -        | -         |      |

@@ -7,4 +7,7 @@
      `.charm/knowledge/` tier, or archived with the cycle (the default). Durable knowledge
      for cross-cycle reading lives there, not here — see .charm/knowledge/INDEX.md. -->
 
-- `<topic>.md` — <one-line summary of what it covers and why it matters>
+- `codebase-picker-integration.md` — where a Picker plugs into C1's code: the hand-duplicated
+  modal dispatch, `render()`/Compositor overlay, the Find surface a grep hand-off would reuse,
+  test/pty conventions, and the two new-ground gaps (no async `tea.Cmd` precedent; rg line
+  numbers vs rendered viewport lines). Written at plan time.

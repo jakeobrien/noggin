@@ -428,3 +428,44 @@
   line addressing under Glamour output, whether only the File Picker renders (inconsistent
   between modes), or whether raw is simply correct for a search tool and this closes as wontfix.
 - Why: Dogfooding C2 will show whether raw previews actually feel wrong in use.
+
+## D34: A Grep Result's landing spot is re-derived in the rendered document, not trusted from ripgrep's line number
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: Planning M4.3/M4.4 (S10, S11). ripgrep reports line numbers against the **raw file**;
+  `find.go`'s match positions (`findMatch`, `applyCurrentMatch`) live in the Document Viewer's
+  **rendered** line space — Glamour re-flows and word-wraps, frontmatter is pre-stripped (D5),
+  tabs are expanded, and markdown syntax characters vanish. The two line numbers do not
+  correspond, so "scroll the viewer to rg's line 137" would land in the wrong place.
+- Decision: the Preview pane (raw text, D30) *does* address rg's line number directly — that is
+  exactly why the preview is raw. The Document Viewer hand-off does not: after `openDocument`,
+  re-run `findMatches(renderedContent, query)` and select the match by **occurrence ordinal** —
+  the Nth literal occurrence of the query in the raw file maps to the Nth in the rendered
+  content — then `commitFind` + `applyCurrentMatch`. If the ordinal cannot be resolved (the
+  query spanned syntax Glamour removed, or sat inside stripped frontmatter), degrade: open the
+  document with the query as a Committed Find on whatever matches do exist (first match), and if
+  there are none, open it plain at the top. Never fail the activation, never crash.
+- Why: reuses the existing Find machinery rather than authoring a raw↔rendered line map (D1),
+  and keeps S11 honest — the point of the hand-off is that next/previous traversal works, which
+  requires the rendered-space matches anyway. Ordinal correspondence holds for prose, which is
+  what noggin reads; the degradation path covers the markdown-syntax edge without a special
+  case per markdown construct. Cost: an activated match inside e.g. `**bold**` may land on a
+  neighbouring occurrence. Accepted, and worth a TRIAGE item if dogfooding shows it biting.
+
+## D35: C2's Picker hand-duplicates the modal dispatch again rather than building the shared abstraction
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: C1's code review left a roadmap item: a shared exclusive-input-mode dispatch
+  abstraction across modals, "only worth it if a third modal is ever added" (C1/T31). The Picker
+  is that third modal, so the condition it named has arrived.
+- Decision: still hand-duplicate. M2.1/M2.3 add a third `if` gate in `Update` and a
+  `handlePickerInput` in the shape of `handleFindInput`, and the roadmap item stays Unscheduled.
+- Why: the three modals are less alike than the count suggests — Help swallows everything, Find
+  types into one field and owns the footer, the Picker types into a field *and* drives a results
+  list, a preview viewport, a mode and a Scope. The common factor is about four lines of
+  ordering. Refactoring toward an abstraction while the third case is still being discovered
+  would generalize from guesses; if a fourth modal arrives, the shape will be evident.
