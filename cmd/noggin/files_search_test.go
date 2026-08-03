@@ -290,21 +290,34 @@ func TestGrepFilesOnlySearchesReadableFiles(t *testing.T) {
 
 // TestGrepFilesCapsAndReportsTruncation: a match count larger than
 // pickerResultCap comes back capped at that length with the truncation
-// flag set (S12), the same shape fuzzyFiles gives the File Picker.
+// flag set (S12), the same shape fuzzyFiles gives the File Picker; a match
+// count exactly at the cap comes back untouched and unflagged (TRIAGE T3 /
+// D45, matching TestFuzzyFilesCapsAndReportsTruncation's existing coverage
+// of that boundary).
 func TestGrepFilesCapsAndReportsTruncation(t *testing.T) {
 	requireRipgrep(t)
-	dir := t.TempDir()
-	var lines strings.Builder
-	for i := 0; i < pickerResultCap+50; i++ {
-		fmt.Fprintf(&lines, "needle line %d\n", i)
+	notesWithLines := func(t *testing.T, n int) []root {
+		t.Helper()
+		dir := t.TempDir()
+		var lines strings.Builder
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&lines, "needle line %d\n", i)
+		}
+		writeFileContent(t, filepath.Join(dir, "notes.md"), lines.String())
+		return []root{{path: dir}}
 	}
-	writeFileContent(t, filepath.Join(dir, "notes.md"), lines.String())
-	roots := []root{{path: dir}}
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
-
+	results, truncated := grepFiles(notesWithLines(t, pickerResultCap+50), 0, activeRootScope, "needle")
 	if !truncated {
 		t.Fatalf("grepFiles() truncated = false, want true")
+	}
+	if len(results) != pickerResultCap {
+		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)
+	}
+
+	results, truncated = grepFiles(notesWithLines(t, pickerResultCap), 0, activeRootScope, "needle")
+	if truncated {
+		t.Fatalf("grepFiles() truncated = true at exactly the cap, want false")
 	}
 	if len(results) != pickerResultCap {
 		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)

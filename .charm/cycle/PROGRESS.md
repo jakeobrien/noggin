@@ -17,20 +17,20 @@
 
 ## Cursor
 
-Current task: M1.4b
+Current task: M2.3a
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.4a done: `grepFiles` (cmd/noggin/files_search.go) now batches its file list across multiple
-`rg` invocations via `batchFilePaths`/`grepBatch`, bounded by the injectable `grepArgMaxBytes`
-var (default 128KiB, well under real-world ARG_MAX), merging results and applying
-`pickerResultCap`/truncation across the merged total rather than per batch. New test
-`TestGrepFilesBatchesAcrossArgSizeLimit` shrinks `grepArgMaxBytes` to 1 to force one file per
-batch and confirms matches are found across every batch and a genuine no-match still reports
-no results. `make check` green.
+M1.4a and M1.4b done (this session). M1.4a: `grepFiles` (cmd/noggin/files_search.go) now
+batches its file list across multiple `rg` invocations via `batchFilePaths`/`grepBatch`,
+bounded by the injectable `grepArgMaxBytes` var (default 128KiB, well under real-world
+ARG_MAX), merging results and applying `pickerResultCap`/truncation across the merged total
+rather than per batch (`TestGrepFilesBatchesAcrossArgSizeLimit`). M1.4b: added the exact-cap/
+not-truncated boundary case to `TestGrepFilesCapsAndReportsTruncation`, matching the fuzzy
+test's existing coverage. `make check` green after both.
 
 M3 (File Picker end to end) complete: M3.1–M3.3 done, not yet reviewed/validated (see Status
 table). No in-flight changes. 2026-08-03 replan triaged review findings T6–T12 into new plan
@@ -53,11 +53,11 @@ rg's raw-file line numbers don't correspond to the Document Viewer's rendered li
 the hand-off re-derives the match by occurrence ordinal rather than trusting rg's line number,
 with a documented degrade path.
 
-Queued, non-blocking — pick up opportunistically or before M7 hardening: M1.4b (D45, grep
-cap-test boundary case; cursor is here next), M2.3a (D46, Help Modal's Picker-binding gap —
-M2.3 stays `Validated: -` until this lands and is re-validated), M3.1a (D50, Root label
-disambiguation for same-basename Roots), M3.2b (T12, pin preview-error string), M3.3a/M3.3b
-(D49, activatePicker test-coverage gaps), M7.1a (T11, terminology housekeeping).
+Queued, non-blocking — pick up opportunistically or before M7 hardening: M2.3a (D46, Help
+Modal's Picker-binding gap — M2.3 stays `Validated: -` until this lands and is re-validated;
+cursor is here next), M3.1a (D50, Root label disambiguation for same-basename Roots), M3.2b
+(T12, pin preview-error string), M3.3a/M3.3b (D49, activatePicker test-coverage gaps), M7.1a
+(T11, terminology housekeeping).
 
 Not queued, should land before M4.2: M3.2a (D48, dismissPicker preview-size bug — see gotcha
 above).
@@ -78,7 +78,7 @@ No blockers.
 | M2.4 | done   | 2026-08-03 | 2026-08-03 |      |
 | M2.5 | done   | 2026-08-03 | 2026-08-03 |      |
 | M1.4a| done   | -        | -         | D43 (TRIAGE T1) |
-| M1.4b| todo   | -        | -         | D45 (TRIAGE T3) |
+| M1.4b| done   | -        | -         | D45 (TRIAGE T3) |
 | M2.3a| todo   | -        | -         | D46 (TRIAGE T5); M2.3 re-validates once done |
 | M3.1 | done   | 2026-08-03 | -         |      |
 | M3.1a| todo   | -        | -         | D50 (TRIAGE T10) |
