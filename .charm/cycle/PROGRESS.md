@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M4.2
 
 ## Handoff
 
@@ -39,14 +39,25 @@ before the fix — both rows collapsed to a bare "…"), adjusting its assertion
 inequality rather than full-word substrings the tighter real budget no longer fits. `make
 check` green; full Picker suite passes.
 
-M3 (File Picker end to end) and all its original sub-tasks, M1.4a/b/c, M2.1a, M2.3a and M3.1b
-are done. All three small tasks the prior replan inserted ahead of M4.1 are now complete.
+M4.1 done this session (D53): wired Grep mode's Results rendering to M1.4's `grepFiles`
+(picker_view.go). The model-layer dispatch (`pickerSearchCmd`'s `grepMode` case, `resultCount`)
+was already generic from M2.4; the missing half was the view — `pickerResultsContent` only
+ever rendered `fileMode` rows. Added `pickerGrepRow` (`relPath:line  text`, no Root
+disambiguation — S4 doesn't ask for it) and a new `rightTruncate` (mirror of `leftTruncate`,
+rootsnav.go). Truncation happens *before* styling, not via `Style.Width(...).MaxWidth(...)`
+like `pickerFileRow`'s budget-fitted rows do: lipgloss word-wraps under `Width` before
+`MaxWidth` ever truncates, so that pattern would wrap an over-length match line into several
+rows instead of one — see D53 and `pickerGrepRow`'s own doc comment. Three new tests: an
+end-to-end real-rg fixture search (`TestPickerGrepModeWiresToGrepFilesAndRendersRows`,
+picker_test.go) plus two rendering-focused ones in picker_view_test.go
+(`TestPickerGrepResultsShowFileLineNumberAndText`,
+`TestPickerGrepRowTruncatesLongLinesWithoutWrapping`). `make check` green.
 
-Next step: M4.1 — wire Grep mode to M1.4 (fixture search renders one row per matching line
-across Scope with right line numbers; long lines truncate to the pane rather than wrapping).
-M4.2 reuses M3.2's preview mechanism (now behind resetPicker, so a grep-preview reset path
-added there carries the preview size over automatically); before M4.3/M4.4, re-read D34 (rg
-line numbers vs. rendered line space).
+Next step: M4.2 — Preview opens scrolled to the matched line with that line highlighted;
+reuses M3.2's preview mechanism (already behind `resetPicker`, so a grep-preview reset path
+added there carries the preview size over automatically). Before M4.3/M4.4, re-read D34 (rg
+line numbers vs. rendered line space) — not needed for M4.2 itself, which stays in raw-file
+(Preview pane) space.
 
 Also queued, non-blocking: M7.1a (T11, terminology housekeeping).
 
@@ -79,7 +90,7 @@ No blockers. TRIAGE.md empty.
 | M3.3 | done   | 2026-08-03 | -         |      |
 | M3.3a| done   | 2026-08-03 | -         | D49 (TRIAGE T7, T8) |
 | M3.3b| done   | 2026-08-03 | -         | D49 (TRIAGE T9) |
-| M4.1 | todo   | -        | -         |      |
+| M4.1 | done   | -        | -         | D53  |
 | M4.2 | todo   | -        | -         |      |
 | M4.3 | todo   | -        | -         |      |
 | M4.4 | todo   | -        | -         |      |

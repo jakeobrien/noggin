@@ -862,3 +862,47 @@ func TestPickerCursorKeysDoNotRestartTheSearch(t *testing.T) {
 		t.Errorf("results changed on a cursor move: %+v, want %+v", m.picker.results, results)
 	}
 }
+
+// TestPickerGrepModeWiresToGrepFilesAndRendersRows is M4.1's own acceptance
+// criterion end to end: switching to Grep mode and typing a query actually
+// dispatches grepFiles (M1.4) over the fixture Root through the same
+// debounce/dispatch path M2.4 already gives File mode
+// (TestPickerSearchIsDebouncedAndShowsOnlyTheFinalQuery's own shape), and
+// the results land as one Results row per matching line with the correct
+// (1-based, rg's own) line number — not merely a result set assembled by
+// hand and handed straight to the renderer, the way
+// TestPickerGrepResultsShowFileLineNumberAndText (picker_view_test.go)
+// isolates the rendering half alone.
+func TestPickerGrepModeWiresToGrepFilesAndRendersRows(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+	m.picker.mode = grepMode
+
+	const query = "report"
+	m, seqs := typePickerQuery(t, m, query)
+	m, searches := deliverPickerTicks(t, m, seqs)
+
+	if searches == 0 {
+		t.Fatal("no grep search was dispatched; setup is broken")
+	}
+	if m.picker.results.mode != grepMode {
+		t.Fatalf("results.mode = %v, want grepMode", m.picker.results.mode)
+	}
+
+	gotLines := make(map[string]int, len(m.picker.results.grep))
+	for _, g := range m.picker.results.grep {
+		gotLines[filepath.Base(g.file.path)] = g.line
+	}
+	wantLines := map[string]int{"report.md": 1, "reporting.md": 1}
+	if !reflect.DeepEqual(gotLines, wantLines) {
+		t.Fatalf("grep results (file -> line) = %v, want %v", gotLines, wantLines)
+	}
+
+	joined := strings.Join(plainLines(m.View().Content), "\n")
+	if !strings.Contains(joined, "report.md:1") {
+		t.Errorf("rendered modal is missing a report.md:1 row\n%s", joined)
+	}
+	if !strings.Contains(joined, "reporting.md:1") {
+		t.Errorf("rendered modal is missing a reporting.md:1 row\n%s", joined)
+	}
+}

@@ -828,3 +828,31 @@
   effective than designed at the project's own standard terminal size, and the gap was hidden
   by two independent test-quality issues rather than caught by them. Cheap fix, reuses the
   already-agreed disambiguation approach from D50.
+
+## D53: Grep Picker row format — no Root disambiguation, right-truncate before styling
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: M4.1 (S4) needed a concrete Grep Result row shape and a truncation strategy for
+  arbitrary-length matched lines. Two things weren't pinned by the spec: (1) whether
+  `pickerGrepRow` should reuse `pickerFileRow`'s Root-disambiguation treatment
+  (`pickerRootLabel`, M3.1a/D50), and (2) how to bound a match line's length — `pickerFileRow`
+  gets this for free because its budget math constructs a row that already fits; a grep
+  match's line text is arbitrary length and does not. Naively relying on
+  `lipgloss.Style.Width(...).MaxWidth(...)` (the pattern `pickerFileRow` already uses) does
+  not work for this case: lipgloss word-wraps under `Width` before `MaxWidth` ever truncates
+  (charm.land/lipgloss/v2 style.go), so an over-length match would silently wrap into several
+  Results rows rather than truncate to one, breaking "one row per matching line" (M4.1's own
+  acceptance criterion).
+- Decision: `pickerGrepRow` (picker_view.go) renders `relPath:line  text`, relative to the
+  match's own Root but without `pickerRootLabel`'s parent-path disambiguation — S4 only
+  specifies "the file, the line number and the line", not Root disambiguation, and the line
+  text itself is normally enough to tell same-named-file matches apart. Long lines are
+  right-truncated (a new `rightTruncate`, the mirror of `rootsnav.go`'s `leftTruncate`) to the
+  row's width *before* the row is styled, so the string handed to `Style.Width` is already
+  short enough that its word-wrap is a no-op.
+- Why: low-medium risk, build-time judgment call within M4.1's scope, not a spec ambiguity
+  worth blocking on — recorded because the lipgloss Width/MaxWidth wrap-before-truncate
+  behaviour is a easy-to-reintroduce trap for any future row renderer (M4.2's highlighted
+  preview line, M6's match-highlighted rows) that assembles a row from unbounded content.

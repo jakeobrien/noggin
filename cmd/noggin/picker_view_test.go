@@ -283,6 +283,79 @@ func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
 	}
 }
 
+// TestPickerGrepResultsShowFileLineNumberAndText is M4.1's own acceptance
+// criterion's first half (S4): a Grep Result set renders one Results row per
+// matching line, each showing the file (relative to its Root, the same
+// filepath.Rel base pickerFileRow's own "path relative to that Root" uses),
+// the correct 1-based line number and the line's own text — the same
+// "set results directly, assert the rendered rows" shape
+// TestPickerFileResultsShowRootAndRelativePath already gives the File
+// Picker's own row (M3.1), exercised through grepMode's rendering path
+// (pickerResultsContent/pickerGrepRow) instead of fileMode's.
+func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
+	rootDir := t.TempDir()
+	fileA := filepath.Join(rootDir, "report.md")
+	fileB := filepath.Join(rootDir, "notes.md")
+	r := root{path: rootDir}
+
+	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  grepMode,
+		scope: activeRootScope,
+		grep: []grepResult{
+			{file: pickerFile{root: r, path: fileA}, line: 3, text: "the quarterly report"},
+			{file: pickerFile{root: r, path: fileB}, line: 12, text: "see report above"},
+		},
+	}
+
+	joined := strings.Join(plainLines(m.View().Content), "\n")
+	resultsWidth := computePickerLayout(80, 24).results.content().width
+	wantA := pickerGrepRow(m.picker.results.grep[0], resultsWidth, false)
+	wantB := pickerGrepRow(m.picker.results.grep[1], resultsWidth, false)
+	if !strings.Contains(wantA, "report.md:3") || !strings.Contains(wantB, "notes.md:12") {
+		t.Fatalf("test fixture did not produce the expected file:line prefixes: %q, %q", wantA, wantB)
+	}
+	if !strings.Contains(joined, wantA) {
+		t.Errorf("rendered modal is missing %q\n%s", wantA, joined)
+	}
+	if !strings.Contains(joined, wantB) {
+		t.Errorf("rendered modal is missing %q\n%s", wantB, joined)
+	}
+}
+
+// TestPickerGrepRowTruncatesLongLinesWithoutWrapping is M4.1's own
+// acceptance criterion's second half: a matching line far longer than the
+// Results column's width is truncated to fit the pane rather than wrapped
+// across multiple rows — pickerGrepRow must still return exactly one line
+// at exactly the given width, unlike a bare Style.Width(...).Render() of an
+// over-length string (lipgloss word-wraps before MaxWidth ever applies, see
+// pickerGrepRow's own doc comment), which would grow the row into several.
+func TestPickerGrepRowTruncatesLongLinesWithoutWrapping(t *testing.T) {
+	f := pickerFile{root: root{path: "/tmp/notes"}, path: "/tmp/notes/report.md"}
+	longText := strings.Repeat("the matched line keeps going ", 10)
+	g := grepResult{file: f, line: 5, text: longText}
+	const width = 23 // computePickerLayout(80, 24).results.content().width
+
+	got := pickerGrepRow(g, width, false)
+
+	if lines := strings.Split(got, "\n"); len(lines) != 1 {
+		t.Fatalf("pickerGrepRow() produced %d lines, want exactly 1 (truncated, not wrapped):\n%q", len(lines), got)
+	}
+	if w := lipgloss.Width(got); w != width {
+		t.Errorf("pickerGrepRow() rendered width = %d, want exactly %d", w, width)
+	}
+	if strings.Contains(got, longText) {
+		t.Errorf("pickerGrepRow() rendered the full untruncated line: %q", got)
+	}
+	if !strings.Contains(got, "report.md:5") {
+		t.Errorf("pickerGrepRow() dropped the file:line prefix under truncation: %q", got)
+	}
+}
+
 // TestPickerStatusStates is M2.5's own acceptance criterion: the rendered
 // text of each of the five states (S12's mode/Scope indicator, the
 // sub-threshold message, "no results" and the truncation notice; S14's

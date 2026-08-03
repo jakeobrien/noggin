@@ -247,17 +247,86 @@ func pickerFileRow(f pickerFile, width int, selected bool) string {
 	return style.Width(width).MaxWidth(width).Render(line)
 }
 
-// pickerResultsContent renders the Results region's content (M3.1), sized to
-// exactly width x height — the same "expected to be exactly r.content() in
-// size" contract renderPane's own doc comment gives every frame pane. Only
-// fileMode has rows to show yet (M4.1 gives grepMode its own); a result set
-// that does not currently answer the Prompt/mode/Scope (p.resultsCurrent) is
-// treated the same as none at all — pickerStatus is already saying
-// "searching" for that same mismatch, and showing the previous mode's stale
-// rows underneath that caption would contradict it.
-func pickerResultsContent(p picker, width, height int) string {
-	if width <= 0 || height <= 0 || p.mode != fileMode || !p.resultsCurrent() {
+// rightTruncate keeps s's prefix, replacing the tail with an ellipsis when
+// it does not fit in width — the mirror of leftTruncate (rootsnav.go, which
+// keeps a Root's suffix instead). Grep Picker rows (pickerGrepRow, M4.1) use
+// this rather than leftTruncate: the file/line-number prefix identifies the
+// row, and the match itself is more likely to sit near the start of a long
+// line than its end, so the prefix is what's worth keeping visible.
+func rightTruncate(s string, width int) string {
+	if width <= 0 {
 		return ""
+	}
+	if lipgloss.Width(s) <= width {
+		return s
+	}
+	if width == 1 {
+		return "…"
+	}
+	runes := []rune(s)
+	keep := width - 1
+	if keep > len(runes) {
+		keep = len(runes)
+	}
+	return string(runes[:keep]) + "…"
+}
+
+// pickerGrepRow renders one Grep Picker Result (S4, M4.1): the file's path
+// relative to its Root, the matching line's 1-based line number (rg's own
+// count — D34 records why the Document Viewer hand-off cannot use it
+// directly, but the Preview/Results side of the Picker always addresses the
+// raw file, so rg's number is exactly right here) and the line's own text.
+// Unlike pickerFileRow's Root label (M3.1a/D50), this does not disambiguate
+// same-named Roots — S4 only asks for "the file, the line number and the
+// line", not Root disambiguation, and the line text itself is almost always
+// enough to tell two matches apart.
+//
+// The assembled line is right-truncated (rightTruncate) to width *before*
+// styling, unlike pickerFileRow's budget-computed-to-fit construction:
+// pickerFileRow's own text is bounded by construction (pickerRootLabel's
+// budget math already leaves room for it), but a matched line's text is
+// arbitrary length, so it must be capped explicitly. This matters because
+// lipgloss's Style.Width word-wraps first and only then applies MaxWidth
+// (style.go) — relying on Width+MaxWidth alone the way pickerFileRow does
+// would silently turn one long match into a wrapped multi-line row, growing
+// the Results column past "one row per match" (M4.1's own acceptance
+// criterion: truncate to the pane, don't wrap the layout). Truncating first
+// means the string handed to Width is already <= width, so its word-wrap is
+// a no-op and only padding/selection styling happens there.
+func pickerGrepRow(g grepResult, width int, selected bool) string {
+	rel, err := filepath.Rel(g.file.root.path, g.file.path)
+	if err != nil {
+		rel = g.file.path
+	}
+	line := rightTruncate(fmt.Sprintf("%s:%d  %s", rel, g.line, g.text), width)
+	style := lipgloss.NewStyle()
+	if selected {
+		style = pickerSelectedStyle
+	}
+	return style.Width(width).MaxWidth(width).Render(line)
+}
+
+// pickerResultsContent renders the Results region's content (M3.1, M4.1),
+// sized to exactly width x height — the same "expected to be exactly
+// r.content() in size" contract renderPane's own doc comment gives every
+// frame pane. Each mode renders its own row shape (pickerFileRow/
+// pickerGrepRow); a result set that does not currently answer the
+// Prompt/mode/Scope (p.resultsCurrent) is treated the same as none at all
+// for either mode — pickerStatus is already saying "searching" for that
+// same mismatch, and showing the previous mode's stale rows underneath that
+// caption would contradict it.
+func pickerResultsContent(p picker, width, height int) string {
+	if width <= 0 || height <= 0 || !p.resultsCurrent() {
+		return ""
+	}
+	if p.mode == grepMode {
+		grep := p.results.grep
+		if len(grep) == 0 {
+			return ""
+		}
+		return windowedView(width, height, p.selected, len(grep), func(idx int) string {
+			return pickerGrepRow(grep[idx], width, idx == p.selected)
+		})
 	}
 	files := p.results.files
 	if len(files) == 0 {
