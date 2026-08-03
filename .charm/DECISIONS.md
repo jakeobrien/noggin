@@ -331,3 +331,100 @@
   than raw bytes. This round-trip only ever runs while the modal is open (`render()` skips it
   otherwise), so it cannot affect any other milestone's byte-exact frame comparisons.
 
+
+## D27: Naming convention — "Find" is within a document, "Picker" is across files
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-02
+- Context: `/`-search, `NOTES.md`'s "Fuzzy Finder" / "File Search" / "Document Search" and this
+  cycle's own name all overlapped. A convention was wanted, to be retrofitted and then held.
+- Decision: Adopt the mainstream editor/browser split — **Find** = incremental search within
+  one document (C1's `/`); searching across files is a **Picker**, per Telescope's vocabulary
+  (Prompt / Results / Preview pane), instantiated as **File Picker** and **Grep Picker**.
+  "Finder" is banned: `NOTES.md` also used it for the OS file manager.
+- Why: C1's `Find` already conformed, so nothing needed renaming — the cheapest possible
+  convention is the one already accidentally followed. Glossary updated at coin time.
+
+## D28: ripgrep is a hard requirement, and its ignore rules are the truth for Pickers
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-02
+- Context: `ripgrep` gives interactive-speed grep for free. It could also list candidate files
+  (`rg --files`). Either both Pickers depend on it or only grep does.
+- Decision: Both. `ripgrep` supplies the file list *and* the text search; without it the
+  session reads normally but both Pickers are unavailable with a message. rg's ignore rules
+  (`.gitignore`, `.ignore`, hidden defaults) govern what Pickers see, and are allowed to
+  disagree with C1's hand-rolled tree walk (`knowledge/gitignore-matching.md`).
+- Why: One source of truth for "which files exist" beats consistency with the tree. Two
+  Pickers in the same modal disagreeing with *each other* would be the worse inconsistency.
+  Accepted cost: filename find — the cycle's core value — dies on a machine without rg.
+  Note rg does no fuzzy matching; scoring is in-process (`sahilm/fuzzy`, already a transitive
+  dependency of `charm.land/bubbles/v2`).
+
+## D29: The Grep Picker query is literal, not regex
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-02
+- Context: Telescope's `live_grep` passes the query to rg as a regex. Under incremental typing
+  that means a half-typed `func (` is an *invalid* regex, and `v1.2` matches `v1x2`.
+- Decision: Literal only (`--fixed-strings`), with smart case matching C1's Find. No regex
+  mode this cycle; deferred to Unscheduled.
+- Why: For prose notes, predictability beats power, and error flashes mid-type are worse than
+  a missing feature. Regex can be added behind a toggle later without changing the contract.
+
+## D30: The Preview pane shows raw text, not rendered markdown
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-02
+- Context: A markdown reader previewing unrendered text is jarring; but a Grep Result is
+  `file:line`, and `knowledge/viewport-search-ansi-offsets.md` records that line and character
+  offsets drift once content is ANSI-styled.
+- Decision: Raw text for both Pickers. The Grep Picker opens the preview scrolled to the
+  matched line, highlighted; the File Picker previews from the top.
+- Why: Precise match context *is* the point of a grep preview, and raw text is trivially
+  line-addressable. Rendering it is polish, and polish that re-opens a known-painful problem.
+  See D33 for whether it is ever worth it.
+
+## D31: The Picker is a jump tool, not a browser — stateless and query-only
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-02
+- Context: Several small choices (memory, minimum query length, what the query matches, what
+  Activate moves) each looked independent but all pull in one direction.
+- Decision: No memory of any kind — every open is File Picker / Active Root / empty Prompt.
+  A 3-character minimum before either Picker searches, so there is no "list everything" state.
+  The File Picker matches the **file name only**, never path components. Activate opens the
+  document and changes nothing else: not the Active Root, not the tree.
+- Why: One coherent identity — you arrive knowing roughly what you want, and leave with a
+  document open. Browsing is the Files Nav's job; remembering is C4's (recall). Deliberately
+  unlike Telescope, which lists all files on open.
+
+## D32: S5 (match highlighting) is this cycle's pre-agreed cut
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-02
+- Context: Highlighting fuzzy match positions inside a styled Result row, and a matched
+  substring inside a possibly-truncated grep line, is the same ANSI-offset class of problem
+  C1 already lost time to (`knowledge/viewport-search-ansi-offsets.md`).
+- Decision: Keep grep in scope; if the cycle runs long, drop S5 first rather than trimming the
+  Grep Picker.
+- Why: Naming the cut before the pressure arrives is what stopped C1 trimming the wrong thing
+  (C1/D8 pre-agreed cuts, none of which were needed). S5 is polish; grep is the substance.
+
+## D33: Does the Preview pane ever become rendered markdown?
+
+- Status: open
+- Cycle: C2
+- Date: 2026-08-02
+- Context: D30 chose raw text "for now, circle back to polish". Rendering it would look right
+  but reintroduces the line-addressing problem for grep previews.
+- Decision: **Open.** Raw in C2. Unresolved: whether rendered preview is worth solving
+  line addressing under Glamour output, whether only the File Picker renders (inconsistent
+  between modes), or whether raw is simply correct for a search tool and this closes as wontfix.
+- Why: Dogfooding C2 will show whether raw previews actually feel wrong in use.

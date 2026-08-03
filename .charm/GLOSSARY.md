@@ -14,21 +14,32 @@
   scrolls, has no cursor.
 - **Edit** — the handoff: release the terminal to `$EDITOR` on the Active Document, then resume
   and re-render. Not in-app editing.
+- **File Picker** — the Picker whose Results are files, matched fuzzily (C2).
 - **Files Nav** — the lower Navigator pane; the file tree of the Active Root.
 - **Find** — the `/`-style incremental search over the Active Document: next/previous
   traversal wraps, case-insensitive unless the query has uppercase. See Committed Find.
+  *Find is always within one document*; searching across files is a Picker.
 - **Focus** — which pane currently receives keyboard input. Exactly one pane at a time; most
   keys route to the focused pane.
 - **Footer** — the persistent bottom bar: contextual key hints plus transient messages.
+- **Grep Picker** — the Picker whose Results are matching lines across files (C2).
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
   footer's help affordance and dismissible with one key.
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
   vim-oriented. Provisional, like all bindings.
 - **Navigator** — the left sidebar: Roots Nav above, Files Nav below. Hideable.
+- **Picker** — the modal fuzzy-finding UI: a Prompt, a Results list, and a Preview pane.
+  Comes in modes — File Picker and Grep Picker (C2). "Finder" is deliberately avoided; it
+  means the OS file manager.
+- **Preview pane** — the part of a Picker that shows the selected Result's file. Lives inside
+  the Picker only; it never changes the Active Document (C2).
+- **Prompt** — a Picker's input field; Results update as it is typed.
 - **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
-  `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`.
+  `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
+- **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker).
 - **Root** — a folder that bounds file visibility. Several exist per session; identified by
   exact path; may not nest inside another Root.
 - **Roots Nav** — the upper Navigator pane; the list of the session's Roots.
+- **Scope** — what a Picker searches: the Active Root, or All Roots (C2).
 - **Starred** — bookmarked and persisted across sessions. Applies to Roots in C1, to documents
   in C4.

@@ -22,7 +22,7 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 | Key | Name               | Status  | Outcome / intent | Archive |
 |-----|--------------------|---------|------------------|---------|
 | C1  | read-across-roots  | done    | Delivered all 12 spec'd deliverables (S1–S12) across 26 plan tasks; none of D8's pre-agreed cuts were needed | `archive/C1-2026-08-read-across-roots/` |
-| C2  | find               | planned | Telescope-grade fuzzy filename find and grep with preview, scoped to a root or all roots | - |
+| C2  | find               | active  | Telescope-grade fuzzy filename find and grep with preview, scoped to a root or all roots | - |
 | C3  | compare            | planned | More than one document on screen at once, with keyboard targeting | - |
 | C4  | recall             | planned | The session remembers: document history, starred documents, recent, wiki-links | - |
 | C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
@@ -37,7 +37,13 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 - User-configurable keybindings (from C1; keymap is build-time-only for now)
 - Modifier-multiplied navigation acceleration, 5×/15×/50× (from C1; half-page/page may suffice)
 - Move the starred-roots store from config to a data location once it stops needing hand edits (from C1)
-- Browse-by-results: send finder results to the Files Nav (from C1)
+- Browse-by-results: send Picker Results to the Files Nav (from C1)
+- Regex (or fuzzy) Grep Picker queries; C2 is literal-only (from C2, D29)
+- A rendered-markdown Preview pane instead of raw text (from C2, D30/D33)
+- Reveal the activated Result in the Files Nav tree — switch Root, expand ancestors, select
+  (from C2, D31; needs the deferred tree-expansion memory above)
+- File Picker matching against path components, not just the file name (from C2, D31)
+- Picker memory: last mode, last Scope, last query (from C2, D31; see repeat-last-search below)
 - Select mode + copy in the Document Viewer (from C1)
 - "Follow" mode: auto-preview on selection change (from C1)
 - Search over documents opened this session; repeat-last-search (from C1)
