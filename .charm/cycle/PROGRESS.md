@@ -17,32 +17,30 @@
 
 ## Cursor
 
-Current task: M1.4c
+Current task: M2.1a
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Replan (this session, fresh context): reviewed the M1.4a/M1.4b/M2.3a/M3.1a/M3.2a/M3.2b/M3.3a/
-M3.3b diff (each task's Reviewed stamp was `-`) and triaged the resulting TRIAGE T13-T20.
-Three small tasks inserted ahead of M4.1, cursor moved to the first:
-- **M1.4c** (low, no decision) — grepArgMaxBytes parallel-safety hygiene + a missing
-  combined cap/batch-boundary test (T18, T19).
-- **M2.1a** (D51, medium) — de-duplicate openPicker/dismissPicker's reset-carry-over
-  sequence before M4.x can add a third reset path and independently regress D48 again (T14).
-- **M3.1b** (D52, medium) — pickerRootLabel's budget calc double-subtracts a gap, making
-  M3.1a/D50's disambiguation fix less effective than designed at realistic (80x24) widths;
-  also fixes the two test-quality gaps that masked it, folding in T17 (T13, T15, T16, T17).
-T20 dropped (not promoted): reviewer's own report called it a defensible deliberate choice,
-no functional gap.
+M1.4c done this session: grepArgMaxBytes's save/shrink/restore test-mutation contract is now
+documented on the var itself (files_search.go), explicitly forbidding t.Parallel() in this
+package while that pattern is in use (T18); added
+TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated (files_search_test.go), covering the
+M1.4a/M1.4b combination — a result count landing exactly on pickerResultCap while spread
+across multiple grepArgMaxBytes batches still reports truncated = false (T19). `make check`
+green.
 
-M3 (File Picker end to end) and all its original sub-tasks are done; M1.4a/b, M2.3a,
-M3.1a/M3.2a/M3.2b/M3.3a/M3.3b (the prior review's fix-ups) are also done and now reviewed.
+M3 (File Picker end to end) and all its original sub-tasks are done; M1.4a/b/c, M2.3a,
+M3.1a/M3.2a/M3.2b/M3.3a/M3.3b (the prior review's fix-ups) are also done.
 
-Next step: M1.4c, then M2.1a, then M3.1b (each effort 2, no code written yet this session) —
-then M4.1: wire Grep mode to M1.4. M4.2 reuses M3.2's preview mechanism (fixed by M3.2a, but
-see M2.1a); before M4.3/M4.4, re-read D34 (rg line numbers vs. rendered line space).
+Next step: M2.1a (D51, effort 2) — de-duplicate openPicker/dismissPicker's reset-carry-over
+sequence before M4.x can add a third reset path and independently regress D48 again (T14).
+Then M3.1b (D52, effort 2) — pickerRootLabel's budget calc double-subtracts a gap (T13, T15,
+T16, T17). Then M4.1: wire Grep mode to M1.4. M4.2 reuses M3.2's preview mechanism (fixed by
+M3.2a, but see M2.1a); before M4.3/M4.4, re-read D34 (rg line numbers vs. rendered line
+space).
 
 Also queued, non-blocking: M7.1a (T11, terminology housekeeping).
 
@@ -63,7 +61,7 @@ No blockers. TRIAGE.md empty.
 | M2.5 | done   | 2026-08-03 | 2026-08-03 |      |
 | M1.4a| done   | 2026-08-03 | -         | D43 (TRIAGE T1) |
 | M1.4b| done   | 2026-08-03 | -         | D45 (TRIAGE T3) |
-| M1.4c| todo   | -        | -         | D-none; TRIAGE T18, T19 |
+| M1.4c| done   | -        | -         | D-none; TRIAGE T18, T19 |
 | M2.1a| todo   | -        | -         | D51; TRIAGE T14 |
 | M2.3a| done   | 2026-08-03 | 2026-08-03 | D46 (TRIAGE T5); M2.3 re-validated |
 | M3.1 | done   | 2026-08-03 | -         |      |

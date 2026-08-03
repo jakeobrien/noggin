@@ -134,6 +134,17 @@ type grepResult struct {
 // detected after the fact. It's a var, not a const, purely so a test can
 // shrink it to force multiple batches without needing an unwieldy number
 // of real files.
+//
+// Test-only mutation contract (TRIAGE T18): tests that need a small batch
+// size mutate this package-level var directly (save the original, shrink
+// it, defer restoring it — see TestGrepFilesBatchesAcrossArgSizeLimit).
+// That save/shrink/restore pattern is not goroutine-safe: no test in this
+// package may call t.Parallel() while any test still mutates
+// grepArgMaxBytes this way, or the mutation could leak across concurrently
+// running tests. Threading the limit through grepFiles as a parameter
+// instead would remove this hazard entirely, but isn't worth the call-chain
+// churn (grepFiles, batchFilePaths and their one production caller) unless
+// this package actually adopts parallel tests.
 var grepArgMaxBytes = 128 * 1024
 
 // batchFilePaths splits files into groups whose combined path byte length

@@ -364,6 +364,43 @@ func TestGrepFilesBatchesAcrossArgSizeLimit(t *testing.T) {
 	}
 }
 
+// TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated: M1.4a (batching)
+// and M1.4b (the exact-cap boundary) each cover their own concern in
+// isolation only; this pins the combination (TRIAGE T19) — a match count
+// landing exactly at pickerResultCap while spread across multiple
+// grepArgMaxBytes batches still reports truncated = false, not a false
+// positive from batch-boundary accounting (e.g. checking the cap only at
+// the end of a batch rather than as each result is appended).
+func TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	const fileCount = 4
+	if pickerResultCap%fileCount != 0 {
+		t.Fatalf("pickerResultCap (%d) not evenly divisible by fileCount (%d)", pickerResultCap, fileCount)
+	}
+	linesPerFile := pickerResultCap / fileCount
+	for i := 0; i < fileCount; i++ {
+		var lines strings.Builder
+		for j := 0; j < linesPerFile; j++ {
+			fmt.Fprintf(&lines, "needle %d-%d\n", i, j)
+		}
+		writeFileContent(t, filepath.Join(dir, fmt.Sprintf("file-%d.md", i)), lines.String())
+	}
+	roots := []root{{path: dir}}
+
+	orig := grepArgMaxBytes
+	grepArgMaxBytes = 1 // forces a new batch per file, spreading the cap-sized total across fileCount batches
+	defer func() { grepArgMaxBytes = orig }()
+
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
+	if truncated {
+		t.Fatalf("grepFiles() truncated = true at exactly the cap spread across batches, want false")
+	}
+	if len(results) != pickerResultCap {
+		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)
+	}
+}
+
 func sortedCopy(s []string) []string {
 	out := append([]string(nil), s...)
 	sort.Strings(out)
