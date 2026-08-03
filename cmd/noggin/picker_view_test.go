@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -138,6 +139,47 @@ func TestComputePickerLayoutNeverExceedsTheTerminal(t *testing.T) {
 		if l.results.width < 0 || l.preview.width < 0 || l.prompt.height < 0 {
 			t.Errorf("size %v: negative region: %+v", size, l)
 		}
+	}
+}
+
+// TestPickerFileResultsShowRootAndRelativePath is M3.1's own acceptance
+// criterion, verbatim: a fixture with same-named files in two Roots renders
+// two distinguishable rows (S3's "Root and its path relative to that Root"),
+// in the order results.files already gives them (fuzzyFiles/M1.3 owns match-
+// strength ordering; this only checks rendering does not reshuffle it).
+func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
+	rootA := t.TempDir()
+	rootB := t.TempDir()
+	fileA := filepath.Join(rootA, "report.md")
+	fileB := filepath.Join(rootB, "report.md")
+
+	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
+	m, _ = m.openPicker()
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  fileMode,
+		scope: activeRootScope,
+		files: []pickerFile{
+			{root: root{path: rootA}, path: fileA},
+			{root: root{path: rootB}, path: fileB},
+		},
+	}
+
+	joined := strings.Join(plainLines(m.View().Content), "\n")
+	wantA := filepath.Base(rootA) + "  report.md"
+	wantB := filepath.Base(rootB) + "  report.md"
+	if wantA == wantB {
+		t.Fatal("test fixture produced identical rows; setup is broken")
+	}
+	if !strings.Contains(joined, wantA) {
+		t.Errorf("rendered modal is missing %q\n%s", wantA, joined)
+	}
+	if !strings.Contains(joined, wantB) {
+		t.Errorf("rendered modal is missing %q\n%s", wantB, joined)
+	}
+	if ia, ib := strings.Index(joined, wantA), strings.Index(joined, wantB); ia < 0 || ib < 0 || ia > ib {
+		t.Errorf("rows are out of results.files order: %q before %q wanted, got indices %d, %d", wantA, wantB, ia, ib)
 	}
 }
 

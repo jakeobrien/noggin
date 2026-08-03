@@ -206,6 +206,78 @@ func TestPickerCancelDoesNotType(t *testing.T) {
 	}
 }
 
+// TestPickerUpDownMoveTheResultsSelection is M3.1's own wiring of
+// PickerUp/PickerDown (reserved as non-typing, no-op keys by M2.3): once
+// there are Results to move over, they shift picker.selected exactly like
+// filesNav.move/rootsNav.move already shift their own cursors, clamped to
+// the result count rather than wrapping or going out of bounds.
+func TestPickerUpDownMoveTheResultsSelection(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repor")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.files) < 2 {
+		t.Fatalf("setup is broken: %d searches, %d results", searches, len(m.picker.results.files))
+	}
+	if m.picker.selected != 0 {
+		t.Fatalf("selected = %d after results landed, want 0", m.picker.selected)
+	}
+
+	m = press(t, m, keys.PickerDown.Keys()[0])
+	if m.picker.selected != 1 {
+		t.Errorf("selected = %d after PickerDown, want 1", m.picker.selected)
+	}
+
+	// Clamped at the bottom: one more PickerDown than there are rows below
+	// must not run selected past the last result.
+	for range m.picker.results.files {
+		m = press(t, m, keys.PickerDown.Keys()[0])
+	}
+	if want := len(m.picker.results.files) - 1; m.picker.selected != want {
+		t.Errorf("selected = %d after over-shooting PickerDown, want clamped to %d", m.picker.selected, want)
+	}
+
+	m = press(t, m, keys.PickerUp.Keys()[0])
+	if want := len(m.picker.results.files) - 2; m.picker.selected != want {
+		t.Errorf("selected = %d after PickerUp, want %d", m.picker.selected, want)
+	}
+
+	// Neither key types into the Prompt (S2's always-typing set already
+	// covers PickerUp/PickerDown as non-printable; this pins that a working
+	// action still does not type).
+	if got := m.picker.input.Value(); got != "repor" {
+		t.Errorf("prompt = %q after PickerUp/PickerDown, want unchanged %q", got, "repor")
+	}
+}
+
+// TestPickerSelectionResetsOnFreshResults is the reset half of M3.1's
+// selection cursor: an index into a candidate list that no longer exists
+// (a new query landed a wholly different result set) must not be left
+// pointing past the new list's end, or at some mid-list row that means
+// nothing for the new query — it goes back to the top.
+func TestPickerSelectionResetsOnFreshResults(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repor")
+	m, _ = deliverPickerTicks(t, m, seqs)
+	if len(m.picker.results.files) < 2 {
+		t.Fatalf("setup is broken: %d results", len(m.picker.results.files))
+	}
+	m = press(t, m, keys.PickerDown.Keys()[0])
+	if m.picker.selected == 0 {
+		t.Fatal("PickerDown did not move the selection; setup is broken")
+	}
+
+	m, seqs = typePickerQuery(t, m, "t") // "report" now, a fresh generation
+	m, _ = deliverPickerTicks(t, m, seqs)
+
+	if m.picker.selected != 0 {
+		t.Errorf("selected = %d after fresh results landed, want reset to 0", m.picker.selected)
+	}
+}
+
 // pickerRoot puts a fixture Root full of files whose names share a prefix
 // behind an already-open Picker, so a query can be typed a character at a
 // time and actually have something to find. Returns the model and the Root's

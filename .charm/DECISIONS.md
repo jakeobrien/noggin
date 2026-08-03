@@ -643,3 +643,82 @@
   the results' own (query, mode, Scope) labels against the Prompt's rather than assuming they
   match, which is what makes "searching…" distinguishable from "no results" under M2.4's async
   fill.
+
+## D43: `grepFiles`' unbounded rg argument list is a real gap, promoted to a plan task
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T1 (review, medium): `grepFiles` (cmd/noggin/files_search.go:146-166) passes
+  every file in Scope as a literal CLI argument to `rg`; an All Roots search over a large tree
+  can push the argument list past the OS's ARG_MAX, and `cmd.Output()`'s error in that case is
+  folded into the same "no results" path as a genuine no-match — silent, no signal the search
+  didn't run.
+- Decision: Accept as a plan task (M1.4a) to batch the file list across multiple `rg`
+  invocations (or otherwise bound argument size), merging results under the existing cap/
+  truncation contract. Not a hand-wave: it is a correctness gap in already-shipped, validated
+  code, not a style nit.
+- Why: medium risk (silent failure, no user-visible signal) on a path (All Roots grep over a
+  realistically large collection) the cycle-level acceptance explicitly calls out — worth a
+  tracked fix rather than a dropped note.
+
+## D44: `listFiles` absorbing a live-but-unreadable Root folds into D36, no separate task
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T2 (review, low): `listFiles`'s doc comment (cmd/noggin/files_search.go:40-46)
+  documents that a live Root `rg` still cannot read (e.g. permission denied, or a TOCTOU race
+  with `liveRootsInScope`'s own stat) is absorbed the same way a Broken Root is silently
+  skipped — an extension beyond SPEC S6's literal text, logged nowhere unlike this milestone's
+  other implementation calls (D36, D37, D38).
+- Decision: Recorded here rather than as a plan task — the design is already implemented and
+  correct, this closes the missing-decision-entry gap D36 should have covered. No code change.
+- Why: low risk, no user-facing ambiguity (an unreadable Root produces no rows and no error,
+  consistent with a Broken Root); the only gap was a documentation trail, now closed.
+
+## D45: Grep row highlighting (M6.1/M6.2) test-coverage asymmetry, small task added
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T3 (review, low): `TestFuzzyFilesCapsAndReportsTruncation` covers the
+  exact-cap/not-truncated boundary as well as the over-cap case; `TestGrepFilesCapsAndReportsTruncation`
+  (cmd/noggin/files_search_test.go:197-227,294-321) only covers the over-cap case — an
+  asymmetry between the two Pickers' shared cap/truncation contract (S12/D37).
+- Decision: Accept as a plan task (M1.4b) to add the same boundary case to the grep test.
+- Why: cheap (effort 1), and the missing case is exactly the kind of off-by-one a cap
+  contract shared by two code paths should verify symmetrically.
+
+## D46: Help Modal's Picker-binding gap (T5) promoted to a plan task; M2.3 stays unvalidated until it lands
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T5 (review, medium), corroborated by validate (PROGRESS.md M2.3 note): S2/
+  M2.3's "Footer and Help Modal cover the Picker's actions" is only half met — `helpBindings`
+  (cmd/noggin/help.go:14-40) lists the key that *opens* the Picker on every pane, but never the
+  Picker's own in-Picker actions (PickerUp/Down/Mode/Scope) anywhere, and the Help Modal is by
+  design unreachable while the Picker is open, so those actions live only in the footer's
+  `pickerHintText`, which can itself truncate under a narrow terminal with no Help fallback.
+- Decision: Accept as a plan task (M2.3a) to extend Help coverage of the Picker's own bindings
+  from the panes Help remains reachable from, rather than declare the gap intentional. M2.3
+  stays `Validated: -` until M2.3a lands and is validated.
+- Why: medium risk — a documented, user-facing acceptance criterion (S2) is only half
+  satisfied, and the footer fallback is itself fragile (truncation, no narrow-terminal escape
+  hatch). Worth the small fix rather than retroactively narrowing S2's scope.
+
+## D47: `picker.input` keeps its Go identifier; the "Prompt" glossary term stays UI-facing only
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T6 (review, low): the GLOSSARY.md term "Prompt" is used throughout doc
+  comments and status text, but the field holding it (`picker.input`, cmd/noggin/picker.go:37-49)
+  is named `input`, not `prompt` — the one place this milestone's code diverges from the
+  pattern where `mode`/`scope` match `pickerMode`/`pickerScope` exactly.
+- Decision: Wontfix. Keep `input` as the field name.
+- Why: low risk/value — the field wraps `bubbles/textinput.Model` generically, and `input`
+  names what it *is* (a textinput wrapper) while "Prompt" names what it *means* in the UI;
+  the two are allowed to diverge where a field wraps a third-party type generically. Renaming
+  buys naming consistency at the cost of a slightly less honest field name.

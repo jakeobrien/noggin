@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"charm.land/lipgloss/v2"
 )
@@ -173,7 +174,7 @@ func pickerStatus(p picker, avail ripgrepAvailability) string {
 	if len([]rune(query)) < pickerQueryMinLength {
 		return pickerBelowThresholdStatus
 	}
-	if p.results.query != query || p.results.mode != p.mode || p.results.scope != p.scope {
+	if !p.resultsCurrent() {
 		return pickerSearchingStatus
 	}
 	if p.searching {
@@ -188,21 +189,73 @@ func pickerStatus(p picker, avail ripgrepAvailability) string {
 	return ""
 }
 
+// pickerSelectedStyle draws the Results row under the selection cursor in
+// reverse video — the same bar-of-the-whole-line convention filesNav's
+// filesSelectedStyle and rootsNav's reversed row already give their own
+// lists, so a Picker Result reads the same way a Nav selection does.
+var pickerSelectedStyle = lipgloss.NewStyle().Reverse(true)
+
+// pickerFileRow renders one File Picker Result (S3): the file's Root and its
+// path relative to that Root, so two same-named files in different Roots
+// read apart (M3.1's own acceptance criterion) — filepath.Base(f.root.path)
+// is the Root's label (the same prominent-name half rootsNav.renderRow gives
+// a root, though without that row's own left-truncated-parent disambiguation:
+// two Roots sharing a base name is not a case this cycle's fixtures or S3
+// itself asks this row to solve). f.path is always inside f.root.path (both
+// pickerFile's own fields and listFiles' construction guarantee it), so
+// filepath.Rel here cannot fail in practice; the fallback to the absolute
+// path exists only so a row still renders *something* if that invariant were
+// ever broken, rather than silently dropping the row.
+func pickerFileRow(f pickerFile, width int, selected bool) string {
+	rel, err := filepath.Rel(f.root.path, f.path)
+	if err != nil {
+		rel = f.path
+	}
+	line := filepath.Base(f.root.path) + "  " + rel
+	style := lipgloss.NewStyle()
+	if selected {
+		style = pickerSelectedStyle
+	}
+	return style.Width(width).MaxWidth(width).Render(line)
+}
+
+// pickerResultsContent renders the Results region's content (M3.1), sized to
+// exactly width x height — the same "expected to be exactly r.content() in
+// size" contract renderPane's own doc comment gives every frame pane. Only
+// fileMode has rows to show yet (M4.1 gives grepMode its own); a result set
+// that does not currently answer the Prompt/mode/Scope (p.resultsCurrent) is
+// treated the same as none at all — pickerStatus is already saying
+// "searching" for that same mismatch, and showing the previous mode's stale
+// rows underneath that caption would contradict it.
+func pickerResultsContent(p picker, width, height int) string {
+	if width <= 0 || height <= 0 || p.mode != fileMode || !p.resultsCurrent() {
+		return ""
+	}
+	files := p.results.files
+	if len(files) == 0 {
+		return ""
+	}
+	return windowedView(width, height, p.selected, len(files), func(idx int) string {
+		return pickerFileRow(files[idx], width, idx == p.selected)
+	})
+}
+
 // renderPicker composes the Picker modal's three regions (S1): a bordered
 // Prompt spanning the modal's width — titled with the mode/Scope indicator
 // and captioned with the status line (M2.5) — with Results and Preview side
 // by side beneath it. Prompt uses focusedBorderStyle — it always owns the
 // keyboard while the Picker is open, the same accent renderPane gives
 // whichever frame pane currently has focus — Results/Preview use the plain
-// borderStyle, same as an unfocused frame pane. Results/Preview still carry
-// no content (M3.1/M3.2 fill them).
+// borderStyle, same as an unfocused frame pane. Results now carries the File
+// Picker's rows (M3.1); Preview still carries none (M3.2 fills it).
 func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability) string {
 	promptContent := p.promptView(l.prompt.content().width)
 	if status := pickerStatus(p, avail); status != "" {
 		promptContent += "\n" + status
 	}
 	prompt := renderBox(focusedBorderStyle, l.prompt, pickerModeScope(p), promptContent)
-	results := renderBox(borderStyle, l.results, "Results", "")
+	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height)
+	results := renderBox(borderStyle, l.results, "Results", resultsContent)
 	preview := renderBox(borderStyle, l.preview, "Preview", "")
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
 	return lipgloss.JoinVertical(lipgloss.Left, prompt, body)

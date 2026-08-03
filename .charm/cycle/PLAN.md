@@ -43,6 +43,18 @@ subprocess call returning typed results/errors.
   done when: tests show a query with regex metacharacters is matched literally, an all-lowercase
   query matches mixed case while a query with uppercase does not, only Readable files are
   searched, and the cap truncates — effort: 3 (needs: M1.2)
+- **M1.4a** — Bound `grepFiles`' rg argument list (TRIAGE T1 / D43): batch the file list across
+  multiple `rg` invocations (or otherwise cap argument size), merging results under the existing
+  cap/truncation contract, so an All Roots search over a large tree can't silently pass ARG_MAX
+  and fold a failed run into "no results" — done when: a test with a file count that would
+  exceed a small injected argument-size limit still returns matches from files across every
+  batch, and a genuine no-match still reports "no results" (not conflated with a failed run) —
+  effort: 2 (needs: M1.4)
+- **M1.4b** — Add the exact-cap/not-truncated boundary case to the grep cap test, matching the
+  fuzzy-match test's existing coverage (TRIAGE T3 / D45) — done when:
+  `TestGrepFilesCapsAndReportsTruncation`-shaped coverage includes a result set exactly at
+  `pickerResultCap` asserting `truncated` is false, alongside the existing over-cap case —
+  effort: 1 (needs: M1.4)
 
 ## M2 — The Picker modal shell
 
@@ -66,6 +78,11 @@ opens, types, moves, previews nothing useful yet, and dismisses cleanly.
   cover the Picker's actions — done when: a test types a string containing characters that are
   bindings elsewhere (`j`, `g`, `/`) and finds them all in the Prompt with no side effects, and
   Footer/Help show the Picker's own actions while it is open — effort: 3 (needs: M2.2)
+- **M2.3a** — Close the Help Modal gap left open by M2.3 (TRIAGE T5 / D46): list the Picker's
+  own in-Picker actions (PickerUp/Down/Mode/Scope) in Help for the panes Help remains reachable
+  from, so they aren't documented only in the footer's `pickerHintText` — done when: a test
+  shows the Picker's own bindings appear in `helpBindings`' output (not just the opening key),
+  and M2.3 is re-validated against its original acceptance criterion — effort: 2 (needs: M2.3)
 - **M2.4** — Search dispatch as async work: the Prompt never blocks on a search, in-flight
   searches are debounced, and results arriving for a stale query are discarded — done when: a
   test drives fast successive queries and asserts the displayed results correspond to the final

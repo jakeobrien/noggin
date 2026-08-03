@@ -101,6 +101,16 @@ type picker struct {
 	// results is the last search to report back for the current generation
 	// (see pickerResults). Zero value means nothing has been searched yet.
 	results pickerResults
+
+	// selected is the Results cursor (M3.1): an index into the current
+	// mode's result rows (resultCount), the same "index into what's on
+	// screen" shape filesNav.selected and rootsNav.selected already give
+	// their own lists. It is reset to 0 whenever a fresh result set lands
+	// (applyPickerResults) or the Prompt drops below threshold
+	// (queuePickerSearch) — an index into a candidate list that no longer
+	// exists has nothing sensible to preserve, unlike a Nav pane's
+	// selection surviving its own list unchanged.
+	selected int
 }
 
 // newPicker is the closed, no-search state: nothing open, nothing typed,
@@ -183,6 +193,7 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 	if !m.searchable() {
 		m.picker.results = pickerResults{}
 		m.picker.searching = false
+		m.picker.selected = 0
 		return m, nil
 	}
 	seq := m.picker.seq
@@ -207,6 +218,38 @@ func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
 	m.picker.searching = true
 	return m, pickerSearchCmd(m.picker.seq, m.picker.mode, m.picker.scope,
 		m.picker.input.Value(), m.roots.rootList(), m.roots.active)
+}
+
+// resultCount is how many Result rows the current mode has to show right
+// now (M3.1): the length of whichever of results.files/results.grep this
+// mode populates. Used to clamp the selection cursor (move) and to size the
+// Results content's windowedView — not what searchable/pickerStatus answer,
+// which is about whether a search *should* run, not how many rows the last
+// one that did produced.
+func (p picker) resultCount() int {
+	if p.mode == grepMode {
+		return len(p.results.grep)
+	}
+	return len(p.results.files)
+}
+
+// move shifts the Results selection cursor by delta rows, clamped to the
+// current mode's result count — the same moveSelection clamp filesNav.move
+// and rootsNav.move already give their own lists (T16).
+func (p picker) move(delta int) picker {
+	p.selected = moveSelection(p.selected, delta, p.resultCount())
+	return p
+}
+
+// resultsCurrent reports whether p.results still answers what the Prompt,
+// mode and Scope now say — the same three-way label comparison pickerStatus
+// makes to tell "searching" apart from a real empty result, pulled out here
+// so the Results region's own content (picker_view.go) can make the exact
+// same call: while a fresh search is in flight for a changed query/mode/
+// Scope, the previous mode's stale rows must not flash on screen just
+// because they are still sitting in p.results.
+func (p picker) resultsCurrent() bool {
+	return p.results.query == p.input.Value() && p.results.mode == p.mode && p.results.scope == p.scope
 }
 
 // searchable is whether the current Prompt may be searched at all: ripgrep
@@ -252,6 +295,7 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 	}
 	m.picker.results = msg.results
 	m.picker.searching = false
+	m.picker.selected = 0
 	return m
 }
 
@@ -263,23 +307,27 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 // else (a query for "jog" must not move a selection or switch mode on its
 // second letter).
 //
-// The non-typing set is exactly S2's list: Cancel dismisses; Activate,
-// PickerUp/PickerDown (Results selection), PageUp/PageDown/HalfPageUp/
-// HalfPageDown (Preview scrolling, reused as-is from the Document Viewer's
-// own scroll bindings — they are already non-printable, so nothing about
-// "always typing" requires a second copy) and PickerMode/PickerScope (mode/
-// Scope switch) are all recognised and swallowed here. Selection, preview
-// and mode/Scope switching have no state to act on yet — M3.1/M3.2 give
-// Results/Preview content and M5.1/M5.2 give mode/Scope their actions — so
-// today these keys do nothing beyond not typing, which is this task's whole
-// job (M2.3): reserving them as non-typing before there is anything to move.
+// The non-typing set is exactly S2's list: Cancel dismisses; PickerUp/
+// PickerDown now move the Results selection cursor (M3.1, picker.move);
+// Activate, PageUp/PageDown/HalfPageUp/HalfPageDown (Preview scrolling,
+// reused as-is from the Document Viewer's own scroll bindings — they are
+// already non-printable, so nothing about "always typing" requires a second
+// copy) and PickerMode/PickerScope (mode/Scope switch) are all recognised and
+// swallowed here. Activate, Preview scrolling and mode/Scope switching still
+// have no state to act on — M3.2/M3.3 give Activate and Preview their
+// actions, M5.1/M5.2 give mode/Scope theirs — so today those keys do nothing
+// beyond not typing (M2.3's original job, for the whole set).
 func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
 		return m.dismissPicker(), nil
+	case key.Matches(msg, keys.PickerUp):
+		m.picker = m.picker.move(-1)
+		return m, nil
+	case key.Matches(msg, keys.PickerDown):
+		m.picker = m.picker.move(1)
+		return m, nil
 	case key.Matches(msg, keys.Activate),
-		key.Matches(msg, keys.PickerUp),
-		key.Matches(msg, keys.PickerDown),
 		key.Matches(msg, keys.PageUp),
 		key.Matches(msg, keys.PageDown),
 		key.Matches(msg, keys.HalfPageUp),
