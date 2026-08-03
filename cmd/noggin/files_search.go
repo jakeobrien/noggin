@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -107,4 +108,101 @@ func fuzzyFiles(files []pickerFile, query string) (results []pickerFile, truncat
 		results[i] = files[matches[i].Index]
 	}
 	return results, truncated
+}
+
+// grepResult is one matching line the Grep Picker can show (S4): which file
+// (with its Root, like pickerFile carries) it was found in, its 1-based
+// line number and the line's own text. The line number is rg's raw-file
+// count, not the Document Viewer's rendered/wrapped line index — D34 records
+// how M4.3/M4.4 bridge that.
+type grepResult struct {
+	file pickerFile
+	line int
+	text string
+}
+
+// grepFiles searches query literally (S4: rg's --fixed-strings, so regex
+// metacharacters in a half-typed query are just characters — D29) with
+// smart case across the Readable files in scope: rg's own --smart-case
+// flag implements exactly find.go's S8 semantic (all-lowercase matches
+// either case; any uppercase makes it case-sensitive), so this reuses that
+// behaviour by name rather than reimplementing find.go's fold-and-compare.
+//
+// It runs rg over the *explicit* file list listFiles already produced,
+// rather than letting rg walk Scope's directories itself the way rgFiles
+// does for the file list: verified against the sandbox's real rg (15.1.0),
+// rg does not apply `.gitignore`/hidden-file rules to files named explicitly
+// on its command line — only to directories it walks. listFiles has
+// already applied every one of those rules (plus the Readable allowlist and
+// Broken-Root skipping, M1.2) to produce that list, so searching exactly
+// those files is what makes grep agree with the File Picker's own view of
+// Scope, rather than re-deriving (and risking disagreeing with) it.
+//
+// Returns one grepResult per matching line, in rg's own order, capped at
+// pickerResultCap with the same truncation-flag shape as fuzzyFiles (S12).
+// An empty file set or an empty query short-circuits to no results without
+// invoking rg at all — an empty query would otherwise be an empty-pattern
+// rg run, which matches every line of every file, not "nothing to search".
+func grepFiles(roots []root, active int, scope pickerScope, query string) (results []grepResult, truncated bool) {
+	files := listFiles(roots, active, scope)
+	if len(files) == 0 || query == "" {
+		return nil, false
+	}
+
+	byPath := make(map[string]pickerFile, len(files))
+	args := make([]string, 0, len(files)+5)
+	args = append(args, "--fixed-strings", "--smart-case", "--json", "--", query)
+	for _, f := range files {
+		byPath[f.path] = f
+		args = append(args, f.path)
+	}
+
+	cmd := exec.Command(ripgrepBinary, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		// rg exits non-zero both for "no matches" and for a run it could not
+		// complete; either is absorbed as "no results" (same shape rgFiles
+		// gives an unreadable Root, M1.2), not an error surfaced to the user.
+		return nil, false
+	}
+
+	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+		var msg rgJSONMessage
+		if err := json.Unmarshal([]byte(line), &msg); err != nil || msg.Type != "match" {
+			continue
+		}
+		file, ok := byPath[msg.Data.Path.Text]
+		if !ok {
+			continue
+		}
+		if len(results) == pickerResultCap {
+			truncated = true
+			break
+		}
+		results = append(results, grepResult{
+			file: file,
+			line: msg.Data.LineNumber,
+			text: strings.TrimRight(msg.Data.Lines.Text, "\n"),
+		})
+	}
+	return results, truncated
+}
+
+// rgJSONMessage is the subset of one line of rg's `--json` JSON-Lines output
+// (docs.rs/grep-printer, the "match" message shape) grepFiles needs: which
+// file, which line number, the line's own text. Parsed instead of rg's
+// plain `path:line:text` text output because a colon can legitimately
+// appear in either a path or a line's text, which that format leaves
+// ambiguous and JSON does not.
+type rgJSONMessage struct {
+	Type string `json:"type"`
+	Data struct {
+		Path struct {
+			Text string `json:"text"`
+		} `json:"path"`
+		Lines struct {
+			Text string `json:"text"`
+		} `json:"lines"`
+		LineNumber int `json:"line_number"`
+	} `json:"data"`
 }

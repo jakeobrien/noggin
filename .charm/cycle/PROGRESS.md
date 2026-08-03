@@ -17,41 +17,43 @@
 
 ## Cursor
 
-Current task: M1.4
+Current task: M2.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.3 done: `files_search.go` gained `pickerResultCap = 200` (D37 — no SPEC/plan number
-existed, both Pickers will share this constant), `fileNameSource` (a `fuzzy.Source` adapter
-over `[]pickerFile` exposing only `filepath.Base`, so path components are structurally
-invisible to matching — D31), and `fuzzyFiles(files, query) (results []pickerFile,
-truncated bool)`. `github.com/sahilm/fuzzy` was already in the module graph (transitive via
-`charm.land/bubbles/v2`, D28) but not imported by `cmd/noggin`; `go get` + `go mod tidy`
-promoted it to a direct `require` — no new dependency, see D37. `fuzzy.FindFrom` already
-returns best-first, so ranking is just capping its output; `fuzzyFiles` does not enforce the
-3-character minimum (that's M2.4/M2.5's UI-layer job, not this headless layer's). Verified:
-a tight name match outranks a scattered one (had to pick a genuinely-scattered fixture name —
-a string with no valid subsequence match returns zero results, not a low-ranked one), a file
-whose directory matches the query but whose base name doesn't is excluded while the reverse
-is included, and a set of `pickerResultCap+50` returns exactly capped at `pickerResultCap`
-with `truncated=true` (and `truncated=false` at exactly the cap). `go test ./...`, `make
-check`, `make check-pty` all green.
+M1.4 done, closing M1 (the whole headless search layer): `files_search.go` gained
+`grepResult{file pickerFile, line int, text string}` and `grepFiles(roots, active, scope,
+query) (results []grepResult, truncated bool)`. Key call: `grepFiles` runs rg over
+`listFiles`' *explicit* file list rather than letting rg walk Scope's directories itself
+(D38, a deviation from M1.3's handoff assumption) — verified against the sandbox's real rg
+(15.1.0) that rg only honours `.gitignore`/hidden-file rules for directories it walks, not
+for files named explicitly on its command line, so a second directory-walking rg call for
+grep would have leaked ignored files that the File Picker's own `listFiles` already excludes.
+Literal matching is rg's `--fixed-strings`; smart case is rg's own `--smart-case`, verified
+to give `find.go`'s exact S8 semantic (all-lowercase matches either case, any uppercase is
+case-sensitive) — no reimplementation needed. Output is parsed from rg's `--json` JSON-Lines
+format (`rgJSONMessage`), not plain `path:line:text` text, since a colon can appear in either
+a path or a line's text and JSON does not leave that ambiguous. Cap/truncation is the same
+shape as `fuzzyFiles` (`pickerResultCap`, D37), so both Pickers report it identically.
+Verified: a query with regex metacharacters (`v1.2`) matches only its literal occurrence, not
+`v1x2`; an all-lowercase query matches mixed-case text while an uppercase query does not match
+a differently-cased occurrence; a non-Readable file in Scope is never searched even when it
+contains the query; a match count over `pickerResultCap` comes back capped with the flag set.
+`go test ./...`, `make check`, `make check-pty` all green (see D38 for the full reasoning).
 
-Next step: M1.4 — literal (`--fixed-strings`) scoped grep with smart case, one result per
-matching line (file, line number, line text), capped with `pickerResultCap` and the same
-truncation-flag shape as `fuzzyFiles`. Reuse `scope.go`'s `liveRootsInScope` and carry
-`--no-require-git` (D36) the same way `rgFiles` does. Smart case should match C1's Find
-behaviour — check `find.go` for how that's implemented before reinventing it. Only Readable
-files are searched (reuse `tree.IsReadable` the way `listFiles` does, or grep `listFiles`'
-output directly rather than letting rg loose on the whole tree).
-
-Read before building UI (M2 onward): `findings/codebase-picker-integration.md`. Two known
-new-ground gaps: (1) no async/`tea.Cmd`/debounce precedent exists anywhere in the repo —
-M2.4 invents it; (2) ripgrep's raw-file line numbers do not correspond to the Document
-Viewer's rendered/wrapped line numbers — D34 records how M4.3/M4.4 address that.
+Next step: M2.1 — Picker state plus open/dismiss, reachable from every Focus including while
+the Navigator is hidden, always opening as File Picker / Active Root / empty Prompt. This is
+the first UI-layer task (M2), building on M1's now-complete headless search layer
+(`fuzzyFiles`, `grepFiles`, `listFiles`, `pickerScope`) — read
+`findings/codebase-picker-integration.md` before starting (modal dispatch, compositing, the
+Find-state surface a grep hand-off will reuse) if it hasn't been read yet this cycle. Two
+known new-ground gaps ahead, not this task's problem yet: (1) no async/`tea.Cmd`/debounce
+precedent exists anywhere in the repo — M2.4 invents it; (2) ripgrep's raw-file line numbers
+don't correspond to the Document Viewer's rendered/wrapped line numbers — D34 records how
+M4.3/M4.4 address that.
 
 M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
 
@@ -62,7 +64,7 @@ M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
 | M1.1 | done   | -        | -         |      |
 | M1.2 | done   | -        | -         |      |
 | M1.3 | done   | -        | -         |      |
-| M1.4 | todo   | -        | -         |      |
+| M1.4 | done   | -        | -         |      |
 | M2.1 | todo   | -        | -         |      |
 | M2.2 | todo   | -        | -         |      |
 | M2.3 | todo   | -        | -         |      |

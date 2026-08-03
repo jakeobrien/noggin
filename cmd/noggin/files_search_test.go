@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -214,6 +215,99 @@ func TestFuzzyFilesCapsAndReportsTruncation(t *testing.T) {
 	}
 	if len(results) != pickerResultCap {
 		t.Fatalf("fuzzyFiles() returned %d results, want %d", len(results), pickerResultCap)
+	}
+}
+
+// grepLines is the (path, line, text) of each grepResult, sorted by path
+// then line, so a result set can be asserted as a set rather than rg's own
+// per-file argument order.
+func grepLines(results []grepResult) []string {
+	lines := make([]string, len(results))
+	for i, r := range results {
+		lines[i] = fmt.Sprintf("%s:%d:%s", r.file.path, r.line, r.text)
+	}
+	sort.Strings(lines)
+	return lines
+}
+
+// TestGrepFilesMatchesLiterally: a query containing regex metacharacters
+// matches only their literal occurrence, not what they'd mean as regex
+// (S4, D29: --fixed-strings).
+func TestGrepFilesMatchesLiterally(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, "notes.md"), "see v1.2 here\nnot v1x2 though\n")
+	roots := []root{{path: dir}}
+
+	results, truncated := grepFiles(roots, 0, activeRootScope, "v1.2")
+
+	if truncated {
+		t.Fatalf("grepFiles() truncated = true, want false")
+	}
+	want := []string{filepath.Join(dir, "notes.md") + ":1:see v1.2 here"}
+	if got := grepLines(results); !equalStrings(got, want) {
+		t.Fatalf("grepFiles(\"v1.2\") = %v, want %v", got, want)
+	}
+}
+
+// TestGrepFilesIsSmartCase: an all-lowercase query matches mixed-case text,
+// but a query containing uppercase matches only that exact case (S4,
+// matching find.go's S8 smart-case semantic via rg's own --smart-case).
+func TestGrepFilesIsSmartCase(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, "notes.md"), "Hello World\n")
+	roots := []root{{path: dir}}
+
+	lower, _ := grepFiles(roots, 0, activeRootScope, "hello")
+	if len(lower) != 1 {
+		t.Fatalf("grepFiles(\"hello\") = %v, want one match against mixed-case text", grepLines(lower))
+	}
+
+	upper, _ := grepFiles(roots, 0, activeRootScope, "HELLO")
+	if len(upper) != 0 {
+		t.Fatalf("grepFiles(\"HELLO\") = %v, want no match against differently-cased text", grepLines(upper))
+	}
+}
+
+// TestGrepFilesOnlySearchesReadableFiles: a non-Readable file in Scope
+// (S13) is never searched, even though it contains the query — grepFiles
+// only ever sees what listFiles already allowed through.
+func TestGrepFilesOnlySearchesReadableFiles(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, "notes.md"), "needle here\n")
+	writeFileContent(t, filepath.Join(dir, "image.png"), "needle here too\n")
+	roots := []root{{path: dir}}
+
+	results, _ := grepFiles(roots, 0, activeRootScope, "needle")
+
+	want := []string{filepath.Join(dir, "notes.md") + ":1:needle here"}
+	if got := grepLines(results); !equalStrings(got, want) {
+		t.Fatalf("grepFiles(\"needle\") = %v, want %v", got, want)
+	}
+}
+
+// TestGrepFilesCapsAndReportsTruncation: a match count larger than
+// pickerResultCap comes back capped at that length with the truncation
+// flag set (S12), the same shape fuzzyFiles gives the File Picker.
+func TestGrepFilesCapsAndReportsTruncation(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	var lines strings.Builder
+	for i := 0; i < pickerResultCap+50; i++ {
+		fmt.Fprintf(&lines, "needle line %d\n", i)
+	}
+	writeFileContent(t, filepath.Join(dir, "notes.md"), lines.String())
+	roots := []root{{path: dir}}
+
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
+
+	if !truncated {
+		t.Fatalf("grepFiles() truncated = false, want true")
+	}
+	if len(results) != pickerResultCap {
+		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)
 	}
 }
 

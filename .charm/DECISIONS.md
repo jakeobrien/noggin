@@ -514,3 +514,31 @@
   transitive dependency of `charm.land/bubbles/v2`, per D28) is now imported directly by
   `cmd/noggin` and promoted to a direct `require` in `go.mod` via `go mod tidy` — no new
   dependency, just its existing presence made explicit.
+
+## D38: M1.4's grep searches listFiles' explicit file list, not a second rg directory walk
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: M1.3's handoff assumed grep would shell out to rg the same way `rgFiles` does
+  (`rg` walking Scope's directories itself, carrying `--no-require-git`, D36). Verified against
+  the sandbox's real rg (15.1.0) first: rg only applies `.gitignore`/hidden-file rules to
+  directories it walks itself, never to files named explicitly on its command line — an
+  explicitly-passed `.gitignore`d file is searched anyway.
+- Decision: `grepFiles` calls `listFiles` for the file set and passes those paths to rg
+  explicitly (`rg --fixed-strings --smart-case --json -- <query> <files...>`), rather than
+  letting rg discover files under Scope's roots itself. Line/file/text output is parsed from
+  `--json` (one line's `path`/`line_number`/`lines.text`), not the plain `path:line:text`
+  text format, since a colon can appear in either a path or a line's text and JSON does not
+  leave that ambiguous.
+- Why: high value, no real risk (an implementation-internal call shape, reversible), so
+  decided and logged rather than asked. A directory-walking rg invocation for grep would have
+  needed its own re-derivation of the allowlist/ignore-rule filtering listFiles already does
+  for the File Picker, and — per the finding above — would have leaked ignored/hidden files
+  into grep results that the File Picker would never show for the same query, the exact kind
+  of two-Pickers-disagreeing-with-each-other D28 already ruled out. Reusing listFiles' output
+  is also literally the smart-case/fixed-strings query applied to "the Readable files in
+  Scope" as SPEC (S4) states it, with no second definition of that set anywhere.
+- Also: smart case is rg's own `--smart-case` flag rather than a reimplementation of
+  `find.go`'s fold-and-compare (verified it gives find.go's exact semantic: all-lowercase
+  matches either case, any uppercase makes it case-sensitive).
