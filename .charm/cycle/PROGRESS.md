@@ -54,11 +54,17 @@ the rendered text of all five states plus "searching" and the say-nothing case a
 frame; `TestPickerIssuesNoSearchBelowTheThreshold` shows "r"/"re" dispatch 0 searches while
 "rep" dispatches 1. `make check` and `make check-pty` both green.
 
+M2 validated (fresh-context, `make check` + `make check-pty` green, tests independently judged
+sound, plus a manual pty run of the real binary): M2.1, M2.2, M2.4, M2.5 stamped Validated
+2026-08-03. M2.3 left `-` — its own acceptance criterion ("Footer and Help Modal cover [the
+Picker's actions]") is only half met: Footer does, Help Modal never lists the in-Picker
+bindings (PickerUp/Down/Mode/Scope) and is unreachable while the Picker is open by design.
+This is exactly TRIAGE T5 (open, medium), independently corroborated, not a new finding — no
+new TRIAGE row added. M2.3 can be re-validated once T5 is triaged/resolved.
+
 Next step: M3.1 — wire the File Picker's results into the Results region, each row showing the
 file's Root and its path relative to that Root, ordered by match strength. `pickerResults.files`
-is already populated and labelled; the Results box currently renders empty content. Note M2/M3
-tasks have never been code-reviewed or validated (all `-` below), so a review/validate gate at
-the M2→M3 boundary is available if wanted.
+is already populated and labelled; the Results box currently renders empty content.
 
 ## Status
 
@@ -68,11 +74,11 @@ the M2→M3 boundary is available if wanted.
 | M1.2 | done   | 2026-08-03 | 2026-08-03 |  |
 | M1.3 | done   | 2026-08-03 | 2026-08-03 |  |
 | M1.4 | done   | 2026-08-03 | 2026-08-03 |  |
-| M2.1 | done   | -        | -         |      |
-| M2.2 | done   | -        | -         |      |
-| M2.3 | done   | -        | -         |      |
-| M2.4 | done   | -        | -         |      |
-| M2.5 | done   | -        | -         |      |
+| M2.1 | done   | 2026-08-03 | 2026-08-03 |      |
+| M2.2 | done   | 2026-08-03 | 2026-08-03 |      |
+| M2.3 | done   | 2026-08-03 | -         | criterion partially unmet, see T5 |
+| M2.4 | done   | 2026-08-03 | 2026-08-03 |      |
+| M2.5 | done   | 2026-08-03 | 2026-08-03 |      |
 | M3.1 | todo   | -        | -         |      |
 | M3.2 | todo   | -        | -         |      |
 | M3.3 | todo   | -        | -         |      |
