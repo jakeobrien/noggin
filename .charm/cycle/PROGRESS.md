@@ -17,39 +17,41 @@
 
 ## Cursor
 
-Current task: M1.3
+Current task: M1.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.2 done: two new headless files in `cmd/noggin` — `scope.go` (`pickerScope`,
-`liveRootsInScope(roots, active, scope)`, shared by M1.2 and M1.4/M5.2 later) and
-`files_search.go` (`pickerFile{root, path}`, `listFiles`, `rgFiles`). `listFiles` runs
-`rg --files --no-require-git` per live root (cwd = the root, so rg's own output is already
-root-relative) and filters through `tree.IsReadable` (exported from `internal/tree/policy.go`
-for this — see D36). Broken Roots are skipped via `pathMissing` (rootsnav.go's own
-definition, reused rather than re-derived) before rg ever runs on them; a live root rg still
-can't read is absorbed the same way rather than erroring. Verified: allowlist-only results,
-`.gitignore`'d + hidden files absent (needed `--no-require-git` — D36, rg only honours
-`.gitignore` inside a git repo by default, verified against the sandbox's real rg 15.1.0),
-All Roots covers every live root and omits a broken one without erroring, Active Root scope
-ignores other roots, and each result carries the root it came from (for M3.1's row display).
-`go test ./...`, `make check`, `make check-pty` all green (see D36 for the two build-time
-decisions this task made).
+M1.3 done: `files_search.go` gained `pickerResultCap = 200` (D37 — no SPEC/plan number
+existed, both Pickers will share this constant), `fileNameSource` (a `fuzzy.Source` adapter
+over `[]pickerFile` exposing only `filepath.Base`, so path components are structurally
+invisible to matching — D31), and `fuzzyFiles(files, query) (results []pickerFile,
+truncated bool)`. `github.com/sahilm/fuzzy` was already in the module graph (transitive via
+`charm.land/bubbles/v2`, D28) but not imported by `cmd/noggin`; `go get` + `go mod tidy`
+promoted it to a direct `require` — no new dependency, see D37. `fuzzy.FindFrom` already
+returns best-first, so ranking is just capping its output; `fuzzyFiles` does not enforce the
+3-character minimum (that's M2.4/M2.5's UI-layer job, not this headless layer's). Verified:
+a tight name match outranks a scattered one (had to pick a genuinely-scattered fixture name —
+a string with no valid subsequence match returns zero results, not a low-ranked one), a file
+whose directory matches the query but whose base name doesn't is excluded while the reverse
+is included, and a set of `pickerResultCap+50` returns exactly capped at `pickerResultCap`
+with `truncated=true` (and `truncated=false` at exactly the cap). `go test ./...`, `make
+check`, `make check-pty` all green.
 
-Next step: M1.3 — fuzzy-match and rank `listFiles`' output against file names only
-(`filepath.Base`, never path components — D31), capped, with a truncation flag. `listFiles`
-is intentionally unranked/uncapped; M1.3 is where both land. `sahilm/fuzzy` is already a
-transitive dependency (D28's note) — check whether it's already vendored/available before
-reaching for scoring by hand.
+Next step: M1.4 — literal (`--fixed-strings`) scoped grep with smart case, one result per
+matching line (file, line number, line text), capped with `pickerResultCap` and the same
+truncation-flag shape as `fuzzyFiles`. Reuse `scope.go`'s `liveRootsInScope` and carry
+`--no-require-git` (D36) the same way `rgFiles` does. Smart case should match C1's Find
+behaviour — check `find.go` for how that's implemented before reinventing it. Only Readable
+files are searched (reuse `tree.IsReadable` the way `listFiles` does, or grep `listFiles`'
+output directly rather than letting rg loose on the whole tree).
 
 Read before building UI (M2 onward): `findings/codebase-picker-integration.md`. Two known
 new-ground gaps: (1) no async/`tea.Cmd`/debounce precedent exists anywhere in the repo —
 M2.4 invents it; (2) ripgrep's raw-file line numbers do not correspond to the Document
-Viewer's rendered/wrapped line numbers — D34 records how M4.3/M4.4 address that. M1.4 (grep)
-should reuse `scope.go`'s `liveRootsInScope` and carry `--no-require-git` too (D36).
+Viewer's rendered/wrapped line numbers — D34 records how M4.3/M4.4 address that.
 
 M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
 
@@ -59,7 +61,7 @@ M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
 |------|--------|----------|-----------|------|
 | M1.1 | done   | -        | -         |      |
 | M1.2 | done   | -        | -         |      |
-| M1.3 | todo   | -        | -         |      |
+| M1.3 | done   | -        | -         |      |
 | M1.4 | todo   | -        | -         |      |
 | M2.1 | todo   | -        | -         |      |
 | M2.2 | todo   | -        | -         |      |

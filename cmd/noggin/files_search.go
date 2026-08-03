@@ -5,8 +5,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/sahilm/fuzzy"
+
 	"noggin/internal/tree"
 )
+
+// pickerResultCap bounds how many results a Picker search hands back,
+// shared by the File Picker's fuzzy match (M1.3) and the Grep Picker's
+// search (M1.4) so both report truncation the same way (S12). No SPEC/D
+// number fixes this value; 200 is a build-time judgment call, generous
+// enough that a real note collection rarely hits it while still bounding
+// worst case (an All Roots search over a large tree).
+const pickerResultCap = 200
 
 // pickerFile is one candidate file a Picker can list or search: its
 // absolute path, and the Root it was found under. The Root travels with the
@@ -69,4 +79,32 @@ func rgFiles(dir string) []string {
 		return nil
 	}
 	return strings.Split(trimmed, "\n")
+}
+
+// fileNameSource adapts []pickerFile to fuzzy.Source, exposing each file's
+// base name only — never its path — so fuzzy.FindFrom cannot see, and so
+// cannot be swayed by, path components (D31: the File Picker matches the
+// file name only).
+type fileNameSource []pickerFile
+
+func (s fileNameSource) String(i int) string { return filepath.Base(s[i].path) }
+func (s fileNameSource) Len() int            { return len(s) }
+
+// fuzzyFiles ranks listFiles' candidate set against query by file name only
+// (D31) and caps the result at pickerResultCap, reporting whether the cap
+// truncated it (S12). fuzzy.FindFrom already returns matches best-first (its
+// own bonus/penalty scoring), so ranking here is just capping that order —
+// listFiles is deliberately the unranked, uncapped half of this split.
+func fuzzyFiles(files []pickerFile, query string) (results []pickerFile, truncated bool) {
+	matches := fuzzy.FindFrom(query, fileNameSource(files))
+	n := len(matches)
+	if n > pickerResultCap {
+		n = pickerResultCap
+		truncated = true
+	}
+	results = make([]pickerFile, n)
+	for i := 0; i < n; i++ {
+		results[i] = files[matches[i].Index]
+	}
+	return results, truncated
 }

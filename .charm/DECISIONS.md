@@ -495,3 +495,22 @@
   (2) would mean the allowlist drifts the first time someone edits one copy and not the other
   — D23's whole point was there being one place to edit. M1.4 (grep) will shell out to rg the
   same way and should carry `--no-require-git` too.
+
+## D37: The Picker result cap is 200, shared by both Pickers
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: Building M1.3 (fuzzy-match and cap the File Picker's candidates). S12 requires a
+  cap and a truncation flag but SPEC/plan never fixed a number, and M1.4 (grep) needs the same
+  cap so both Pickers report truncation consistently.
+- Decision: `pickerResultCap = 200`, defined once in `files_search.go` for M1.3's `fuzzyFiles`
+  and reused as-is by M1.4's grep search.
+- Why: low-risk and reversible (one constant, no stored state depends on its value) — logged
+  rather than asked. 200 is generous for a real note collection's file-name matches while still
+  bounding a worst-case All Roots search; revisit if M1.4's grep (line-per-match, not
+  file-per-match) turns out to want a different number.
+- Also this task: `github.com/sahilm/fuzzy` (already present in the module graph as a
+  transitive dependency of `charm.land/bubbles/v2`, per D28) is now imported directly by
+  `cmd/noggin` and promoted to a direct `require` in `go.mod` via `go mod tidy` — no new
+  dependency, just its existing presence made explicit.

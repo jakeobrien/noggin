@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -143,6 +144,76 @@ func TestListFilesEachResultCarriesItsRoot(t *testing.T) {
 		if f.root.path != a && f.root.path != b {
 			t.Errorf("file %s carries root %q, want %s or %s", f.path, f.root.path, a, b)
 		}
+	}
+}
+
+// pickerFileAt builds a pickerFile from a bare path for fuzzyFiles tests —
+// no rg, no fixture tree, since fuzzyFiles is a pure function over whatever
+// listFiles would have produced (M1.2 already covers how that set is built).
+func pickerFileAt(path string) pickerFile {
+	return pickerFile{root: root{path: filepath.Dir(path)}, path: path}
+}
+
+// TestFuzzyFilesRanksStrongerNameMatchAbove: a file name that matches the
+// query tightly outranks one that only matches loosely, regardless of the
+// order they were supplied in (S3: "ordered by match strength").
+func TestFuzzyFilesRanksStrongerNameMatchAbove(t *testing.T) {
+	weak := pickerFileAt("/notes/xnyotyeysz.md") // scattered, weak match
+	strong := pickerFileAt("/notes/notes.md")    // contiguous, strong match
+	files := []pickerFile{weak, strong}
+
+	results, truncated := fuzzyFiles(files, "notes")
+
+	if truncated {
+		t.Fatalf("fuzzyFiles() truncated = true, want false")
+	}
+	if len(results) != 2 || results[0].path != strong.path || results[1].path != weak.path {
+		t.Fatalf("fuzzyFiles() = %v, want [%s, %s]", filePaths(results), strong.path, weak.path)
+	}
+}
+
+// TestFuzzyFilesIgnoresPathComponents: a file whose directory contains the
+// query but whose base name does not is not matched, while a file whose
+// base name matches is found even though nothing in its directory does
+// (D31: "the File Picker matches the file name only, never path
+// components").
+func TestFuzzyFilesIgnoresPathComponents(t *testing.T) {
+	pathOnly := pickerFileAt("/journal/unrelated.md") // dir matches, name does not
+	nameOnly := pickerFileAt("/misc/journal.md")      // name matches, dir does not
+	files := []pickerFile{pathOnly, nameOnly}
+
+	results, _ := fuzzyFiles(files, "journal")
+
+	if len(results) != 1 || results[0].path != nameOnly.path {
+		t.Fatalf("fuzzyFiles() = %v, want only %s", filePaths(results), nameOnly.path)
+	}
+}
+
+// TestFuzzyFilesCapsAndReportsTruncation: a result set larger than
+// pickerResultCap comes back capped at that length with the truncation
+// flag set; a set at or under the cap comes back untouched and unflagged
+// (S12).
+func TestFuzzyFilesCapsAndReportsTruncation(t *testing.T) {
+	var many []pickerFile
+	for i := 0; i < pickerResultCap+50; i++ {
+		many = append(many, pickerFileAt(filepath.Join("/notes", fmt.Sprintf("match-%03d.md", i))))
+	}
+
+	results, truncated := fuzzyFiles(many, "match")
+
+	if !truncated {
+		t.Fatalf("fuzzyFiles() truncated = false, want true")
+	}
+	if len(results) != pickerResultCap {
+		t.Fatalf("fuzzyFiles() returned %d results, want %d", len(results), pickerResultCap)
+	}
+
+	results, truncated = fuzzyFiles(many[:pickerResultCap], "match")
+	if truncated {
+		t.Fatalf("fuzzyFiles() truncated = true at exactly the cap, want false")
+	}
+	if len(results) != pickerResultCap {
+		t.Fatalf("fuzzyFiles() returned %d results, want %d", len(results), pickerResultCap)
 	}
 }
 
