@@ -73,6 +73,13 @@ type model struct {
 	// exclusive input mode layered on top of the model's other state, not a
 	// pane of its own, so it never touches m.focus.
 	helpOpen bool
+
+	// ripgrep is the S14 detection result (M1.1): whether the Picker's
+	// search layer has a binary to run on, and why not when it doesn't.
+	// Detected once at startup (main.go) and carried here so nothing
+	// downstream re-shells-out to ask; it does not affect the launch path
+	// itself — a session with no ripgrep still launches and reads normally.
+	ripgrep ripgrepAvailability
 }
 
 func newModel() model {
@@ -85,6 +92,14 @@ func newModel() model {
 // os.UserConfigDir() itself.
 func (m model) withStorePath(path string) model {
 	m.roots.storePath = path
+	return m
+}
+
+// withRipgrep installs the S14 ripgrep detection result (detectRipgrep())
+// that main.go resolves once at startup, the same one-shot-then-carry
+// pattern as withStorePath.
+func (m model) withRipgrep(avail ripgrepAvailability) model {
+	m.ripgrep = avail
 	return m
 }
 

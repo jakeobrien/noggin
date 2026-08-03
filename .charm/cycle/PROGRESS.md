@@ -17,17 +17,24 @@
 
 ## Cursor
 
-Current task: M1.1
+Current task: M1.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Cycle just planned; no C2 code written yet. Working tree is C1's, clean.
+M1.1 done: `cmd/noggin/ripgrep.go` (`detectRipgrep`, `ripgrepAvailability{available, reason}`)
+is a pure `exec.LookPath("rg")` query, wired via `model.withRipgrep` and called once in
+main.go alongside `withStorePath` — it does not touch `resolveLaunch`/`applyResolution`.
+Verified with `rg` unresolvable (PATH pointed at an empty temp dir): binary still launches
+and opens a document (manual pty smoke test); unit tests cover present/absent via a fake
+executable on a scoped PATH (`t.Setenv`), no dependency on the sandbox's real `rg`.
 
-Next step: M1.1 — detect `ripgrep` at startup, carry availability + reason in session state,
-without touching the launch path.
+Next step: M1.2 — scoped, allowlist-filtered file listing via `rg --files` (Active Root /
+All Roots, Broken Roots skipped, Readable-only). No `os/exec` subprocess-output-parsing
+precedent exists yet in the repo (`$EDITOR`'s `tea.ExecProcess` is blocking and unrelated);
+this task is the first to actually run `rg` and parse its stdout.
 
 Read before building UI (M2 onward): `findings/codebase-picker-integration.md`. Two known
 new-ground gaps: (1) no async/`tea.Cmd`/debounce precedent exists anywhere in the repo —
@@ -40,7 +47,7 @@ M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
 
 | Key  | Status | Reviewed | Validated | Note |
 |------|--------|----------|-----------|------|
-| M1.1 | todo   | -        | -         |      |
+| M1.1 | done   | -        | -         |      |
 | M1.2 | todo   | -        | -         |      |
 | M1.3 | todo   | -        | -         |      |
 | M1.4 | todo   | -        | -         |      |

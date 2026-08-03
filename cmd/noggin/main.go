@@ -27,7 +27,10 @@ func main() {
 	// on every keypress; an unresolvable config directory (storePath's own
 	// error) becomes "", the same degrade loadStarredRoots already applies.
 	path, _ := storePath()
-	m := newModel().withStorePath(path).applyResolution(res)
+	// detectRipgrep is a PATH lookup, independent of the launch argument
+	// above; resolving it once here keeps the Picker's later startup-time
+	// query (M2.5) from re-shelling-out on every reach for it (S14).
+	m := newModel().withStorePath(path).withRipgrep(detectRipgrep()).applyResolution(res)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "noggin:", err)
