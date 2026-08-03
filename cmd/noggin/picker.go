@@ -180,17 +180,28 @@ func (m model) openPicker() (model, tea.Cmd) {
 // never touched by an open Picker in the first place (nothing here reaches
 // m.viewer, m.roots or m.files), so restoring it is just this: replace
 // picker with its closed zero value.
-// The one field that survives is seq, bumped rather than zeroed: a search
-// dispatched before the dismissal is still running in its goroutine and
-// will deliver its results afterwards, and resetting the counter would let
-// those results be accepted by a later Picker that had counted its way back
-// to the same number. It is a generation counter, not remembered state — it
-// says nothing about mode, Scope or query, so S8 is untouched by carrying
-// it.
+// Two fields survive the reset, neither of them remembered Picker state:
+//   - seq, bumped rather than zeroed: a search dispatched before the
+//     dismissal is still running in its goroutine and will deliver its
+//     results afterwards, and resetting the counter would let those results
+//     be accepted by a later Picker that had counted its way back to the
+//     same number. It is a generation counter — it says nothing about mode,
+//     Scope or query, so S8 is untouched by carrying it.
+//   - the Preview viewport's width/height, carried over the same way and
+//     for the same reason openPicker carries them into its own reset: they
+//     are a property of the terminal (model.resize), not of the closed
+//     Picker's state. Without this (D48/M3.2a), a session that opens the
+//     Picker, dismisses it and reopens it with no tea.WindowSizeMsg in
+//     between — the common case, since dismissing never resizes the
+//     terminal — would render an empty 0x0 Preview until the next resize,
+//     because newPicker()'s fresh viewport.Model starts at 0x0 and nothing
+//     would set it again.
 func (m model) dismissPicker() model {
 	seq := m.picker.seq + 1
+	previewWidth, previewHeight := m.picker.preview.Width(), m.picker.preview.Height()
 	m.picker = newPicker()
 	m.picker.seq = seq
+	m.picker = m.picker.setPreviewSize(previewWidth, previewHeight)
 	return m
 }
 

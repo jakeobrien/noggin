@@ -17,25 +17,27 @@
 
 ## Cursor
 
-Current task: M3.2a
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M3.2b done (this session): new `TestPickerPreviewShowsUnavailableMessageOnReadError`
-(picker_test.go) builds a `picker` directly (`newPicker()`, labelled `results` pointing
-`selected`'s `pickerFile` at a nonexistent path) and calls `syncPreview()` unit-style — no
-`rg` needed since the read-error path never touches search — asserting the Preview's content
-is exactly `"preview unavailable: " + err.Error()`. `make check` green. No in-flight changes.
+M3.2a done (this session, D48/TRIAGE T6): `dismissPicker` (picker.go) now carries the Preview
+viewport's Width/Height over its reset the same way `openPicker` already does, instead of
+letting `newPicker()`'s fresh 0x0 zero value stick until the next `tea.WindowSizeMsg`. New
+`TestPickerReopenAfterDismissKeepsPreviewSize` (picker_test.go) drives open → dismiss → reopen
+with no resize in between and asserts the Preview's Width/Height are unchanged; verified it
+fails without the fix (0x0) and passes with it. `make check` green. No in-flight changes.
+M3 (File Picker end to end) is now fully done including its sub-tasks.
 
-Next step: M3.2a — fix `dismissPicker`'s preview-size reset bug (D48, TRIAGE T6). Gotcha:
-`picker.preview` (picker.go) is a real, persistently-sized `viewport.Model`; `openPicker`
-resets `m.picker` wholesale to `newPicker()`'s zero state per S8 ("no memory"), so `preview`'s
-Width/Height must be carried over across that reset explicitly — `openPicker` already does
-this but `dismissPicker` doesn't, so a second open (no intervening resize) renders an empty
-0x0 preview. Fix this before M4.2, which reuses the same preview mechanism.
+Next step: M4.1 — wire Grep mode to M1.4 (file, line number, matching line per row, truncated
+to the pane). The preview-size carry-over pattern (openPicker/dismissPicker/setPreviewSize) is
+now consistent on both sides, so M4.2 (preview scrolled to the matched line) can build on it
+without inheriting the bug. Before M4.3/M4.4, re-read D34: rg's raw-file line numbers don't
+correspond to the Document Viewer's rendered line space, so the hand-off re-derives the match
+by occurrence ordinal rather than trusting rg's line number, with a documented degrade path.
 
 Also queued, non-blocking — pick up opportunistically or before M7 hardening: M3.3a/M3.3b
 (D49, activatePicker test-coverage gaps), M7.1a (T11, terminology housekeeping).
@@ -61,7 +63,7 @@ No blockers. TRIAGE.md empty.
 | M3.1 | done   | 2026-08-03 | -         |      |
 | M3.1a| done   | -        | -         | D50 (TRIAGE T10) |
 | M3.2 | done   | 2026-08-03 | -         |      |
-| M3.2a| todo   | -        | -         | D48 (TRIAGE T6); fix before M4.2 |
+| M3.2a| done   | -        | -         | D48 (TRIAGE T6); fixed before M4.2 |
 | M3.2b| done   | -        | -         | TRIAGE T12 |
 | M3.3 | done   | 2026-08-03 | -         |      |
 | M3.3a| todo   | -        | -         | D49 (TRIAGE T7, T8) |

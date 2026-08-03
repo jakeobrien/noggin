@@ -116,6 +116,36 @@ func TestPickerDismissRestoresThePreOpenFrameByteForByte(t *testing.T) {
 	}
 }
 
+// TestPickerReopenAfterDismissKeepsPreviewSize is M3.2a's own acceptance
+// criterion (D48/TRIAGE T6): dismissPicker must carry the Preview
+// viewport's Width/Height over its reset the same way openPicker already
+// does, so a dismiss immediately followed by a reopen — with no
+// tea.WindowSizeMsg (and so no model.resize call) in between, the ordinary
+// case since dismissing the Picker never resizes the terminal — does not
+// leave the reopened Preview at newPicker()'s fresh 0x0 zero value.
+func TestPickerReopenAfterDismissKeepsPreviewSize(t *testing.T) {
+	m := openedFixture(t, 80, 24)
+	m, _ = m.openPicker()
+	wantWidth, wantHeight := m.picker.preview.Width(), m.picker.preview.Height()
+	if wantWidth == 0 || wantHeight == 0 {
+		t.Fatalf("setup is broken: preview size is %dx%d before dismissal, want nonzero", wantWidth, wantHeight)
+	}
+
+	m = press(t, m, keys.Cancel.Keys()[0])
+	if m.picker.open {
+		t.Fatal("Cancel did not dismiss the picker; setup is broken")
+	}
+
+	m, _ = m.openPicker()
+
+	if got := m.picker.preview.Width(); got != wantWidth {
+		t.Errorf("preview width after reopen (no resize in between) = %d, want %d unchanged", got, wantWidth)
+	}
+	if got := m.picker.preview.Height(); got != wantHeight {
+		t.Errorf("preview height after reopen (no resize in between) = %d, want %d unchanged", got, wantHeight)
+	}
+}
+
 // TestPickerOwnsKeyboardWhileOpen is the same exclusivity handleFindInput
 // and handleHelpInput already give their own modals (model.go): while the
 // Picker is open, a key bound elsewhere (here, Quit's "q") must not act on
