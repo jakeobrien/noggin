@@ -167,8 +167,9 @@ func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
 	}
 
 	joined := strings.Join(plainLines(m.View().Content), "\n")
-	wantA := filepath.Base(rootA) + "  report.md"
-	wantB := filepath.Base(rootB) + "  report.md"
+	resultsWidth := computePickerLayout(80, 24).results.content().width
+	wantA := pickerRootLabel(pickerFile{root: root{path: rootA}, path: fileA}, resultsWidth, "  report.md") + "  report.md"
+	wantB := pickerRootLabel(pickerFile{root: root{path: rootB}, path: fileB}, resultsWidth, "  report.md") + "  report.md"
 	if wantA == wantB {
 		t.Fatal("test fixture produced identical rows; setup is broken")
 	}
@@ -180,6 +181,68 @@ func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
 	}
 	if ia, ib := strings.Index(joined, wantA), strings.Index(joined, wantB); ia < 0 || ib < 0 || ia > ib {
 		t.Errorf("rows are out of results.files order: %q before %q wanted, got indices %d, %d", wantA, wantB, ia, ib)
+	}
+}
+
+// TestPickerFileResultsDisambiguateSameBasenameRoots is M3.1a's own
+// acceptance criterion (D50/TRIAGE T10): two Roots sharing a base name but
+// different parents must render distinguishable Root labels in File Picker
+// rows, the same way rootsNav.renderRow already disambiguates two same-named
+// roots by their left-truncated parent path
+// (TestRootsNavDistinguishesSameNamedRootsByParent) — pickerRootLabel
+// (picker_view.go) reuses that exact strategy instead of the bare
+// filepath.Base(f.root.path) M3.1 shipped with.
+func TestPickerFileResultsDisambiguateSameBasenameRoots(t *testing.T) {
+	base := t.TempDir()
+	rootA := mkdir(t, filepath.Join(base, "work", "admin", "project"))
+	rootB := mkdir(t, filepath.Join(base, "other", "project"))
+	fileA := filepath.Join(rootA, "report.md")
+	fileB := filepath.Join(rootB, "report.md")
+
+	// A wider terminal than the other Picker view tests use: at 80x24 the
+	// Results column's content width (23, computePickerLayout) leaves too
+	// little budget for both the Root's base name and its disambiguating
+	// parent segment to render distinctly — pickerRootLabel's budget
+	// calculation would just collapse the parent to a bare ellipsis for
+	// both rows, which is a real narrow-terminal degrade (S11's "truncate
+	// gracefully", not a bug), not the disambiguation behaviour this test
+	// checks.
+	m := openedFixture(t, 140, 30).withRipgrep(ripgrepAvailability{available: true})
+	m, _ = m.openPicker()
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  fileMode,
+		scope: activeRootScope,
+		files: []pickerFile{
+			{root: root{path: rootA}, path: fileA},
+			{root: root{path: rootB}, path: fileB},
+		},
+	}
+
+	lines := plainLines(m.View().Content)
+	var rowA, rowB string
+	for _, l := range lines {
+		if !strings.Contains(l, "report.md") {
+			continue
+		}
+		if rowA == "" {
+			rowA = l
+		} else if rowB == "" {
+			rowB = l
+		}
+	}
+	if rowA == "" || rowB == "" {
+		t.Fatalf("expected two rows containing report.md, got:\n%s", strings.Join(lines, "\n"))
+	}
+	if rowA == rowB {
+		t.Errorf("two Roots sharing a base name (%q) rendered identical rows, want their parent paths to distinguish them:\n%s", filepath.Base(rootA), strings.Join(lines, "\n"))
+	}
+	if !strings.Contains(rowA, "admin") {
+		t.Errorf("row for rootA = %q, want it to show its parent path (admin)", rowA)
+	}
+	if !strings.Contains(rowB, "other") {
+		t.Errorf("row for rootB = %q, want it to show its parent path (other)", rowB)
 	}
 }
 

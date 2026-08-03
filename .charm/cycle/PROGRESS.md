@@ -17,14 +17,14 @@
 
 ## Cursor
 
-Current task: M3.1a
+Current task: M3.2b
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.4a, M1.4b and M2.3a done (this session). M1.4a: `grepFiles` (cmd/noggin/files_search.go)
+M1.4a, M1.4b, M2.3a and M3.1a done (this session). M1.4a: `grepFiles` (cmd/noggin/files_search.go)
 now batches its file list across multiple `rg` invocations via `batchFilePaths`/`grepBatch`,
 bounded by the injectable `grepArgMaxBytes` var (default 128KiB, well under real-world
 ARG_MAX), merging results and applying `pickerResultCap`/truncation across the merged total
@@ -35,8 +35,17 @@ PickerUp/PickerDown/PickerMode/PickerScope for rootsPane/filesPane/viewerPane �
 Help is ever reachable from to document them, since Help stays unreachable while the Picker
 owns the keyboard (D46) — new test `TestHelpBindingsListPickersOwnBindingsFromEveryPane`; M2.3
 re-validated against its original criterion (Footer half already covered by
-`TestFooterShowsPickerHintsWhileOpen`, Help half now covered by the new test). `make check`
-green after all three.
+`TestFooterShowsPickerHintsWhileOpen`, Help half now covered by the new test). M3.1a: new
+`pickerRootLabel` (picker_view.go) reuses rootsNav.renderRow's left-truncated-parent
+disambiguation for a File Picker row's Root label, replacing the bare
+`filepath.Base(f.root.path)`; every row now shows name + truncated parent unconditionally
+(matching rootsNav's own always-on behaviour), not just when a collision is present. Updated
+`TestPickerFileResultsShowRootAndRelativePath`'s expected strings for the new row format and
+added `TestPickerFileResultsDisambiguateSameBasenameRoots` (at a wider 140x30 terminal —
+80x24's ~23-cell Results column leaves too little budget for both name and parent to render
+distinctly, a narrow-terminal degrade, not a bug). `make check` green after all four tasks.
+Gotcha for later Picker-row work: pickerFileRow's width budgeting assumes a `rest` string
+(what follows the Root label) is passed to `pickerRootLabel` including its own leading gap.
 
 M3 (File Picker end to end) complete: M3.1–M3.3 done, not yet reviewed/validated (see Status
 table). No in-flight changes. 2026-08-03 replan triaged review findings T6–T12 into new plan
@@ -59,10 +68,9 @@ rg's raw-file line numbers don't correspond to the Document Viewer's rendered li
 the hand-off re-derives the match by occurrence ordinal rather than trusting rg's line number,
 with a documented degrade path.
 
-Queued, non-blocking — pick up opportunistically or before M7 hardening: M3.1a (D50, Root
-label disambiguation for same-basename Roots; cursor is here next), M3.2b (T12, pin
-preview-error string), M3.3a/M3.3b (D49, activatePicker test-coverage gaps), M7.1a (T11,
-terminology housekeeping).
+Queued, non-blocking — pick up opportunistically or before M7 hardening: M3.2b (T12, pin
+preview-error string; cursor is here next), M3.3a/M3.3b (D49, activatePicker test-coverage
+gaps), M7.1a (T11, terminology housekeeping).
 
 Not queued, should land before M4.2: M3.2a (D48, dismissPicker preview-size bug — see gotcha
 above).
@@ -86,7 +94,7 @@ No blockers.
 | M1.4b| done   | -        | -         | D45 (TRIAGE T3) |
 | M2.3a| done   | -        | 2026-08-03 | D46 (TRIAGE T5); M2.3 re-validated |
 | M3.1 | done   | 2026-08-03 | -         |      |
-| M3.1a| todo   | -        | -         | D50 (TRIAGE T10) |
+| M3.1a| done   | -        | -         | D50 (TRIAGE T10) |
 | M3.2 | done   | 2026-08-03 | -         |      |
 | M3.2a| todo   | -        | -         | D48 (TRIAGE T6); fix before M4.2 |
 | M3.2b| todo   | -        | -         | TRIAGE T12 |

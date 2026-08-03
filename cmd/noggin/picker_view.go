@@ -195,23 +195,41 @@ func pickerStatus(p picker, avail ripgrepAvailability) string {
 // lists, so a Picker Result reads the same way a Nav selection does.
 var pickerSelectedStyle = lipgloss.NewStyle().Reverse(true)
 
+// pickerRootLabel renders a Root's label for a File Picker row (S3, M3.1a/
+// D50): its base name, then a gap, then its left-truncated parent path
+// (`leftTruncate`, rootsnav.go) — the exact same "prominent base name plus
+// disambiguating parent" layout rootsNav.renderRow gives every Root row,
+// reused here rather than the bare filepath.Base(f.root.path) M3.1 shipped
+// with, which read two Roots sharing a base name (different parents)
+// identically. budget is what's left of width after the name, the gap ahead
+// of the parent segment, and rest (everything the row still renders after
+// the Root label, including that segment's own connecting gap — e.g. "  "
+// plus the file's relative path) — the same "reserve everything else
+// first" shape rootsNav.renderRow's own budget calculation uses for its
+// row's suffix.
+func pickerRootLabel(f pickerFile, width int, rest string) string {
+	name := filepath.Base(f.root.path)
+	parent := filepath.Dir(f.root.path) + string(filepath.Separator)
+	const gap = "  "
+	budget := max(width-lipgloss.Width(name)-lipgloss.Width(gap)-lipgloss.Width(gap)-lipgloss.Width(rest), 0)
+	return name + gap + leftTruncate(parent, budget)
+}
+
 // pickerFileRow renders one File Picker Result (S3): the file's Root and its
 // path relative to that Root, so two same-named files in different Roots
-// read apart (M3.1's own acceptance criterion) — filepath.Base(f.root.path)
-// is the Root's label (the same prominent-name half rootsNav.renderRow gives
-// a root, though without that row's own left-truncated-parent disambiguation:
-// two Roots sharing a base name is not a case this cycle's fixtures or S3
-// itself asks this row to solve). f.path is always inside f.root.path (both
-// pickerFile's own fields and listFiles' construction guarantee it), so
-// filepath.Rel here cannot fail in practice; the fallback to the absolute
-// path exists only so a row still renders *something* if that invariant were
-// ever broken, rather than silently dropping the row.
+// read apart (M3.1's own acceptance criterion), including when two Roots
+// also share a base name (M3.1a/D50, pickerRootLabel). f.path is always
+// inside f.root.path (both pickerFile's own fields and listFiles'
+// construction guarantee it), so filepath.Rel here cannot fail in practice;
+// the fallback to the absolute path exists only so a row still renders
+// *something* if that invariant were ever broken, rather than silently
+// dropping the row.
 func pickerFileRow(f pickerFile, width int, selected bool) string {
 	rel, err := filepath.Rel(f.root.path, f.path)
 	if err != nil {
 		rel = f.path
 	}
-	line := filepath.Base(f.root.path) + "  " + rel
+	line := pickerRootLabel(f, width, "  "+rel) + "  " + rel
 	style := lipgloss.NewStyle()
 	if selected {
 		style = pickerSelectedStyle
