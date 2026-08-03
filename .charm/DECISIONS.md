@@ -786,3 +786,45 @@
   names what it *is* (a textinput wrapper) while "Prompt" names what it *means* in the UI;
   the two are allowed to diverge where a field wraps a third-party type generically. Renaming
   buys naming consistency at the cost of a slightly less honest field name.
+
+## D51: `openPicker`/`dismissPicker`'s reset-sequence duplication (T14) promoted to a plan task
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T14 (review, medium): `openPicker` and `dismissPicker`
+  (cmd/noggin/picker.go:161-176, 199-206) now duplicate the identical 4-line "bump seq,
+  snapshot preview size, replace with newPicker(), restore seq, restore preview size"
+  sequence verbatim. This is the same one-path-forgot-the-carry-over shape D48/M3.2a already
+  fixed once, in only one of the two paths — duplicating rather than sharing the sequence
+  leaves a future third reset path (anticipated around M4.x, which reuses the Preview
+  mechanism for grep) free to independently regress D48 again.
+- Decision: Accept as a plan task (M2.1a): extract a shared reset helper both `openPicker`
+  and `dismissPicker` call, so the carry-over logic exists in exactly one place.
+- Why: medium risk — not a live bug today (both paths currently agree), but the exact failure
+  mode D48 already cost a cycle to find once, on a mechanism about to gain a third caller.
+  Cheap to close before M4.x compounds it.
+
+## D52: `pickerRootLabel`'s double-counted gap budget (T13/T15/T16) promoted to a plan task
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: TRIAGE T13/T15/T16 (review, medium+low), all in `pickerRootLabel`
+  (cmd/noggin/picker_view.go:212-214) and its test coverage: (T13) the `budget` calculation
+  subtracts the connecting gap's width twice — once explicitly, once already embedded in the
+  `rest` argument (`"  "+rel`, picker_view.go:232-236) — under-computing the parent-path
+  truncation budget by one gap width (~2 cols) on every row, so M3.1a/D50's disambiguation fix
+  truncates the parent segment more aggressively than the design intends, without overflowing;
+  (T15) `TestPickerFileResultsShowRootAndRelativePath` derives its expected strings by calling
+  `pickerRootLabel` itself, so the assertion would pass even with this bug present; (T16)
+  M3.1a's own disambiguation test runs at 140x30 instead of the project's standard 80x24
+  fixture, which masks the bug and leaves S3's disambiguation guarantee unverified at a
+  realistic terminal size.
+- Decision: Accept as a plan task (M3.1b): fix the budget formula, add a test that pins the
+  full rendered row width against the layout's content width, pin at least one label string
+  independently of `pickerRootLabel`, and confirm M3.1a's disambiguation test at 80x24.
+- Why: medium risk — a shipped S3 acceptance criterion (row disambiguation) is measurably less
+  effective than designed at the project's own standard terminal size, and the gap was hidden
+  by two independent test-quality issues rather than caught by them. Cheap fix, reuses the
+  already-agreed disambiguation approach from D50.

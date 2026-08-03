@@ -33,4 +33,16 @@
      T9  -> PLAN M3.3b, D49 (accepted, batch)
      T10 -> PLAN M3.1a, D50 (accepted, scope judgment)
      T11 -> PLAN M7.1a (accepted, low-cost housekeeping)
-     T12 -> PLAN M3.2b (accepted, low-cost housekeeping) -->
+     T12 -> PLAN M3.2b (accepted, low-cost housekeeping)
+
+     T13-T20 triaged 2026-08-03 (charm-replan). Routing:
+     T13 -> PLAN M3.1b, D52 (accepted, material; bundled with T15, T16)
+     T14 -> PLAN M2.1a, D51 (accepted, material)
+     T15 -> PLAN M3.1b, D52 (accepted, bundled with T13)
+     T16 -> PLAN M3.1b, D52 (accepted, bundled with T13)
+     T17 -> PLAN M3.1b (accepted, low-cost, folded into T13's fix since same function)
+     T18 -> PLAN M1.4c (accepted, low-cost; bundled with T19)
+     T19 -> PLAN M1.4c (accepted, low-cost; bundled with T18)
+     T20 -> dropped: reporter's own report called it a defensible deliberate choice (avoids
+            OS-dependent err.Error() text brittleness) with no functional gap; low risk/value,
+            no decision entry warranted per the escalation matrix -->

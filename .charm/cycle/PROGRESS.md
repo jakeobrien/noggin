@@ -17,33 +17,34 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M1.4c
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M3.3b done (this session, D49/TRIAGE T9):
-`TestPickerActivateOpensResultAsActiveDocumentOnly`'s expansion check (picker_test.go) now
-clones `m.files.expanded` before Activate and compares the clone against `got.files.expanded`
-via `reflect.DeepEqual` (new import), replacing the old `len(...) != wantExpanded` cardinality
-check. Verified by temporarily swapping `activatePicker`'s post-open `m.files.expanded` for a
-same-count-but-different-key map (`{"/bogus": true}`) — the old check would have passed that,
-the new one correctly fails it — then reverted. `make check` green. No in-flight changes.
+Replan (this session, fresh context): reviewed the M1.4a/M1.4b/M2.3a/M3.1a/M3.2a/M3.2b/M3.3a/
+M3.3b diff (each task's Reviewed stamp was `-`) and triaged the resulting TRIAGE T13-T20.
+Three small tasks inserted ahead of M4.1, cursor moved to the first:
+- **M1.4c** (low, no decision) — grepArgMaxBytes parallel-safety hygiene + a missing
+  combined cap/batch-boundary test (T18, T19).
+- **M2.1a** (D51, medium) — de-duplicate openPicker/dismissPicker's reset-carry-over
+  sequence before M4.x can add a third reset path and independently regress D48 again (T14).
+- **M3.1b** (D52, medium) — pickerRootLabel's budget calc double-subtracts a gap, making
+  M3.1a/D50's disambiguation fix less effective than designed at realistic (80x24) widths;
+  also fixes the two test-quality gaps that masked it, folding in T17 (T13, T15, T16, T17).
+T20 dropped (not promoted): reviewer's own report called it a defensible deliberate choice,
+no functional gap.
 
-M3 (File Picker end to end) and all its sub-tasks (M3.1/M3.1a, M3.2/M3.2a/M3.2b,
-M3.3/M3.3a/M3.3b) are now fully done.
+M3 (File Picker end to end) and all its original sub-tasks are done; M1.4a/b, M2.3a,
+M3.1a/M3.2a/M3.2b/M3.3a/M3.3b (the prior review's fix-ups) are also done and now reviewed.
 
-Next step: M4.1 — wire Grep mode to M1.4 (file, line number, matching line per row, truncated
-to the pane). M4.2 (preview scrolled to the matched line) reuses M3.2's preview mechanism,
-already fixed by M3.2a, so no known blockers there. Before M4.3/M4.4, re-read D34: rg's
-raw-file line numbers don't correspond to the Document Viewer's rendered line space, so the
-hand-off re-derives the match by occurrence ordinal rather than trusting rg's line number,
-with a documented degrade path.
+Next step: M1.4c, then M2.1a, then M3.1b (each effort 2, no code written yet this session) —
+then M4.1: wire Grep mode to M1.4. M4.2 reuses M3.2's preview mechanism (fixed by M3.2a, but
+see M2.1a); before M4.3/M4.4, re-read D34 (rg line numbers vs. rendered line space).
 
-Also queued, non-blocking — pick up opportunistically or before M7 hardening: M7.1a (T11,
-terminology housekeeping).
+Also queued, non-blocking: M7.1a (T11, terminology housekeeping).
 
 No blockers. TRIAGE.md empty.
 
@@ -60,17 +61,20 @@ No blockers. TRIAGE.md empty.
 | M2.3 | done   | 2026-08-03 | 2026-08-03 | M2.3a landed; re-validated |
 | M2.4 | done   | 2026-08-03 | 2026-08-03 |      |
 | M2.5 | done   | 2026-08-03 | 2026-08-03 |      |
-| M1.4a| done   | -        | -         | D43 (TRIAGE T1) |
-| M1.4b| done   | -        | -         | D45 (TRIAGE T3) |
-| M2.3a| done   | -        | 2026-08-03 | D46 (TRIAGE T5); M2.3 re-validated |
+| M1.4a| done   | 2026-08-03 | -         | D43 (TRIAGE T1) |
+| M1.4b| done   | 2026-08-03 | -         | D45 (TRIAGE T3) |
+| M1.4c| todo   | -        | -         | D-none; TRIAGE T18, T19 |
+| M2.1a| todo   | -        | -         | D51; TRIAGE T14 |
+| M2.3a| done   | 2026-08-03 | 2026-08-03 | D46 (TRIAGE T5); M2.3 re-validated |
 | M3.1 | done   | 2026-08-03 | -         |      |
-| M3.1a| done   | -        | -         | D50 (TRIAGE T10) |
+| M3.1a| done   | 2026-08-03 | -         | D50 (TRIAGE T10); re-reviewed, T13/T16 raised |
+| M3.1b| todo   | -        | -         | D52; TRIAGE T13, T15, T16 |
 | M3.2 | done   | 2026-08-03 | -         |      |
-| M3.2a| done   | -        | -         | D48 (TRIAGE T6); fixed before M4.2 |
-| M3.2b| done   | -        | -         | TRIAGE T12 |
+| M3.2a| done   | 2026-08-03 | -         | D48 (TRIAGE T6); fixed before M4.2 |
+| M3.2b| done   | 2026-08-03 | -         | TRIAGE T12; re-reviewed, T20 raised |
 | M3.3 | done   | 2026-08-03 | -         |      |
-| M3.3a| done   | -        | -         | D49 (TRIAGE T7, T8) |
-| M3.3b| done   | -        | -         | D49 (TRIAGE T9) |
+| M3.3a| done   | 2026-08-03 | -         | D49 (TRIAGE T7, T8) |
+| M3.3b| done   | 2026-08-03 | -         | D49 (TRIAGE T9) |
 | M4.1 | todo   | -        | -         |      |
 | M4.2 | todo   | -        | -         |      |
 | M4.3 | todo   | -        | -         |      |

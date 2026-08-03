@@ -55,6 +55,14 @@ subprocess call returning typed results/errors.
   `TestGrepFilesCapsAndReportsTruncation`-shaped coverage includes a result set exactly at
   `pickerResultCap` asserting `truncated` is false, alongside the existing over-cap case —
   effort: 1 (needs: M1.4)
+- **M1.4c** — Grep-batching test/safety hygiene (TRIAGE T18, T19): guard `grepArgMaxBytes`
+  against a future parallel-test data race (a comment forbidding `t.Parallel()` on grep tests,
+  or threading the limit as a parameter instead of a package var), and add the combined
+  boundary case M1.4a/M1.4b each cover only in isolation — a result count landing exactly on
+  `pickerResultCap` while spread across multiple `grepArgMaxBytes` batches — done when:
+  `grepArgMaxBytes`'s test-only-mutation contract is documented or no longer a bare package
+  var, and a test asserts `truncated` is false for a batch-spread result count exactly at
+  `pickerResultCap` — effort: 2 (needs: M1.4a, M1.4b)
 
 ## M2 — The Picker modal shell
 
@@ -68,6 +76,15 @@ opens, types, moves, previews nothing useful yet, and dismisses cleanly.
   test opens the Picker from each Focus and with the Navigator hidden, and a frame comparison
   shows the pre-open frame is restored byte-for-byte after dismissal (same Active Document,
   Active Root, scroll positions) — effort: 2 (needs: M1.1)
+- **M2.1a** — De-duplicate the Picker's open/dismiss reset-and-carry-preview-size sequence
+  (TRIAGE T14 / D51): `openPicker` and `dismissPicker` (cmd/noggin/picker.go) repeat the
+  identical "bump seq, snapshot preview size, replace with newPicker(), restore seq, restore
+  preview size" sequence verbatim — the same one-path-forgot-the-carry-over shape D48/M3.2a
+  already fixed once in one of the two paths. Extract a shared helper both callers use — done
+  when: `openPicker` and `dismissPicker` share one reset helper, M2.1's and M3.2a's existing
+  acceptance tests still pass unchanged, and no third reset path could add a preview-size
+  carry-over without going through it — effort: 2 (needs: M2.1, M3.2a). Address before M4.x
+  adds further Picker reset paths (grep preview / Find hand-off).
 - **M2.2** — Modal layout and compositing: Prompt, Results list and Preview pane inside one
   modal composited over the live frame, clamped to the terminal — done when: the modal renders
   all three regions at several terminal sizes, never exceeds the terminal (test in the shape of
@@ -107,6 +124,19 @@ Delivers: S3, S9 (file preview), S10 (activate)
   fixture with two Roots sharing a basename but different parents renders distinguishable Root
   labels in File Picker rows, matching `rootsNav`'s own disambiguation behavior for the same
   case — effort: 2 (needs: M3.1)
+- **M3.1b** — Fix `pickerRootLabel`'s double-counted gap budget and its test coverage (TRIAGE
+  T13, T15, T16 / D52): the budget calculation subtracts the gap's width twice (once
+  explicitly, once already embedded in the `rest` argument), under-computing the parent-path
+  truncation budget by one gap width on every row and making M3.1a's disambiguation fix less
+  effective than it should be at realistic terminal widths; the row test that should catch this
+  derives its expected value from `pickerRootLabel` itself (tautological), and M3.1a's own
+  disambiguation test runs at 140x30 rather than the project's standard 80x24, masking the bug
+  — done when: the budget formula matches `name+gap+parent+gap+rest`'s actual rendered width
+  (a test asserts `pickerFileRow`'s full rendered width equals the layout's content width), at
+  least one test pins an independently-computed exact label string, and M3.1a's disambiguation
+  test passes at the standard 80x24 fixture. Fold in TRIAGE T17 while touching this code:
+  `pickerFileRow` builds `"  "+rel` twice (once as the `rest` arg, once concatenated after);
+  compute it once into a local var and reuse both places — effort: 2 (needs: M3.1a)
 - **M3.2** — Preview pane renders the selected Result's file as raw, unrendered text from the
   top, scrollable, following selection changes — done when: a test shows the preview content
   matches the file's raw bytes (no Glamour styling), starts at line 1, scrolls on the scroll
