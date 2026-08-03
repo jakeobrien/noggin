@@ -582,15 +582,24 @@ func (m model) View() tea.View {
 	return tea.NewView(m.render())
 }
 
-// render is the frame (frame()) plus, when the Help Modal is open
-// (m.helpOpen), its overlay on top (overlayHelp) — the one place that
-// composition happens, so View() itself stays a one-liner.
+// render is the frame (frame()) plus, when the Help Modal or the Picker is
+// open, its overlay on top (overlayHelp / overlayPicker) — the one place
+// that composition happens, so View() itself stays a one-liner. The two
+// modals are mutually exclusive by construction (Update's handleHelpInput/
+// handlePickerInput gating, model.go's Update), so at most one overlay ever
+// applies.
 func (m model) render() string {
 	frame := m.frame()
-	if !m.helpOpen || m.width <= 0 || m.height <= 0 {
+	switch {
+	case m.width <= 0 || m.height <= 0:
+		return frame
+	case m.helpOpen:
+		return overlayHelp(frame, m.width, m.height, m.focus)
+	case m.picker.open:
+		return overlayPicker(frame, m.width, m.height, m.picker)
+	default:
 		return frame
 	}
-	return overlayHelp(frame, m.width, m.height, m.focus)
 }
 
 // frame composes the three regions into the string View wraps.
@@ -623,19 +632,11 @@ func (m model) frame() string {
 // outer size is passed straight through rather than pre-deducting the border as
 // v1 required.
 func (m model) renderPane(p pane, r rect, content string) string {
-	if r.empty() {
-		return ""
-	}
 	style := borderStyle
 	if m.focus == p {
 		style = focusedBorderStyle
 	}
-	box := style.Width(r.width).Height(r.height)
-	title := titleStyle.Render(m.paneTitle(p))
-	if content == "" {
-		return box.Render(title)
-	}
-	return box.Render(title + "\n" + content)
+	return renderBox(style, r, m.paneTitle(p), content)
 }
 
 // paneTitle is a pane's heading: its name, plus what it is currently showing

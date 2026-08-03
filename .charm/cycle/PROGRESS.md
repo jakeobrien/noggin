@@ -17,37 +17,50 @@
 
 ## Cursor
 
-Current task: M2.2
+Current task: M2.3
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.1 done: new `cmd/noggin/picker.go` — `picker{open, mode, scope, input textinput.Model}`,
-`newPicker()` (closed/File/ActiveRoot/empty), `model.openPicker()`/`dismissPicker()`
-(replace-the-whole-struct, so S8 "no memory" holds by construction, not by clearing fields),
-and `handlePickerInput` (Cancel-only for now, same shape as `handleHelpInput`). Wired into
-`model.go`: new `picker picker` field, a global `keys.Picker` case (`ctrl+p`, D39) in the same
-position as Edit/Find/Navigator/Help, and a `m.picker.open` gate ahead of the main switch so
-an open Picker owns the keyboard the same exclusive way `findEditing()`/`helpOpen` already do.
-No rendering/compositing yet (M2.2's job) — `render()` does not consult `m.picker` at all, so
-the "frame restored byte-for-byte after dismissal" criterion holds trivially for now and
-becomes a real test once M2.2 adds the overlay. Tests: `picker_test.go` — opens from every
-Focus and with the Navigator hidden, always resets to File/ActiveRoot/empty-Prompt regardless
-of what was perturbed before dismissal, dismissal restores Active Document/Root/scroll offset
-and the exact rendered frame, and `q` while open does not quit. `allBindings()`/`keyMap`
-field-count test updated for the new binding. `go test ./...`, `make check`, `make check-pty`
-all green (no pty coverage added yet — M7.1's job).
+M2.2 done: new `cmd/noggin/picker_view.go` — `pickerLayout{prompt, results, preview rect}` and
+`computePickerLayout(width, height)` size the modal itself (80%/80% of the terminal, clamped
+to `minPickerWidth`/`minPickerHeight` and never above the terminal's own size), splitting the
+remaining body between Results/Preview via `splitPickerWidth` (layout.go's `splitHeight`
+fallback shape, even split if a proportional share would starve either side). `renderPicker`
+composes a focused-style bordered Prompt (textinput via `promptView`, the same
+"SetWidth-then-View on an addressable local copy" shape `find.go`'s `findView` already uses)
+over Results/Preview boxes side by side — both empty/untitled-content placeholders for now
+(M3.1/M3.2 wire real content; M2.5 wires the status/empty-state text). `overlayPicker` is
+`overlayHelp`'s clamp-then-`lipgloss.NewCompositor` shape reused verbatim for the Picker.
+Extracted the shared box-drawing (`renderBox`) out of `model.renderPane` so both call the same
+code rather than duplicating the border+title+content shape a third time. Wired into
+`model.render()`: a three-way switch (plain frame / `overlayHelp` / `overlayPicker`) replacing
+the old two-way one — Help and Picker are mutually exclusive by Update's existing gating, so
+at most one overlay ever applies. Visually spot-checked with an ad-hoc debug print (removed
+before commit): the modal composites correctly over the live frame, centered, frame borders
+visible around its edges, Prompt cursor visible.
 
-Next step: M2.2 — modal layout and compositing (Prompt/Results/Preview inside one modal
-composited over the live frame, clamped to the terminal, `TestHelpOverlayNeverExceedsTheTerminal`-shaped
-test). `help.go`'s `overlayHelp` (clamp with MaxWidth/MaxHeight, then
-`lipgloss.NewCompositor`) is the direct precedent to reuse/adapt — see
-`findings/codebase-picker-integration.md`'s "Compositing and layout" section. Results/Preview
-content itself can stay empty placeholders; M3.1/M3.2 wire real content. No new-ground gaps
-for this task specifically — M2.4 (async `tea.Cmd`/debounce, no in-repo precedent) and
-M4.3/M4.4 (rg raw-line vs. rendered-viewport-line addressing, D34) are later tasks' problems.
+Tests: `picker_view_test.go` — renders all three regions (Results/Preview by title text,
+Prompt/Results/Preview rects non-empty from `computePickerLayout`) at 80x24/120x40/40x10;
+never exceeds the terminal at those same sizes plus degenerate ones down to 1x1 and 0x0
+(`TestComputePickerLayoutNeverExceedsTheTerminal`); frame stays visible around the modal's
+edges (`TestHelpOverlayLeavesTheFrameVisibleAroundIt`'s exact shape). `go test ./...`,
+`make check`, `make check-pty` all green — pty suite unaffected (no pty coverage for the
+Picker yet, M7.1's job); the `renderPane` refactor caused no visible/behavioral change per
+the unchanged pty output.
+
+Next step: M2.3 — always-typing input dispatch: every printable key types into the Prompt;
+selection movement, Preview scrolling, Activate and Cancel are on non-typing keys; Footer and
+Help Modal cover the Picker's actions. `handlePickerInput` (picker.go) currently only handles
+Cancel and swallows everything else — this task routes the rest into `p.input.Update(msg)`
+(find.go's `updateFindQuery` is the precedent: run the query through textinput.Update, then
+recompute) and adds the movement/scroll/mode/Scope-switch bindings this milestone's later
+tasks (M5.1/M5.2) will act on. `footer.go`'s `paneHints`/`alwaysHints` and `help.go`'s
+`helpBindings` are the precedent for the Footer/Help coverage half — note the Picker has no
+`pane`, so whatever dispatches those will need a Picker-shaped variant, not a `pane` case.
+
 M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep if the cycle
 runs long.
 
@@ -60,7 +73,7 @@ runs long.
 | M1.3 | done   | 2026-08-03 | 2026-08-03 |  |
 | M1.4 | done   | 2026-08-03 | 2026-08-03 |  |
 | M2.1 | done   | -        | -         |      |
-| M2.2 | todo   | -        | -         |      |
+| M2.2 | done   | -        | -         |      |
 | M2.3 | todo   | -        | -         |      |
 | M2.4 | todo   | -        | -         |      |
 | M2.5 | todo   | -        | -         |      |
