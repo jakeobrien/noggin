@@ -445,6 +445,37 @@ func TestPickerPreviewScrollsOnScrollKeys(t *testing.T) {
 	}
 }
 
+// TestPickerPreviewShowsUnavailableMessageOnReadError pins syncPreview's
+// error-content fallback (TRIAGE T12): when the selected Result's file
+// can't be read (removed, permission denied, etc.), the Preview shows the
+// exact "preview unavailable: " + err.Error() string rather than stale
+// content or an unexplained blank pane — matching this file's convention
+// (picker_view_test.go) of pinning user-visible strings exactly.
+func TestPickerPreviewShowsUnavailableMessageOnReadError(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.md")
+	_, statErr := os.Stat(missing)
+	if statErr == nil {
+		t.Fatal("setup is broken: missing file actually exists")
+	}
+
+	p := newPicker()
+	p.input.SetValue("report")
+	p.results = pickerResults{
+		query: "report",
+		mode:  fileMode,
+		scope: activeRootScope,
+		files: []pickerFile{{path: missing}},
+	}
+
+	p = p.syncPreview()
+
+	_, readErr := os.ReadFile(missing)
+	want := "preview unavailable: " + readErr.Error()
+	if got := p.preview.GetContent(); got != want {
+		t.Errorf("preview content = %q, want %q", got, want)
+	}
+}
+
 // pickerRoot puts a fixture Root full of files whose names share a prefix
 // behind an already-open Picker, so a query can be typed a character at a
 // time and actually have something to find. Returns the model and the Root's
