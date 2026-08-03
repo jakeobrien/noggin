@@ -372,6 +372,76 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	}
 }
 
+// TestPickerActivateWithAReadErrorLeavesSessionRunning is M3.3a's
+// read-error case (TRIAGE T7), mirroring
+// TestActivateWithAReadErrorLeavesSessionRunning's shape (files_test.go)
+// for the Picker's own Activate path: a Result whose file can no longer be
+// read (removed between listing and Activate, or any other read failure)
+// must not open it, crash, or leave the session inconsistent — the failure
+// surfaces as a footer message (T15, activatePicker's own comment), and the
+// Picker still closes since it is "dismissed either way".
+func TestPickerActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.md")
+
+	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
+	m, _ = m.openPicker()
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  fileMode,
+		scope: activeRootScope,
+		files: []pickerFile{{path: missing}},
+	}
+	m.picker.selected = 0
+	beforeDoc := m.viewer.doc.path
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.picker.open {
+		t.Error("picker.open = true after a failed Activate, want dismissed")
+	}
+	if got.viewer.doc.path != beforeDoc {
+		t.Errorf("Active Document = %q after a failed Activate, want unchanged %q", got.viewer.doc.path, beforeDoc)
+	}
+	if got.message == "" {
+		t.Error("message is empty after a failed Activate, want a footer message")
+	}
+}
+
+// TestPickerActivateIsANoOpInGrepMode is M3.3a's Grep-mode case (TRIAGE
+// T8): M4.1 hasn't wired a Grep Result to Activate yet (activatePicker's
+// own comment — "grepMode has no candidate yet"), so pressing Activate
+// while mode = grepMode must leave everything exactly as it was: no
+// document opened, no dismissal, no message, not even an unhandled-mode
+// crash.
+func TestPickerActivateIsANoOpInGrepMode(t *testing.T) {
+	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  grepMode,
+		scope: activeRootScope,
+		grep:  []grepResult{{file: pickerFile{path: "somefile.md"}, line: 1, text: "report"}},
+	}
+	m.picker.selected = 0
+	beforeDoc := m.viewer.doc.path
+	beforeMessage := m.message
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if !got.picker.open {
+		t.Error("picker.open = false after Activate in Grep mode, want unchanged (still open)")
+	}
+	if got.viewer.doc.path != beforeDoc {
+		t.Errorf("Active Document = %q after Activate in Grep mode, want unchanged %q", got.viewer.doc.path, beforeDoc)
+	}
+	if got.message != beforeMessage {
+		t.Errorf("message = %q after Activate in Grep mode, want unchanged %q", got.message, beforeMessage)
+	}
+}
+
 // TestPickerPreviewShowsSelectedFileRawFromTop is M3.2's own acceptance
 // criterion: the Preview pane's content is the selected Result's raw file
 // bytes, byte for byte — no Glamour styling — and starts scrolled to the
