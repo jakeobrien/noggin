@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // pickerMode selects which kind of search a Picker runs (S1, GLOSSARY.md
@@ -124,13 +125,25 @@ type picker struct {
 	// page against.
 	preview viewport.Model
 
+	// previewLine is the 1-based line syncPreview last scrolled/highlighted
+	// the Preview to for a Grep Result (M4.2, S9's "opens scrolled to the
+	// matched line with that line highlighted"), or 0 for a File Result
+	// (M3.2's plain "from the top") or when nothing is loaded. Paired with
+	// previewPath as syncPreview's re-targeting key: pickerPreviewCandidate
+	// (File mode's Activate/Preview candidate) never changes without the
+	// path also changing, but pickerPreviewTarget's Grep candidate can name a
+	// *different match in the same file* — a plain path comparison would
+	// then wrongly treat that as "nothing changed" and leave the Preview
+	// scrolled to the previous match.
+	previewLine int
+
 	// previewPath is the path whose bytes are currently loaded into
-	// preview, or "" when nothing is. Compared against the current
-	// preview candidate (pickerPreviewCandidate) so a load only happens
-	// when the candidate actually changed — not on every keystroke or
-	// render — and is what "re-targets when the selection moves" (M3.2's
-	// acceptance criterion) means concretely: a different path, a fresh
-	// load, GotoTop.
+	// preview, or "" when nothing is. Compared against the current preview
+	// target (pickerPreviewTarget) so a load only happens when the target's
+	// file actually changed — not on every keystroke or render — and is
+	// what "re-targets when the selection moves" (M3.2's acceptance
+	// criterion) means concretely: a different path, a fresh load, GotoTop
+	// (File mode) or a scroll/highlight to previewLine (Grep mode, M4.2).
 	previewPath string
 }
 
@@ -308,13 +321,21 @@ func (p picker) setPreviewSize(width, height int) picker {
 	return p
 }
 
-// pickerPreviewCandidate is the Result the Preview pane should currently
-// show (M3.2), or false when there is none: fileMode's selected row, gated
-// by the same resultsCurrent check pickerStatus and pickerResultsContent
-// already make — a stale generation's rows must not populate the Preview
-// any more than they may flash in the Results column — and clamped against
-// the live result count, since a fresh (shorter) result set can land
-// between a selection move and the next render.
+// pickerPreviewCandidate is the Result Activate would open (M3.3) and, for
+// fileMode, the Result the Preview pane shows (M3.2): fileMode's selected
+// row, gated by the same resultsCurrent check pickerStatus and
+// pickerResultsContent already make — a stale generation's rows must not
+// populate the Preview any more than they may flash in the Results column
+// — and clamped against the live result count, since a fresh (shorter)
+// result set can land between a selection move and the next render.
+//
+// grepMode has no candidate here — M4.1 gave the Results list its own
+// grepMode rows and M4.2 gives the Preview pane its own grepMode target
+// (pickerPreviewTarget, below), but Activate stays a no-op in grepMode
+// (M3.3a) until M4.3 gives it the matched-line hand-off (D34) a plain
+// loadDocument here cannot provide; this function's own contract ("what
+// Activate would open") is why it must not start returning a grepMode
+// candidate before that lands.
 func (p picker) pickerPreviewCandidate() (pickerFile, bool) {
 	if p.mode != fileMode || !p.resultsCurrent() {
 		return pickerFile{}, false
@@ -325,37 +346,90 @@ func (p picker) pickerPreviewCandidate() (pickerFile, bool) {
 	return p.results.files[p.selected], true
 }
 
+// pickerPreviewTarget is what the Preview pane should currently show
+// (M3.2, M4.2): the candidate file, plus — for a Grep Result only — the
+// 1-based line syncPreview should scroll to and highlight (S9's "the Grep
+// Picker opens scrolled to the matched line with that line highlighted").
+// line is 0 for a File Result (previews from the top instead, M3.2's own
+// contract, unchanged) and for "nothing selected". Unlike
+// pickerPreviewCandidate, this covers both modes — the Preview pane itself
+// has no reason to wait for M4.3's Activate hand-off the way Activate
+// does, since showing the matched file's raw bytes never changes the
+// Active Document (S9's own "never changes the Active Document").
+func (p picker) pickerPreviewTarget() (f pickerFile, line int, ok bool) {
+	if !p.resultsCurrent() {
+		return pickerFile{}, 0, false
+	}
+	if p.mode == grepMode {
+		if p.selected < 0 || p.selected >= len(p.results.grep) {
+			return pickerFile{}, 0, false
+		}
+		g := p.results.grep[p.selected]
+		return g.file, g.line, true
+	}
+	if p.selected < 0 || p.selected >= len(p.results.files) {
+		return pickerFile{}, 0, false
+	}
+	return p.results.files[p.selected], 0, true
+}
+
 // syncPreview loads the Preview pane's content for whichever Result
-// pickerPreviewCandidate currently names, re-targeting (a fresh load,
-// scrolled back to the top — M3.2's acceptance criterion, verbatim) only
-// when that candidate's path actually changed since the last call: called
-// after every mutation that can change the candidate (a Results move, a
-// fresh or cleared result set landing), so the Preview always answers
-// "what's selected right now" without re-reading a file on every keystroke
-// or render that leaves the selection alone.
+// pickerPreviewTarget currently names, re-targeting only when that target
+// actually changed since the last call: called after every mutation that
+// can change it (a Results move, a fresh or cleared result set landing, a
+// mode switch), so the Preview always answers "what's selected right now"
+// without re-reading a file or re-scrolling on every keystroke or render
+// that leaves the selection alone.
+//
+// previewPath and previewLine together are that "did it actually change"
+// key: comparing path alone would miss a Grep selection moving to a
+// *different match in the same file* (previewLine is what catches that;
+// see previewLine's own doc comment), and a fresh load only happens when
+// the path itself changed — a same-file, different-line Grep move re-uses
+// the bytes already loaded and only re-scrolls/re-highlights.
 //
 // The read is raw bytes, straight from disk — no loadDocument, no
 // renderMarkdown: M3.2 is explicit that the Preview shows "raw, unrendered
 // text", unlike the Document Viewer's own Glamour-rendered vp.
 func (p picker) syncPreview() picker {
-	f, ok := p.pickerPreviewCandidate()
+	f, line, ok := p.pickerPreviewTarget()
 	if !ok {
 		if p.previewPath != "" {
 			p.previewPath = ""
+			p.previewLine = 0
 			p.preview.SetContent("")
+			p.preview.StyleLineFunc = nil
 		}
 		return p
 	}
-	if f.path == p.previewPath {
+	if f.path == p.previewPath && line == p.previewLine {
 		return p
 	}
-	src, err := os.ReadFile(f.path)
-	if err != nil {
-		src = []byte("preview unavailable: " + err.Error())
+	if f.path != p.previewPath {
+		src, err := os.ReadFile(f.path)
+		if err != nil {
+			src = []byte("preview unavailable: " + err.Error())
+		}
+		p.previewPath = f.path
+		p.preview.SetContent(string(src))
 	}
-	p.previewPath = f.path
-	p.preview.SetContent(string(src))
-	p.preview.GotoTop()
+	p.previewLine = line
+	if line <= 0 {
+		p.preview.StyleLineFunc = nil
+		p.preview.GotoTop()
+		return p
+	}
+	// rg's line numbers are 1-based (S4/grepResult); the viewport's own line
+	// indices, like every other line-addressing surface in this codebase
+	// (find.go's findMatch), are 0-based.
+	idx := line - 1
+	p.preview.SetYOffset(idx)
+	p.preview.StyleLineFunc = func(i int) lipgloss.Style {
+		if i == idx {
+			return lipgloss.NewStyle().Reverse(true)
+		}
+		return lipgloss.NewStyle()
+	}
 	return p
 }
 

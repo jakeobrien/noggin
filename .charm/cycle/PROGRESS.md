@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.2
+Current task: M4.3
 
 ## Handoff
 
@@ -39,25 +39,30 @@ before the fix — both rows collapsed to a bare "…"), adjusting its assertion
 inequality rather than full-word substrings the tighter real budget no longer fits. `make
 check` green; full Picker suite passes.
 
-M4.1 done this session (D53): wired Grep mode's Results rendering to M1.4's `grepFiles`
-(picker_view.go). The model-layer dispatch (`pickerSearchCmd`'s `grepMode` case, `resultCount`)
-was already generic from M2.4; the missing half was the view — `pickerResultsContent` only
-ever rendered `fileMode` rows. Added `pickerGrepRow` (`relPath:line  text`, no Root
-disambiguation — S4 doesn't ask for it) and a new `rightTruncate` (mirror of `leftTruncate`,
-rootsnav.go). Truncation happens *before* styling, not via `Style.Width(...).MaxWidth(...)`
-like `pickerFileRow`'s budget-fitted rows do: lipgloss word-wraps under `Width` before
-`MaxWidth` ever truncates, so that pattern would wrap an over-length match line into several
-rows instead of one — see D53 and `pickerGrepRow`'s own doc comment. Three new tests: an
-end-to-end real-rg fixture search (`TestPickerGrepModeWiresToGrepFilesAndRendersRows`,
-picker_test.go) plus two rendering-focused ones in picker_view_test.go
-(`TestPickerGrepResultsShowFileLineNumberAndText`,
-`TestPickerGrepRowTruncatesLongLinesWithoutWrapping`). `make check` green.
+M4.2 done this session (D54): Preview pane now opens scrolled to a Grep Result's matched line
+with that line highlighted (S9). Reused find.go's `EnsureVisible`/`StyleLineFunc` line-level
+approach rather than `viewport.Model`'s own `SetHighlights` (consistent with
+`.charm/knowledge/viewport-search-ansi-offsets.md`'s established practice, even though the
+Preview's raw unstyled text isn't actually exposed to that bug) — concretely, `syncPreview`
+(picker.go) now calls `SetYOffset(line-1)` plus a whole-line reverse-video `StyleLineFunc` for
+a Grep target, `GotoTop()`/`nil` for a File one. Added a new `pickerPreviewTarget` (mode-aware,
+covers both fileMode and grepMode) alongside the unchanged, file-mode-only
+`pickerPreviewCandidate` (still what `activatePicker` alone uses — Activate stays a no-op in
+grepMode until M4.3's hand-off, D34). Added a `previewLine` field paired with `previewPath` as
+`syncPreview`'s re-targeting key: a plain path comparison would miss the Results cursor moving
+between two matches in the *same* file, which must still re-scroll/re-highlight — caught by
+writing `TestPickerGrepPreviewRetargetsWithinTheSameFile` before assuming path-only was enough.
+Two new tests in picker_test.go (`TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight`,
+`TestPickerGrepPreviewRetargetsWithinTheSameFile`); all prior Picker tests still pass unchanged.
+`make check` green.
 
-Next step: M4.2 — Preview opens scrolled to the matched line with that line highlighted;
-reuses M3.2's preview mechanism (already behind `resetPicker`, so a grep-preview reset path
-added there carries the preview size over automatically). Before M4.3/M4.4, re-read D34 (rg
-line numbers vs. rendered line space) — not needed for M4.2 itself, which stays in raw-file
-(Preview pane) space.
+Next step: M4.3 — Activate a Grep Result: file becomes the Active Document, Document Viewer
+lands on the matched line. This is where D34 actually matters (re-read it first): rg's raw-file
+line number must be re-resolved by occurrence ordinal against the *rendered* document via
+`findMatches`/`commitFind`/`applyCurrentMatch` (find.go), not reused directly the way M4.2's
+Preview (raw text, same line space as rg) could. Degrade path: query spans stripped syntax/
+frontmatter → open with the query as a Committed Find on whatever matches exist (or plain if
+none) — never fail the activation.
 
 Also queued, non-blocking: M7.1a (T11, terminology housekeeping).
 
@@ -91,7 +96,7 @@ No blockers. TRIAGE.md empty.
 | M3.3a| done   | 2026-08-03 | -         | D49 (TRIAGE T7, T8) |
 | M3.3b| done   | 2026-08-03 | -         | D49 (TRIAGE T9) |
 | M4.1 | done   | -        | -         | D53  |
-| M4.2 | todo   | -        | -         |      |
+| M4.2 | done   | -        | -         | D54  |
 | M4.3 | todo   | -        | -         |      |
 | M4.4 | todo   | -        | -         |      |
 | M5.1 | todo   | -        | -         |      |

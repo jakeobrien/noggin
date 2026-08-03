@@ -856,3 +856,31 @@
   worth blocking on — recorded because the lipgloss Width/MaxWidth wrap-before-truncate
   behaviour is a easy-to-reintroduce trap for any future row renderer (M4.2's highlighted
   preview line, M6's match-highlighted rows) that assembles a row from unbounded content.
+
+## D54: Grep preview positioning reuses find.go's line-level StyleLineFunc, keyed on (path, line)
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: M4.2 (S9) needed the Preview pane to scroll to and highlight a Grep Result's matched
+  line. Two things weren't pinned by the plan: (1) whether to use `viewport.Model`'s own
+  `SetHighlights`/`HighlightNext` or the `EnsureVisible`+`StyleLineFunc` pair find.go already
+  uses for the Document Viewer's own search (S8), and (2) M3.2's `syncPreview` re-targets only
+  when the *path* changes (`previewPath`) — insufficient for grep, where the Results cursor can
+  move between two matches in the *same* file, which must still re-scroll/re-highlight.
+- Decision: (1) Reuse the `EnsureVisible`/`StyleLineFunc` line-level approach, applied directly
+  as `SetYOffset(line-1)` (an "opens scrolled to" jump, not an incremental "ensure visible from
+  wherever it is now" the Document Viewer's search needs) plus a whole-line reverse-video
+  `StyleLineFunc` — not `SetHighlights`, even though `.charm/knowledge/viewport-search-ansi-
+  offsets.md`'s drift bug is specific to Glamour-styled content and the Preview pane's raw,
+  unstyled text is not actually at risk of it: matching find.go's established pattern rather
+  than introducing a second, narrower-scoped exception keeps the codebase's "how do we address
+  a line in a viewport" story single. (2) Added a `previewLine` field alongside `previewPath`;
+  `syncPreview`'s re-targeting key is now the pair, so a same-file/different-line Grep move
+  re-scrolls and re-highlights without re-reading the file, while a File Result's `previewLine`
+  is always 0 (M3.2's own contract untouched).
+- Why: medium value, low risk — (1) is consistency with existing, already-verified practice
+  rather than a new risk; (2) is a real gap this build would otherwise have shipped (a same-file
+  Grep re-select silently not moving the Preview), caught by writing
+  `TestPickerGrepPreviewRetargetsWithinTheSameFile` before assuming path-only comparison was
+  enough.

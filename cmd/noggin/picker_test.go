@@ -585,6 +585,126 @@ func TestPickerPreviewShowsUnavailableMessageOnReadError(t *testing.T) {
 	}
 }
 
+// numberedLinesFixture writes a file of n lines, "filler line 1" .. "filler
+// line n", except line matchLine (1-based) which reads text instead — the
+// shape M4.2's own acceptance criterion needs: "a match deep in a long
+// file", with a file long enough that the matched line starts off-screen at
+// the Preview's default (top, M3.2) scroll position.
+func numberedLinesFixture(t *testing.T, dir, name string, n, matchLine int, text string) string {
+	t.Helper()
+	var b strings.Builder
+	for i := 1; i <= n; i++ {
+		if i == matchLine {
+			b.WriteString(text)
+			b.WriteByte('\n')
+		} else {
+			fmt.Fprintf(&b, "filler line %d\n", i)
+		}
+	}
+	return writeFileContent(t, filepath.Join(dir, name), b.String())
+}
+
+// TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight is M4.2's
+// own acceptance criterion (S9): activating a Grep search whose match sits
+// deep in a long file leaves the Preview scrolled so that line is within
+// the visible window, and carries the highlight style (StyleLineFunc,
+// reused from find.go's own whole-line-reverse-video convention —
+// .charm/knowledge/viewport-search-ansi-offsets.md is why a line-level
+// style is used here rather than viewport.Model's own column-level
+// SetHighlights).
+func TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	const matchLine = 87
+	numberedLinesFixture(t, dir, "long.md", 100, matchLine, "the target report line")
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.grep) != 1 {
+		t.Fatalf("setup is broken: %d searches, %d grep results", searches, len(m.picker.results.grep))
+	}
+	if got := m.picker.results.grep[0].line; got != matchLine {
+		t.Fatalf("setup is broken: matched line = %d, want %d", got, matchLine)
+	}
+
+	idx := matchLine - 1 // viewport lines are 0-based; grep's are rg's 1-based
+	yOff, height := m.picker.preview.YOffset(), m.picker.preview.Height()
+	if idx < yOff || idx >= yOff+height {
+		t.Fatalf("matched line %d (0-based) not within the visible window [%d, %d)", idx, yOff, yOff+height)
+	}
+
+	if m.picker.preview.StyleLineFunc == nil {
+		t.Fatal("preview.StyleLineFunc is nil, want the matched line highlighted")
+	}
+	if !m.picker.preview.StyleLineFunc(idx).GetReverse() {
+		t.Errorf("StyleLineFunc(%d) is not reverse-styled, want the matched line highlighted", idx)
+	}
+	if m.picker.preview.StyleLineFunc(idx - 1).GetReverse() {
+		t.Errorf("StyleLineFunc(%d) is reverse-styled, want only the matched line highlighted", idx-1)
+	}
+}
+
+// TestPickerGrepPreviewRetargetsWithinTheSameFile is the "different match,
+// same file" edge M3.2's own path-only re-targeting check
+// (TestPickerPreviewRetargetsOnSelectionChange) cannot exercise, since two
+// File Results are always two different files: moving the Results
+// selection between two Grep matches inside one file must still re-scroll
+// and re-highlight to the newly-selected match's own line, even though the
+// Preview's loaded content (previewPath) does not change.
+func TestPickerGrepPreviewRetargetsWithinTheSameFile(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	var b strings.Builder
+	for i := 1; i <= 100; i++ {
+		switch i {
+		case 10:
+			b.WriteString("first report line\n")
+		case 90:
+			b.WriteString("second report line\n")
+		default:
+			fmt.Fprintf(&b, "filler line %d\n", i)
+		}
+	}
+	writeFileContent(t, filepath.Join(dir, "long.md"), b.String())
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.grep) != 2 {
+		t.Fatalf("setup is broken: %d searches, %d grep results", searches, len(m.picker.results.grep))
+	}
+
+	firstIdx := m.picker.results.grep[m.picker.selected].line - 1
+	if got := m.picker.preview.YOffset(); got != firstIdx {
+		t.Fatalf("YOffset = %d after the first match landed, want %d; setup is broken", got, firstIdx)
+	}
+
+	m = press(t, m, keys.PickerDown.Keys()[0])
+
+	secondIdx := m.picker.results.grep[m.picker.selected].line - 1
+	if secondIdx == firstIdx {
+		t.Fatal("selection did not move to a different line; setup is broken")
+	}
+	if got := m.picker.preview.YOffset(); got != secondIdx {
+		t.Errorf("YOffset = %d after moving to the second match, want %d (re-targeted despite same file)", got, secondIdx)
+	}
+	if !m.picker.preview.StyleLineFunc(secondIdx).GetReverse() {
+		t.Errorf("StyleLineFunc(%d) is not reverse-styled after re-targeting", secondIdx)
+	}
+	if m.picker.preview.StyleLineFunc(firstIdx).GetReverse() {
+		t.Errorf("StyleLineFunc(%d) (the previous match's line) is still reverse-styled", firstIdx)
+	}
+}
+
 // pickerRoot puts a fixture Root full of files whose names share a prefix
 // behind an already-open Picker, so a query can be typed a character at a
 // time and actually have something to find. Returns the model and the Root's
