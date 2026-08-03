@@ -605,7 +605,7 @@ func (m model) render() string {
 	case m.helpOpen:
 		return overlayHelp(frame, m.width, m.height, m.focus)
 	case m.picker.open:
-		return overlayPicker(frame, m.width, m.height, m.picker)
+		return overlayPicker(frame, m.width, m.height, m.picker, m.ripgrep)
 	default:
 		return frame
 	}

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"charm.land/lipgloss/v2"
 )
 
@@ -25,9 +27,14 @@ const (
 	minPickerHeight     = 10
 
 	// promptOuterHeight is the Prompt's own bordered box: border top and
-	// bottom, a title row (empty for now — M2.5 puts the mode/Scope
-	// indicator there), and one content row for the textinput itself.
-	promptOuterHeight = 4
+	// bottom, a title row (the mode/Scope indicator, M2.5), one content row
+	// for the textinput itself, and one more for the status line
+	// (pickerStatus). The status line lives in the Prompt's box rather than
+	// the Results box because it is the widest text the modal renders and the
+	// Prompt is the only region spanning the modal's full width — in the
+	// Results column (resultsPercent of it) "type at least 3 characters"
+	// would wrap at every ordinary terminal size.
+	promptOuterHeight = 5
 
 	// resultsPercent is the Results list's share of the modal's width, the
 	// remainder going to the Preview pane — the same shape rootsPercent
@@ -119,17 +126,82 @@ func (p picker) promptView(width int) string {
 	return p.input.View()
 }
 
+// pickerModeScope is the modal's mode-and-Scope indicator (S12's "the modal
+// shows its mode and Scope", M2.5), rendered as the Prompt box's title. It
+// is the Picker's answer to "what would Enter search?", and the surface
+// M5.1/M5.2's in-place switching will be seen through — the reason it reads
+// off p.mode/p.scope rather than being passed in as text.
+func pickerModeScope(p picker) string {
+	mode := "File"
+	if p.mode == grepMode {
+		mode = "Grep"
+	}
+	scope := "Active Root"
+	if p.scope == allRootsScope {
+		scope = "All Roots"
+	}
+	return mode + " · " + scope
+}
+
+// Picker status lines (S12, S14). Exact strings, asserted by
+// picker_view_test.go — they are the modal's only way of distinguishing
+// "nothing to show yet" from "nothing to show", so each is worded to say
+// which.
+const (
+	pickerBelowThresholdStatus = "type at least 3 characters"
+	pickerSearchingStatus      = "searching…"
+	pickerNoResultsStatus      = "no results"
+)
+
+// pickerStatus is the one line under the Prompt saying what state the search
+// is in (S12's empty states, S14's unavailability). Order is priority order,
+// most fundamental first: with no ripgrep nothing can ever be searched, so
+// that is said before anything about the query; below the threshold no search
+// was issued, so "no results" would be a lie; and until results labelled with
+// the current query arrive a search is either scheduled or in flight, which is
+// "searching", not "nothing found".
+//
+// Because results carry the query, mode and Scope they answer for
+// (pickerResults), "do these results describe what the Prompt now says" is a
+// comparison rather than an assumption — the only honest way to caption an
+// asynchronously-filled list (M2.4).
+func pickerStatus(p picker, avail ripgrepAvailability) string {
+	if !avail.available {
+		return "Picker unavailable: " + avail.reason
+	}
+	query := p.input.Value()
+	if len([]rune(query)) < pickerQueryMinLength {
+		return pickerBelowThresholdStatus
+	}
+	if p.results.query != query || p.results.mode != p.mode || p.results.scope != p.scope {
+		return pickerSearchingStatus
+	}
+	if p.searching {
+		return pickerSearchingStatus
+	}
+	if len(p.results.files) == 0 && len(p.results.grep) == 0 {
+		return pickerNoResultsStatus
+	}
+	if p.results.truncated {
+		return fmt.Sprintf("first %d results (truncated)", pickerResultCap)
+	}
+	return ""
+}
+
 // renderPicker composes the Picker modal's three regions (S1): a bordered
-// Prompt spanning the modal's width, Results and Preview side by side
-// beneath it. Prompt uses focusedBorderStyle — it always owns the keyboard
-// while the Picker is open, the same accent renderPane gives whichever
-// frame pane currently has focus — Results/Preview use the plain
-// borderStyle, same as an unfocused frame pane. M2.2 wires only this shell:
-// Results/Preview carry no content yet (M3.1/M3.2 fill them) and no
-// status/empty-state text (M2.5's job) — just the three regions, sized and
-// bordered.
-func renderPicker(p picker, l pickerLayout) string {
-	prompt := renderBox(focusedBorderStyle, l.prompt, "", p.promptView(l.prompt.content().width))
+// Prompt spanning the modal's width — titled with the mode/Scope indicator
+// and captioned with the status line (M2.5) — with Results and Preview side
+// by side beneath it. Prompt uses focusedBorderStyle — it always owns the
+// keyboard while the Picker is open, the same accent renderPane gives
+// whichever frame pane currently has focus — Results/Preview use the plain
+// borderStyle, same as an unfocused frame pane. Results/Preview still carry
+// no content (M3.1/M3.2 fill them).
+func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability) string {
+	promptContent := p.promptView(l.prompt.content().width)
+	if status := pickerStatus(p, avail); status != "" {
+		promptContent += "\n" + status
+	}
+	prompt := renderBox(focusedBorderStyle, l.prompt, pickerModeScope(p), promptContent)
 	results := renderBox(borderStyle, l.results, "Results", "")
 	preview := renderBox(borderStyle, l.preview, "Preview", "")
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
@@ -145,9 +217,9 @@ func renderPicker(p picker, l pickerLayout) string {
 // here is the suspenders to computePickerLayout's belt (layout-correct
 // sizing does not by itself guarantee lipgloss never pads a row wider, the
 // same reasoning overlayHelp's comment already spells out).
-func overlayPicker(frame string, width, height int, p picker) string {
+func overlayPicker(frame string, width, height int, p picker, avail ripgrepAvailability) string {
 	l := computePickerLayout(width, height)
-	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l))
+	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l, avail))
 	bw, bh := lipgloss.Width(box), lipgloss.Height(box)
 	x := max((width-bw)/2, 0)
 	y := max((height-bh)/2, 0)

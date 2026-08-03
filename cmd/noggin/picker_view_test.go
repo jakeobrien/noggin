@@ -140,3 +140,113 @@ func TestComputePickerLayoutNeverExceedsTheTerminal(t *testing.T) {
 		}
 	}
 }
+
+// TestPickerStatusStates is M2.5's own acceptance criterion: the rendered
+// text of each of the five states (S12's mode/Scope indicator, the
+// sub-threshold message, "no results" and the truncation notice; S14's
+// unavailability report). Each case builds the Picker state that state
+// describes and asserts against the real rendered frame, so the assertion
+// covers the whole path — status selection, the Prompt box's title and
+// caption rows, and the modal's own width being enough for the text.
+func TestPickerStatusStates(t *testing.T) {
+	// results labels a result set as answering query in File/Active Root
+	// mode, which is what a Picker that has just searched holds.
+	results := func(query string, files []pickerFile, truncated bool) pickerResults {
+		return pickerResults{query: query, mode: fileMode, scope: activeRootScope, files: files, truncated: truncated}
+	}
+	found := []pickerFile{{root: root{path: "/tmp/notes"}, path: "/tmp/notes/report.md"}}
+
+	for _, tc := range []struct {
+		name  string
+		avail ripgrepAvailability
+		setup func(p *picker)
+		want  []string
+		deny  []string
+	}{
+		{
+			name:  "mode and Scope indicator",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) {},
+			want:  []string{"File · Active Root"},
+		},
+		{
+			name:  "Grep and All Roots indicator",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) {
+				p.mode, p.scope = grepMode, allRootsScope
+			},
+			want: []string{"Grep · All Roots"},
+		},
+		{
+			name:  "below the query threshold",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) { p.input.SetValue("re") },
+			want:  []string{"type at least 3 characters"},
+			deny:  []string{"no results"},
+		},
+		{
+			name:  "no results",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) {
+				p.input.SetValue("zzz")
+				p.results = results("zzz", nil, false)
+			},
+			want: []string{"no results"},
+			deny: []string{"type at least 3 characters"},
+		},
+		{
+			name:  "truncated at the cap",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) {
+				p.input.SetValue("report")
+				p.results = results("report", found, true)
+			},
+			want: []string{"first 200 results (truncated)"},
+			deny: []string{"no results"},
+		},
+		{
+			name:  "ripgrep unavailable",
+			avail: ripgrepAvailability{reason: "ripgrep (rg) not found on PATH"},
+			setup: func(p *picker) { p.input.SetValue("report") },
+			want:  []string{"Picker unavailable: ripgrep (rg) not found on PATH"},
+			deny:  []string{"type at least 3 characters", "no results"},
+		},
+		{
+			name:  "still searching",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) {
+				p.input.SetValue("report")
+				p.searching = true
+			},
+			want: []string{"searching"},
+			deny: []string{"no results"},
+		},
+		{
+			name:  "results that answer the current query say nothing extra",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) {
+				p.input.SetValue("report")
+				p.results = results("report", found, false)
+			},
+			deny: []string{"no results", "searching", "type at least 3 characters", "truncated"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := openedFixture(t, 80, 24).withRipgrep(tc.avail)
+			m, _ = m.openPicker()
+			tc.setup(&m.picker)
+
+			joined := strings.Join(plainLines(m.View().Content), "\n")
+			for _, want := range tc.want {
+				if !strings.Contains(joined, want) {
+					t.Errorf("rendered modal is missing %q\n%s", want, joined)
+				}
+			}
+			for _, deny := range tc.deny {
+				if strings.Contains(joined, deny) {
+					t.Errorf("rendered modal unexpectedly contains %q\n%s", deny, joined)
+				}
+			}
+		})
+	}
+}

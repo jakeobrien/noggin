@@ -616,3 +616,30 @@
   keystroke of every burst, i.e. the least useful query). 120ms is a build-time judgment call,
   not spec'd; S8's "no memory" is untouched because a generation count carries no information
   about mode, Scope or query.
+
+## D42: Without ripgrep the Picker still opens and says why, and every status line lives in the Prompt box
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: Building M2.5 (status and empty states). S14 says "the Pickers are unavailable, and
+  reaching for one says why" without saying where "why" appears — refusing to open (a footer
+  message, like `startEdit`'s "no document open to edit") and opening-but-inert both satisfy
+  the words. Separately, S12's four status messages needed a home: the Results box (their
+  natural place once M3.1 gives it rows) is `resultsPercent` of the modal's width, ~23 cells
+  at 80x24, where "type at least 3 characters" wraps.
+- Decision: (1) the Picker opens normally with no rg and reports `Picker unavailable: <reason>`
+  in the modal, dispatching no search (`model.searchable` gates both search paths). (2) all
+  status text renders as one line inside the Prompt box, under the textinput, with the
+  mode/Scope indicator as that box's title (`promptOuterHeight` 4 → 5); `pickerStatus` picks
+  exactly one message by priority (unavailable → below threshold → searching → no results →
+  truncated).
+- Why: low-risk, reversible, no spec surface — logged not asked. Opening keeps S1's "reachable
+  from every Focus" literally true and puts the explanation where the user looked, rather than
+  in a footer line the next keystroke clears (D22); it also keeps M2.1–M2.4's tests meaningful
+  on a machine without rg. The Prompt box is the only region spanning the modal's full width,
+  so it is the only place the longest message fits unwrapped at ordinary terminal sizes, and
+  a caption directly under the query reads as being *about* that query. `pickerStatus` compares
+  the results' own (query, mode, Scope) labels against the Prompt's rather than assuming they
+  match, which is what makes "searching…" distinguishable from "no results" under M2.4's async
+  fill.

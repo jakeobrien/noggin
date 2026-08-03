@@ -31,6 +31,19 @@ const (
 // a pause between words still feels immediate.
 const pickerSearchDebounce = 120 * time.Millisecond
 
+// pickerQueryMinLength is S12's query threshold: neither Picker searches
+// until at least this many characters are typed, and below it the Picker
+// says so instead (pickerStatus, M2.5). Enforced at both search gates
+// (queuePickerSearch and dispatchPickerSearch) for the same reason the
+// empty-Prompt refusal it replaces was: whichever path scheduled a timer,
+// no search may escape for a sub-threshold query.
+//
+// The number is S12's own ("at least 3 characters"), not a build-time
+// choice: one- and two-character queries match a large fraction of any real
+// collection, so searching them spends an rg run over the whole Scope to
+// produce a result list nobody wanted.
+const pickerQueryMinLength = 3
+
 // pickerResults is one completed search's answer, labelled with the query,
 // mode and Scope it answers *for*. The labels are the point: results arrive
 // asynchronously, so the only way the modal can render honestly is for a
@@ -158,13 +171,16 @@ type pickerResultsMsg struct {
 // is precisely how the Prompt stays responsive no matter how large the
 // Scope (S1's "the Prompt never feels blocked").
 //
-// An empty Prompt is not a search: it clears results outright and schedules
-// nothing, so deleting a query back to nothing cannot leave the previous
-// query's results on screen, and rg is never handed an empty pattern (which
-// matches every line of every file — see grepFiles).
+// A sub-threshold Prompt is not a search (S12, pickerQueryMinLength): it
+// clears results outright and schedules nothing, so deleting a query back
+// below the threshold cannot leave the previous query's results on screen,
+// and rg is never handed an empty pattern (which matches every line of every
+// file — see grepFiles) nor a one-character one. A session without ripgrep
+// (S14) is the same story: there is nothing to search on, so nothing is
+// scheduled and the modal reports why instead (pickerStatus).
 func (m model) queuePickerSearch() (model, tea.Cmd) {
 	m.picker.seq++
-	if m.picker.input.Value() == "" {
+	if !m.searchable() {
 		m.picker.results = pickerResults{}
 		m.picker.searching = false
 		return m, nil
@@ -180,16 +196,27 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 // Picker has since been dismissed. This is the debounce: every keystroke
 // schedules a timer, but only the last one of a burst still matches
 // m.picker.seq when it matures, so a burst of n keystrokes dispatches one
-// search rather than n (M2.4). An empty Prompt is refused here as well as in
-// queuePickerSearch, so "never hand rg an empty pattern" holds no matter
-// which path scheduled the timer.
+// search rather than n (M2.4). The threshold and ripgrep gates (m.searchable)
+// are re-checked here as well as in queuePickerSearch, so "no search for a
+// sub-threshold query, none at all without rg" holds no matter which path
+// scheduled the timer.
 func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
-	if !m.picker.open || msg.seq != m.picker.seq || m.picker.input.Value() == "" {
+	if !m.picker.open || msg.seq != m.picker.seq || !m.searchable() {
 		return m, nil
 	}
 	m.picker.searching = true
 	return m, pickerSearchCmd(m.picker.seq, m.picker.mode, m.picker.scope,
 		m.picker.input.Value(), m.roots.rootList(), m.roots.active)
+}
+
+// searchable is whether the current Prompt may be searched at all: ripgrep
+// present (S14 — it supplies both the file list and the text search, so
+// without it there is no search to run) and the query at or above S12's
+// threshold. Both search gates consult it, and pickerStatus reports the
+// same two conditions to the user, so what the modal says and what the model
+// does cannot drift apart.
+func (m model) searchable() bool {
+	return m.ripgrep.available && len([]rune(m.picker.input.Value())) >= pickerQueryMinLength
 }
 
 // pickerSearchCmd is the search itself, as a tea.Cmd: M1's blocking,

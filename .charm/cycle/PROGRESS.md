@@ -17,49 +17,48 @@
 
 ## Cursor
 
-Current task: M2.5
+Current task: M3.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.4 done: async, debounced search dispatch — the codebase's first genuinely concurrent
-`tea.Cmd`. Design is D41: one monotonic `picker.seq` generation counter; every change to what
-would be searched bumps it and schedules `tea.Tick(120ms)` carrying that seq
-(`pickerSearchMsg`); a matured timer dispatches the real search only if its seq is still
-current (that is the debounce), and a returning `pickerResultsMsg` is applied only if its seq
-is still current (that is the stale-discard). `openPicker`/`dismissPicker` bump seq rather than
-zeroing it, so a search in flight across a dismissal cannot be accepted by the next Picker —
-the one field S8's "replace the whole struct" hygiene deliberately carries over, documented as
-carrying no user-visible information. `pickerSearchCmd` is a pure function of copied-in values
-(roots, active, mode, scope, query) because it runs concurrently with `Update`.
+M2.5 done — M2 (the Picker modal shell) is complete. Two decisions, both logged as D42:
+(1) with no rg the Picker still *opens* and says `Picker unavailable: <reason>` inside the
+modal rather than refusing to open with a footer message — keeps S1's "reachable from every
+Focus" literal and keeps M2.1–M2.4's tests meaningful without rg; (2) all status text renders
+on one line inside the Prompt box, under the textinput, with the mode/Scope indicator as that
+box's title (`promptOuterHeight` 4 → 5) — the Prompt is the only region spanning the modal's
+full width, so the longest message fits unwrapped (in the Results column it would wrap at
+every ordinary size).
 
-New state: `picker.seq`, `picker.searching`, `picker.results pickerResults{query, mode, scope,
-files, grep, truncated}`. Results are labelled with what they answer *for* — M2.5's status /
-empty states read those labels rather than assuming results match the current Prompt, and
-`searching` is what distinguishes "found nothing" from "still looking". Nothing renders any of
-it yet (M2.5/M3.1 do). `rootsNav.rootList()` is new: the search layer's `(roots, active)` shape
-read from the pane that already owns the session's roots, so no second copy can drift.
+`pickerStatus(p, avail)` (picker_view.go) picks exactly one message by priority: unavailable →
+below threshold (`type at least 3 characters`) → `searching…` → `no results` → `first 200
+results (truncated)` → "" (nothing to say). "searching" is *not* just `p.searching`: results
+whose (query, mode, scope) labels don't match the Prompt's also read as searching, which is how
+the gap between keystroke and matured timer stays honest. `pickerModeScope(p)` renders
+`File · Active Root` / `Grep · All Roots` — the surface M5.1/M5.2's in-place switching will be
+seen through. `overlayPicker`/`renderPicker` now take `ripgrepAvailability` (threaded from
+`m.ripgrep` in `View`).
 
-Gotchas: an empty Prompt is refused in both `queuePickerSearch` and `dispatchPickerSearch` (rg
-with an empty pattern matches every line of every file); a keystroke the textinput consumes
-without changing the query (cursor moves) must not bump seq, or it would discard a live search
-for a still-current query — both have tests. The 3-character threshold is *not* here; it is
-M2.5's criterion.
+The threshold itself is `pickerQueryMinLength = 3` behind `model.searchable()` (rg available
+AND query ≥ 3 runes), consulted by *both* `queuePickerSearch` and `dispatchPickerSearch` —
+it replaced the old empty-Prompt refusal (empty is below threshold, so the rg-empty-pattern
+hazard is still covered). Gotcha for later tasks: any fixture that must actually search needs
+`withRipgrep(detectRipgrep())` — `openedFixture` does not set it, so `pickerRoot` (picker_test.go)
+now does.
 
-Tests (`picker_test.go`, 5 new): no sleeps, no goroutines, no test seam — see
-`findings/async-cmd-testing.md`. Ticks are synthesized from each keystroke's recorded seq and
-played back; "a search was issued" is observable as `Update` returning a non-nil Cmd for a
-`pickerSearchMsg`; the search Cmd is called inline against a real rg over a `t.TempDir()` Root.
-Evidence for the criterion: typing "repor" (5 keystrokes) dispatches exactly 1 search and the
-displayed results answer "repor". `make check` and `make check-pty` both green.
+Evidence for the criterion: `TestPickerStatusStates` (picker_view_test.go, 8 subtests) asserts
+the rendered text of all five states plus "searching" and the say-nothing case against the real
+frame; `TestPickerIssuesNoSearchBelowTheThreshold` shows "r"/"re" dispatch 0 searches while
+"rep" dispatches 1. `make check` and `make check-pty` both green.
 
-Next step: M2.5 — status and empty states (mode/Scope indicator, sub-threshold message, no
-results, truncated-at-cap, ripgrep-unavailable), including "no search issued for a 1- or
-2-character query". The threshold belongs in `queuePickerSearch`/`dispatchPickerSearch`
-alongside the existing empty-Prompt refusal; `m.ripgrep` (model.go) already carries S14's
-availability and reason.
+Next step: M3.1 — wire the File Picker's results into the Results region, each row showing the
+file's Root and its path relative to that Root, ordered by match strength. `pickerResults.files`
+is already populated and labelled; the Results box currently renders empty content. Note M2/M3
+tasks have never been code-reviewed or validated (all `-` below), so a review/validate gate at
+the M2→M3 boundary is available if wanted.
 
 ## Status
 
@@ -73,7 +72,7 @@ availability and reason.
 | M2.2 | done   | -        | -         |      |
 | M2.3 | done   | -        | -         |      |
 | M2.4 | done   | -        | -         |      |
-| M2.5 | todo   | -        | -         |      |
+| M2.5 | done   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |
 | M3.2 | todo   | -        | -         |      |
 | M3.3 | todo   | -        | -         |      |

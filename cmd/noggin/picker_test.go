@@ -217,7 +217,10 @@ func pickerRoot(t *testing.T) (model, string) {
 	writeFileContent(t, filepath.Join(dir, "reporting.md"), "reporting notes\n")
 	writeFileContent(t, filepath.Join(dir, "other.md"), "unrelated\n")
 
-	m := openedFixture(t, 80, 24)
+	// The session must know rg is present: both search gates consult
+	// m.ripgrep (S14, m.searchable), so a fixture without it would never
+	// dispatch anything. Callers requireRipgrep, so detection here is true.
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
 	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
 	m, _ = m.openPicker()
 	return m, dir
@@ -400,6 +403,60 @@ func TestPickerEmptyPromptClearsResultsAndSearchesNothing(t *testing.T) {
 	m, searches = deliverPickerTicks(t, m, deleted)
 	if searches != 0 {
 		t.Errorf("dispatched %d searches for an empty prompt, want 0", searches)
+	}
+}
+
+// TestPickerIssuesNoSearchBelowTheThreshold is the second half of M2.5's own
+// acceptance criterion: no search is issued for a 1- or 2-character query
+// (S12's threshold), while the same query one character longer does search.
+// Checked through the full keystroke-then-timer path, so it covers both
+// gates: a sub-threshold keystroke schedules a timer that dispatches nothing.
+func TestPickerIssuesNoSearchBelowTheThreshold(t *testing.T) {
+	requireRipgrep(t)
+
+	for _, query := range []string{"r", "re"} {
+		m, _ := pickerRoot(t)
+		m, seqs := typePickerQuery(t, m, query)
+		m, searches := deliverPickerTicks(t, m, seqs)
+
+		if searches != 0 {
+			t.Errorf("query %q dispatched %d searches, want 0", query, searches)
+		}
+		if m.picker.results.query != "" {
+			t.Errorf("query %q produced results for %q, want none", query, m.picker.results.query)
+		}
+		if m.picker.searching {
+			t.Errorf("query %q left searching = true, want false", query)
+		}
+	}
+
+	m, _ := pickerRoot(t)
+	m, seqs := typePickerQuery(t, m, "rep")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 {
+		t.Errorf("query %q dispatched %d searches, want 1 (the threshold is 3)", "rep", searches)
+	}
+	if m.picker.results.query != "rep" {
+		t.Errorf("results answer %q, want %q", m.picker.results.query, "rep")
+	}
+}
+
+// TestPickerIssuesNoSearchWithoutRipgrep is S14's other half in model terms:
+// on a session where rg was not found, an above-threshold query still types
+// but dispatches nothing (the rendered explanation is
+// TestPickerStatusStates' "ripgrep unavailable" case).
+func TestPickerIssuesNoSearchWithoutRipgrep(t *testing.T) {
+	m, _ := pickerRoot(t)
+	m = m.withRipgrep(ripgrepAvailability{reason: "ripgrep (rg) not found on PATH"})
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, searches := deliverPickerTicks(t, m, seqs)
+
+	if m.picker.input.Value() != "report" {
+		t.Errorf("prompt = %q, want %q (typing still works without rg)", m.picker.input.Value(), "report")
+	}
+	if searches != 0 {
+		t.Errorf("dispatched %d searches with no rg available, want 0", searches)
 	}
 }
 
