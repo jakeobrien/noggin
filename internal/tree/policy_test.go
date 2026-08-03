@@ -31,8 +31,8 @@ func TestIsReadable(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := isReadable(c.name); got != c.want {
-				t.Errorf("isReadable(%q) = %v, want %v", c.name, got, c.want)
+			if got := IsReadable(c.name); got != c.want {
+				t.Errorf("IsReadable(%q) = %v, want %v", c.name, got, c.want)
 			}
 		})
 	}

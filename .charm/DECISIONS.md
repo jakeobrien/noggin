@@ -469,3 +469,29 @@
   list, a preview viewport, a mode and a Scope. The common factor is about four lines of
   ordering. Refactoring toward an abstraction while the third case is still being discovered
   would generalize from guesses; if a fourth modal arrives, the shape will be evident.
+
+## D36: M1.2's `rg --files` runs with `--no-require-git`, and the Readable allowlist is exported from `internal/tree` rather than duplicated
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: Building M1.2 (scoped, allowlist-filtered file listing). Two small implementation
+  calls surfaced that the plan didn't anticipate. (1) Verified against the sandbox's real rg
+  (15.1.0): `rg --files` only honours a `.gitignore` file when the target directory is inside
+  a git repository (has a `.git` ancestor) — a `.gitignore` in a plain, non-git folder is
+  silently *not* applied by default. A noggin Root is just a folder, not necessarily a git
+  checkout. (2) `internal/tree/policy.go`'s `isReadable` (D23's allowlist) is unexported, but
+  `cmd/noggin`'s new search layer needs the identical check applied to rg's output — the same
+  allowlist, not a second copy of it.
+- Decision: (1) Pass `--no-require-git` on every `rg --files`/grep invocation the search layer
+  makes, so a Root's own `.gitignore` counts regardless of whether it's a git checkout — this
+  is what makes D28's "rg's ignore rules govern" hold for a Root in general, not just a Root
+  that happens to be a git repo. (2) Export `isReadable` as `tree.IsReadable`; `cmd/noggin`'s
+  `listFiles` (`files_search.go`) calls it directly rather than re-declaring the allowlist,
+  keeping policy.go's "the one place it lives" comment true across the package boundary.
+- Why: both low-risk and reversible (a CLI flag, an export), so logged rather than asked.
+  Skipping (1) would mean a Picker in a non-git notes folder ignores its own `.gitignore` for
+  no reason a user would expect, which is a worse surprise than the flag is a cost. Skipping
+  (2) would mean the allowlist drifts the first time someone edits one copy and not the other
+  — D23's whole point was there being one place to edit. M1.4 (grep) will shell out to rg the
+  same way and should carry `--no-require-git` too.

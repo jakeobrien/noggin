@@ -77,7 +77,7 @@ func walkDir(dir *Node, rel string, stack []ignoreFile) error {
 				return err
 			}
 			dir.Children = append(dir.Children, child)
-		} else if isReadable(name) {
+		} else if IsReadable(name) {
 			dir.Children = append(dir.Children, child)
 		}
 	}

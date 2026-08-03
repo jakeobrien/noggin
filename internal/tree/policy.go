@@ -32,11 +32,16 @@ var readable = struct {
 	},
 }
 
-// isReadable reports whether a file with the given base name is a Readable
+// IsReadable reports whether a file with the given base name is a Readable
 // file (S6, GLOSSARY.md) noggin will show. Directories are not subject to
 // this — they are always listed (S6: folders with nothing readable are still
 // shown).
-func isReadable(name string) bool {
+//
+// Exported so a Picker's search layer (cmd/noggin, C2/M1.2) can apply the
+// same allowlist to ripgrep's file list that the tree walk applies to its
+// own — the allowlist stays the one place it's declared (this file's own
+// doc comment) rather than growing a second copy for rg's output (S13).
+func IsReadable(name string) bool {
 	if ext := filepath.Ext(name); ext != "" {
 		return readable.exts[strings.ToLower(ext)]
 	}
