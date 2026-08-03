@@ -17,33 +17,42 @@ import (
 // re-listed by hand, per that slice's own comment. keys.Picker is added to
 // every case for the same reason (D39/M2.3): opening the Picker is global
 // and reachable from any Focus, so its binding belongs in the discoverability
-// backstop everywhere, the same way Edit/Navigator already are — the
-// Picker's *own* keys (PickerUp/PickerMode/...) are not listed here, since
-// the Help Modal is unreachable while the Picker owns the keyboard (see
-// handlePickerInput; the same precedent as Find, which the Help Modal
-// likewise never lists find-editing-specific state for).
+// backstop everywhere, the same way Edit/Navigator already are.
+//
+// keys.PickerUp/PickerDown/PickerMode/PickerScope are also added to every
+// case, even though they only do anything once the Picker is already open
+// (D46/M2.3a, TRIAGE T5): the Help Modal itself is unreachable while the
+// Picker owns the keyboard (see handlePickerInput), so these three panes —
+// before the Picker opens — are the *only* place Help is ever reachable
+// from to document them. Leaving them out (the original M2.3 shape) left
+// S2's "Footer and Help Modal cover the Picker's actions" only half met:
+// they lived solely in the footer's pickerHintText, itself fragile (can
+// truncate under a narrow terminal with no Help fallback).
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{
 			keys.Activate, keys.Star, keys.LineUp, keys.LineDown,
 			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
 			keys.Help, keys.Quit,
 		}
 	case filesPane:
 		return []key.Binding{
 			keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown,
 			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
 			keys.Help, keys.Quit,
 		}
 	default: // viewerPane
-		bindings := make([]key.Binding, 0, len(scrollActions)+11)
+		bindings := make([]key.Binding, 0, len(scrollActions)+15)
 		for _, a := range scrollActions {
 			bindings = append(bindings, a.binding)
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
 			keys.Edit, keys.Navigator, keys.Picker, keys.NextPane, keys.PrevPane,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
 			keys.Help, keys.Quit,
 		)
 	}

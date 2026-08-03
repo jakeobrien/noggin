@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -252,6 +253,34 @@ func TestHelpUnreachableWhilePickerOpen(t *testing.T) {
 	}
 	if got := m.picker.input.Value(); got != "?" {
 		t.Errorf("prompt = %q, want %q (the ? typed into it)", got, "?")
+	}
+}
+
+// TestHelpBindingsListPickersOwnBindingsFromEveryPane is M2.3a's own
+// acceptance criterion (D46/TRIAGE T5): the Help Modal is by design
+// unreachable while the Picker owns the keyboard (handlePickerInput), so
+// the three panes Help *is* reachable from, before the Picker opens, are
+// where its own in-Picker actions (PickerUp/PickerDown/PickerMode/
+// PickerScope) must be discoverable — not just keys.Picker, the key that
+// opens it (already covered by TestHelpBindingsNameThePickerFromEveryPane).
+// Closes the gap the footer's pickerHintText alone left open (fragile under
+// a narrow terminal, with no Help fallback).
+func TestHelpBindingsListPickersOwnBindingsFromEveryPane(t *testing.T) {
+	own := []key.Binding{keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope}
+	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+		bindings := helpBindings(p)
+		for _, want := range own {
+			found := false
+			for _, b := range bindings {
+				if b.Help().Key == want.Help().Key && b.Help().Desc == want.Help().Desc {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("pane %v: helpBindings missing Picker's own binding %q (%q)", p, want.Help().Key, want.Help().Desc)
+			}
+		}
 	}
 }
 
