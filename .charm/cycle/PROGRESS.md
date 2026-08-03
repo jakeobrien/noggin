@@ -17,29 +17,30 @@
 
 ## Cursor
 
-Current task: M3.3b
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M3.3a done (this session, D49/TRIAGE T7+T8): two new activatePicker tests in picker_test.go.
-`TestPickerActivateWithAReadErrorLeavesSessionRunning` mirrors
-`TestActivateWithAReadErrorLeavesSessionRunning`'s shape (files_test.go) for a Result whose
-file is missing at Activate time — asserts the Picker still dismisses, the Active Document is
-unchanged, and a footer message is set. `TestPickerActivateIsANoOpInGrepMode` presses Activate
-with `mode = grepMode` and a populated grep result set — asserts no state changes at all (the
-Picker stays open, no document opens, message unchanged), since `pickerPreviewCandidate`
-gates on `fileMode` and M4.1 hasn't wired a Grep candidate yet. Both pass; `make check` green.
-No in-flight changes.
+M3.3b done (this session, D49/TRIAGE T9):
+`TestPickerActivateOpensResultAsActiveDocumentOnly`'s expansion check (picker_test.go) now
+clones `m.files.expanded` before Activate and compares the clone against `got.files.expanded`
+via `reflect.DeepEqual` (new import), replacing the old `len(...) != wantExpanded` cardinality
+check. Verified by temporarily swapping `activatePicker`'s post-open `m.files.expanded` for a
+same-count-but-different-key map (`{"/bogus": true}`) — the old check would have passed that,
+the new one correctly fails it — then reverted. `make check` green. No in-flight changes.
 
-Next step: M3.3b (TRIAGE T9, D49) — strengthen
-`TestPickerActivateOpensResultAsActiveDocumentOnly`'s expansion assertion (picker_test.go, the
-`len(got.files.expanded) != wantExpanded` check) to compare the `m.files.expanded` key/set
-itself, not just its cardinality, so a same-count substitution would fail the test. After that,
-M3 and all its sub-tasks are fully closed and the cursor moves to M4.1 (Grep mode wired to
-M1.4).
+M3 (File Picker end to end) and all its sub-tasks (M3.1/M3.1a, M3.2/M3.2a/M3.2b,
+M3.3/M3.3a/M3.3b) are now fully done.
+
+Next step: M4.1 — wire Grep mode to M1.4 (file, line number, matching line per row, truncated
+to the pane). M4.2 (preview scrolled to the matched line) reuses M3.2's preview mechanism,
+already fixed by M3.2a, so no known blockers there. Before M4.3/M4.4, re-read D34: rg's
+raw-file line numbers don't correspond to the Document Viewer's rendered line space, so the
+hand-off re-derives the match by occurrence ordinal rather than trusting rg's line number,
+with a documented degrade path.
 
 Also queued, non-blocking — pick up opportunistically or before M7 hardening: M7.1a (T11,
 terminology housekeeping).
@@ -69,7 +70,7 @@ No blockers. TRIAGE.md empty.
 | M3.2b| done   | -        | -         | TRIAGE T12 |
 | M3.3 | done   | 2026-08-03 | -         |      |
 | M3.3a| done   | -        | -         | D49 (TRIAGE T7, T8) |
-| M3.3b| todo   | -        | -         | D49 (TRIAGE T9) |
+| M3.3b| done   | -        | -         | D49 (TRIAGE T9) |
 | M4.1 | todo   | -        | -         |      |
 | M4.2 | todo   | -        | -         |      |
 | M4.3 | todo   | -        | -         |      |

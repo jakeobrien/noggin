@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -338,7 +339,15 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	m = m.openFolder(nodeA)
 	m.files = m.files.move(1) // off the tree's initial selection
 	wantSelected := m.files.selected
-	wantExpanded := len(m.files.expanded)
+	// A cloned copy, not just m.files.expanded itself (still less its
+	// count): the whole key set must match afterwards (M3.3b/D49/TRIAGE
+	// T9), not merely its cardinality — a same-count substitution (e.g.
+	// Activate collapsing rootA's node but expanding a different one) would
+	// pass a count-only check.
+	wantExpanded := make(map[string]bool, len(m.files.expanded))
+	for k, v := range m.files.expanded {
+		wantExpanded[k] = v
+	}
 
 	m, _ = m.openPicker()
 	m.picker.input.SetValue("report")
@@ -364,8 +373,8 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	if got.files.selected != wantSelected {
 		t.Errorf("Files Nav selection = %d, want unchanged %d", got.files.selected, wantSelected)
 	}
-	if len(got.files.expanded) != wantExpanded {
-		t.Errorf("Files Nav expansion changed: %d entries, want unchanged %d", len(got.files.expanded), wantExpanded)
+	if !reflect.DeepEqual(got.files.expanded, wantExpanded) {
+		t.Errorf("Files Nav expansion = %v, want unchanged %v", got.files.expanded, wantExpanded)
 	}
 	if got.files.root.Path != rootA {
 		t.Errorf("Files Nav root = %q, want unchanged %q", got.files.root.Path, rootA)
