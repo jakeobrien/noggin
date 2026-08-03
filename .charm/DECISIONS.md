@@ -542,3 +542,22 @@
 - Also: smart case is rg's own `--smart-case` flag rather than a reimplementation of
   `find.go`'s fold-and-compare (verified it gives find.go's exact semantic: all-lowercase
   matches either case, any uppercase makes it case-sensitive).
+
+## D39: The Picker opens on ctrl+p; Cancel (esc) dismisses it
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-03
+- Context: Building M2.1 (Picker state plus open/dismiss). SPEC/PLAN name no key for opening
+  the Picker (S1 only requires "openable from any Focus"); keymap.go's existing bindings
+  (`/`, `e`, `ctrl+n`, `?`, `tab`) were all taken.
+- Decision: a new global `keys.Picker` bound to `ctrl+p` opens it (`model.openPicker`), the
+  same "reachable from every Focus" shape `Edit`/`Find`/`Navigator`/`Help` already have.
+  Dismissal reuses the existing generic `keys.Cancel` (esc) rather than a new binding —
+  `handlePickerInput` mirrors `handleHelpInput`'s shape (owns the keyboard while open, only
+  Cancel does anything yet).
+- Why: low-risk and reversible (one keymap.go entry, GLOSSARY.md already calls every binding
+  "provisional") — logged rather than asked. `ctrl+p` is a common "quick open" convention
+  (VS Code, Sublime, etc.) and collides with nothing already bound. M2.3 (Footer/Help Modal
+  coverage) and M2.2 (layout) are the tasks that make the binding visible/discoverable; this
+  task only wires the state machine.

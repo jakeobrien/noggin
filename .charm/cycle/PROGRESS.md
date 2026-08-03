@@ -17,54 +17,39 @@
 
 ## Cursor
 
-Current task: M2.1
+Current task: M2.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.4 done, closing M1 (the whole headless search layer): `files_search.go` gained
-`grepResult{file pickerFile, line int, text string}` and `grepFiles(roots, active, scope,
-query) (results []grepResult, truncated bool)`. Key call: `grepFiles` runs rg over
-`listFiles`' *explicit* file list rather than letting rg walk Scope's directories itself
-(D38, a deviation from M1.3's handoff assumption) — verified against the sandbox's real rg
-(15.1.0) that rg only honours `.gitignore`/hidden-file rules for directories it walks, not
-for files named explicitly on its command line, so a second directory-walking rg call for
-grep would have leaked ignored files that the File Picker's own `listFiles` already excludes.
-Literal matching is rg's `--fixed-strings`; smart case is rg's own `--smart-case`, verified
-to give `find.go`'s exact S8 semantic (all-lowercase matches either case, any uppercase is
-case-sensitive) — no reimplementation needed. Output is parsed from rg's `--json` JSON-Lines
-format (`rgJSONMessage`), not plain `path:line:text` text, since a colon can appear in either
-a path or a line's text and JSON does not leave that ambiguous. Cap/truncation is the same
-shape as `fuzzyFiles` (`pickerResultCap`, D37), so both Pickers report it identically.
-Verified: a query with regex metacharacters (`v1.2`) matches only its literal occurrence, not
-`v1x2`; an all-lowercase query matches mixed-case text while an uppercase query does not match
-a differently-cased occurrence; a non-Readable file in Scope is never searched even when it
-contains the query; a match count over `pickerResultCap` comes back capped with the flag set.
-`go test ./...`, `make check`, `make check-pty` all green (see D38 for the full reasoning).
+M2.1 done: new `cmd/noggin/picker.go` — `picker{open, mode, scope, input textinput.Model}`,
+`newPicker()` (closed/File/ActiveRoot/empty), `model.openPicker()`/`dismissPicker()`
+(replace-the-whole-struct, so S8 "no memory" holds by construction, not by clearing fields),
+and `handlePickerInput` (Cancel-only for now, same shape as `handleHelpInput`). Wired into
+`model.go`: new `picker picker` field, a global `keys.Picker` case (`ctrl+p`, D39) in the same
+position as Edit/Find/Navigator/Help, and a `m.picker.open` gate ahead of the main switch so
+an open Picker owns the keyboard the same exclusive way `findEditing()`/`helpOpen` already do.
+No rendering/compositing yet (M2.2's job) — `render()` does not consult `m.picker` at all, so
+the "frame restored byte-for-byte after dismissal" criterion holds trivially for now and
+becomes a real test once M2.2 adds the overlay. Tests: `picker_test.go` — opens from every
+Focus and with the Navigator hidden, always resets to File/ActiveRoot/empty-Prompt regardless
+of what was perturbed before dismissal, dismissal restores Active Document/Root/scroll offset
+and the exact rendered frame, and `q` while open does not quit. `allBindings()`/`keyMap`
+field-count test updated for the new binding. `go test ./...`, `make check`, `make check-pty`
+all green (no pty coverage added yet — M7.1's job).
 
-Next step: M2.1 — Picker state plus open/dismiss, reachable from every Focus including while
-the Navigator is hidden, always opening as File Picker / Active Root / empty Prompt. This is
-the first UI-layer task (M2), building on M1's now-complete headless search layer
-(`fuzzyFiles`, `grepFiles`, `listFiles`, `pickerScope`) — read
-`findings/codebase-picker-integration.md` before starting (modal dispatch, compositing, the
-Find-state surface a grep hand-off will reuse) if it hasn't been read yet this cycle. Two
-known new-ground gaps ahead, not this task's problem yet: (1) no async/`tea.Cmd`/debounce
-precedent exists anywhere in the repo — M2.4 invents it; (2) ripgrep's raw-file line numbers
-don't correspond to the Document Viewer's rendered/wrapped line numbers — D34 records how
-M4.3/M4.4 address that.
-
-M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep.
-
-M1 validated 2026-08-03 (fresh-context subagent, functional): all four criteria pass, `make
-check`/`make check-pty` green with real rg 15.1.0. Verdict pass-with-known-gaps — TRIAGE T1
-(ARG_MAX silence in grep's file-list argv) and T4 (M1.1's rg-absent launch property has no
-automated test) both confirmed still open and accurately describe present code, but neither
-falls under any M1 task's literal acceptance criterion, so neither blocks M1's sign-off; T4's
-underlying property was independently confirmed by hand (rg-absent pty run) though the repo's
-test suite still lacks it. No PROGRESS status flips and no new TRIAGE items — both already
-tracked correctly. See D38-adjacent handoff above for the implementation itself.
+Next step: M2.2 — modal layout and compositing (Prompt/Results/Preview inside one modal
+composited over the live frame, clamped to the terminal, `TestHelpOverlayNeverExceedsTheTerminal`-shaped
+test). `help.go`'s `overlayHelp` (clamp with MaxWidth/MaxHeight, then
+`lipgloss.NewCompositor`) is the direct precedent to reuse/adapt — see
+`findings/codebase-picker-integration.md`'s "Compositing and layout" section. Results/Preview
+content itself can stay empty placeholders; M3.1/M3.2 wire real content. No new-ground gaps
+for this task specifically — M2.4 (async `tea.Cmd`/debounce, no in-repo precedent) and
+M4.3/M4.4 (rg raw-line vs. rendered-viewport-line addressing, D34) are later tasks' problems.
+M6 (highlighting) is the pre-agreed cut per D32; drop it before trimming grep if the cycle
+runs long.
 
 ## Status
 
@@ -74,7 +59,7 @@ tracked correctly. See D38-adjacent handoff above for the implementation itself.
 | M1.2 | done   | 2026-08-03 | 2026-08-03 |  |
 | M1.3 | done   | 2026-08-03 | 2026-08-03 |  |
 | M1.4 | done   | 2026-08-03 | 2026-08-03 |  |
-| M2.1 | todo   | -        | -         |      |
+| M2.1 | done   | -        | -         |      |
 | M2.2 | todo   | -        | -         |      |
 | M2.3 | todo   | -        | -         |      |
 | M2.4 | todo   | -        | -         |      |

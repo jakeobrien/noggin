@@ -80,10 +80,15 @@ type model struct {
 	// downstream re-shells-out to ask; it does not affect the launch path
 	// itself — a session with no ripgrep still launches and reads normally.
 	ripgrep ripgrepAvailability
+
+	// picker is the S1 modal's state (M2.1): open/closed, mode, Scope and
+	// Prompt. Reachable from every Focus, so — like helpOpen — it never
+	// touches m.focus; it is a layer over the frame, not a pane.
+	picker picker
 }
 
 func newModel() model {
-	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), roots: newRootsNav()}
+	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), roots: newRootsNav(), picker: newPicker()}
 }
 
 // withStorePath sets the resolved starred-roots config path (M3.2's
@@ -366,6 +371,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.helpOpen {
 			return m.handleHelpInput(msg), nil
 		}
+		// The Picker (S1) is reachable from every Focus and, once open, owns
+		// the keyboard the same exclusive way a find-in-progress or the Help
+		// Modal does — see handlePickerInput.
+		if m.picker.open {
+			return m.handlePickerInput(msg)
+		}
 		switch {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
@@ -379,6 +390,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.toggleNavigator(), nil
 		case key.Matches(msg, keys.Help):
 			return m.openHelp(), nil
+		case key.Matches(msg, keys.Picker):
+			return m.openPicker()
 		case key.Matches(msg, keys.Edit):
 			return m.startEdit()
 		case key.Matches(msg, keys.Find):

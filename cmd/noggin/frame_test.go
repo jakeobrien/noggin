@@ -233,7 +233,7 @@ func allBindings() []key.Binding {
 		keys.Top, keys.Bottom,
 		keys.Edit,
 		keys.Find, keys.FindNext, keys.FindPrevious, keys.Navigator, keys.Cancel,
-		keys.Help,
+		keys.Help, keys.Picker,
 	}
 }
 

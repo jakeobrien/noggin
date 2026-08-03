@@ -83,6 +83,14 @@ type keyMap struct {
 	// M5.3 wired the modal onto this binding and its hint text, not a new
 	// contract of its own.
 	Help key.Binding
+
+	// Picker opens the C2 Picker modal (S1): global, like Edit/Find/
+	// Navigator, and reachable from every Focus including while the
+	// Navigator is hidden. It always opens the same way — File Picker
+	// mode, Active Root Scope, empty Prompt (model.openPicker) — and
+	// Cancel is its one-key dismissal, the same generic binding Find and
+	// the Help Modal already share.
+	Picker key.Binding
 }
 
 // keys is the program's keymap.
@@ -174,5 +182,9 @@ var keys = keyMap{
 	Help: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "help"),
+	),
+	Picker: key.NewBinding(
+		key.WithKeys("ctrl+p"),
+		key.WithHelp("ctrl+p", "picker"),
 	),
 }
