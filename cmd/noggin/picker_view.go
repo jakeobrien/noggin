@@ -256,7 +256,7 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability) string {
 	prompt := renderBox(focusedBorderStyle, l.prompt, pickerModeScope(p), promptContent)
 	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height)
 	results := renderBox(borderStyle, l.results, "Results", resultsContent)
-	preview := renderBox(borderStyle, l.preview, "Preview", "")
+	preview := renderBox(borderStyle, l.preview, "Preview", p.preview.View())
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
 	return lipgloss.JoinVertical(lipgloss.Left, prompt, body)
 }

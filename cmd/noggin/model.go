@@ -511,6 +511,14 @@ func (m model) resize(width, height int, cause resizeCause) model {
 	m.files = m.files.setSize(filesContent.width, filesContent.height)
 	rootsContent := l.roots.content()
 	m.roots = m.roots.setSize(rootsContent.width, rootsContent.height)
+	// The Picker modal is sized here too, not only from render (M3.2): its
+	// Preview pane holds a real viewport.Model whose scroll position must
+	// survive across renders (unlike promptView's textinput, sized fresh
+	// each View call), so PageUp/PageDown/HalfPageUp/HalfPageDown
+	// (handlePickerInput) need a persistently-sized viewport to page
+	// against regardless of whether the Picker is currently open.
+	pickerPreviewContent := computePickerLayout(width, height).preview.content()
+	m.picker = m.picker.setPreviewSize(pickerPreviewContent.width, pickerPreviewContent.height)
 	return m
 }
 

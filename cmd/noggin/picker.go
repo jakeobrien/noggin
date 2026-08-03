@@ -1,10 +1,12 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -111,6 +113,24 @@ type picker struct {
 	// exists has nothing sensible to preserve, unlike a Nav pane's
 	// selection surviving its own list unchanged.
 	selected int
+
+	// preview is the Preview pane's own viewport (M3.2): raw, unrendered
+	// file bytes — no Glamour, unlike the Document Viewer's own vp
+	// (viewer.go) — scrolled independently of the Prompt/Results. Sized
+	// from model.resize the same way m.viewer/m.files/m.roots already are
+	// (computePickerLayout's preview rect), so PageUp/PageDown/HalfPageUp/
+	// HalfPageDown (reserved non-typing by M2.3) have a real height to
+	// page against.
+	preview viewport.Model
+
+	// previewPath is the path whose bytes are currently loaded into
+	// preview, or "" when nothing is. Compared against the current
+	// preview candidate (pickerPreviewCandidate) so a load only happens
+	// when the candidate actually changed — not on every keystroke or
+	// render — and is what "re-targets when the selection moves" (M3.2's
+	// acceptance criterion) means concretely: a different path, a fresh
+	// load, GotoTop.
+	previewPath string
 }
 
 // newPicker is the closed, no-search state: nothing open, nothing typed,
@@ -118,7 +138,13 @@ type picker struct {
 // and pickerScope already are S1's fixed opening state, so there is nothing
 // to set beyond a fresh Prompt.
 func newPicker() picker {
-	return picker{input: textinput.New()}
+	vp := viewport.New(viewport.WithWidth(0), viewport.WithHeight(0))
+	// Same reason viewer.go's newViewer clears it: keys reach the Preview
+	// through handlePickerInput's own non-typing set (keymap.go/D2), never
+	// through the viewport's own KeyMap.
+	vp.KeyMap = viewport.KeyMap{}
+	vp.FillHeight = true
+	return picker{input: textinput.New(), preview: vp}
 }
 
 // openPicker opens the Picker (S1): always File Picker mode, Active Root
@@ -133,9 +159,17 @@ func newPicker() picker {
 // non-pane shape m.helpOpen has (model.go's openHelp).
 func (m model) openPicker() (model, tea.Cmd) {
 	seq := m.picker.seq + 1
+	// The Preview viewport's width/height are a property of the terminal
+	// (model.resize), not of any one Picker session, so they survive this
+	// reset the same way m.viewer/m.files/m.roots's own sizes are untouched
+	// by opening the Picker — carried over explicitly since newPicker()'s
+	// fresh viewport.Model would otherwise start at 0x0 until the next
+	// resize.
+	previewWidth, previewHeight := m.picker.preview.Width(), m.picker.preview.Height()
 	m.picker = newPicker()
 	m.picker.open = true
 	m.picker.seq = seq
+	m.picker = m.picker.setPreviewSize(previewWidth, previewHeight)
 	cmd := m.picker.input.Focus()
 	return m, cmd
 }
@@ -241,6 +275,69 @@ func (p picker) move(delta int) picker {
 	return p
 }
 
+// setPreviewSize sizes the Preview pane's viewport, the same "pane content
+// box" contract viewer.setSize gives m.viewer (layout.go/model.resize) — a
+// value-receiver, T10-style method rather than a pointer one, even though
+// viewport.Model's own Set* methods mutate through a pointer receiver
+// (SetWidth/SetHeight take *Model): p is addressable here because it is a
+// named parameter, the same reason promptView's SetWidth call works.
+func (p picker) setPreviewSize(width, height int) picker {
+	p.preview.SetWidth(max(width, 0))
+	p.preview.SetHeight(max(height, 0))
+	return p
+}
+
+// pickerPreviewCandidate is the Result the Preview pane should currently
+// show (M3.2), or false when there is none: fileMode's selected row, gated
+// by the same resultsCurrent check pickerStatus and pickerResultsContent
+// already make — a stale generation's rows must not populate the Preview
+// any more than they may flash in the Results column — and clamped against
+// the live result count, since a fresh (shorter) result set can land
+// between a selection move and the next render.
+func (p picker) pickerPreviewCandidate() (pickerFile, bool) {
+	if p.mode != fileMode || !p.resultsCurrent() {
+		return pickerFile{}, false
+	}
+	if p.selected < 0 || p.selected >= len(p.results.files) {
+		return pickerFile{}, false
+	}
+	return p.results.files[p.selected], true
+}
+
+// syncPreview loads the Preview pane's content for whichever Result
+// pickerPreviewCandidate currently names, re-targeting (a fresh load,
+// scrolled back to the top — M3.2's acceptance criterion, verbatim) only
+// when that candidate's path actually changed since the last call: called
+// after every mutation that can change the candidate (a Results move, a
+// fresh or cleared result set landing), so the Preview always answers
+// "what's selected right now" without re-reading a file on every keystroke
+// or render that leaves the selection alone.
+//
+// The read is raw bytes, straight from disk — no loadDocument, no
+// renderMarkdown: M3.2 is explicit that the Preview shows "raw, unrendered
+// text", unlike the Document Viewer's own Glamour-rendered vp.
+func (p picker) syncPreview() picker {
+	f, ok := p.pickerPreviewCandidate()
+	if !ok {
+		if p.previewPath != "" {
+			p.previewPath = ""
+			p.preview.SetContent("")
+		}
+		return p
+	}
+	if f.path == p.previewPath {
+		return p
+	}
+	src, err := os.ReadFile(f.path)
+	if err != nil {
+		src = []byte("preview unavailable: " + err.Error())
+	}
+	p.previewPath = f.path
+	p.preview.SetContent(string(src))
+	p.preview.GotoTop()
+	return p
+}
+
 // resultsCurrent reports whether p.results still answers what the Prompt,
 // mode and Scope now say — the same three-way label comparison pickerStatus
 // makes to tell "searching" apart from a real empty result, pulled out here
@@ -296,6 +393,7 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 	m.picker.results = msg.results
 	m.picker.searching = false
 	m.picker.selected = 0
+	m.picker = m.picker.syncPreview()
 	return m
 }
 
@@ -322,16 +420,24 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Cancel):
 		return m.dismissPicker(), nil
 	case key.Matches(msg, keys.PickerUp):
-		m.picker = m.picker.move(-1)
+		m.picker = m.picker.move(-1).syncPreview()
 		return m, nil
 	case key.Matches(msg, keys.PickerDown):
-		m.picker = m.picker.move(1)
+		m.picker = m.picker.move(1).syncPreview()
+		return m, nil
+	case key.Matches(msg, keys.PageUp):
+		m.picker.preview.PageUp()
+		return m, nil
+	case key.Matches(msg, keys.PageDown):
+		m.picker.preview.PageDown()
+		return m, nil
+	case key.Matches(msg, keys.HalfPageUp):
+		m.picker.preview.HalfPageUp()
+		return m, nil
+	case key.Matches(msg, keys.HalfPageDown):
+		m.picker.preview.HalfPageDown()
 		return m, nil
 	case key.Matches(msg, keys.Activate),
-		key.Matches(msg, keys.PageUp),
-		key.Matches(msg, keys.PageDown),
-		key.Matches(msg, keys.HalfPageUp),
-		key.Matches(msg, keys.HalfPageDown),
 		key.Matches(msg, keys.PickerMode),
 		key.Matches(msg, keys.PickerScope):
 		return m, nil

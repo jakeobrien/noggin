@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.2
+Current task: M3.3
 
 ## Handoff
 
@@ -94,10 +94,55 @@ rows render, distinguishable, in `results.files` order. `TestPickerUpDownMoveThe
 and `TestPickerSelectionResetsOnFreshResults` (picker_test.go) cover the selection cursor's
 move/clamp and its reset on a fresh generation. `make check` and `make check-pty` both green.
 
-Next step: M3.2 — the Preview pane renders the selected Result's file as raw, unrendered text
-from the top, scrollable, following selection changes (`picker.selected` is now there for it to
-read). M1.4a/M1.4b/M2.3a are queued but not blocking — pick them up opportunistically or before
-M7 hardening.
+M3.2 done — the Preview pane (picker_view.go's `renderPicker`) now renders `picker.preview`, a
+second `viewport.Model` alongside the Document Viewer's own (`viewer.go`'s `vp`) but deliberately
+not sharing it: Preview shows raw bytes straight off disk (`os.ReadFile`, no `renderMarkdown`,
+no Glamour), the criterion's own "no Glamour styling" in code rather than a rendering mode
+switch on the existing viewer.
+
+`picker.pickerPreviewCandidate()` names the Result the Preview should currently show — fileMode,
+`resultsCurrent()`, `selected` in range — reusing the exact three-way check `pickerStatus`/
+`pickerResultsContent` already make so a stale generation's rows can never leak into the Preview
+any more than into Results. `picker.syncPreview()` loads that candidate's bytes only when its
+path actually changed since `previewPath` last recorded one (so a keystroke that doesn't move
+the candidate costs nothing), and calls `GotoTop()` on every real load — that reset is
+"re-targets when the selection moves", concretely. Wired at both places the candidate can
+change: `applyPickerResults` (a fresh result set landing) and `PickerUp`/`PickerDown`
+(`handlePickerInput`).
+
+Scrolling reuses the Document Viewer's own PageUp/PageDown/HalfPageUp/HalfPageDown bindings
+(M2.3 already reserved them as non-typing, no-op); `handlePickerInput` now calls
+`m.picker.preview.PageUp()` etc. directly rather than through `viewer.scroll`'s table, since
+that table is keyed to `*viewport.Model` methods the Picker's own preview has just as directly.
+
+Sizing was the one real gotcha: `picker.preview` is a real, persistently-scrolled
+`viewport.Model`, unlike the Prompt's textinput (re-`SetWidth` fresh every `View()` call,
+nothing to lose by that). It has to be sized from `model.resize` (mirroring `m.viewer`/
+`m.files`/`m.roots`'s own `setSize` calls) so PageUp/PageDown have a real height to page
+against — computed via `computePickerLayout(width, height).preview.content()`, the same rect
+`renderPicker` itself uses. The trap: `openPicker` replaces `m.picker` wholesale with
+`newPicker()`'s zero state (S8's "no memory", by construction never leaves anything behind) —
+including a fresh, 0×0 `viewport.Model` — so a naive `openPicker` after a real resize silently
+re-zeroed the just-set preview size. Fixed by carrying `Width()`/`Height()` over across the
+reset explicitly (openPicker's own comment explains why that one field is not "memory" in S8's
+sense, the same reasoning `seq` already gets in `dismissPicker`'s comment). Caught by
+`TestPickerPreviewScrollsOnScrollKeys` failing outright (YOffset staying 0) before the fix —
+worth flagging for M3.3/M4.x: any future field added to `picker` that is a terminal-size
+property rather than session state needs the same carry-over, or `openPicker` silently drops it.
+
+Evidence for the criterion: `TestPickerPreviewShowsSelectedFileRawFromTop` reads the selected
+Result's file directly with `os.ReadFile` and asserts `picker.preview.GetContent()` matches
+byte-for-byte, and `AtTop()`. `TestPickerPreviewRetargetsOnSelectionChange` moves the Results
+cursor and asserts the Preview's content changed to the newly-selected file's own bytes and
+scrolled back to the top. `TestPickerPreviewScrollsOnScrollKeys` loads a 200-line fixture,
+PageDowns (`YOffset() > 0`) then PageUps back down. `make check` and `make check-pty` both
+green (pty run above is the full existing suite, unmodified — M3.2 added no new pty check;
+the Picker modal has none yet).
+
+Next step: M3.3 — activate a File Result: it becomes the Active Document and nothing else
+moves (Active Root, Files Nav tree expansion/selection unchanged). `picker.pickerPreviewCandidate`
+is reusable for "which file would Activate open". M1.4a/M1.4b/M2.3a are queued but not
+blocking — pick them up opportunistically or before M7 hardening.
 
 ## Status
 
@@ -116,7 +161,7 @@ M7 hardening.
 | M1.4b| todo   | -        | -         | D45 (TRIAGE T3) |
 | M2.3a| todo   | -        | -         | D46 (TRIAGE T5); M2.3 re-validates once done |
 | M3.1 | done   | -        | -         |      |
-| M3.2 | todo   | -        | -         |      |
+| M3.2 | done   | -        | -         |      |
 | M3.3 | todo   | -        | -         |      |
 | M4.1 | todo   | -        | -         |      |
 | M4.2 | todo   | -        | -         |      |

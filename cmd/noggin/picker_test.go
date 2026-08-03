@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"charm.land/bubbles/v2/key"
@@ -275,6 +278,109 @@ func TestPickerSelectionResetsOnFreshResults(t *testing.T) {
 
 	if m.picker.selected != 0 {
 		t.Errorf("selected = %d after fresh results landed, want reset to 0", m.picker.selected)
+	}
+}
+
+// TestPickerPreviewShowsSelectedFileRawFromTop is M3.2's own acceptance
+// criterion: the Preview pane's content is the selected Result's raw file
+// bytes, byte for byte — no Glamour styling — and starts scrolled to the
+// top.
+func TestPickerPreviewShowsSelectedFileRawFromTop(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repor")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.files) == 0 {
+		t.Fatalf("setup is broken: %d searches, %d results", searches, len(m.picker.results.files))
+	}
+
+	selected := m.picker.results.files[m.picker.selected]
+	want, err := os.ReadFile(selected.path)
+	if err != nil {
+		t.Fatalf("reading %s: %v", selected.path, err)
+	}
+
+	if got := m.picker.preview.GetContent(); got != string(want) {
+		t.Errorf("preview content = %q, want the raw bytes of %s: %q", got, filepath.Base(selected.path), want)
+	}
+	if !m.picker.preview.AtTop() {
+		t.Error("preview did not start at the top")
+	}
+}
+
+// TestPickerPreviewRetargetsOnSelectionChange is the "following selection
+// changes" half of M3.2: moving the Results cursor loads the newly-selected
+// Result's own bytes and scrolls back to the top, rather than leaving the
+// previous selection's content (and scroll position) on screen.
+func TestPickerPreviewRetargetsOnSelectionChange(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	m, seqs := typePickerQuery(t, m, "repor")
+	m, _ = deliverPickerTicks(t, m, seqs)
+	if len(m.picker.results.files) < 2 {
+		t.Fatalf("setup is broken: %d results", len(m.picker.results.files))
+	}
+	firstContent := m.picker.preview.GetContent()
+	firstPath := m.picker.results.files[m.picker.selected].path
+
+	m = press(t, m, keys.PickerDown.Keys()[0])
+
+	secondPath := m.picker.results.files[m.picker.selected].path
+	if secondPath == firstPath {
+		t.Fatal("selection did not move to a different file; setup is broken")
+	}
+	want, err := os.ReadFile(secondPath)
+	if err != nil {
+		t.Fatalf("reading %s: %v", secondPath, err)
+	}
+	if got := m.picker.preview.GetContent(); got != string(want) {
+		t.Errorf("preview content after selection moved = %q, want %s's raw bytes %q", got, filepath.Base(secondPath), want)
+	}
+	if got := m.picker.preview.GetContent(); got == firstContent {
+		t.Error("preview content unchanged after selection moved to a different file")
+	}
+	if !m.picker.preview.AtTop() {
+		t.Error("preview did not scroll back to the top after selection moved")
+	}
+}
+
+// TestPickerPreviewScrollsOnScrollKeys is the "scrollable" half of M3.2: with
+// a file longer than the Preview pane's height loaded, the reused Document
+// Viewer scroll bindings (PageDown then PageUp) move the Preview's own
+// scroll position, independent of the Results cursor.
+func TestPickerPreviewScrollsOnScrollKeys(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	var long strings.Builder
+	for i := 1; i <= 200; i++ {
+		fmt.Fprintf(&long, "line %d\n", i)
+	}
+	writeFileContent(t, filepath.Join(dir, "reportlong.md"), long.String())
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+
+	m, seqs := typePickerQuery(t, m, "repor")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.files) == 0 {
+		t.Fatalf("setup is broken: %d searches, %d results", searches, len(m.picker.results.files))
+	}
+	if !m.picker.preview.AtTop() {
+		t.Fatal("preview did not start at the top; setup is broken")
+	}
+
+	m = press(t, m, keys.PageDown.Keys()[0])
+	afterDown := m.picker.preview.YOffset()
+	if afterDown <= 0 {
+		t.Fatalf("YOffset = %d after PageDown, want > 0", afterDown)
+	}
+
+	m = press(t, m, keys.PageUp.Keys()[0])
+	if got := m.picker.preview.YOffset(); got >= afterDown {
+		t.Errorf("YOffset = %d after PageUp, want < %d", got, afterDown)
 	}
 }
 
