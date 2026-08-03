@@ -148,29 +148,40 @@ func newPicker() picker {
 	return picker{input: textinput.New(), preview: vp}
 }
 
+// resetPicker is the shared "bump seq, snapshot preview size, replace with
+// newPicker(), restore seq, restore preview size" sequence every full Picker
+// state reset needs (D51/M2.1a): openPicker and dismissPicker both discard
+// the whole picker struct, but two fields must survive that regardless —
+// see dismissPicker's doc comment for why seq and the Preview viewport's
+// width/height are carried over rather than reset with everything else.
+// Before this was extracted, both callers duplicated the sequence verbatim,
+// which is exactly the shape that let one of them (dismissPicker) ship
+// without the preview-size carry-over until D48/M3.2a caught it — a third
+// reset path (anticipated around M4.x's grep preview) now has nowhere to
+// independently regress that fix; it calls this instead of repeating the
+// sequence a third time.
+func (m model) resetPicker() model {
+	seq := m.picker.seq + 1
+	previewWidth, previewHeight := m.picker.preview.Width(), m.picker.preview.Height()
+	m.picker = newPicker()
+	m.picker.seq = seq
+	m.picker = m.picker.setPreviewSize(previewWidth, previewHeight)
+	return m
+}
+
 // openPicker opens the Picker (S1): always File Picker mode, Active Root
 // Scope, empty Prompt, regardless of what a previous open (in this or an
 // earlier session) left behind — S1's fixed opening state and S8's "no
 // memory" are the same requirement seen from two sides, so replacing the
-// whole state with newPicker() satisfies both at once.
+// whole state with newPicker() (via resetPicker) satisfies both at once.
 //
 // Reachable from every Focus (S1), so unlike startFind/startEdit/activate,
 // this never touches m.focus — opening the Picker is not "go to a pane",
 // it's a modal layered on top of whichever pane already has focus, the same
 // non-pane shape m.helpOpen has (model.go's openHelp).
 func (m model) openPicker() (model, tea.Cmd) {
-	seq := m.picker.seq + 1
-	// The Preview viewport's width/height are a property of the terminal
-	// (model.resize), not of any one Picker session, so they survive this
-	// reset the same way m.viewer/m.files/m.roots's own sizes are untouched
-	// by opening the Picker — carried over explicitly since newPicker()'s
-	// fresh viewport.Model would otherwise start at 0x0 until the next
-	// resize.
-	previewWidth, previewHeight := m.picker.preview.Width(), m.picker.preview.Height()
-	m.picker = newPicker()
+	m = m.resetPicker()
 	m.picker.open = true
-	m.picker.seq = seq
-	m.picker = m.picker.setPreviewSize(previewWidth, previewHeight)
 	cmd := m.picker.input.Focus()
 	return m, cmd
 }
@@ -196,13 +207,11 @@ func (m model) openPicker() (model, tea.Cmd) {
 //     terminal — would render an empty 0x0 Preview until the next resize,
 //     because newPicker()'s fresh viewport.Model starts at 0x0 and nothing
 //     would set it again.
+//
+// Both fields are carried over by resetPicker (D51/M2.1a), the same helper
+// openPicker uses; this is a bare call to it, not a duplicated sequence.
 func (m model) dismissPicker() model {
-	seq := m.picker.seq + 1
-	previewWidth, previewHeight := m.picker.preview.Width(), m.picker.preview.Height()
-	m.picker = newPicker()
-	m.picker.seq = seq
-	m.picker = m.picker.setPreviewSize(previewWidth, previewHeight)
-	return m
+	return m.resetPicker()
 }
 
 // pickerSearchMsg is a matured debounce timer: the Prompt has been quiet for
