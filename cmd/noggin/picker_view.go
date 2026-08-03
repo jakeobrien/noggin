@@ -201,17 +201,22 @@ var pickerSelectedStyle = lipgloss.NewStyle().Reverse(true)
 // disambiguating parent" layout rootsNav.renderRow gives every Root row,
 // reused here rather than the bare filepath.Base(f.root.path) M3.1 shipped
 // with, which read two Roots sharing a base name (different parents)
-// identically. budget is what's left of width after the name, the gap ahead
-// of the parent segment, and rest (everything the row still renders after
-// the Root label, including that segment's own connecting gap — e.g. "  "
-// plus the file's relative path) — the same "reserve everything else
-// first" shape rootsNav.renderRow's own budget calculation uses for its
-// row's suffix.
+// identically. budget is what's left of width after the name, the one gap
+// ahead of the parent segment, and rest (everything the row still renders
+// after the Root label, including that segment's own connecting gap — e.g.
+// "  " plus the file's relative path) — the same single-gap "reserve
+// everything else first" shape rootsNav.renderRow's own budget calculation
+// uses for its row's suffix. Subtracting gap's width a second time here
+// (TRIAGE T13/D52) double-counted a gap that only appears once in the
+// rendered row, under-computing budget by one gap width (~2 cols) on every
+// row — caught only after M3.1a's own disambiguation test happened to run
+// at a width wide enough (140x30, not the project's standard 80x24) to not
+// need the lost budget.
 func pickerRootLabel(f pickerFile, width int, rest string) string {
 	name := filepath.Base(f.root.path)
 	parent := filepath.Dir(f.root.path) + string(filepath.Separator)
 	const gap = "  "
-	budget := max(width-lipgloss.Width(name)-lipgloss.Width(gap)-lipgloss.Width(gap)-lipgloss.Width(rest), 0)
+	budget := max(width-lipgloss.Width(name)-lipgloss.Width(gap)-lipgloss.Width(rest), 0)
 	return name + gap + leftTruncate(parent, budget)
 }
 
@@ -223,13 +228,18 @@ func pickerRootLabel(f pickerFile, width int, rest string) string {
 // construction guarantee it), so filepath.Rel here cannot fail in practice;
 // the fallback to the absolute path exists only so a row still renders
 // *something* if that invariant were ever broken, rather than silently
-// dropping the row.
+// dropping the row. suffix ("  "+rel) is computed once and reused both as
+// pickerRootLabel's rest argument and as the literal text appended after it
+// (TRIAGE T17/D52) — the two must always agree since they describe the same
+// rendered characters, so a single local var makes that structural rather
+// than something two call sites have to keep in sync by hand.
 func pickerFileRow(f pickerFile, width int, selected bool) string {
 	rel, err := filepath.Rel(f.root.path, f.path)
 	if err != nil {
 		rel = f.path
 	}
-	line := pickerRootLabel(f, width, "  "+rel) + "  " + rel
+	suffix := "  " + rel
+	line := pickerRootLabel(f, width, suffix) + suffix
 	style := lipgloss.NewStyle()
 	if selected {
 		style = pickerSelectedStyle

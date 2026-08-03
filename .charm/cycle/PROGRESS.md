@@ -17,31 +17,36 @@
 
 ## Cursor
 
-Current task: M3.1b
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.1a done this session (D51): extracted resetPicker (cmd/noggin/picker.go), the shared
-"bump seq, snapshot preview size, replace with newPicker(), restore seq, restore preview
-size" sequence openPicker and dismissPicker used to duplicate verbatim. newPicker() is now
-called only from inside resetPicker; both callers reduce to a bare m.resetPicker() call (plus
-openPicker's open=true/Focus()). M2.1's and M3.2a's existing acceptance tests
-(TestPickerOpensFromEveryFocusAndNavigatorHidden, TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt,
-TestPickerDismissRestoresThePreOpenFrameByteForByte, TestPickerReopenAfterDismissKeepsPreviewSize)
-pass unchanged. `make check` green.
+M3.1b done this session (D52): fixed pickerRootLabel's budget formula (cmd/noggin/
+picker_view.go), which subtracted the name/parent gap twice — once explicitly, once already
+embedded in rest — under-computing the parent-path truncation budget by one gap width (~2
+cols) on every row (T13). Folded in T17 while touching the function: pickerFileRow now builds
+"  "+rel once into a local `suffix` var, reused as both pickerRootLabel's rest argument and
+the literal text appended after it. Added TestPickerFileRowFillsItsFullBudget
+(picker_view_test.go): pins an independently-hand-computed exact label/row string (not
+derived by calling pickerRootLabel, unlike TestPickerFileResultsShowRootAndRelativePath —
+T15) using synthetic non-tempdir paths, and asserts the rendered row's width equals the
+layout's content width (23 at 80x24). Moved TestPickerFileResultsDisambiguateSameBasenameRoots
+from 140x30 to the standard 80x24 fixture (T16); confirmed it passes there now (it failed
+before the fix — both rows collapsed to a bare "…"), adjusting its assertions to check row
+inequality rather than full-word substrings the tighter real budget no longer fits. `make
+check` green; full Picker suite passes.
 
-M3 (File Picker end to end) and all its original sub-tasks are done; M1.4a/b/c, M2.1a, M2.3a,
-M3.1a/M3.2a/M3.2b/M3.3a/M3.3b (the prior review's fix-ups) are also done.
+M3 (File Picker end to end) and all its original sub-tasks, M1.4a/b/c, M2.1a, M2.3a and M3.1b
+are done. All three small tasks the prior replan inserted ahead of M4.1 are now complete.
 
-Next step: M3.1b (D52, effort 2) — pickerRootLabel's budget calc double-subtracts a gap,
-making M3.1a/D50's disambiguation fix less effective than designed at realistic (80x24)
-widths (T13, T15, T16, T17). Then M4.1: wire Grep mode to M1.4. M4.2 reuses M3.2's preview
-mechanism (now behind resetPicker, so a grep-preview reset path added there goes through the
-same carry-over automatically); before M4.3/M4.4, re-read D34 (rg line numbers vs. rendered
-line space).
+Next step: M4.1 — wire Grep mode to M1.4 (fixture search renders one row per matching line
+across Scope with right line numbers; long lines truncate to the pane rather than wrapping).
+M4.2 reuses M3.2's preview mechanism (now behind resetPicker, so a grep-preview reset path
+added there carries the preview size over automatically); before M4.3/M4.4, re-read D34 (rg
+line numbers vs. rendered line space).
 
 Also queued, non-blocking: M7.1a (T11, terminology housekeeping).
 
@@ -67,7 +72,7 @@ No blockers. TRIAGE.md empty.
 | M2.3a| done   | 2026-08-03 | 2026-08-03 | D46 (TRIAGE T5); M2.3 re-validated |
 | M3.1 | done   | 2026-08-03 | -         |      |
 | M3.1a| done   | 2026-08-03 | -         | D50 (TRIAGE T10); re-reviewed, T13/T16 raised |
-| M3.1b| todo   | -        | -         | D52; TRIAGE T13, T15, T16 |
+| M3.1b| done   | -        | -         | D52; TRIAGE T13, T15, T16, T17 |
 | M3.2 | done   | 2026-08-03 | -         |      |
 | M3.2a| done   | 2026-08-03 | -         | D48 (TRIAGE T6); fixed before M4.2 |
 | M3.2b| done   | 2026-08-03 | -         | TRIAGE T12; re-reviewed, T20 raised |

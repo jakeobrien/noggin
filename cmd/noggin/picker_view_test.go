@@ -199,15 +199,14 @@ func TestPickerFileResultsDisambiguateSameBasenameRoots(t *testing.T) {
 	fileA := filepath.Join(rootA, "report.md")
 	fileB := filepath.Join(rootB, "report.md")
 
-	// A wider terminal than the other Picker view tests use: at 80x24 the
-	// Results column's content width (23, computePickerLayout) leaves too
-	// little budget for both the Root's base name and its disambiguating
-	// parent segment to render distinctly — pickerRootLabel's budget
-	// calculation would just collapse the parent to a bare ellipsis for
-	// both rows, which is a real narrow-terminal degrade (S11's "truncate
-	// gracefully", not a bug), not the disambiguation behaviour this test
-	// checks.
-	m := openedFixture(t, 140, 30).withRipgrep(ripgrepAvailability{available: true})
+	// The project's standard fixture size (TRIAGE T16/D52): this test used
+	// to run at a wider 140x30 that masked pickerRootLabel's double-counted
+	// gap budget (T13/D52) by having budget to spare either way. At 80x24
+	// the Results column's content width (23, computePickerLayout) is tight
+	// enough that the bug actually mattered — both rows' parent segments
+	// collapsed to a bare, identical "…" — so this size is what the fix
+	// must be verified against, not the wider one the bug hid behind.
+	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
 	m, _ = m.openPicker()
 	m.picker.input.SetValue("report")
 	m.picker.results = pickerResults{
@@ -235,14 +234,52 @@ func TestPickerFileResultsDisambiguateSameBasenameRoots(t *testing.T) {
 	if rowA == "" || rowB == "" {
 		t.Fatalf("expected two rows containing report.md, got:\n%s", strings.Join(lines, "\n"))
 	}
+	// At this width, the parent's disambiguating budget (3, see
+	// TestPickerFileRowFillsItsFullBudget) is only enough for a short tail
+	// like "…n/"/"…r/", not the full "admin"/"other" segment a wider
+	// terminal (140x30, this test's own size before D52) would show — the
+	// row-inequality check above is what this criterion (S3's
+	// disambiguation, not full readability) actually requires.
 	if rowA == rowB {
 		t.Errorf("two Roots sharing a base name (%q) rendered identical rows, want their parent paths to distinguish them:\n%s", filepath.Base(rootA), strings.Join(lines, "\n"))
 	}
-	if !strings.Contains(rowA, "admin") {
-		t.Errorf("row for rootA = %q, want it to show its parent path (admin)", rowA)
+}
+
+// TestPickerFileRowFillsItsFullBudget pins pickerRootLabel/pickerFileRow's
+// exact output at the project's standard 80x24 fixture (TRIAGE T13/T15,
+// D52), independently of pickerRootLabel itself: the expected string below
+// is hand-computed from computePickerLayout's own results content width
+// (23) and leftTruncate's documented suffix-keeping behaviour, not derived
+// by calling the function under test — unlike
+// TestPickerFileResultsShowRootAndRelativePath, which builds its expected
+// strings by calling pickerRootLabel and so cannot catch a bug in
+// pickerRootLabel's own budget math (T15). Synthetic (non-tempdir) paths
+// are used so every character of the expected string is knowable ahead of
+// time: pickerFileRow never touches the filesystem, only filepath
+// arithmetic. Before the T13 fix, pickerRootLabel's budget formula
+// double-subtracted the name/parent gap, under-computing the parent's
+// truncation budget by one gap width (3 vs. the correct 5) and rendering a
+// bare "…" for both a root's label here instead of the disambiguating
+// "…n/" this pins.
+func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
+	f := pickerFile{
+		root: root{path: "/home/user/work/admin/project"},
+		path: "/home/user/work/admin/project/report.md",
 	}
-	if !strings.Contains(rowB, "other") {
-		t.Errorf("row for rootB = %q, want it to show its parent path (other)", rowB)
+	const width = 23 // computePickerLayout(80, 24).results.content().width
+
+	wantLabel := "project  \u2026n/" // name(7) + gap(2) + leftTruncate(".../work/admin/", 3)
+	if got := pickerRootLabel(f, width, "  report.md"); got != wantLabel {
+		t.Fatalf("pickerRootLabel() = %q, want %q", got, wantLabel)
+	}
+
+	wantRow := wantLabel + "  report.md"
+	got := pickerFileRow(f, width, false)
+	if got != wantRow {
+		t.Errorf("pickerFileRow() = %q, want %q", got, wantRow)
+	}
+	if w := lipgloss.Width(got); w != width {
+		t.Errorf("pickerFileRow() rendered width = %d, want exactly %d (the Results content width) — the budget formula is leaving the parent segment short of what's actually available", w, width)
 	}
 }
 
