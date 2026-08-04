@@ -417,13 +417,68 @@ func TestPickerActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
 	}
 }
 
-// TestPickerActivateIsANoOpInGrepMode is M3.3a's Grep-mode case (TRIAGE
-// T8): M4.1 hasn't wired a Grep Result to Activate yet (activatePicker's
-// own comment — "grepMode has no candidate yet"), so pressing Activate
-// while mode = grepMode must leave everything exactly as it was: no
-// document opened, no dismissal, no message, not even an unhandled-mode
-// crash.
-func TestPickerActivateIsANoOpInGrepMode(t *testing.T) {
+// TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine is M4.3's
+// own acceptance criterion (S10, S11): activating a Grep search whose match
+// sits deep in a long file makes that file the Active Document, with the
+// Document Viewer scrolled so the matched line is on screen and indicated
+// — the rendered-content re-derivation D34 calls for, not rg's raw-file
+// line number directly (which the fixture's own reflow, mirroring
+// TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight's setup, is
+// exactly why the assertion below checks by content/offset rather than
+// pinning the exact rendered line index the way that Preview-side test can
+// for raw text).
+func TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	const matchLine = 87
+	path := numberedLinesFixture(t, dir, "long.md", 100, matchLine, "the target report line")
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.grep) != 1 {
+		t.Fatalf("setup is broken: %d searches, %d grep results", searches, len(m.picker.results.grep))
+	}
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.picker.open {
+		t.Error("picker.open = true after Activate, want dismissed")
+	}
+	if got.viewer.doc.path != path {
+		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	}
+	if !got.viewer.hasFindMatches() {
+		t.Fatal("Activate did not leave the Document Viewer with find matches for the grep query")
+	}
+	if got.viewer.offset() == 0 {
+		t.Error("Document Viewer did not scroll away from the top to reach the matched line")
+	}
+	view := got.View().Content
+	if !strings.Contains(view, "target report line") {
+		t.Errorf("view does not show the matched line's text after activating the Grep Result\n%s", view)
+	}
+	// lipgloss emits "\x1b[7m" for Reverse(true) regardless of TTY (verified
+	// directly against this lipgloss build — see the same assertion in
+	// TestFindLocatesAPhraseNearTheEndOfTheDocument).
+	if !strings.Contains(view, "\x1b[7m") {
+		t.Error("matched line is not indicated (no reverse-video escape in the view)")
+	}
+}
+
+// TestPickerActivateGrepResultWithAReadErrorLeavesSessionRunning is M4.3's
+// read-error case, mirroring TestPickerActivateWithAReadErrorLeavesSessionRunning's
+// fileMode shape (T15, M3.3a/TRIAGE T7): a Grep Result whose file can no
+// longer be read must not open it, crash, or leave the session
+// inconsistent — the failure surfaces as a footer message, and the Picker
+// still closes.
+func TestPickerActivateGrepResultWithAReadErrorLeavesSessionRunning(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.md")
+
 	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
 	m, _ = m.openPicker()
 	m.picker.mode = grepMode
@@ -432,22 +487,179 @@ func TestPickerActivateIsANoOpInGrepMode(t *testing.T) {
 		query: "report",
 		mode:  grepMode,
 		scope: activeRootScope,
-		grep:  []grepResult{{file: pickerFile{path: "somefile.md"}, line: 1, text: "report"}},
+		grep:  []grepResult{{file: pickerFile{path: missing}, line: 1, text: "report"}},
 	}
 	m.picker.selected = 0
 	beforeDoc := m.viewer.doc.path
-	beforeMessage := m.message
 
 	got := press(t, m, keys.Activate.Keys()[0])
 
-	if !got.picker.open {
-		t.Error("picker.open = false after Activate in Grep mode, want unchanged (still open)")
+	if got.picker.open {
+		t.Error("picker.open = true after a failed Activate, want dismissed")
 	}
 	if got.viewer.doc.path != beforeDoc {
-		t.Errorf("Active Document = %q after Activate in Grep mode, want unchanged %q", got.viewer.doc.path, beforeDoc)
+		t.Errorf("Active Document = %q after a failed Activate, want unchanged %q", got.viewer.doc.path, beforeDoc)
 	}
-	if got.message != beforeMessage {
-		t.Errorf("message = %q after Activate in Grep mode, want unchanged %q", got.message, beforeMessage)
+	if got.message == "" {
+		t.Error("message is empty after a failed Activate, want a footer message")
+	}
+}
+
+// TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst
+// guards against resolveGrepLanding's ordinal lookup silently degrading to
+// the same "first match" landing a broken lookup would also produce
+// (code-reviewer finding, C2): with two grep matches in the same file, far
+// enough apart in the *rendered* document that they cannot both be on
+// screen at once (200+ rendered lines from blank-line-separated entries,
+// unlike numberedLinesFixture's single reflowed paragraph), activating the
+// *second* Result must land on the second occurrence specifically, not
+// silently fall back to the first the way an always-degrade bug would.
+func TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	var b strings.Builder
+	for i := 1; i <= 100; i++ {
+		switch i {
+		case 10:
+			b.WriteString("first report line\n\n")
+		case 90:
+			b.WriteString("second report line\n\n")
+		default:
+			fmt.Fprintf(&b, "filler line %d\n\n", i)
+		}
+	}
+	path := writeFileContent(t, filepath.Join(dir, "long.md"), b.String())
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.grep) != 2 {
+		t.Fatalf("setup is broken: %d searches, %d grep results", searches, len(m.picker.results.grep))
+	}
+	// grepBatch reports matches in the file's own line order, so index 1 is
+	// the later (second) occurrence.
+	if m.picker.results.grep[1].line <= m.picker.results.grep[0].line {
+		t.Fatalf("setup is broken: grep results are not in ascending line order: %+v", m.picker.results.grep)
+	}
+	m.picker.selected = 1
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.viewer.doc.path != path {
+		t.Fatalf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	}
+	view := got.View().Content
+	if strings.Contains(view, "first report line") {
+		t.Errorf("view shows the first occurrence's text after activating the *second* Result, want the ordinal to distinguish them\n%s", view)
+	}
+	if !strings.Contains(view, "second report line") {
+		t.Errorf("view does not show the second occurrence's text after activating it\n%s", view)
+	}
+	if !strings.Contains(view, "\x1b[7m") {
+		t.Error("matched line is not indicated (no reverse-video escape in the view)")
+	}
+}
+
+// TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen
+// is resolveGrepLanding's *other* explicit degrade trigger (D34's headline
+// motivating example, "the query spanned syntax Glamour removed"): an HTML
+// comment is dropped from Glamour's render entirely, so a grep match whose
+// only occurrence sits inside one has no counterpart anywhere in the
+// rendered content (ordinal >= len(rend), not the frontmatter-offset
+// branch the sibling test below exercises) — and, with no other occurrence
+// in the body either, commitQuery's own nearestMatch(matches, 0) has
+// nothing to fall back to, exercising D34's full "if there are none, open
+// it plain at the top" chain end to end.
+func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	src := "<!-- reporthidden -->\n\n# doc\n\nnothing else matches this query\n"
+	path := writeFileContent(t, filepath.Join(dir, "hidden.md"), src)
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+
+	m, seqs := typePickerQuery(t, m, "reporthidden")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.grep) != 1 {
+		t.Fatalf("setup is broken: %d searches, %d grep results", searches, len(m.picker.results.grep))
+	}
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.picker.open {
+		t.Error("picker.open = true after Activate, want dismissed")
+	}
+	if got.viewer.doc.path != path {
+		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	}
+	if got.viewer.hasFindMatches() {
+		t.Error("degrade path found a find match, want none: the query's only raw occurrence is inside an HTML comment Glamour strips entirely")
+	}
+	if got.viewer.offset() != 0 {
+		t.Errorf("Document Viewer offset = %d, want 0 (opened plain at the top per D34's full degrade)", got.viewer.offset())
+	}
+	view := got.View().Content
+	if strings.Contains(view, "\x1b[7m") {
+		t.Error("no line should be indicated when the query has no rendered matches at all")
+	}
+}
+
+// TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch is
+// D34's own explicit degrade trigger: a Grep Result whose line sits inside
+// the document's stripped YAML frontmatter (D5) has no counterpart in the
+// rendered content at all, so the ordinal re-derivation cannot resolve it
+// — the Document Viewer must still open, landing on whatever other
+// occurrence of the query exists in the body (commitQuery's own
+// nearestMatch(matches, 0) default) rather than failing or crashing the
+// activation.
+func TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	src := "---\ntitle: report\n---\n# doc\n\nfiller\n\nthe body has a report too\n"
+	path := writeFileContent(t, filepath.Join(dir, "fm.md"), src)
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.grep) != 2 {
+		t.Fatalf("setup is broken: %d searches, %d grep results (want 2: frontmatter + body)", searches, len(m.picker.results.grep))
+	}
+	idx := -1
+	for i, g := range m.picker.results.grep {
+		if g.line == 2 { // the "title: report" frontmatter line
+			idx = i
+		}
+	}
+	if idx < 0 {
+		t.Fatalf("setup is broken: no grep result at line 2 (the frontmatter line); results = %+v", m.picker.results.grep)
+	}
+	m.picker.selected = idx
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.viewer.doc.path != path {
+		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	}
+	if !got.viewer.hasFindMatches() {
+		t.Fatal("degrade path lost the body's own match entirely, want the body occurrence still found")
+	}
+	view := got.View().Content
+	if !strings.Contains(view, "\x1b[7m") {
+		t.Error("degrade path left no line indicated, want the body's match highlighted")
+	}
+	if strings.Contains(view, "title: report") {
+		t.Error("frontmatter leaked into the rendered view (D5); test fixture assumption is broken")
 	}
 }
 

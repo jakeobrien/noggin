@@ -85,6 +85,26 @@ func (v viewer) commitFind() viewer {
 	return v
 }
 
+// commitQuery starts a new, already-committed find for query — the same
+// end state commitFind leaves a typed search in (not editing, matches
+// computed, the nearest one indicated), but for a query that arrives
+// already decided rather than typed a keystroke at a time (the Grep
+// Picker's query hand-off, M4.3/M4.4, D34) rather than through startFind's
+// "begin blank and focus the input" path.
+//
+// current defaults to nearestMatch(matches, 0) — the first match from the
+// top, or none — which is deliberately also D34's own degrade path for a
+// Grep Result whose landing spot could not be re-derived in the rendered
+// document: activateGrepPicker calls this unconditionally and only
+// overrides current when it has a resolved ordinal to place it at instead.
+func (v viewer) commitQuery(query string) viewer {
+	v.findState = newFind()
+	v.findState.input.SetValue(query)
+	v.findState.matches = findMatches(v.vp.GetContent(), query)
+	v.findState.current = nearestMatch(v.findState.matches, 0)
+	return v.applyCurrentMatch()
+}
+
 // cancelFind dismisses the search entirely: no query, no matches, no
 // indication. The viewport itself is untouched — S8's "dismissal that
 // leaves the view where it is" — whatever EnsureVisible last did to it stands.

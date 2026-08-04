@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.3
+Current task: M4.4
 
 ## Handoff
 
@@ -39,30 +39,34 @@ before the fix — both rows collapsed to a bare "…"), adjusting its assertion
 inequality rather than full-word substrings the tighter real budget no longer fits. `make
 check` green; full Picker suite passes.
 
-M4.2 done this session (D54): Preview pane now opens scrolled to a Grep Result's matched line
-with that line highlighted (S9). Reused find.go's `EnsureVisible`/`StyleLineFunc` line-level
-approach rather than `viewport.Model`'s own `SetHighlights` (consistent with
-`.charm/knowledge/viewport-search-ansi-offsets.md`'s established practice, even though the
-Preview's raw unstyled text isn't actually exposed to that bug) — concretely, `syncPreview`
-(picker.go) now calls `SetYOffset(line-1)` plus a whole-line reverse-video `StyleLineFunc` for
-a Grep target, `GotoTop()`/`nil` for a File one. Added a new `pickerPreviewTarget` (mode-aware,
-covers both fileMode and grepMode) alongside the unchanged, file-mode-only
-`pickerPreviewCandidate` (still what `activatePicker` alone uses — Activate stays a no-op in
-grepMode until M4.3's hand-off, D34). Added a `previewLine` field paired with `previewPath` as
-`syncPreview`'s re-targeting key: a plain path comparison would miss the Results cursor moving
-between two matches in the *same* file, which must still re-scroll/re-highlight — caught by
-writing `TestPickerGrepPreviewRetargetsWithinTheSameFile` before assuming path-only was enough.
-Two new tests in picker_test.go (`TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight`,
-`TestPickerGrepPreviewRetargetsWithinTheSameFile`); all prior Picker tests still pass unchanged.
-`make check` green.
+M4.3 done this session: Activate now works in grepMode (S10, S11), landing the Document Viewer
+on the matched line via D34's occurrence-ordinal re-derivation — rg's raw-file line number does
+not address the rendered (Glamour-reflowed, frontmatter-stripped) document directly. New
+`activateGrepPicker`/`pickerGrepCandidate`/`resolveGrepLanding` (picker.go) and `commitQuery`
+(find.go, a `commitFind`-shaped entry point for a query that arrives already decided rather
+than typed). `resolveGrepLanding` counts literal query occurrences in the raw source
+(frontmatter-stripped the same way `renderMarkdown` strips it, so line numbers re-base
+correctly) up to the grep line, and maps that ordinal into `findMatches(rendered, query)`;
+`commitQuery`'s own `nearestMatch(matches, 0)` default *is* D34's degrade path (first match from
+the top, or none), only overridden when the ordinal resolves — so a failed resolution can never
+leave the Viewer in a half-set state. Verified both explicit degrade triggers D34 names: a match
+inside stripped YAML frontmatter (falls back to a body match) and a match inside an HTML
+comment Glamour drops entirely (falls back to plain-at-the-top, no matches at all). A
+code-reviewer pass (fresh context) caught that the initial tests only ever exercised ordinal 0
+(the same landing spot a broken ordinal-lookup loop would also produce) — added
+`TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst` (two matches, ~160
+rendered lines apart via a blank-line-separated fixture so they can't both be on screen at once)
+and confirmed by hand that it actually fails when the ordinal loop is sabotaged. Also fixed a
+stale doc comment on `pickerPreviewCandidate` left over from M3.3a's now-obsolete "Activate is a
+no-op in grepMode" framing. Removed the now-superseded `TestPickerActivateIsANoOpInGrepMode`.
+`make check` and `make check-pty` both green.
 
-Next step: M4.3 — Activate a Grep Result: file becomes the Active Document, Document Viewer
-lands on the matched line. This is where D34 actually matters (re-read it first): rg's raw-file
-line number must be re-resolved by occurrence ordinal against the *rendered* document via
-`findMatches`/`commitFind`/`applyCurrentMatch` (find.go), not reused directly the way M4.2's
-Preview (raw text, same line space as rg) could. Degrade path: query spans stripped syntax/
-frontmatter → open with the query as a Committed Find on whatever matches exist (or plain if
-none) — never fail the activation.
+Next step: M4.4 — hand the grep query to Find as a Committed Find with next/previous traversal.
+Most of the wiring already exists as a side effect of M4.3 (`commitQuery` already leaves the
+Viewer in a committed-find state `findNext`/`findPrevious` can walk) — M4.4's own job is
+probably mostly a test confirming `FindNext`/`FindPrevious` move between a file's other grep
+matches after activation, rather than new production wiring; verify that assumption first rather
+than assuming a no-op task.
 
 Also queued, non-blocking: M7.1a (T11, terminology housekeeping).
 
@@ -97,7 +101,7 @@ No blockers. TRIAGE.md empty.
 | M3.3b| done   | 2026-08-03 | -         | D49 (TRIAGE T9) |
 | M4.1 | done   | -        | -         | D53  |
 | M4.2 | done   | -        | -         | D54  |
-| M4.3 | todo   | -        | -         |      |
+| M4.3 | done   | 2026-08-03 | -         |      |
 | M4.4 | todo   | -        | -         |      |
 | M5.1 | todo   | -        | -         |      |
 | M5.2 | todo   | -        | -         |      |

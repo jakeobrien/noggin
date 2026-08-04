@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -331,11 +332,12 @@ func (p picker) setPreviewSize(width, height int) picker {
 //
 // grepMode has no candidate here — M4.1 gave the Results list its own
 // grepMode rows and M4.2 gives the Preview pane its own grepMode target
-// (pickerPreviewTarget, below), but Activate stays a no-op in grepMode
-// (M3.3a) until M4.3 gives it the matched-line hand-off (D34) a plain
-// loadDocument here cannot provide; this function's own contract ("what
-// Activate would open") is why it must not start returning a grepMode
-// candidate before that lands.
+// (pickerPreviewTarget, below), and M4.3's grepMode Activate
+// (activateGrepPicker) needs D34's extra ordinal-resolution data a plain
+// pickerFile can't carry, so it has its own candidate lookup
+// (pickerGrepCandidate) instead of sharing this one; this function's own
+// contract ("what fileMode's Activate would open") is why it must not
+// start returning a grepMode candidate.
 func (p picker) pickerPreviewCandidate() (pickerFile, bool) {
 	if p.mode != fileMode || !p.resultsCurrent() {
 		return pickerFile{}, false
@@ -492,27 +494,32 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 	return m
 }
 
-// activatePicker is S10's Activate: the currently-previewed File Result
-// becomes the Active Document, the same and only path openDocument already
-// gives activate() (Files Nav) and the launch-time resolution
-// (applyResolution) — it touches m.viewer/m.focus alone, never m.roots or
-// m.files, which is what "does not change the Active Root, and does not
-// move, expand or re-select the Files Nav tree" means concretely: a
-// Result's Root need not be the Active Root (S10), and this never calls
-// openFolder or touches m.roots.active to make it so.
+// activatePicker is S10's Activate: the currently-previewed Result becomes
+// the Active Document, the same and only path openDocument already gives
+// activate() (Files Nav) and the launch-time resolution (applyResolution)
+// — it touches m.viewer/m.focus alone, never m.roots or m.files, which is
+// what "does not change the Active Root, and does not move, expand or
+// re-select the Files Nav tree" means concretely: a Result's Root need not
+// be the Active Root (S10), and this never calls openFolder or touches
+// m.roots.active to make it so.
 //
-// Reuses pickerPreviewCandidate rather than a second selection lookup —
-// "the Result the Preview is showing" and "the Result Activate would open"
-// are the same question (M3.2's own handoff note), so a fresh generation's
-// rows can no more be activated than they can leak into the Preview.
-// grepMode has no candidate yet (M4.1 wires it); until then Activate is a
-// no-op in Grep mode, same as the Prompt/Results already are.
-//
-// A read error surfaces as a footer message rather than refusing to close
-// the modal — activate()'s own "silence is not an error" shape (T15) — the
-// Picker is dismissed either way since there is nothing further for it to
-// do once a Result has been chosen.
+// grepMode is delegated to activateGrepPicker (M4.3): a Grep Result's
+// activation additionally has to land the Document Viewer on the matched
+// line (D34), which fileMode's plain openDocument has no reason to do.
 func (m model) activatePicker() model {
+	if m.picker.mode == grepMode {
+		return m.activateGrepPicker()
+	}
+	// Reuses pickerPreviewCandidate rather than a second selection lookup —
+	// "the Result the Preview is showing" and "the Result Activate would
+	// open" are the same question (M3.2's own handoff note), so a fresh
+	// generation's rows can no more be activated than they can leak into
+	// the Preview.
+	//
+	// A read error surfaces as a footer message rather than refusing to
+	// close the modal — activate()'s own "silence is not an error" shape
+	// (T15) — the Picker is dismissed either way since there is nothing
+	// further for it to do once a Result has been chosen.
 	f, ok := m.picker.pickerPreviewCandidate()
 	if !ok {
 		return m
@@ -524,6 +531,110 @@ func (m model) activatePicker() model {
 	}
 	m = m.openDocument(d)
 	return m.dismissPicker()
+}
+
+// pickerGrepCandidate is the Grep Result Activate would open (M4.3): the
+// selected row, gated the same way pickerPreviewCandidate gates fileMode's
+// candidate — resultsCurrent (a stale generation's rows must not activate
+// any more than they may preview or render) and the live result count (a
+// fresh, shorter result set can land between a selection move and the next
+// render).
+func (p picker) pickerGrepCandidate() (grepResult, bool) {
+	if p.mode != grepMode || !p.resultsCurrent() {
+		return grepResult{}, false
+	}
+	if p.selected < 0 || p.selected >= len(p.results.grep) {
+		return grepResult{}, false
+	}
+	return p.results.grep[p.selected], true
+}
+
+// activateGrepPicker is activatePicker's grepMode counterpart (M4.3, S10,
+// S11): the matched file becomes the Active Document, and the Document
+// Viewer lands on the matched line — re-derived in the rendered content's
+// own line space rather than trusted from rg's raw-file line number, per
+// D34: Glamour's rendering (re-flow, frontmatter stripping (D5), tab
+// expansion, markdown syntax removed) does not preserve rg's line numbers
+// across that boundary.
+//
+// The hand-off reuses find.go's own machinery (commitQuery, applyCurrentMatch)
+// rather than a bespoke scroll — D34's own reasoning, and what lets M4.4's
+// next/previous traversal fall out of this for free rather than needing its
+// own wiring: commitQuery already puts the Document Viewer into exactly the
+// "committed find" state FindNext/FindPrevious already know how to walk.
+// commitQuery's own nearestMatch(matches, 0) default ("first match from the
+// top, or none") is D34's degrade path verbatim, so the current match is
+// only overridden here when resolveGrepLanding actually resolves an ordinal
+// — never left in a half-set state, and never a failed or crashed
+// activation either way.
+//
+// A read error surfaces as a footer message the same way activatePicker's
+// fileMode half does (T15) — the Picker is dismissed either way.
+func (m model) activateGrepPicker() model {
+	g, ok := m.picker.pickerGrepCandidate()
+	if !ok {
+		return m
+	}
+	query := m.picker.input.Value()
+	d, err := loadDocument(g.file.path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", g.file.path, err)
+		return m.dismissPicker()
+	}
+	m = m.openDocument(d)
+	m.viewer = m.viewer.commitQuery(query)
+	if ordinal, ok := resolveGrepLanding(d.src, m.viewer.vp.GetContent(), query, g.line); ok {
+		m.viewer.findState.current = ordinal
+		m.viewer = m.viewer.applyCurrentMatch()
+	}
+	return m.dismissPicker()
+}
+
+// resolveGrepLanding is D34's occurrence-ordinal bridge from a Grep
+// Result's raw-file line number to a match index into
+// findMatches(rendered, query): "the Nth literal occurrence of the query"
+// is a property of the text itself, invariant to how it later gets wrapped
+// onto lines, so the Nth occurrence in the raw source (after the same
+// frontmatter-stripping renderMarkdown itself applies, D5 — line numbers
+// past a stripped frontmatter block do not otherwise line up between the
+// two spaces at all) is assumed to be the Nth occurrence in the rendered
+// content too. ok is false — D34's explicit degrade trigger — when the
+// target line sits inside the stripped frontmatter block itself (no
+// corresponding occurrence in the rendered content can exist), or when the
+// resolved ordinal has no counterpart at all in the rendered matches
+// (Glamour having removed or reordered occurrences before it, e.g. inside
+// stripped markdown syntax).
+//
+// "This match" resolves to the *first* occurrence of query on line: rg
+// reports one Result per matching line, not per occurrence within it
+// (grepBatch's own comment), so a line with several occurrences of query
+// picks its first as the line's representative match — the same
+// approximation D34 accepts for markdown-syntax-adjacent matches.
+func resolveGrepLanding(src []byte, rendered, query string, line int) (ordinal int, ok bool) {
+	stripped := stripFrontmatter(src)
+	if len(stripped) != len(src) {
+		removedLines := strings.Count(string(src[:len(src)-len(stripped)]), "\n")
+		if line <= removedLines {
+			return 0, false
+		}
+		line -= removedLines
+	}
+	raw := findMatches(string(stripped), query)
+	ordinal = -1
+	for i, m := range raw {
+		if m.line+1 == line { // findMatch.line is 0-based; rg's line is 1-based
+			ordinal = i
+			break
+		}
+	}
+	if ordinal < 0 {
+		return 0, false
+	}
+	rend := findMatches(rendered, query)
+	if ordinal >= len(rend) {
+		return 0, false
+	}
+	return ordinal, true
 }
 
 // handlePickerInput is where a keypress goes while the Picker is open
