@@ -1,4 +1,4 @@
-# Triage — C2 find
+# Triage — C3 compare
 
 <!-- Per-cycle triage INBOX for actionable items surfaced out-of-band: code-review and
      validate findings, bugs / in-scope issues discovered during build that were not
@@ -25,50 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-
-<!-- Inbox empty: T25-T28 triaged 2026-08-04 (charm-replan). Routing:
-     T25 -> actioned directly: reworded M6.1's Status-table note in PROGRESS.md to match
-            M6.2's "not taken" phrasing (low risk/value doc wording fix, escalation matrix
-            "just do it") — no plan task or decision entry warranted
-     T26 -> PLAN M7.1c, D58 (accepted; M7.1 itself stays done, its acceptance criterion is
-            satisfied as written — see D58)
-     T27 -> moot: the Handoff paragraph it cites is being fully overwritten by this replan
-            session's Handoff rewrite; the imprecise "bullets 1-6" range does not carry into
-            the new text, so there is nothing left to fix
-     T28 -> dropped: low risk/value, and the codebase already has a local convention of
-            mirrored file-mode/grep-mode test pairs with duplicated setup (e.g. the existing
-            read-error pair) — same shape as T20's earlier drop; not worth a dedicated task
-            this late in the cycle, no decision entry warranted
-
-     Inbox empty: T1-T4, T21-T24 triaged 2026-08-04 (charm-replan). Routing:
-     T1  -> PLAN M7.1b(a) (accepted, low-cost housekeeping, bundled)
-     T2  -> PLAN M7.1b(b) (accepted, low-cost housekeeping, bundled)
-     T3  -> PLAN M7.1b(c) (accepted, low-cost housekeeping, bundled)
-     T4  -> PLAN M7.1b(d) (accepted, low-cost housekeeping, bundled)
-     T21 -> PLAN M4.2a, D55 (accepted, material; bundled with T22)
-     T22 -> PLAN M4.2a, D55 (accepted, material; bundled with T21)
-     T23 -> D56 (decided: keep test, add rationale comment via PLAN M7.1b(e))
-     T24 -> dropped: already covered by queued PLAN M7.1a, whose acceptance criterion ("no
-            comment in the Picker's code uses either variant") is codebase-wide, not a
-            point-in-time count — no separate action needed; noted on M7.1a for traceability
-
-     Inbox empty: T6-T12 triaged 2026-08-03 (charm-replan). Routing:
-     T6  -> PLAN M3.2a, D48 (accepted, material)
-     T7  -> PLAN M3.3a, D49 (accepted, batch)
-     T8  -> PLAN M3.3a, D49 (accepted, batch)
-     T9  -> PLAN M3.3b, D49 (accepted, batch)
-     T10 -> PLAN M3.1a, D50 (accepted, scope judgment)
-     T11 -> PLAN M7.1a (accepted, low-cost housekeeping)
-     T12 -> PLAN M3.2b (accepted, low-cost housekeeping)
-
-     T13-T20 triaged 2026-08-03 (charm-replan). Routing:
-     T13 -> PLAN M3.1b, D52 (accepted, material; bundled with T15, T16)
-     T14 -> PLAN M2.1a, D51 (accepted, material)
-     T15 -> PLAN M3.1b, D52 (accepted, bundled with T13)
-     T16 -> PLAN M3.1b, D52 (accepted, bundled with T13)
-     T17 -> PLAN M3.1b (accepted, low-cost, folded into T13's fix since same function)
-     T18 -> PLAN M1.4c (accepted, low-cost; bundled with T19)
-     T19 -> PLAN M1.4c (accepted, low-cost; bundled with T18)
-     T20 -> dropped: reporter's own report called it a defensible deliberate choice (avoids
-            OS-dependent err.Error() text brittleness) with no functional gap; low risk/value,
-            no decision entry warranted per the escalation matrix -->
+| T1 | review | high | `src/foo.ts:42` | <one-line description + concrete recommendation> | open |

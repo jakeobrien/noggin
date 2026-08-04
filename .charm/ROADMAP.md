@@ -22,7 +22,7 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 | Key | Name               | Status  | Outcome / intent | Archive |
 |-----|--------------------|---------|------------------|---------|
 | C1  | read-across-roots  | done    | Delivered all 12 spec'd deliverables (S1–S12) across 26 plan tasks; none of D8's pre-agreed cuts were needed | `archive/C1-2026-08-read-across-roots/` |
-| C2  | find               | active  | Telescope-grade fuzzy filename find and grep with preview, scoped to a root or all roots | - |
+| C2  | find               | done    | Fuzzy filename find and literal grep with preview, scoped to Active Root or All Roots, ripgrep-backed | `archive/C2-2026-08-find/` |
 | C3  | compare            | planned | More than one document on screen at once, with keyboard targeting | - |
 | C4  | recall             | planned | The session remembers: document history, starred documents, recent, wiki-links | - |
 | C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
@@ -52,5 +52,6 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 - Rename `go.mod`'s module path from the bare `noggin` to a resolvable path before
   `go install`/external import ever needs it (from C1, code review)
 - A shared exclusive-input-mode dispatch abstraction across modals (currently hand-duplicated
-  per modal in model.go) — only worth it if a third modal is ever added; none planned in C1
-  (from C1, code review T31)
+  per modal in model.go) — the Picker became the third modal in C2 and still didn't justify
+  it (C2/D35: the three are less alike than the count suggests); only worth it if a fourth
+  modal is ever added, none planned yet (from C1 code review T31, reaffirmed C2/D35)

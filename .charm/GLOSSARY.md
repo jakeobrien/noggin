@@ -36,10 +36,10 @@
   means the OS file manager.
 - **Preview pane** — the part of a Picker that shows the selected Result's file. Lives inside
   the Picker only; it never changes the Active Document (C2).
-- **Prompt** — a Picker's input field; Results update as it is typed.
+- **Prompt** — a Picker's input field; Results update as it is typed (C2).
 - **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
   `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
-- **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker).
+- **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
 - **Root** — a folder that bounds file visibility. Several exist per session; identified by

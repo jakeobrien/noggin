@@ -1,5 +1,7 @@
 # Testing async tea.Cmd work without real time
 
+As of: C2
+
 Written at C2/M2.4 (2026-08-03), the codebase's first async command. Facts and citations.
 
 ## The shape used

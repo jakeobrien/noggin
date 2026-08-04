@@ -29,3 +29,13 @@
 - `viewport-search-ansi-offsets.md` — bubbles v2's `viewport.SetHighlights` drifts off-line
   against ANSI-styled content; why `find.go` computes match lines itself instead. Re-check
   before ever reaching for `SetHighlights` again. (as of C1)
+- `async-cmd-testing.md` — the generation-counter shape of a debounced async `tea.Cmd` (the
+  Picker's search) and how to test it without sleeps, goroutines or a test seam; cited by
+  `cmd/noggin/picker.go`. Reread before adding the codebase's next async command. (as of C2)
+- `picker-pty-async-ordering.md` — an ordering hazard (not a product bug) in replaying an
+  async search through the pty harness's cell-diffing emulator; reread before adding pty
+  coverage for any future async command. (as of C2)
+- `lipgloss-v2-row-rendering-gotchas.md` — two lipgloss v2 traps for any row renderer:
+  `Width(...).MaxWidth(...)` wraps before it truncates, and a partial styled run inside a
+  reverse-video row needs its style fully specified or the row's reverse video gets cancelled
+  mid-line; cited by `cmd/noggin/picker_view.go`. (as of C2)

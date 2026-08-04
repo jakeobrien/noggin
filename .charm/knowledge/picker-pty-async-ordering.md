@@ -1,5 +1,7 @@
 # pty-replaying the Picker's async search: an ordering hazard, not a product bug
 
+As of: C2
+
 Written at C2/M7.1 (2026-08-04). Facts and citations.
 
 ## The symptom
