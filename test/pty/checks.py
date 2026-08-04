@@ -39,6 +39,11 @@ KEY = {
     "Navigator":    b"\x0e",    # keys.Navigator: ctrl+n
     "Cancel":       b"\x1b",    # keys.Cancel: esc
     "Help":         b"?",       # keys.Help
+    "Picker":       b"\x10",    # keys.Picker: ctrl+p
+    "PickerUp":     b"\x1b[A",  # keys.PickerUp: up arrow
+    "PickerDown":   b"\x1b[B",  # keys.PickerDown: down arrow
+    "PickerMode":   b"\t",      # keys.PickerMode: tab
+    "PickerScope":  b"\x1b[Z",  # keys.PickerScope: shift+tab
 }
 
 
@@ -805,5 +810,108 @@ check("M5.3 opened from the viewer, a Files/Roots-only binding is not listed",
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("M5.3 exits 0 after the viewer-context help check", code == 0, f"exit {code}")
+
+# --- M7.1: the Picker modal (open, type, results, preview, activate, ---------
+# --- dismiss, and the mode/Scope indicators) ---------------------------------
+
+# Round trip first: dismissing without picking anything must restore the
+# exact frame that was on screen before the Picker opened (M7.1's own
+# criterion) — the same "esc restores exactly" shape M5.3's help-modal check
+# already gives, applied to the Picker instead.
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.5)
+before_lines = screen_of(s.out, 80, 24).raw_lines()
+
+s.send(KEY["Picker"], 0.5)
+opened_body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M7.1 ctrl+p opens the Picker modal",
+      "Results" in opened_body and "Preview" in opened_body, repr(opened_body[:200]))
+check("M7.1 the Picker opens in File mode, Active Root Scope (S1's fixed default)",
+      "File · Active Root" in opened_body, repr(opened_body[:200]))
+check("M7.1 an empty Prompt reports the query threshold",
+      "type at least 3 characters" in opened_body, repr(opened_body[:200]))
+
+s.send(KEY["Cancel"], 0.5)
+after_lines = screen_of(s.out, 80, 24).raw_lines()
+check("M7.1 esc dismisses the Picker, restoring the exact frame before it opened",
+      after_lines == before_lines, repr(after_lines[:1]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M7.1 exits 0 after a Picker open/dismiss round trip", code == 0, f"exit {code}")
+
+# File mode flow: type a query, see Results and Preview populate, then
+# activate the previewed Result. File is the mode the Picker always opens in
+# (S1), so this never switches mode/Scope itself — kept separate from the
+# mode/Scope flow below deliberately: switching mode/Scope *after* an async
+# search has already populated Results/Preview raced, intermittently, with
+# the cell-diffing renderer's own cursor-relative redraws (observed directly:
+# identical trailing bytes replayed to two different screens depending on how
+# many async-search redraws preceded them in the stream) — a replay-fragility
+# finding about compounding an async search with an immediately-following
+# mode/Scope switch, not a product defect (see TRIAGE). Ordering each flow to
+# never do both at once sidesteps it.
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.5)
+s.send(KEY["Picker"], 0.5)
+
+query = b"guide"  # matches only docs/guide.md by fuzzy file-name subsequence
+s.send(query, 0.9)  # clears the debounce (120ms) plus an rg run
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M7.1 a query above threshold populates the Results list",
+      "docs/guide.md" in body, repr(body[:300]))
+check("M7.1 the Preview pane loads the selected Result's raw content",
+      "Nested guide." in body, repr(body[:300]))
+
+s.send(KEY["Activate"], 0.6)
+activated = screen_of(s.out, 80, 24)
+activated_body = "\n".join(activated.raw_lines())
+footer_activated = activated.lines()[-1]
+check("M7.1 activating a File Result dismisses the Picker",
+      "Results" not in activated_body and "Preview" not in activated_body,
+      repr(activated_body[:200]))
+check("M7.1 activating a File Result opens it as the Active Document, focused",
+      footer_activated.split(" \u00b7")[0] == "Document", repr(footer_activated))
+check("M7.1 the activated Result's pane title names the file",
+      "guide.md" in activated_body, repr(activated_body[:200]))
+check("M7.1 the activated Result's content is rendered",
+      "Nested guide." in activated_body, repr(activated_body[:200]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M7.1 exits 0 after the File mode search/preview/activate flow", code == 0, f"exit {code}")
+
+# Mode/Scope indicator flow: both switches while the Prompt is still empty
+# (no async search racing the switch, per the note above), then type once
+# already in Grep mode so the query, mode and Scope all settle together in a
+# single search — covering Grep's own Results/Preview (rg's smart case makes
+# the lowercase query match the fixture's capitalised heading) without ever
+# switching mode/Scope after a search has landed.
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.5)
+s.send(KEY["Picker"], 0.5)
+
+s.send(KEY["PickerMode"], 0.4)
+indicator_grep = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M7.1 tab switches the mode indicator to Grep",
+      "Grep · Active Root" in indicator_grep, repr(indicator_grep[:200]))
+
+s.send(KEY["PickerScope"], 0.4)
+indicator_allroots = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M7.1 shift+tab switches the Scope indicator to All Roots",
+      "Grep · All Roots" in indicator_allroots, repr(indicator_allroots[:200]))
+
+s.send(KEY["PickerScope"], 0.4)
+indicator_activeroot = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M7.1 shift+tab switches the Scope indicator back to Active Root",
+      "Grep · Active Root" in indicator_activeroot, repr(indicator_activeroot[:200]))
+
+out = s.send(query, 1.0)  # first query typed, already in Grep mode/Active Root
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("M7.1 a Grep query populates the Results list with a matching line",
+      "Grep · Active Root" in body and "docs/guide.md" in body, repr(body[:300]))
+check("M7.1 the Preview highlights the matched line (reverse video on the wire)",
+      b"\x1b[7m" in out or b"\x1b[7m" in s.out)
+
+code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
+check("M7.1 exits 0 after the mode/Scope indicator flow", code == 0, f"exit {code}")
 
 done()

@@ -14,3 +14,7 @@
 - `async-cmd-testing.md` — the generation-counter shape of the Picker's debounced async
   search (D41) and how it is tested without sleeps, goroutines or a test seam: synthesize the
   tick messages, treat a non-nil Cmd as "a search was issued", call the search Cmd inline.
+- `picker-pty-async-ordering.md` — an ordering hazard (not a product bug) found writing M7.1's
+  pty checks: switching the Picker's mode/Scope immediately after a landed async search races
+  the pty harness's cell-diffing replay intermittently; switch on an empty Prompt (no search
+  in flight) instead. Reread before adding pty coverage for a future async command.
