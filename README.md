@@ -93,8 +93,9 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `e` | edit the active document in `$EDITOR` |
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
+| `ctrl+p` | open the Picker (fuzzy find files or grep across files, see below) |
 | `q` / `ctrl+c` | quit |
-| `esc` | context-dependent cancel (dismiss find, close Help) |
+| `esc` | context-dependent cancel (dismiss find, close Help, close Picker) |
 
 ### Roots Nav
 
@@ -129,6 +130,20 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | *(typing)* | updates matches live |
 | `enter` | commit the search — matches stay live for `n`/`N` |
 | `esc` | dismiss the search entirely |
+
+### While the Picker is open (`ctrl+p`)
+
+Every printable key types into the Prompt — there's no separate typing mode to
+leave. Everything else is on a non-printable key:
+
+| Key | Action |
+|---|---|
+| *(typing)* | updates the Results list live (once 3+ characters are typed) |
+| `↑` / `↓` | move the Results selection; the Preview follows it |
+| `tab` | switch mode: File ↔ Grep (the typed query carries over) |
+| `shift+tab` | switch Scope: Active Root ↔ All Roots (the typed query carries over) |
+| `enter` | activate the selected Result |
+| `esc` | dismiss the Picker — nothing about the session changes |
 
 ## Starring roots
 
@@ -184,9 +199,62 @@ it; whatever had focus keeps it.
 YAML frontmatter at the top of a document is stripped before rendering — it's
 never shown as a table or raw block.
 
+## Finding across files (the Picker)
+
+Press `ctrl+p` from any pane, including with the Navigator hidden, to open the
+Picker: a modal fuzzy-finder over the files in scope. It always opens the same
+way — File mode, Active Root scope, empty Prompt — and never remembers
+anything between opens, in this session or the next.
+
+The Picker has two modes, switched in place with `tab` without losing what
+you've typed:
+
+- **File** (the default) — fuzzy-matches your query against file *names* only,
+  ranked by match strength, with the matched characters highlighted in each
+  row. Each row also shows the file's Root and its path relative to that
+  Root, so two same-named files in different Roots stay distinguishable.
+- **Grep** — searches for your query as literal text (no regex) across file
+  *contents*, case-insensitively unless your query itself has an uppercase
+  letter. One row per matching line, showing the file, its line number and
+  the line's text, with the matched text highlighted.
+
+Either mode searches either **Active Root** or **All Roots**, switched in
+place with `shift+tab`; the title above the Prompt names both, e.g.
+`File · Active Root` or `Grep · All Roots`. All Roots silently skips any
+Broken root.
+
+A query shorter than 3 characters doesn't search at all ("type at least 3
+characters"); a query that matches nothing says "no results"; a result set
+larger than 200 says so ("first 200 results (truncated)") instead of implying
+that's everything. The Preview pane shows the selected Result's file as raw,
+unrendered text — the File Picker from the top, the Grep Picker scrolled to
+and highlighting the matched line — and you can scroll it without affecting
+anything else. `enter` activates the selected Result: it becomes the Active
+Document (landing on the matched line for a Grep Result, with next/previous
+`n`/`N` traversal working from it, same as a typed `/` search), without
+changing the Active Root or touching the Files Nav tree's expansion or
+selection. `esc` dismisses the Picker with no side effects at all — same
+Active Document, same Active Root, same scroll positions.
+
+Only [Readable files](#what-gets-shown) are ever searched or shown.
+
+### Requires `ripgrep`
+
+The Picker is powered by [`ripgrep`](https://github.com/BurntSushi/ripgrep)
+(the `rg` binary on your `PATH`) for both listing file names and searching
+text. Without it, noggin still launches and reads documents normally — only
+the Picker is affected: opening it shows "Picker unavailable: ripgrep (rg)
+not found on PATH" instead of a search.
+
+Because `rg` supplies the file list, its own ignore rules apply, not
+noggin's Files Nav ignore rules: `.gitignore`/`.ignore` files are respected
+(consistent with the Files Nav), but unlike the Files Nav, `rg`'s hidden-file
+defaults mean dotfiles and hidden directories are *not* searched or shown in
+the Picker even though they're visible in the Files Nav (e.g. `.github/`).
+The two panes can disagree at the edges as a result — accepted, not a bug.
+
 ## Scope
 
 noggin does not create, rename, move or delete files or folders, and it isn't an
-editor — writing happens by handing off to `$EDITOR`. Fuzzy find/grep across
-files, multiple documents on screen at once, and document history/recall are not
-part of this release.
+editor — writing happens by handing off to `$EDITOR`. Multiple documents on
+screen at once and document history/recall are not part of this release.

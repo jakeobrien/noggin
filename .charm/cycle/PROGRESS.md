@@ -17,36 +17,46 @@
 
 ## Cursor
 
-M7.1b done (2026-08-04): all five validation-pass test-hygiene sub-items (TRIAGE T1–T4, T23 /
-D56) addressed — see Handoff for detail. Only M7.2 remains todo in this milestone; it needs
-M7.1, already satisfied. Next recommended step: M7.2 (docs + cycle-level acceptance
-walkthrough), the last task in the cycle.
+M7.2 done (2026-08-04): README documents the `ripgrep` requirement, its ignore-rule
+consequence and the Picker's keys; every cycle-level acceptance bullet in SPEC.md was
+confirmed by hand against the real binary or an existing deterministic test, none raised to
+TRIAGE — see Handoff for detail. This was the cycle's last planned task. Next recommended
+step: a milestone/cycle-close pass (review + validate the M7.x tasks, drain TRIAGE T25, then
+`charm-close`).
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M7.1b (validation-pass test hygiene backfill) is done, all five sub-items in
-cmd/noggin/picker_test.go, picker_view_test.go and files_search_test.go:
-(a) `TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine` and
-`TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst` (T1) now cross-
-reference each other's doc comments as a pair covering D34's ordinal-resolution bridge; (b)
-new `TestPickerActivateGrepResultDoesNotChangeFilesNav` (T2) covers S10 for the grep Activate
-path, mirroring M3.3's file-mode `TestPickerActivateOpensResultAsActiveDocumentOnly`; (c)
-`TestPickerFileResultsDisambiguateSameBasenameRoots`'s doc comment (T3) now explains its
-rowA/rowB check is over whole frame lines, not isolated pickerFileRow output, and
-cross-references `TestPickerFileRowFillsItsFullBudget` as the test that actually isolates it;
-(d) that same M3.3 fixture (T4) now expands a real subdirectory so its
-`reflect.DeepEqual(m.files.expanded, ...)` assertion exercises a non-empty map (mirrored into
-the new (b) test too); (e) `TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated` (T23/D56)
-got the one-line forward-looking-guard comment D56 called for. `make check` (build/vet/fmt/
-test) is green; all touched/added tests individually verified passing.
+M7.2 is done: README.md gained a "Finding across files (the Picker)" section (modes, Scope,
+status/empty-state strings, Activate/dismiss behaviour) plus a "Requires `ripgrep`" subsection
+(the requirement, the exact unavailability message, and the ignore-rule consequence: `rg`'s
+hidden-file defaults mean the Picker won't search/show dotfiles the Files Nav does show), a
+"While the Picker is open" keybinding table, and a `ctrl+p` row in the Global table; the stale
+"Fuzzy find/grep across files ... not part of this release" line was removed from `## Scope`.
+Every command/example (including pre-existing `make build`/`make run`) was checked against
+`bin/noggin` directly (built fresh) or `make check-pty`, both green.
 
-Next step: M7.2 (docs + cycle-level acceptance walkthrough) — the cycle's last planned task.
-TRIAGE still carries one open, low-severity item (T25, a Status-table wording nit) — not
-blocking, but due for `charm-replan` to drain once the cycle reaches a milestone/close
-boundary.
+Each SPEC.md cycle-level acceptance bullet was confirmed, none raised to TRIAGE: bullets 1–6
+via an ad hoc pty walkthrough (two-Roots-by-basename fixture, File find→preview→activate,
+Grep switch→search→activate→land+highlight→n/N traversal, Scope switch finding a
+non-active-Root file, no-rg launch + unavailability message, hidden-file allowlist
+enforcement); bullet on dismiss-leaves-everything-unchanged via the existing
+`TestPickerDismissRestoresThePreOpenFrameByteForByte` (stronger than pty replay: perturbs
+mode/Scope/Prompt then compares `View().Content` byte-for-byte, no reliance on the terminal
+emulator); bullet on Prompt responsiveness via `TestPickerSearchIsDebouncedAndShowsOnlyTheFinalQuery`
+/`TestPickerDiscardsStaleResults`. Gotcha: chaining Picker actions (switch→switch→dismiss) in
+an ad hoc pty script tripped the same class of `Screen`-emulator replay artifact
+picker-pty-async-ordering.md documents for switch-after-search — not exercised by the
+carefully-tuned committed `checks.py`, and superseded here by the stronger unit test above, so
+no new finding or TRIAGE item; a future pty check chaining >2 Picker actions before an assert
+should budget extra pump time or split the sequence, per that finding.
+
+This was the cycle's last planned task. TRIAGE still carries one open, low-severity item (T25,
+a Status-table wording nit) — not blocking, but due for `charm-replan` at the close boundary.
+Next step: a milestone/cycle-close pass — review + validate the M7.x tasks (none Reviewed/
+Validated yet), drain T25, then `charm-close`.
 
 ## Status
 
@@ -88,4 +98,4 @@ boundary.
 | M7.1 | done   | -        | -         | pty checks for the Picker; findings/picker-pty-async-ordering.md |
 | M7.1a| done   | -        | -         | TRIAGE T11, T24 |
 | M7.1b| done   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
-| M7.2 | todo   | -        | -         |      |
+| M7.2 | done   | -        | -         |      |
