@@ -17,46 +17,39 @@
 
 ## Cursor
 
-M7.2 done (2026-08-04): README documents the `ripgrep` requirement, its ignore-rule
-consequence and the Picker's keys; every cycle-level acceptance bullet in SPEC.md was
-confirmed by hand against the real binary or an existing deterministic test, none raised to
-TRIAGE — see Handoff for detail. This was the cycle's last planned task. Next recommended
-step: a milestone/cycle-close pass (review + validate the M7.x tasks, drain TRIAGE T25, then
-`charm-close`).
+Replan (2026-08-04): fresh-context code review covered M7.1/M7.1a/M7.1b/M7.2 (all now
+Reviewed) and raised TRIAGE T25–T28. Triaged this session: T25 actioned directly (Status-table
+wording fix, below); T26 promoted to new task **M7.1c** (D58); T27 moot (the Handoff paragraph
+it cited is being replaced by this one); T28 dropped (matches an existing local convention,
+low risk/value, no decision warranted — see TRIAGE.md's routing note). TRIAGE inbox is empty
+again. Next recommended step: M7.1c (small, opportunistic, no dependency), then a
+milestone/cycle-close pass (validate the M7.x tasks — Validated is still `-` on all of them —
+then `charm-close`).
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M7.2 is done: README.md gained a "Finding across files (the Picker)" section (modes, Scope,
-status/empty-state strings, Activate/dismiss behaviour) plus a "Requires `ripgrep`" subsection
-(the requirement, the exact unavailability message, and the ignore-rule consequence: `rg`'s
-hidden-file defaults mean the Picker won't search/show dotfiles the Files Nav does show), a
-"While the Picker is open" keybinding table, and a `ctrl+p` row in the Global table; the stale
-"Fuzzy find/grep across files ... not part of this release" line was removed from `## Scope`.
-Every command/example (including pre-existing `make build`/`make run`) was checked against
-`bin/noggin` directly (built fresh) or `make check-pty`, both green.
+This session was a replan, not a build: no code changed. A fresh-context code review (maker/
+checker split) covered the diff since M6 for M7.1, M7.1a, M7.1b and M7.2 — all four are
+Reviewed 2026-08-04, Validated still `-`. Findings (TRIAGE T25–T28) have been triaged and the
+inbox is empty; the substantive one is **T26/D58**: M7.1's pty check "the Preview highlights
+the matched line (reverse video on the wire)" (test/pty/checks.py:907-911) is tautological —
+it only checks that `\x1b[7m` appears anywhere in the frame, which the selected Results row's
+own reverse-video styling already guarantees regardless of whether the Preview highlights
+anything. M7.1 stays `done` (its literal acceptance criterion doesn't require this specific
+check to be non-tautological, and the real behavior is independently covered by a unit test —
+see D58), but the fix is now **M7.1c**, a small opportunistic follow-up.
 
-Each SPEC.md cycle-level acceptance bullet was confirmed, none raised to TRIAGE: bullets 1–6
-via an ad hoc pty walkthrough (two-Roots-by-basename fixture, File find→preview→activate,
-Grep switch→search→activate→land+highlight→n/N traversal, Scope switch finding a
-non-active-Root file, no-rg launch + unavailability message, hidden-file allowlist
-enforcement); bullet on dismiss-leaves-everything-unchanged via the existing
-`TestPickerDismissRestoresThePreOpenFrameByteForByte` (stronger than pty replay: perturbs
-mode/Scope/Prompt then compares `View().Content` byte-for-byte, no reliance on the terminal
-emulator); bullet on Prompt responsiveness via `TestPickerSearchIsDebouncedAndShowsOnlyTheFinalQuery`
-/`TestPickerDiscardsStaleResults`. Gotcha: chaining Picker actions (switch→switch→dismiss) in
-an ad hoc pty script tripped the same class of `Screen`-emulator replay artifact
-picker-pty-async-ordering.md documents for switch-after-search — not exercised by the
-carefully-tuned committed `checks.py`, and superseded here by the stronger unit test above, so
-no new finding or TRIAGE item; a future pty check chaining >2 Picker actions before an assert
-should budget extra pump time or split the sequence, per that finding.
+Also fixed directly (T25, too small to warrant a plan task): M6.1's Status-table note read
+"pre-agreed cut (D32); D57" with no qualifier, contradicting the Handoff's own (correct)
+statement that D32's cut was not taken for M6 — now reads "pre-agreed cut (D32) not taken;
+D57", matching M6.2's row.
 
-This was the cycle's last planned task. TRIAGE still carries one open, low-severity item (T25,
-a Status-table wording nit) — not blocking, but due for `charm-replan` at the close boundary.
-Next step: a milestone/cycle-close pass — review + validate the M7.x tasks (none Reviewed/
-Validated yet), drain T25, then `charm-close`.
+Next step: M7.1c (fix the tautological pty check, effort 1, no dependency) — the only `todo`
+task left in the plan. After that, every M7.x task needs a validate pass (Validated is `-` on
+all of M7.1/M7.1a/M7.1b/M7.2/M7.1c) before `charm-close`.
 
 ## Status
 
@@ -93,9 +86,10 @@ Validated yet), drain T25, then `charm-close`.
 | M5.1 | done   | 2026-08-04 | 2026-08-04 |      |
 | M5.2 | done   | 2026-08-04 | 2026-08-04 |      |
 | M5.3 | done   | 2026-08-04 | 2026-08-04 |      |
-| M6.1 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32); D57; TRIAGE T25 |
+| M6.1 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32) not taken; D57 |
 | M6.2 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32) not taken; D57 |
-| M7.1 | done   | -        | -         | pty checks for the Picker; findings/picker-pty-async-ordering.md |
-| M7.1a| done   | -        | -         | TRIAGE T11, T24 |
-| M7.1b| done   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
-| M7.2 | done   | -        | -         |      |
+| M7.1 | done   | 2026-08-04 | -         | pty checks for the Picker; findings/picker-pty-async-ordering.md; D58 (TRIAGE T26 -> M7.1c) |
+| M7.1a| done   | 2026-08-04 | -         | TRIAGE T11, T24 |
+| M7.1b| done   | 2026-08-04 | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
+| M7.2 | done   | 2026-08-04 | -         |      |
+| M7.1c| todo   | -        | -         | TRIAGE T26; D58 |

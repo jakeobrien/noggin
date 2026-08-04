@@ -955,3 +955,29 @@
   implementation. `highlightMatches` now takes row *columns*, with each mode supplying its own
   mapping (`suffixColumns` for file names, prefix offset + `clipColumns` for grep rows, whose
   match can be partly or wholly cut by `rightTruncate`).
+
+## D58: M7.1's pty Preview-highlight check is tautological; M7.1 stays done, fix promoted to a plan task (T26)
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-04
+- Context: TRIAGE T26 (review, medium): `test/pty/checks.py`'s M7.1 check "the Preview
+  highlights the matched line (reverse video on the wire)" (lines 907-911) asserts only that
+  `\x1b[7m` appears somewhere in the frame's byte stream. `pickerSelectedStyle`
+  (picker_view.go:197, `Reverse(true)`) already renders the *selected Results row* in reverse
+  video regardless of Preview behavior, so the check would still pass if the Preview's
+  matched-line highlight were removed or broken — it doesn't prove what its name claims. Also
+  redundant as written: `out` is `s.send()`'s return value, which is `self.pump()`'s return —
+  the harness's own cumulative `self.out` buffer (test/pty/harness.py:74-76) — so `out` and
+  `s.out` are the same object at that call site and the `or` branch is dead.
+- Decision: M7.1 stays `done` — its own acceptance criterion ("`make check-pty` passes with
+  new Picker checks ... including one that asserts the frame after dismissal matches the
+  frame before opening") is satisfied as literally written and doesn't require this specific
+  check to be non-tautological. Promote the fix to a small opportunistic task (M7.1c) rather
+  than reopening M7.1: scope the assertion to something that can't pass without genuine
+  Preview-side highlighting, and drop the redundant `or s.out`.
+- Why: medium risk on the gap (a real regression in Preview highlighting could ship
+  undetected by this pty check specifically), but low value to reopen M7.1 for — the
+  underlying behavior is already independently verified by
+  `TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight` (a unit test, not pty-level).
+  Cheap to close with a follow-up task before cycle close.

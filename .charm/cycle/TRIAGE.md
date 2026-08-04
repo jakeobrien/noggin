@@ -25,9 +25,22 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T25 | review | low | .charm/cycle/PROGRESS.md:92-93 | M6.1's Status-table note reads "pre-agreed cut (D32); D57" with no qualifier, while M6.2's reads "pre-agreed cut (D32) not taken; D57" and the Handoff correctly states D32 was not taken for M6 as a whole (both tasks were built). Read alone, M6.1's row misleadingly implies the cut was applied to it. Recommendation: reword M6.1's note to match M6.2's "not taken" phrasing (or state it once at the M6 milestone level) so the Status table doesn't contradict the Handoff. | open |
 
-<!-- Inbox empty: T1-T4, T21-T24 triaged 2026-08-04 (charm-replan). Routing:
+<!-- Inbox empty: T25-T28 triaged 2026-08-04 (charm-replan). Routing:
+     T25 -> actioned directly: reworded M6.1's Status-table note in PROGRESS.md to match
+            M6.2's "not taken" phrasing (low risk/value doc wording fix, escalation matrix
+            "just do it") — no plan task or decision entry warranted
+     T26 -> PLAN M7.1c, D58 (accepted; M7.1 itself stays done, its acceptance criterion is
+            satisfied as written — see D58)
+     T27 -> moot: the Handoff paragraph it cites is being fully overwritten by this replan
+            session's Handoff rewrite; the imprecise "bullets 1-6" range does not carry into
+            the new text, so there is nothing left to fix
+     T28 -> dropped: low risk/value, and the codebase already has a local convention of
+            mirrored file-mode/grep-mode test pairs with duplicated setup (e.g. the existing
+            read-error pair) — same shape as T20's earlier drop; not worth a dedicated task
+            this late in the cycle, no decision entry warranted
+
+     Inbox empty: T1-T4, T21-T24 triaged 2026-08-04 (charm-replan). Routing:
      T1  -> PLAN M7.1b(a) (accepted, low-cost housekeeping, bundled)
      T2  -> PLAN M7.1b(b) (accepted, low-cost housekeeping, bundled)
      T3  -> PLAN M7.1b(c) (accepted, low-cost housekeeping, bundled)

@@ -259,3 +259,12 @@ Delivers: S14 (documented), cycle-level acceptance
   noting it guards a future batching refactor, per D56 — done when: all five sub-items are
   addressed in their respective test files — effort: 2 (needs: none; opportunistic
   test-quality backfill from an earlier validation pass, no code dependency).
+- **M7.1c** — Fix the tautological Preview-highlight pty check (TRIAGE T26 / D58):
+  `test/pty/checks.py`'s M7.1 "the Preview highlights the matched line" check currently only
+  asserts `\x1b[7m` appears anywhere in the frame, which the selected Results row's own
+  `pickerSelectedStyle` reverse video already guarantees regardless of Preview behavior; also
+  drop the redundant `out or s.out` (same object, see D58) — done when: the check can fail if
+  the Preview's matched-line highlight is removed while the Results-row selection highlight
+  remains (e.g. by scoping the assertion to the Preview pane's column range or to Preview-only
+  adjacent text), and the redundant boolean is simplified to one condition — effort: 1
+  (needs: none; opportunistic test-quality fix from code review, no code dependency).
