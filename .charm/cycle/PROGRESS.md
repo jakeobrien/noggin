@@ -17,56 +17,30 @@
 
 ## Cursor
 
-Current task: M4.4
+Current task: M5.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M3.1b done this session (D52): fixed pickerRootLabel's budget formula (cmd/noggin/
-picker_view.go), which subtracted the name/parent gap twice — once explicitly, once already
-embedded in rest — under-computing the parent-path truncation budget by one gap width (~2
-cols) on every row (T13). Folded in T17 while touching the function: pickerFileRow now builds
-"  "+rel once into a local `suffix` var, reused as both pickerRootLabel's rest argument and
-the literal text appended after it. Added TestPickerFileRowFillsItsFullBudget
-(picker_view_test.go): pins an independently-hand-computed exact label/row string (not
-derived by calling pickerRootLabel, unlike TestPickerFileResultsShowRootAndRelativePath —
-T15) using synthetic non-tempdir paths, and asserts the rendered row's width equals the
-layout's content width (23 at 80x24). Moved TestPickerFileResultsDisambiguateSameBasenameRoots
-from 140x30 to the standard 80x24 fixture (T16); confirmed it passes there now (it failed
-before the fix — both rows collapsed to a bare "…"), adjusting its assertions to check row
-inequality rather than full-word substrings the tighter real budget no longer fits. `make
-check` green; full Picker suite passes.
-
-M4.3 done this session: Activate now works in grepMode (S10, S11), landing the Document Viewer
-on the matched line via D34's occurrence-ordinal re-derivation — rg's raw-file line number does
-not address the rendered (Glamour-reflowed, frontmatter-stripped) document directly. New
-`activateGrepPicker`/`pickerGrepCandidate`/`resolveGrepLanding` (picker.go) and `commitQuery`
-(find.go, a `commitFind`-shaped entry point for a query that arrives already decided rather
-than typed). `resolveGrepLanding` counts literal query occurrences in the raw source
-(frontmatter-stripped the same way `renderMarkdown` strips it, so line numbers re-base
-correctly) up to the grep line, and maps that ordinal into `findMatches(rendered, query)`;
-`commitQuery`'s own `nearestMatch(matches, 0)` default *is* D34's degrade path (first match from
-the top, or none), only overridden when the ordinal resolves — so a failed resolution can never
-leave the Viewer in a half-set state. Verified both explicit degrade triggers D34 names: a match
-inside stripped YAML frontmatter (falls back to a body match) and a match inside an HTML
-comment Glamour drops entirely (falls back to plain-at-the-top, no matches at all). A
-code-reviewer pass (fresh context) caught that the initial tests only ever exercised ordinal 0
-(the same landing spot a broken ordinal-lookup loop would also produce) — added
-`TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst` (two matches, ~160
-rendered lines apart via a blank-line-separated fixture so they can't both be on screen at once)
-and confirmed by hand that it actually fails when the ordinal loop is sabotaged. Also fixed a
-stale doc comment on `pickerPreviewCandidate` left over from M3.3a's now-obsolete "Activate is a
-no-op in grepMode" framing. Removed the now-superseded `TestPickerActivateIsANoOpInGrepMode`.
+M4.4 done this session: confirmed the pre-build assumption that M4.3's `activateGrepPicker` ->
+`commitQuery` hand-off already leaves the Document Viewer in a real committed-find state
+(`commitQuery`'s doc comment says as much) — no production code changed. Added
+`TestPickerActivateGrepResultCommitsFindWithNextPreviousTraversal` (picker_test.go): a
+3-occurrence fixture, activates the first Grep Result, asserts `findState.input.Value()`
+equals the grep query and `len(findState.matches) == 3`, then drives `keys.FindNext`/
+`keys.FindPrevious` via `press()` (matching `TestFindTraversalWraps`'s typed-search shape) and
+asserts `current` advances/returns correctly. Sanity-sabotaged `findNext` (made it a no-op) to
+confirm the test actually fails rather than passing vacuously — it did, on both the next and
+the previous assertion — then reverted (find.go diff is clean; verified with `git diff --stat`).
 `make check` and `make check-pty` both green.
 
-Next step: M4.4 — hand the grep query to Find as a Committed Find with next/previous traversal.
-Most of the wiring already exists as a side effect of M4.3 (`commitQuery` already leaves the
-Viewer in a committed-find state `findNext`/`findPrevious` can walk) — M4.4's own job is
-probably mostly a test confirming `FindNext`/`FindPrevious` move between a file's other grep
-matches after activation, rather than new production wiring; verify that assumption first rather
-than assuming a no-op task.
+Next step: M5.1 — switch mode (File ↔ Grep) inside the open Picker, carrying the typed Prompt
+over and re-running the search in the new mode. Likely needs a mode-switch keybinding wired
+into picker.go's key handling (check keymap.go for what, if anything, already reserves one) plus
+a query-rerun call reusing the existing debounced-search machinery (`typePickerQuery`/
+`deliverPickerTicks`'s production counterpart) rather than typing a fresh keystroke.
 
 Also queued, non-blocking: M7.1a (T11, terminology housekeeping).
 
@@ -102,7 +76,7 @@ No blockers. TRIAGE.md empty.
 | M4.1 | done   | -        | -         | D53  |
 | M4.2 | done   | -        | -         | D54  |
 | M4.3 | done   | 2026-08-03 | -         |      |
-| M4.4 | todo   | -        | -         |      |
+| M4.4 | done   | -        | -         |      |
 | M5.1 | todo   | -        | -         |      |
 | M5.2 | todo   | -        | -         |      |
 | M5.3 | todo   | -        | -         |      |

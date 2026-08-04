@@ -663,6 +663,71 @@ func TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch(t *te
 	}
 }
 
+// TestPickerActivateGrepResultCommitsFindWithNextPreviousTraversal is
+// M4.4's headline acceptance check: activateGrepPicker's hand-off to
+// commitQuery (M4.3) is not just a one-shot landing but a real committed
+// find — the same state a typed "/" search followed by Enter leaves
+// (commitFind's doc comment) — so FindNext/FindPrevious (keys.FindNext,
+// keys.FindPrevious; see TestFindTraversalWraps for the equivalent typed-
+// search check) walk the document's *other* occurrences of the grep query
+// after activation, not just the one it landed on.
+func TestPickerActivateGrepResultCommitsFindWithNextPreviousTraversal(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	var b strings.Builder
+	for i := 1; i <= 100; i++ {
+		switch i {
+		case 10, 50, 90:
+			b.WriteString("a report line\n\n")
+		default:
+			fmt.Fprintf(&b, "filler line %d\n\n", i)
+		}
+	}
+	path := writeFileContent(t, filepath.Join(dir, "long.md"), b.String())
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 || len(m.picker.results.grep) != 3 {
+		t.Fatalf("setup is broken: %d searches, %d grep results (want 3)", searches, len(m.picker.results.grep))
+	}
+	m.picker.selected = 0
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.viewer.doc.path != path {
+		t.Fatalf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	}
+	if got := got.viewer.findState.input.Value(); got != "report" {
+		t.Fatalf("committed find query = %q, want the grep query %q", got, "report")
+	}
+	n := len(got.viewer.findState.matches)
+	if n != 3 {
+		t.Fatalf("committed find has %d match(es), want 3 (one per grep result)", n)
+	}
+	start := got.viewer.findState.current
+	if start < 0 {
+		t.Fatal("committed find has no current match indicated after activation")
+	}
+
+	next := press(t, got, keys.FindNext.Keys()[0])
+	if want := (start + 1) % n; next.viewer.findState.current != want {
+		t.Errorf("FindNext after activation: current = %d, want %d", next.viewer.findState.current, want)
+	}
+	if next.picker.open {
+		t.Error("FindNext after activation re-opened the Picker; want it to stay dismissed")
+	}
+
+	prev := press(t, next, keys.FindPrevious.Keys()[0])
+	if prev.viewer.findState.current != start {
+		t.Errorf("FindPrevious after a FindNext: current = %d, want back at %d", prev.viewer.findState.current, start)
+	}
+}
+
 // TestPickerPreviewShowsSelectedFileRawFromTop is M3.2's own acceptance
 // criterion: the Preview pane's content is the selected Result's raw file
 // bytes, byte for byte — no Glamour styling — and starts scrolled to the
