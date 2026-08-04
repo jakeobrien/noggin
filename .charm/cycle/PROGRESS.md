@@ -99,10 +99,16 @@ Next step: M6 is the cycle's pre-agreed cut (D32, match highlighting) — if tim
 to M7 (hardening/docs) instead, per PLAN.md's own note. Either way, M5's validation gate above
 should be addressed first (ask the user, per the escalation matrix, rather than building past it).
 
-Also queued, non-blocking: M7.1a (TRIAGE T11 already triaged/routed there, removed from inbox).
+Replan (2026-08-04): triaged all 8 open TRIAGE items (T1-T4, T21-T24), inbox now empty. Two new
+tasks inserted — M4.2a (D55: extract shared `styleRow` helper for `pickerFileRow`/`pickerGrepRow`,
+fix the grep row test's tautological assertion; do this before M6 adds a third row renderer) and
+M7.1b (bundled low-cost test-hygiene backfill: T1-T4 plus a rationale comment for T23/D56). T24
+dropped as already covered by M7.1a's existing codebase-wide criterion. No spec or scope change;
+DECISIONS.md gained D55, D56.
 
-No blockers. TRIAGE.md has 4 open items (T1-T4), all low-severity test-coverage observations
-from an earlier session's validation passes, awaiting charm-replan triage.
+No blockers. TRIAGE.md is empty. M5's validation gate (above) is still the most load-bearing open
+item — recommend addressing it before M6/M7, and M4.2a before M6 specifically since M6 is its
+anticipated third caller.
 
 ## Status
 
@@ -119,27 +125,29 @@ from an earlier session's validation passes, awaiting charm-replan triage.
 | M2.5 | done   | 2026-08-03 | 2026-08-03 |      |
 | M1.4a| done   | 2026-08-03 | 2026-08-03 | D43 (TRIAGE T1) |
 | M1.4b| done   | 2026-08-03 | 2026-08-03 | D45 (TRIAGE T3) |
-| M1.4c| done   | -        | 2026-08-03 | D-none; TRIAGE T18, T19 |
-| M2.1a| done   | -        | 2026-08-03 | D51; TRIAGE T14 |
+| M1.4c| done   | 2026-08-04 | 2026-08-03 | D-none; TRIAGE T18, T19; TRIAGE T23 |
+| M2.1a| done   | 2026-08-04 | 2026-08-03 | D51; TRIAGE T14 |
 | M2.3a| done   | 2026-08-03 | 2026-08-03 | D46 (TRIAGE T5); M2.3 re-validated |
 | M3.1 | done   | 2026-08-03 | 2026-08-03 |      |
 | M3.1a| done   | 2026-08-03 | 2026-08-03 | D50 (TRIAGE T10); re-reviewed, T13/T16 raised; TRIAGE T3 (disambiguation test compares full frame lines, not isolated row) |
-| M3.1b| done   | -        | 2026-08-03 | D52; TRIAGE T13, T15, T16, T17 |
+| M3.1b| done   | 2026-08-04 | 2026-08-03 | D52; TRIAGE T13, T15, T16, T17 |
 | M3.2 | done   | 2026-08-03 | 2026-08-03 |      |
 | M3.2a| done   | 2026-08-03 | 2026-08-03 | D48 (TRIAGE T6); fixed before M4.2 |
 | M3.2b| done   | 2026-08-03 | 2026-08-03 | TRIAGE T12; re-reviewed, T20 raised |
 | M3.3 | done   | 2026-08-03 | 2026-08-03 |      |
 | M3.3a| done   | 2026-08-03 | 2026-08-03 | D49 (TRIAGE T7, T8); grep-mode no-op test superseded/removed by M4.3 (897ef6a) once grep Activate became real — not a regression, criterion-as-written no longer checkable |
 | M3.3b| done   | 2026-08-03 | 2026-08-03 | D49 (TRIAGE T9); TRIAGE T4 (fixture's expanded map stays empty, doesn't exercise the substitution scenario) |
-| M4.1 | done   | -        | 2026-08-03 | D53  |
-| M4.2 | done   | -        | 2026-08-03 | D54  |
+| M4.1 | done   | 2026-08-04 | 2026-08-03 | D53; TRIAGE T21, T22, T24 |
+| M4.2 | done   | 2026-08-04 | 2026-08-03 | D54; TRIAGE T24 |
+| M4.2a| todo   | -        | -         | D55 (TRIAGE T21, T22); address before M6 |
 | M4.3 | done   | 2026-08-03 | 2026-08-03 | M4.3 test coupling note, see handoff |
-| M4.4 | done   | -        | 2026-08-03 |      |
-| M5.1 | done   | -        | -         |      |
-| M5.2 | done   | -        | -         |      |
-| M5.3 | done   | -        | -         |      |
+| M4.4 | done   | 2026-08-04 | 2026-08-03 |      |
+| M5.1 | done   | 2026-08-04 | -         |      |
+| M5.2 | done   | 2026-08-04 | -         |      |
+| M5.3 | done   | 2026-08-04 | -         |      |
 | M6.1 | todo   | -        | -         | pre-agreed cut (D32) |
 | M6.2 | todo   | -        | -         | pre-agreed cut (D32) |
 | M7.1 | todo   | -        | -         |      |
-| M7.1a| todo   | -        | -         | TRIAGE T11 |
+| M7.1a| todo   | -        | -         | TRIAGE T11, T24 |
+| M7.1b| todo   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
 | M7.2 | todo   | -        | -         |      |

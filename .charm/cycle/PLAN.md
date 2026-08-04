@@ -176,6 +176,17 @@ Delivers: S4, S9 (grep preview), S10 (matched line), S11
 - **M4.2** — Preview opens scrolled to the matched line with that line highlighted — done when: a
   test on a match deep in a long file asserts the matched line is within the visible preview
   window and carries the highlight style — effort: 3 (needs: M4.1, M3.2)
+- **M4.2a** — Grep row rendering hygiene (TRIAGE T21, T22 / D55): extract `pickerFileRow`'s and
+  `pickerGrepRow`'s duplicated `.Width(width).MaxWidth(width).Render(line)` style tail into a
+  shared `styleRow(line string, width int, selected bool) string` helper before M6 adds a
+  third caller, and fix `TestPickerGrepResultsShowFileLineNumberAndText`'s tautological
+  expected-string derivation (it currently builds its own expectations by calling
+  `pickerGrepRow`) by adding at least one independently hand-computed row string plus an
+  assertion that the match's line **text** is actually rendered — done when: `pickerFileRow`
+  and `pickerGrepRow` both call one shared `styleRow` helper, and the grep row test has a
+  hand-computed expected string and an assertion on rendered line text that a
+  dropped-text bug would fail — effort: 2 (needs: M4.2). Address before M6, its anticipated
+  third caller.
 - **M4.3** — Activate a Grep Result: the file becomes the Active Document and the Document Viewer
   lands on the matched line — done when: a test activating a match deep in a long file asserts
   the Active Document changed and the viewport is scrolled such that the matched text is visible
@@ -230,7 +241,21 @@ Delivers: S14 (documented), cycle-level acceptance
   the requirement, its ignore-rule consequence and the keys, every command/example in it is
   verified against the binary, and each SPEC.md cycle-level acceptance bullet is confirmed or
   raised in TRIAGE.md — effort: 2 (needs: M7.1)
-- **M7.1a** — Terminology and string-pinning housekeeping (TRIAGE T11): standardize
+- **M7.1a** — Terminology and string-pinning housekeeping (TRIAGE T11, T24): standardize
   "Results region"/"Results column" comments (picker_view.go, picker.go) on GLOSSARY.md's
   fixed term "Results list" — done when: no comment in the Picker's code uses either variant —
-  effort: 1 (needs: none; opportunistic, no dependency)
+  effort: 1 (needs: none; opportunistic, no dependency). T24 (review) flagged new M4.1/M4.2
+  comments repeating the same variants; this task's criterion is codebase-wide and already
+  covers them.
+- **M7.1b** — Validation-pass test hygiene backfill (TRIAGE T1, T2, T3, T4, T23 / D56):
+  (a) cross-reference M4.3's two paired ordinal-resolution tests in a comment so the coupling
+  is explicit; (b) add a test asserting the Files Nav tree is unchanged after activating a
+  Grep Result, mirroring M3.3's file-mode coverage; (c) isolate the disambiguation test's row
+  assertion from full-frame comparison, or cross-reference M3.1b's row-isolated test as the
+  coverage that actually isolates it; (d) give
+  `TestPickerActivateOpensResultAsActiveDocumentOnly`'s expansion fixture at least one
+  expanded subdirectory so its `reflect.DeepEqual` assertion exercises a non-empty map;
+  (e) add a one-line comment on `TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated`
+  noting it guards a future batching refactor, per D56 — done when: all five sub-items are
+  addressed in their respective test files — effort: 2 (needs: none; opportunistic
+  test-quality backfill from an earlier validation pass, no code dependency).
