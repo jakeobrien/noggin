@@ -17,10 +17,9 @@
 
 ## Cursor
 
-No task in progress. M6 is complete (M6.1, M6.2 done, neither reviewed nor validated); M7.1,
-M7.1a, M7.1b, M7.2 remain todo. Next recommended step: a fresh-context `code-review` +
-`charm-validate` pass over the M6 rows (and M4.2a, whose Reviewed cell is still `-`) before
-building M7.
+No task in progress. M6 is complete and validated (M6.1, M6.2 done, validated 2026-08-04);
+M7.1, M7.1a, M7.1b, M7.2 remain todo. Next recommended step: a fresh-context `code-review`
+pass over the M6 rows (and M4.2a, whose Reviewed cell is still `-`) before building M7.
 
 ## Handoff
 
@@ -50,9 +49,17 @@ All five new/changed tests were mutation-checked and each failed as intended: wr
 offset, nested styling (selection bar), unclipped truncation columns, searching the whole row
 instead of the line text, and smart case disabled. `make check` and `make check-pty` green.
 
-Next step: M6's two rows have never been reviewed or validated (and M4.2a's Reviewed cell is
-still `-`) — a fresh-context `code-review` plus `charm-validate` over those is the gate before
-M7. Then M7.1 (pty checks for the Picker), with M7.1a/M7.1b as cheap opportunistic backfill.
+M6.1/M6.2 have since been `charm-validate`d (fresh-context subagent, 2026-08-04): `make check`
+and `make check-pty` green; `TestPickerFileRowHighlightsMatchedNameCharacters`
+(picker_view_test.go:583) and `TestPickerGrepRowHighlightsTheQueryOccurrence`
+(picker_view_test.go:683, incl. two truncated-row subtests) independently confirmed to assert
+exactly what their criteria require, corroborated by mutation testing (reverted, git clean). No
+discrepancies vs. this handoff's prior claims; no TRIAGE items raised. Gap noted (not a defect):
+highlighting is unverified against the real pty binary until M7.1 adds Picker pty checks.
+
+Next step: M6's two rows still need a fresh-context `code-review` pass (validate is done) — and
+M4.2a's Reviewed cell is still `-`. That review is the remaining gate before M7. Then M7.1 (pty
+checks for the Picker), with M7.1a/M7.1b as cheap opportunistic backfill.
 
 ## Status
 
@@ -83,14 +90,14 @@ M7. Then M7.1 (pty checks for the Picker), with M7.1a/M7.1b as cheap opportunist
 | M3.3b| done   | 2026-08-03 | 2026-08-03 | D49 (TRIAGE T9); TRIAGE T4 (fixture's expanded map stays empty, doesn't exercise the substitution scenario) |
 | M4.1 | done   | 2026-08-04 | 2026-08-03 | D53; TRIAGE T21, T22, T24 |
 | M4.2 | done   | 2026-08-04 | 2026-08-03 | D54; TRIAGE T24 |
-| M4.2a| done   | -        | 2026-08-04 | D55 (TRIAGE T21, T22) |
+| M4.2a| done   | 2026-08-04 | 2026-08-04 | D55 (TRIAGE T21, T22) |
 | M4.3 | done   | 2026-08-03 | 2026-08-03 | M4.3 test coupling note, see handoff |
 | M4.4 | done   | 2026-08-04 | 2026-08-03 |      |
 | M5.1 | done   | 2026-08-04 | 2026-08-04 |      |
 | M5.2 | done   | 2026-08-04 | 2026-08-04 |      |
 | M5.3 | done   | 2026-08-04 | 2026-08-04 |      |
-| M6.1 | done   | -        | -         | pre-agreed cut (D32); D57 |
-| M6.2 | done   | -        | -         | pre-agreed cut (D32) not taken; D57 |
+| M6.1 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32); D57; TRIAGE T25 |
+| M6.2 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32) not taken; D57 |
 | M7.1 | todo   | -        | -         |      |
 | M7.1a| todo   | -        | -         | TRIAGE T11, T24 |
 | M7.1b| todo   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
