@@ -67,27 +67,37 @@ M5.1 done previously this session: added `switchPickerMode` (picker.go) — togg
 `queuePickerSearch` so the new mode's search for the same query follows the existing
 debounce/generation contract. Wired `keys.PickerMode` (Tab) to it.
 
-M5.2 done this session: added `switchPickerScope` (picker.go), the exact same shape as
-`switchPickerMode` — toggles `picker.scope` between activeRootScope/allRootsScope, Prompt
-untouched, goes through `queuePickerSearch`. Wired `keys.PickerScope` (Shift+Tab) to it in
-`handlePickerInput`, replacing its former no-op. Tidied `handlePickerInput`'s and
-`scope.go`'s doc comments, which still described PickerMode/PickerScope as "swallowed"/future
-work. Added `TestPickerScopeSwitchFindsNonActiveRootOnlyAfterSwitchingToAllRoots`
-(picker_test.go): a 3-root fixture (active Root with an unrelated file, a Broken Root, and a
-non-active Root holding the match) asserts Active Root Scope finds nothing, switching Scope
-leaves the Prompt unchanged and schedules a new search, and the All Roots search after that
-finds only the non-active Root's file with `m.message` staying empty throughout (Broken Root
-produced no error row). Sanity-sabotaged `switchPickerScope` into a no-op to confirm the test
-fails without the fix (it did, on the scope assertion) — reverted, `git diff --stat` confirmed
-clean. `make check` and `make check-pty` both green.
+M5.2 done previously this session: added `switchPickerScope` (picker.go), symmetric to
+`switchPickerMode`, wired to `keys.PickerScope` (Shift+Tab).
 
-Next step: M5.3 — no memory: mode, Scope and query are all discarded on dismissal, within a
-session and across sessions. Likely already true by construction — `dismissPicker`/`resetPicker`
-replace the whole struct with `newPicker()`'s zero state (S8, D51/M2.1a) — so this task is
-largely confirming the existing reset contract now covers mode/Scope too (it was written
-before either had a switch to reset from) with a test in the shape of
-`TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt`/`TestPickerDismissRestoresThePreOpenFrame
-ByteForByte`, plus confirming no Picker state reaches the config/data store.
+M5.3 done this session: no code change — confirmed by test that the existing reset contract
+(`resetPicker`, shared by `openPicker`/`dismissPicker` since D51/M2.1a) already discards mode,
+Scope and query on dismissal, and that no Picker field is ever written to the on-disk store
+(store.go's only writer, `toggleStore`, persists starred Roots only; nothing in picker.go calls
+it). Added `TestPickerNoMemoryWithinAndAcrossSessions` (picker_test.go): drives the Picker to
+Grep mode / All Roots Scope / a typed query through the real switch keys (not direct field
+assignment, unlike M2.1's older `TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt`/
+`TestPickerDismissRestoresThePreOpenFrameByteForByte`, which predate M5.1/M5.2's actual
+switches), dismisses, and asserts mode/Scope/Prompt are already back to File/ActiveRoot/empty
+*immediately after dismissal* (not merely after a subsequent reopen — isolates dismissPicker's
+own reset from openPicker's, since both share resetPicker and a naive sabotage of only
+openPicker couldn't be caught this way, confirmed below); reopens ('within a session') and
+re-checks; asserts a fresh `newModel()` ('across sessions') starts the same way; and asserts a
+seeded store file's bytes are byte-for-byte unchanged after the whole open/type/switch/
+switch/dismiss/reopen cycle. Sabotage-and-revert: sabotaging `openPicker` alone (skip reset)
+did NOT fail the test (dismissPicker's own reset already covers it, confirming the isolation
+above is real) — sabotaging `dismissPicker` alone (skip reset, only clear `open`) DID fail it,
+on the immediately-post-dismissal assertion. Reverted both; `git diff --stat` confirmed clean.
+`make check` and `make check-pty` both green.
+
+M5 (Mode and Scope switched in place) is now complete: M5.1, M5.2, M5.3 all done. Per
+cycle-state, a completed milestone with validation due is a process gate — M5 has not yet had
+a charm-validate pass (only Reviewed/Validated `-` so far), so a fresh-context validation pass
+over M5.1-M5.3 is due before or alongside continuing into M6.
+
+Next step: M6 is the cycle's pre-agreed cut (D32, match highlighting) — if time is short, skip
+to M7 (hardening/docs) instead, per PLAN.md's own note. Either way, M5's validation gate above
+should be addressed first (ask the user, per the escalation matrix, rather than building past it).
 
 Also queued, non-blocking: M7.1a (TRIAGE T11 already triaged/routed there, removed from inbox).
 
@@ -127,7 +137,7 @@ from an earlier session's validation passes, awaiting charm-replan triage.
 | M4.4 | done   | -        | 2026-08-03 |      |
 | M5.1 | done   | -        | -         |      |
 | M5.2 | done   | -        | -         |      |
-| M5.3 | todo   | -        | -         |      |
+| M5.3 | done   | -        | -         |      |
 | M6.1 | todo   | -        | -         | pre-agreed cut (D32) |
 | M6.2 | todo   | -        | -         | pre-agreed cut (D32) |
 | M7.1 | todo   | -        | -         |      |

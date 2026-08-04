@@ -1155,6 +1155,86 @@ func TestPickerScopeSwitchFindsNonActiveRootOnlyAfterSwitchingToAllRoots(t *test
 	}
 }
 
+// TestPickerNoMemoryWithinAndAcrossSessions is M5.3's own acceptance
+// criterion, verbatim: dismissing a Picker left in Grep mode / All Roots
+// Scope with a query typed, then reopening it, finds File Picker / Active
+// Root / empty Prompt — both "within a session" (a reopen after dismiss)
+// and "across sessions" (a fresh model, model.go's newModel, starts its
+// picker field from the exact same newPicker() a reopen resets to, so
+// there is no separate cross-session reset path to prove independently).
+// It also confirms no Picker field ever reaches the on-disk store: the
+// only thing store.go's toggleStore writes is starred Roots (S2), and
+// nothing in picker.go calls it, so an untouched store file after a full
+// open/type/switch-mode/switch-scope/dismiss/reopen cycle is the concrete,
+// regression-catching form of that guarantee — a future change that wired
+// the Picker into persistence would flip this from pass to fail.
+func TestPickerNoMemoryWithinAndAcrossSessions(t *testing.T) {
+	requireRipgrep(t)
+	m, dir := pickerRoot(t)
+
+	storePath := filepath.Join(t.TempDir(), "roots")
+	if err := os.WriteFile(storePath, []byte(dir+"\n"), 0o644); err != nil {
+		t.Fatalf("seeding store: %v", err)
+	}
+	before, err := os.ReadFile(storePath)
+	if err != nil {
+		t.Fatalf("reading seeded store: %v", err)
+	}
+	m.roots.storePath = storePath
+
+	m, seqs := typePickerQuery(t, m, "report")
+	m, _ = deliverPickerTicks(t, m, seqs)
+
+	next, cmd := m.Update(keyPress(keys.PickerMode.Keys()[0])) // -> grepMode
+	m = concrete(t, next)
+	if msg, ok := cmd().(pickerSearchMsg); ok {
+		m, _ = deliverPickerTicks(t, m, []int{msg.seq})
+	}
+	next, cmd = m.Update(keyPress(keys.PickerScope.Keys()[0])) // -> allRootsScope
+	m = concrete(t, next)
+	if msg, ok := cmd().(pickerSearchMsg); ok {
+		m, _ = deliverPickerTicks(t, m, []int{msg.seq})
+	}
+
+	if m.picker.mode != grepMode || m.picker.scope != allRootsScope || m.picker.input.Value() != "report" {
+		t.Fatalf("setup did not leave the Picker in Grep/AllRoots/%q; got %+v", "report", m.picker)
+	}
+
+	m = press(t, m, keys.Cancel.Keys()[0])
+	if m.picker.open {
+		t.Fatal("picker still open after Cancel; setup is broken")
+	}
+	// Dismissal itself discards the state — checked before any reopen, so a
+	// dismissPicker that closed the modal without actually resetting mode/
+	// Scope/Prompt (leaving openPicker's own reset to paper over it on the
+	// next open) would still fail here.
+	if m.picker.mode != fileMode || m.picker.scope != activeRootScope || m.picker.input.Value() != "" {
+		t.Fatalf("picker state right after dismissal = %+v, want File/ActiveRoot/empty already", m.picker)
+	}
+
+	// "Within a session": reopening in the same process.
+	m, _ = m.openPicker()
+	if m.picker.mode != fileMode || m.picker.scope != activeRootScope || m.picker.input.Value() != "" {
+		t.Errorf("reopened picker = %+v, want File/ActiveRoot/empty", m.picker)
+	}
+
+	// "Across sessions": a fresh process's model starts from the same
+	// newPicker() zero state (model.go's newModel), with no serialized
+	// Picker state anywhere to have restored from in the first place.
+	fresh := newModel()
+	if fresh.picker.mode != fileMode || fresh.picker.scope != activeRootScope || fresh.picker.input.Value() != "" {
+		t.Errorf("fresh model's picker = %+v, want File/ActiveRoot/empty", fresh.picker)
+	}
+
+	after, err := os.ReadFile(storePath)
+	if err != nil {
+		t.Fatalf("reading store after the Picker interaction: %v", err)
+	}
+	if string(after) != string(before) {
+		t.Errorf("store file changed by the Picker interaction: before %q, after %q", before, after)
+	}
+}
+
 // typePickerQuery types s into the open Picker one rune at a time, returning
 // the model and the query generation (picker.seq) each keystroke left behind
 // — i.e. the generation each keystroke's debounce timer will report when it
