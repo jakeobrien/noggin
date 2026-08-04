@@ -240,6 +240,21 @@ func pickerFileRow(f pickerFile, width int, selected bool) string {
 	}
 	suffix := "  " + rel
 	line := pickerRootLabel(f, width, suffix) + suffix
+	return styleRow(line, width, selected)
+}
+
+// styleRow applies the Results list's shared row styling — reverse video
+// when selected (pickerSelectedStyle), plain otherwise — and clamps to
+// exactly width, the four-line `.Width(width).MaxWidth(width).Render(line)`
+// tail pickerFileRow and pickerGrepRow both ended with verbatim (TRIAGE
+// T21/D55) before this extraction, and M6's own row renderer is an
+// anticipated third caller. Each caller is responsible for shaping/
+// truncating line itself first (pickerFileRow via pickerRootLabel's budget
+// math, pickerGrepRow via rightTruncate) — styleRow only applies the
+// selection style and the width clamp common to both, the same split
+// pickerGrepRow's own doc comment already draws between shaping and
+// styling.
+func styleRow(line string, width int, selected bool) string {
 	style := lipgloss.NewStyle()
 	if selected {
 		style = pickerSelectedStyle
@@ -299,11 +314,7 @@ func pickerGrepRow(g grepResult, width int, selected bool) string {
 		rel = g.file.path
 	}
 	line := rightTruncate(fmt.Sprintf("%s:%d  %s", rel, g.line, g.text), width)
-	style := lipgloss.NewStyle()
-	if selected {
-		style = pickerSelectedStyle
-	}
-	return style.Width(width).MaxWidth(width).Render(line)
+	return styleRow(line, width, selected)
 }
 
 // pickerResultsContent renders the Results region's content (M3.1, M4.1),

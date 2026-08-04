@@ -17,24 +17,31 @@
 
 ## Cursor
 
-No task in progress. M1-M5 are done; M4.2a and M7.1b (inserted by the 2026-08-04 replan) plus
-M6/M7 remain todo. The M5 validation gate (below) is the recommended next step.
+No task in progress. M1-M5 and M4.2a are done; M7.1b plus M6/M7 remain todo. The M5 validation
+gate (below) is still outstanding — the user explicitly chose to build M4.2a ahead of it; it
+remains the recommended next step before M6/M7.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1-M5 are built; M4.4 and M5.1-M5.3 landed most recently (see git history for detail). M5 has
-no charm-validate pass yet (Reviewed/Validated both `-` on M5.1-M5.3) — a completed milestone
-with validation due is a process gate; address before continuing into M6/M7.
+M4.2a done (D55): extracted `styleRow(line, width, selected)` in picker_view.go — both
+`pickerFileRow` and `pickerGrepRow` now delegate their shared width-clamp/selection-style tail
+to it, so M6's anticipated third row renderer has one place to reuse. Fixed T22's tautological
+assertion in `TestPickerGrepResultsShowFileLineNumberAndText` (picker_view_test.go) by adding a
+third grep result (short.md, untruncated at the fixture's width) with a hand-computed expected
+row string, independent of calling `pickerGrepRow` — verified it actually catches a dropped-
+text regression (manually broke `pickerGrepRow` to drop `g.text`, confirmed this new assertion
+fails, reverted). Full suite green (`go build ./...`, `go vet ./...`, `go test ./...`, gofmt
+clean).
 
-2026-08-04 replan: drained TRIAGE.md (T1-T4, T21-T24; inbox now empty), inserting M4.2a (D55:
-shared `styleRow` helper + grep-row test fix, before M6's third row renderer) and M7.1b
-(bundled low-cost test-hygiene backfill, D56). No spec/scope change. DECISIONS.md gained D55, D56.
+M5 still has no charm-validate pass (Reviewed/Validated both `-` on M5.1-M5.3) — that gate was
+surfaced and the user chose to proceed with M4.2a first; it's still due. No blockers, no
+in-flight changes.
 
-Next step: charm-validate M5.1-M5.3, then M4.2a before M6 (M6 is D32's pre-agreed cut — skip to
-M7 if time is short). No blockers, no in-flight changes.
+Next step: charm-validate M5.1-M5.3 (and M4.2a while a fresh eye is on this area), then M6 (D32's
+pre-agreed cut — skip to M7.1/M7.1b if time is short).
 
 ## Status
 
@@ -65,7 +72,7 @@ M7 if time is short). No blockers, no in-flight changes.
 | M3.3b| done   | 2026-08-03 | 2026-08-03 | D49 (TRIAGE T9); TRIAGE T4 (fixture's expanded map stays empty, doesn't exercise the substitution scenario) |
 | M4.1 | done   | 2026-08-04 | 2026-08-03 | D53; TRIAGE T21, T22, T24 |
 | M4.2 | done   | 2026-08-04 | 2026-08-03 | D54; TRIAGE T24 |
-| M4.2a| todo   | -        | -         | D55 (TRIAGE T21, T22); address before M6 |
+| M4.2a| done   | -        | -         | D55 (TRIAGE T21, T22) |
 | M4.3 | done   | 2026-08-03 | 2026-08-03 | M4.3 test coupling note, see handoff |
 | M4.4 | done   | 2026-08-04 | 2026-08-03 |      |
 | M5.1 | done   | 2026-08-04 | -         |      |

@@ -292,10 +292,24 @@ func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
 // TestPickerFileResultsShowRootAndRelativePath already gives the File
 // Picker's own row (M3.1), exercised through grepMode's rendering path
 // (pickerResultsContent/pickerGrepRow) instead of fileMode's.
+//
+// wantA/wantB (report.md/notes.md) are still derived by calling
+// pickerGrepRow itself, same as before — useful as a sanity check that the
+// fixture produces the right file:line prefixes, but unable to catch a bug
+// in pickerGrepRow's own text handling (TRIAGE T22/D55: a tautological
+// assertion, the same shape T15/D52 already fixed for the file row test).
+// wantC (short.md) closes that gap: its expected row is a literal computed
+// by hand from styleRow's left-align-and-pad behaviour (confirmed against
+// the real renderer, not assumed) rather than by calling pickerGrepRow, and
+// short.md's own "hi" text is short enough that rightTruncate never cuts it
+// — so the full literal (including the match's line text) has to appear
+// verbatim in the rendered modal for this to pass, which a dropped- or
+// mangled-text bug in pickerGrepRow would fail.
 func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 	rootDir := t.TempDir()
 	fileA := filepath.Join(rootDir, "report.md")
 	fileB := filepath.Join(rootDir, "notes.md")
+	fileC := filepath.Join(rootDir, "short.md")
 	r := root{path: rootDir}
 
 	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
@@ -309,6 +323,7 @@ func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 		grep: []grepResult{
 			{file: pickerFile{root: r, path: fileA}, line: 3, text: "the quarterly report"},
 			{file: pickerFile{root: r, path: fileB}, line: 12, text: "see report above"},
+			{file: pickerFile{root: r, path: fileC}, line: 1, text: "hi"},
 		},
 	}
 
@@ -324,6 +339,18 @@ func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 	}
 	if !strings.Contains(joined, wantB) {
 		t.Errorf("rendered modal is missing %q\n%s", wantB, joined)
+	}
+
+	// wantC is hand-computed, not derived from pickerGrepRow: "short.md:1  hi"
+	// (14 runes) left-aligned and padded with spaces to resultsWidth (23 at
+	// this fixture's size) by styleRow's Width(resultsWidth), since 14 < 23
+	// means rightTruncate is a no-op and nothing needs truncating.
+	if resultsWidth != 23 {
+		t.Fatalf("computePickerLayout(80, 24).results.content().width = %d, want 23 — wantC below is hand-computed for exactly that width", resultsWidth)
+	}
+	wantC := "short.md:1  hi" + strings.Repeat(" ", resultsWidth-len("short.md:1  hi"))
+	if !strings.Contains(joined, wantC) {
+		t.Errorf("rendered modal is missing %q (short.md's match line text \"hi\", hand-computed independently of pickerGrepRow)\n%s", wantC, joined)
 	}
 }
 
