@@ -17,39 +17,33 @@
 
 ## Cursor
 
-Replan (2026-08-04): fresh-context code review covered M7.1/M7.1a/M7.1b/M7.2 (all now
-Reviewed) and raised TRIAGE T25–T28. Triaged this session: T25 actioned directly (Status-table
-wording fix, below); T26 promoted to new task **M7.1c** (D58); T27 moot (the Handoff paragraph
-it cited is being replaced by this one); T28 dropped (matches an existing local convention,
-low risk/value, no decision warranted — see TRIAGE.md's routing note). TRIAGE inbox is empty
-again. Next recommended step: M7.1c (small, opportunistic, no dependency), then a
-milestone/cycle-close pass (validate the M7.x tasks — Validated is still `-` on all of them —
-then `charm-close`).
+Build (2026-08-05): M7.1c done — fixed the tautological pty Preview-highlight check (T26/D58).
+Every M7.x task is now `done`; none has been Validated yet. Next recommended step: a
+milestone/cycle-close validation pass over M7.1/M7.1a/M7.1b/M7.2/M7.1c, then `charm-close`.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-This session was a replan, not a build: no code changed. A fresh-context code review (maker/
-checker split) covered the diff since M6 for M7.1, M7.1a, M7.1b and M7.2 — all four are
-Reviewed 2026-08-04, Validated still `-`. Findings (TRIAGE T25–T28) have been triaged and the
-inbox is empty; the substantive one is **T26/D58**: M7.1's pty check "the Preview highlights
-the matched line (reverse video on the wire)" (test/pty/checks.py:907-911) is tautological —
-it only checks that `\x1b[7m` appears anywhere in the frame, which the selected Results row's
-own reverse-video styling already guarantees regardless of whether the Preview highlights
-anything. M7.1 stays `done` (its literal acceptance criterion doesn't require this specific
-check to be non-tautological, and the real behavior is independently covered by a unit test —
-see D58), but the fix is now **M7.1c**, a small opportunistic follow-up.
+M7.1c (T26/D58): fixed test/pty/checks.py's tautological "Preview highlights the matched
+line" check. Root cause was worse than D58's write-up assumed: the literal `\x1b[7m` search
+didn't just coincidentally pass off the selected Results row's own reverse video
+(pickerSelectedStyle) — the genuine Preview highlight never even produced that exact substring
+on the wire, because lipgloss combines the reverse attribute with the adjacent fg-color reset
+into one SGR (`\x1b[39;7m`), which doesn't contain `\x1b[7m` as a substring. The check now uses
+a regex matching SGR param 7 anywhere in a semicolon list, requiring it to immediately precede
+the Preview's untruncated rendering of the matched line ("# Guide") — the Results row only ever
+shows that line truncated with an ellipsis ("# Gui…"), so only a genuine Preview highlight can
+satisfy it. Also dropped the redundant `out or s.out` (same object, per D58).
 
-Also fixed directly (T25, too small to warrant a plan task): M6.1's Status-table note read
-"pre-agreed cut (D32); D57" with no qualifier, contradicting the Handoff's own (correct)
-statement that D32's cut was not taken for M6 — now reads "pre-agreed cut (D32) not taken;
-D57", matching M6.2's row.
+Verified with a negative control: temporarily stripped the Preview's StyleLineFunc reverse
+styling in picker.go, rebuilt, confirmed this specific check (only this one) failed under
+`make check-pty`, then reverted and confirmed all checks pass clean again. Final diff is
+test/pty/checks.py only — no product code changed.
 
-Next step: M7.1c (fix the tautological pty check, effort 1, no dependency) — the only `todo`
-task left in the plan. After that, every M7.x task needs a validate pass (Validated is `-` on
-all of M7.1/M7.1a/M7.1b/M7.2/M7.1c) before `charm-close`.
+Every M7.x task (M7.1, M7.1a, M7.1b, M7.2, M7.1c) is now `done`; none has been Validated yet.
+Next step: a validate pass over all five, then `charm-close`. No blockers, no open TRIAGE.
 
 ## Status
 
@@ -92,4 +86,4 @@ all of M7.1/M7.1a/M7.1b/M7.2/M7.1c) before `charm-close`.
 | M7.1a| done   | 2026-08-04 | -         | TRIAGE T11, T24 |
 | M7.1b| done   | 2026-08-04 | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
 | M7.2 | done   | 2026-08-04 | -         |      |
-| M7.1c| todo   | -        | -         | TRIAGE T26; D58 |
+| M7.1c| done   | -        | -         | TRIAGE T26; D58 |

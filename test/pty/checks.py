@@ -1,6 +1,7 @@
 """End-to-end checks of the real binary in a pty, re-verifying M1.1-M1.3 on Charm v2."""
 
 import os
+import re
 import sys
 import tempfile
 
@@ -904,12 +905,21 @@ indicator_activeroot = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("M7.1 shift+tab switches the Scope indicator back to Active Root",
       "Grep · Active Root" in indicator_activeroot, repr(indicator_activeroot[:200]))
 
-out = s.send(query, 1.0)  # first query typed, already in Grep mode/Active Root
+s.send(query, 1.0)  # first query typed, already in Grep mode/Active Root
 body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("M7.1 a Grep query populates the Results list with a matching line",
       "Grep · Active Root" in body and "docs/guide.md" in body, repr(body[:300]))
+# D58: a bare "reverse video appears somewhere on the wire" check would pass
+# even with Preview highlighting removed, because the selected Results row
+# (pickerSelectedStyle) is itself reverse-video regardless of the Preview.
+# Scope the assertion to reverse video (SGR param 7, wherever it falls in an
+# SGR's semicolon list) immediately preceding the Preview's own untruncated
+# rendering of the matched line ("# Guide") -- the Results row only ever
+# shows that line truncated with an ellipsis ("# Gui\u2026") -- so only a
+# genuine Preview highlight can satisfy it.
+reverse_then_matched_line = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m[^\x1b]{0,20}# Guide")
 check("M7.1 the Preview highlights the matched line (reverse video on the wire)",
-      b"\x1b[7m" in out or b"\x1b[7m" in s.out)
+      reverse_then_matched_line.search(s.out) is not None, repr(s.out[-400:]))
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("M7.1 exits 0 after the mode/Scope indicator flow", code == 0, f"exit {code}")
