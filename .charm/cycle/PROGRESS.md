@@ -17,33 +17,31 @@
 
 ## Cursor
 
-Build (2026-08-05): M7.1c done — fixed the tautological pty Preview-highlight check (T26/D58).
-Every M7.x task is now `done`; none has been Validated yet. Next recommended step: a
-milestone/cycle-close validation pass over M7.1/M7.1a/M7.1b/M7.2/M7.1c, then `charm-close`.
+Validate (2026-08-05): fresh-context validation pass over M7.1/M7.1a/M7.1b/M7.1c/M7.2 —
+all five PASS, no discrepancies requiring TRIAGE or a PLAN change. Every task in the cycle is
+now `done` and `Validated`. Next recommended step: `charm-close`.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M7.1c (T26/D58): fixed test/pty/checks.py's tautological "Preview highlights the matched
-line" check. Root cause was worse than D58's write-up assumed: the literal `\x1b[7m` search
-didn't just coincidentally pass off the selected Results row's own reverse video
-(pickerSelectedStyle) — the genuine Preview highlight never even produced that exact substring
-on the wire, because lipgloss combines the reverse attribute with the adjacent fg-color reset
-into one SGR (`\x1b[39;7m`), which doesn't contain `\x1b[7m` as a substring. The check now uses
-a regex matching SGR param 7 anywhere in a semicolon list, requiring it to immediately precede
-the Preview's untruncated rendering of the matched line ("# Guide") — the Results row only ever
-shows that line truncated with an ellipsis ("# Gui…"), so only a genuine Preview highlight can
-satisfy it. Also dropped the redundant `out or s.out` (same object, per D58).
+Validate pass (fresh subagent context) over the five unvalidated M7.x tasks, deterministic
+first: `make check` and `make check-pty` both clean (build/vet/fmt/test + full pty suite,
+including M7.1's Picker checks and M7.1c's fix). Then per-task verification against code/tests
+(not PROGRESS's word): M7.1 (all required flows present incl. before/after-dismissal frame
+identity, test/pty/checks.py:815-926), M7.1a (zero comments use "Results region"/"Results
+column"; two `t.Error` message strings still do, at picker_view_test.go:41,52 — criterion says
+"comment", so this is not a failure, just worth knowing), M7.1b (all five sub-items a-e located
+and substantive), M7.1c (independently reproduced: stripped Preview's Reverse StyleLineFunc,
+`make check-pty` failed exactly the one Preview-highlight check, reverted, suite clean again;
+`out or s.out` confirmed gone), M7.2 (README documents ripgrep requirement + ignore-rule
+consequence + Picker keys, spot-checked 3 items against code, all accurate; TRIAGE.md empty;
+spot-checked 2 of SPEC.md's cycle-level acceptance bullets independently true). Working tree
+left clean (git status/diff empty) after M7.1c's negative-control edit was reverted.
 
-Verified with a negative control: temporarily stripped the Preview's StyleLineFunc reverse
-styling in picker.go, rebuilt, confirmed this specific check (only this one) failed under
-`make check-pty`, then reverted and confirmed all checks pass clean again. Final diff is
-test/pty/checks.py only — no product code changed.
-
-Every M7.x task (M7.1, M7.1a, M7.1b, M7.2, M7.1c) is now `done`; none has been Validated yet.
-Next step: a validate pass over all five, then `charm-close`. No blockers, no open TRIAGE.
+No blockers, no open TRIAGE, no DECISIONS entries needed — nothing actionable surfaced. Next
+step: `charm-close`.
 
 ## Status
 
@@ -82,8 +80,8 @@ Next step: a validate pass over all five, then `charm-close`. No blockers, no op
 | M5.3 | done   | 2026-08-04 | 2026-08-04 |      |
 | M6.1 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32) not taken; D57 |
 | M6.2 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32) not taken; D57 |
-| M7.1 | done   | 2026-08-04 | -         | pty checks for the Picker; findings/picker-pty-async-ordering.md; D58 (TRIAGE T26 -> M7.1c) |
-| M7.1a| done   | 2026-08-04 | -         | TRIAGE T11, T24 |
-| M7.1b| done   | 2026-08-04 | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
-| M7.2 | done   | 2026-08-04 | -         |      |
-| M7.1c| done   | -        | -         | TRIAGE T26; D58 |
+| M7.1 | done   | 2026-08-04 | 2026-08-05 | pty checks for the Picker; findings/picker-pty-async-ordering.md; D58 (TRIAGE T26 -> M7.1c) |
+| M7.1a| done   | 2026-08-04 | 2026-08-05 | TRIAGE T11, T24; two t.Error strings still say "Results region" (picker_view_test.go:41,52) — criterion is comment-scoped, not a failure |
+| M7.1b| done   | 2026-08-04 | 2026-08-05 | TRIAGE T1, T2, T3, T4, T23; D56 |
+| M7.2 | done   | 2026-08-04 | 2026-08-05 |      |
+| M7.1c| done   | -        | 2026-08-05 | TRIAGE T26; D58 |
