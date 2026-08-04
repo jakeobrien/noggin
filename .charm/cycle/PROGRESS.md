@@ -17,31 +17,31 @@
 
 ## Cursor
 
-No task in progress. M1-M5 and M4.2a are done; M7.1b plus M6/M7 remain todo. The M5 validation
-gate (below) is still outstanding — the user explicitly chose to build M4.2a ahead of it; it
-remains the recommended next step before M6/M7.
+No task in progress. M1-M5 and M4.2a are done and now validated; M7.1b plus M6/M7 remain todo.
+Next recommended step: M6 (D32's pre-agreed cut — skip to M7.1/M7.1b if time is short).
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.2a done (D55): extracted `styleRow(line, width, selected)` in picker_view.go — both
-`pickerFileRow` and `pickerGrepRow` now delegate their shared width-clamp/selection-style tail
-to it, so M6's anticipated third row renderer has one place to reuse. Fixed T22's tautological
-assertion in `TestPickerGrepResultsShowFileLineNumberAndText` (picker_view_test.go) by adding a
-third grep result (short.md, untruncated at the fixture's width) with a hand-computed expected
-row string, independent of calling `pickerGrepRow` — verified it actually catches a dropped-
-text regression (manually broke `pickerGrepRow` to drop `g.text`, confirmed this new assertion
-fails, reverted). Full suite green (`go build ./...`, `go vet ./...`, `go test ./...`, gofmt
-clean).
+charm-validate pass on M5.1-M5.3 and M4.2a (fresh session, no code changes): all pass, no
+discrepancies. Deterministic: `go build`, `go vet`, `go test ./...`, gofmt, and `make check-pty`
+all green on the clean working tree. Verified each acceptance criterion against the actual
+implementation, not just PROGRESS.md's claim: `switchPickerMode`/`switchPickerScope`
+(picker.go:286,302) only flip `mode`/`scope` and re-run `queuePickerSearch`, leaving the Prompt
+untouched, matching M5.1/M5.2's tests verbatim; `listFiles`/`grepFiles` both route through
+`liveRootsInScope`'s Broken-Root skip for All-Roots Scope; `resetPicker`/`dismissPicker`/
+`openPicker` (picker.go:177-227) are the only reset path and `toggleStore` (S2 stars) is the
+only store writer in the codebase — nothing in picker.go calls it, confirming M5.3's
+no-persistence claim. For M4.2a, confirmed `pickerFileRow`/`pickerGrepRow` both delegate to the
+shared `styleRow` (picker_view.go:236,257,311) and manually broke `pickerGrepRow` to drop
+`g.text` — `TestPickerGrepResultsShowFileLineNumberAndText`'s new hand-computed assertion failed
+as claimed, confirming it's a real regression catcher, then reverted (working tree confirmed
+clean after).
 
-M5 still has no charm-validate pass (Reviewed/Validated both `-` on M5.1-M5.3) — that gate was
-surfaced and the user chose to proceed with M4.2a first; it's still due. No blockers, no
-in-flight changes.
-
-Next step: charm-validate M5.1-M5.3 (and M4.2a while a fresh eye is on this area), then M6 (D32's
-pre-agreed cut — skip to M7.1/M7.1b if time is short).
+Next step: M6 (match highlighting, D32's pre-agreed cut — mark deferred and skip to M7.1/M7.1b
+if time is short).
 
 ## Status
 
@@ -72,12 +72,12 @@ pre-agreed cut — skip to M7.1/M7.1b if time is short).
 | M3.3b| done   | 2026-08-03 | 2026-08-03 | D49 (TRIAGE T9); TRIAGE T4 (fixture's expanded map stays empty, doesn't exercise the substitution scenario) |
 | M4.1 | done   | 2026-08-04 | 2026-08-03 | D53; TRIAGE T21, T22, T24 |
 | M4.2 | done   | 2026-08-04 | 2026-08-03 | D54; TRIAGE T24 |
-| M4.2a| done   | -        | -         | D55 (TRIAGE T21, T22) |
+| M4.2a| done   | -        | 2026-08-04 | D55 (TRIAGE T21, T22) |
 | M4.3 | done   | 2026-08-03 | 2026-08-03 | M4.3 test coupling note, see handoff |
 | M4.4 | done   | 2026-08-04 | 2026-08-03 |      |
-| M5.1 | done   | 2026-08-04 | -         |      |
-| M5.2 | done   | 2026-08-04 | -         |      |
-| M5.3 | done   | 2026-08-04 | -         |      |
+| M5.1 | done   | 2026-08-04 | 2026-08-04 |      |
+| M5.2 | done   | 2026-08-04 | 2026-08-04 |      |
+| M5.3 | done   | 2026-08-04 | 2026-08-04 |      |
 | M6.1 | todo   | -        | -         | pre-agreed cut (D32) |
 | M6.2 | todo   | -        | -         | pre-agreed cut (D32) |
 | M7.1 | todo   | -        | -         |      |
