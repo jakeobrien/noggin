@@ -1,45 +1,5 @@
 # Decisions
 
-## D55: Grep row rendering hygiene (T21, T22) promoted to a plan task
-
-- Status: decided
-- Cycle: C2
-- Date: 2026-08-04
-- Context: TRIAGE T21 (review, medium): `pickerGrepRow` (M4.1, picker_view.go:243-247,302-306)
-  duplicates `pickerFileRow`'s exact 4-line style/`.Width(width).MaxWidth(width).Render(line)`
-  tail verbatim, the same duplicated-sequence shape D51 already promoted to a plan task one
-  commit earlier for `openPicker`/`dismissPicker` — and M6's highlighted rows are an
-  anticipated third caller. TRIAGE T22 (review, medium): the grep row test
-  (`TestPickerGrepResultsShowFileLineNumberAndText`, picker_view_test.go:295-322) derives its
-  main expected strings by calling `pickerGrepRow` itself — the same tautological-assertion
-  shape T15/D52 just fixed for the file row test — and never independently checks the match's
-  line text is actually rendered.
-- Decision: Accept as a plan task (M4.2a): extract a shared `styleRow` helper for both row
-  renderers, and add a hand-computed expected string plus a rendered-text assertion to the
-  grep row test. Bundled as one task since both were found in the same review pass over the
-  same code.
-- Why: medium risk on both — the styling duplication is about to gain a third independent
-  drift point at M6, and the tautological test means a real text-dropping bug in
-  `pickerGrepRow` would currently pass undetected. Cheap to close now, reusing the
-  already-agreed patterns from D51 and D52.
-
-## D56: Keep the batch-spread grep cap test as a forward-looking regression guard (T23)
-
-- Status: decided
-- Cycle: C2
-- Date: 2026-08-04
-- Context: TRIAGE T23 (review, low): `TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated`
-  (M1.4c, files_search_test.go:367-401) aims to cover a batch-spread cap boundary distinct
-  from the existing single-batch test, but `grepFiles`'s cap check runs per-appended-result
-  inside the innermost loop regardless of batch boundaries (files_search.go:211) — so today it
-  can't exercise a path the single-batch test doesn't already cover.
-- Decision: Keep the test rather than drop or rewrite it; add a one-line comment (M7.1b)
-  explaining it guards against a future batching refactor that moves the cap check outside
-  the per-result loop, at which point it would start covering real distinct behavior.
-- Why: low risk either way — the test is harmless and cheap to keep, and dropping it would
-  lose a regression guard that becomes meaningful the moment the implementation it shadows
-  changes shape. Not worth the churn of rewriting to force distinctness today.
-
 ## D1: Go with the grain of the libraries
 
 - Status: decided
@@ -924,3 +884,43 @@
   Grep re-select silently not moving the Preview), caught by writing
   `TestPickerGrepPreviewRetargetsWithinTheSameFile` before assuming path-only comparison was
   enough.
+
+## D55: Grep row rendering hygiene (T21, T22) promoted to a plan task
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-04
+- Context: TRIAGE T21 (review, medium): `pickerGrepRow` (M4.1, picker_view.go:243-247,302-306)
+  duplicates `pickerFileRow`'s exact 4-line style/`.Width(width).MaxWidth(width).Render(line)`
+  tail verbatim, the same duplicated-sequence shape D51 already promoted to a plan task one
+  commit earlier for `openPicker`/`dismissPicker` — and M6's highlighted rows are an
+  anticipated third caller. TRIAGE T22 (review, medium): the grep row test
+  (`TestPickerGrepResultsShowFileLineNumberAndText`, picker_view_test.go:295-322) derives its
+  main expected strings by calling `pickerGrepRow` itself — the same tautological-assertion
+  shape T15/D52 just fixed for the file row test — and never independently checks the match's
+  line text is actually rendered.
+- Decision: Accept as a plan task (M4.2a): extract a shared `styleRow` helper for both row
+  renderers, and add a hand-computed expected string plus a rendered-text assertion to the
+  grep row test. Bundled as one task since both were found in the same review pass over the
+  same code.
+- Why: medium risk on both — the styling duplication is about to gain a third independent
+  drift point at M6, and the tautological test means a real text-dropping bug in
+  `pickerGrepRow` would currently pass undetected. Cheap to close now, reusing the
+  already-agreed patterns from D51 and D52.
+
+## D56: Keep the batch-spread grep cap test as a forward-looking regression guard (T23)
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-04
+- Context: TRIAGE T23 (review, low): `TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated`
+  (M1.4c, files_search_test.go:367-401) aims to cover a batch-spread cap boundary distinct
+  from the existing single-batch test, but `grepFiles`'s cap check runs per-appended-result
+  inside the innermost loop regardless of batch boundaries (files_search.go:211) — so today it
+  can't exercise a path the single-batch test doesn't already cover.
+- Decision: Keep the test rather than drop or rewrite it; add a one-line comment (M7.1b)
+  explaining it guards against a future batching refactor that moves the cap check outside
+  the per-result loop, at which point it would start covering real distinct behavior.
+- Why: low risk either way — the test is harmless and cheap to keep, and dropping it would
+  lose a regression guard that becomes meaningful the moment the implementation it shadows
+  changes shape. Not worth the churn of rewriting to force distinctness today.

@@ -17,98 +17,24 @@
 
 ## Cursor
 
-Current task: M5.3
+No task in progress. M1-M5 are done; M4.2a and M7.1b (inserted by the 2026-08-04 replan) plus
+M6/M7 remain todo. The M5 validation gate (below) is the recommended next step.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.4 done this session: confirmed the pre-build assumption that M4.3's `activateGrepPicker` ->
-`commitQuery` hand-off already leaves the Document Viewer in a real committed-find state
-(`commitQuery`'s doc comment says as much) — no production code changed. Added
-`TestPickerActivateGrepResultCommitsFindWithNextPreviousTraversal` (picker_test.go): a
-3-occurrence fixture, activates the first Grep Result, asserts `findState.input.Value()`
-equals the grep query and `len(findState.matches) == 3`, then drives `keys.FindNext`/
-`keys.FindPrevious` via `press()` (matching `TestFindTraversalWraps`'s typed-search shape) and
-asserts `current` advances/returns correctly. Sanity-sabotaged `findNext` (made it a no-op) to
-confirm the test actually fails rather than passing vacuously — it did, on both the next and
-the previous assertion — then reverted (find.go diff is clean; verified with `git diff --stat`).
-`make check` and `make check-pty` both green.
+M1-M5 are built; M4.4 and M5.1-M5.3 landed most recently (see git history for detail). M5 has
+no charm-validate pass yet (Reviewed/Validated both `-` on M5.1-M5.3) — a completed milestone
+with validation due is a process gate; address before continuing into M6/M7.
 
-Backfill validation this session, per charm-validate, of every `done` task that had never been
-Validated: M4 (previous pass) plus M1.4a/b/c, M2.1a, and the whole of M3 (M3.1, M3.1a, M3.1b,
-M3.2, M3.2a, M3.2b, M3.3, M3.3a, M3.3b) — two fresh-context validator subagents, run
-sequentially (not parallel) since both do mutation-and-revert probes against overlapping
-files (picker.go, picker_test.go). `make check` green both times. All 13 tasks: verdict PASS
-(functionally meet their PLAN.md acceptance criteria and SPEC deliverables); Validated column
-stamped 2026-08-03 for all of them. Every done task in the cycle now has a Validated date
-except M6.x (not started) and M5.x/M7.x (not yet built).
+2026-08-04 replan: drained TRIAGE.md (T1-T4, T21-T24; inbox now empty), inserting M4.2a (D55:
+shared `styleRow` helper + grep-row test fix, before M6's third row renderer) and M7.1b
+(bundled low-cost test-hygiene backfill, D56). No spec/scope change. DECISIONS.md gained D55, D56.
 
-Four non-blocking findings, all confirmed via mutation-and-revert (broke the behavior, watched
-a test fail or fail-to-fail, reverted — git tree confirmed clean throughout both sessions):
-- T1: M4.3's headline test alone doesn't isolate D34's ordinal-resolution bridge, only covered
-  paired with a second named test.
-- T2: no direct test asserts Files Nav is untouched on the grep activation path specifically
-  (only file-mode); code path is shared so the property holds structurally.
-- T3: M3.1a's disambiguation test compares whole rendered frame lines, not the picker row in
-  isolation — M3.1b's row-budget test is what actually isolates the regression it's meant to
-  catch.
-- T4: M3.3b's expansion-equality fixture never produces a non-empty `expanded` map, so the
-  DeepEqual assertion it added can't demonstrate catching a same-cardinality substitution as
-  intended (mechanism is sound, fixture doesn't reach it).
-All four are test-quality/coverage gaps, not functional bugs; none required flipping a status.
-Also noted directly in PROGRESS's M3.3a row (no TRIAGE item needed, just documentation): its
-"Grep-mode no-op" test was correctly superseded/removed by M4.3 (897ef6a) once grep Activate
-became real — criterion-as-written is no longer checkable, not a regression.
-
-M5.1 done previously this session: added `switchPickerMode` (picker.go) — toggles
-`picker.mode` between fileMode/grepMode, leaves the Prompt's text untouched, and calls
-`queuePickerSearch` so the new mode's search for the same query follows the existing
-debounce/generation contract. Wired `keys.PickerMode` (Tab) to it.
-
-M5.2 done previously this session: added `switchPickerScope` (picker.go), symmetric to
-`switchPickerMode`, wired to `keys.PickerScope` (Shift+Tab).
-
-M5.3 done this session: no code change — confirmed by test that the existing reset contract
-(`resetPicker`, shared by `openPicker`/`dismissPicker` since D51/M2.1a) already discards mode,
-Scope and query on dismissal, and that no Picker field is ever written to the on-disk store
-(store.go's only writer, `toggleStore`, persists starred Roots only; nothing in picker.go calls
-it). Added `TestPickerNoMemoryWithinAndAcrossSessions` (picker_test.go): drives the Picker to
-Grep mode / All Roots Scope / a typed query through the real switch keys (not direct field
-assignment, unlike M2.1's older `TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt`/
-`TestPickerDismissRestoresThePreOpenFrameByteForByte`, which predate M5.1/M5.2's actual
-switches), dismisses, and asserts mode/Scope/Prompt are already back to File/ActiveRoot/empty
-*immediately after dismissal* (not merely after a subsequent reopen — isolates dismissPicker's
-own reset from openPicker's, since both share resetPicker and a naive sabotage of only
-openPicker couldn't be caught this way, confirmed below); reopens ('within a session') and
-re-checks; asserts a fresh `newModel()` ('across sessions') starts the same way; and asserts a
-seeded store file's bytes are byte-for-byte unchanged after the whole open/type/switch/
-switch/dismiss/reopen cycle. Sabotage-and-revert: sabotaging `openPicker` alone (skip reset)
-did NOT fail the test (dismissPicker's own reset already covers it, confirming the isolation
-above is real) — sabotaging `dismissPicker` alone (skip reset, only clear `open`) DID fail it,
-on the immediately-post-dismissal assertion. Reverted both; `git diff --stat` confirmed clean.
-`make check` and `make check-pty` both green.
-
-M5 (Mode and Scope switched in place) is now complete: M5.1, M5.2, M5.3 all done. Per
-cycle-state, a completed milestone with validation due is a process gate — M5 has not yet had
-a charm-validate pass (only Reviewed/Validated `-` so far), so a fresh-context validation pass
-over M5.1-M5.3 is due before or alongside continuing into M6.
-
-Next step: M6 is the cycle's pre-agreed cut (D32, match highlighting) — if time is short, skip
-to M7 (hardening/docs) instead, per PLAN.md's own note. Either way, M5's validation gate above
-should be addressed first (ask the user, per the escalation matrix, rather than building past it).
-
-Replan (2026-08-04): triaged all 8 open TRIAGE items (T1-T4, T21-T24), inbox now empty. Two new
-tasks inserted — M4.2a (D55: extract shared `styleRow` helper for `pickerFileRow`/`pickerGrepRow`,
-fix the grep row test's tautological assertion; do this before M6 adds a third row renderer) and
-M7.1b (bundled low-cost test-hygiene backfill: T1-T4 plus a rationale comment for T23/D56). T24
-dropped as already covered by M7.1a's existing codebase-wide criterion. No spec or scope change;
-DECISIONS.md gained D55, D56.
-
-No blockers. TRIAGE.md is empty. M5's validation gate (above) is still the most load-bearing open
-item — recommend addressing it before M6/M7, and M4.2a before M6 specifically since M6 is its
-anticipated third caller.
+Next step: charm-validate M5.1-M5.3, then M4.2a before M6 (M6 is D32's pre-agreed cut — skip to
+M7 if time is short). No blockers, no in-flight changes.
 
 ## Status
 

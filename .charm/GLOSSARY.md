@@ -1,5 +1,8 @@
 # Glossary
 
+- **Activate** — commit to a Picker's selected Result: the file becomes the Active Document
+  (a Grep Result also lands the Document Viewer on the matched line). Does not change the
+  Active Root or the Files Nav tree (C2).
 - **Active Document** — the document currently rendered in the Document Viewer. Independent of
   the Active Root: switching roots does not change it.
 - **Active Root** — the one Root whose contents the Files Nav is showing. Exactly one at a time.
@@ -37,6 +40,8 @@
 - **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
   `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker).
+- **Results list** — the Picker pane listing its Results, one row per Result, below the
+  Prompt (C2).
 - **Root** — a folder that bounds file visibility. Several exist per session; identified by
   exact path; may not nest inside another Root.
 - **Roots Nav** — the upper Navigator pane; the list of the session's Roots.
