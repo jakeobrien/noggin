@@ -418,3 +418,74 @@ func equalStrings(a, b []string) bool {
 	}
 	return true
 }
+
+// TestFileNameMatchPositionsSpellTheQuery pins fileNameMatchPositions'
+// contract the view layer depends on (M6.1): the positions are rune indexes
+// into the *name*, in ascending order, and the characters they point at are
+// exactly the query's own characters (case-insensitively, since the fuzzy
+// match is). Asserting the characters rather than a hard-coded index list is
+// what catches the byte-vs-rune confusion the conversion exists for —
+// fuzzy's MatchedIndexes are byte offsets, so a name with a multibyte
+// character (café) would silently shift every later highlight by one column
+// if they were used as-is.
+func TestFileNameMatchPositionsSpellTheQuery(t *testing.T) {
+	cases := []struct{ name, query string }{
+		{"report.md", "rep"},     // contiguous prefix
+		{"report.md", "rpt"},     // scattered
+		{"Report.md", "rep"},     // case-insensitive
+		{"café-notes.md", "cfn"}, // multibyte before the later matches
+		{"café-notes.md", "cén"}, // the multibyte rune itself matched
+	}
+	for _, c := range cases {
+		positions := fileNameMatchPositions(c.name, c.query)
+		runes := []rune(c.name)
+		query := []rune(strings.ToLower(c.query))
+		if len(positions) != len(query) {
+			t.Errorf("fileNameMatchPositions(%q, %q) = %v, want %d positions", c.name, c.query, positions, len(query))
+			continue
+		}
+		last := -1
+		for i, p := range positions {
+			if p <= last || p >= len(runes) {
+				t.Errorf("fileNameMatchPositions(%q, %q) = %v: position %d out of order or out of range", c.name, c.query, positions, p)
+				break
+			}
+			last = p
+			if got := []rune(strings.ToLower(string(runes[p])))[0]; got != query[i] {
+				t.Errorf("fileNameMatchPositions(%q, %q) = %v: position %d points at %q, want %q", c.name, c.query, positions, p, got, query[i])
+			}
+		}
+	}
+	if positions := fileNameMatchPositions("report.md", ""); positions != nil {
+		t.Errorf("fileNameMatchPositions() with an empty query = %v, want nil", positions)
+	}
+	if positions := fileNameMatchPositions("report.md", "zzz"); positions != nil {
+		t.Errorf("fileNameMatchPositions() with a non-matching query = %v, want nil", positions)
+	}
+}
+
+// TestFileNameMatchPositionsCoverEveryRankedResult is the anti-drift guard
+// for recomputing match positions at render time instead of carrying them
+// out of fuzzyFiles (see fileNameMatchPositions' own comment): every row
+// fuzzyFiles ranked must be highlightable, i.e. the recomputed match must
+// exist for each one. If the two ever stopped agreeing — a different matcher,
+// a different string fed to it — a ranked row would render with no highlight,
+// and this fails.
+func TestFileNameMatchPositionsCoverEveryRankedResult(t *testing.T) {
+	files := []pickerFile{
+		pickerFileAt("/notes/report.md"),
+		pickerFileAt("/notes/Retrospective.md"),
+		pickerFileAt("/notes/rough-plan-tuesday.md"),
+		pickerFileAt("/notes/unrelated.md"),
+	}
+	results, _ := fuzzyFiles(files, "rpt")
+	if len(results) == 0 {
+		t.Fatal("fuzzyFiles() ranked nothing; fixture is broken")
+	}
+	for _, f := range results {
+		name := filepath.Base(f.path)
+		if positions := fileNameMatchPositions(name, "rpt"); len(positions) == 0 {
+			t.Errorf("fuzzyFiles ranked %q but fileNameMatchPositions(%q, %q) found no match", f.path, name, "rpt")
+		}
+	}
+}

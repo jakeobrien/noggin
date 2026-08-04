@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 )
@@ -233,14 +234,77 @@ func pickerRootLabel(f pickerFile, width int, rest string) string {
 // (TRIAGE T17/D52) — the two must always agree since they describe the same
 // rendered characters, so a single local var makes that structural rather
 // than something two call sites have to keep in sync by hand.
-func pickerFileRow(f pickerFile, width int, selected bool) string {
+// query is what the row was matched against, needed only to highlight the
+// matched characters of the file name (S5/M6.1) — an empty query renders
+// exactly the unhighlighted row M3.1 shipped.
+func pickerFileRow(f pickerFile, query string, width int, selected bool) string {
 	rel, err := filepath.Rel(f.root.path, f.path)
 	if err != nil {
 		rel = f.path
 	}
 	suffix := "  " + rel
 	line := pickerRootLabel(f, width, suffix) + suffix
-	return styleRow(line, width, selected)
+	name := filepath.Base(f.path)
+	return styleRow(highlightMatches(line, name, fileNameMatchPositions(name, query), selected), width, selected)
+}
+
+// highlightMatches bolds the characters of name inside line at the given
+// rune positions within name (fileNameMatchPositions), leaving every other
+// character alone. name is expected to be line's suffix — every File Picker
+// row ends with the file name (pickerFileRow's rel always does) — and if it
+// is not, the line is returned untouched rather than highlighting the wrong
+// columns: a row missing its emphasis is a cosmetic loss, emphasis on the
+// wrong characters is a lie about what matched.
+//
+// A matched character is picked out with bold, and bold only. The emphasis
+// has to read both on a plain row and on the selected row's reverse-video
+// bar (pickerSelectedStyle), which rules out a foreground colour on its own:
+// reverse video swaps foreground and background, so a colour chosen to stand
+// out against the pane's background lands on the selected row's *text*
+// colour and can vanish into it. Bold is an attribute, so it composes with
+// reverse instead of competing with it — which is also why the highlight is
+// derived from the row's own base style (base.Bold(true)) rather than being
+// a standalone style that would drop the selection's reverse.
+//
+// Every run is rendered with its style fully specified, including the
+// unmatched runs and including the selection's own reverse video, rather
+// than styling only the matched runs and letting styleRow's outer
+// pickerSelectedStyle wrap the result. Nesting is what forces that: lipgloss
+// closes an inner style with a full reset (`ESC[m`, verified against v2.0.5),
+// which also cancels the enclosing reverse video, so an outer-wrapped
+// selected row would lose its bar from the first highlight to the end of the
+// text. Self-contained runs have nothing to cancel. styleRow still applies
+// the same base style outside for the row's padding and width clamp.
+func highlightMatches(line, name string, positions []int, selected bool) string {
+	if len(positions) == 0 || !strings.HasSuffix(line, name) {
+		return line
+	}
+	runes := []rune(line)
+	offset := len(runes) - len([]rune(name))
+	matched := make(map[int]bool, len(positions))
+	for _, p := range positions {
+		matched[offset+p] = true
+	}
+	base := lipgloss.NewStyle()
+	if selected {
+		base = pickerSelectedStyle
+	}
+	highlight := base.Bold(true)
+
+	var b strings.Builder
+	for i := 0; i < len(runes); {
+		j := i
+		for j < len(runes) && matched[j] == matched[i] {
+			j++
+		}
+		style := base
+		if matched[i] {
+			style = highlight
+		}
+		b.WriteString(style.Render(string(runes[i:j])))
+		i = j
+	}
+	return b.String()
 }
 
 // styleRow applies the Results list's shared row styling — reverse video
@@ -344,7 +408,7 @@ func pickerResultsContent(p picker, width, height int) string {
 		return ""
 	}
 	return windowedView(width, height, p.selected, len(files), func(idx int) string {
-		return pickerFileRow(files[idx], width, idx == p.selected)
+		return pickerFileRow(files[idx], p.results.query, width, idx == p.selected)
 	})
 }
 

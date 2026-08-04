@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sahilm/fuzzy"
 
@@ -108,6 +109,49 @@ func fuzzyFiles(files []pickerFile, query string) (results []pickerFile, truncat
 		results[i] = files[matches[i].Index]
 	}
 	return results, truncated
+}
+
+// fileNameMatchPositions is which characters of name the query matched
+// (S5/M6.1: "highlight matched characters within the file name"), as rune
+// indexes into name, for the Results row renderer to style
+// (highlightMatches, picker_view.go). nil when nothing matched, which is
+// also what an empty query gives — fuzzy.Find treats an empty pattern as no
+// match rather than as "everything", so a row rendered before the query
+// reaches pickerQueryMinLength simply has no highlight.
+//
+// The positions are recomputed here rather than carried out of fuzzyFiles
+// alongside each result. Carrying them would mean a second result type
+// (pickerFile plus its match) threaded through pickerResults, the Preview/
+// Activate accessors and every test that builds a result set by hand, to
+// avoid a per-visible-row fuzzy match over one short string — the cheaper
+// half of that trade is recomputation. It is exact, not an approximation:
+// fuzzy.Find runs the same matcher over the same name fuzzyFiles' own
+// fuzzy.FindFrom(fileNameSource) did, so the positions are the ones that
+// ranked the row (pinned by TestFileNameMatchPositionsAgreeWithRanking).
+//
+// fuzzy's MatchedIndexes are *byte* offsets into the matched string (its
+// scan loop indexes bytes, fuzzy.go's FindFromIterNoSort), while a rendered
+// row is addressed in runes/cells — so they are converted here, at the one
+// place that knows they came from fuzzy, rather than leaking a byte offset
+// into the view layer.
+func fileNameMatchPositions(name, query string) []int {
+	matches := fuzzy.Find(query, []string{name})
+	if len(matches) == 0 {
+		return nil
+	}
+	byteToRune := make(map[int]int, len(name))
+	for runeIdx, byteIdx := 0, 0; byteIdx < len(name); runeIdx++ {
+		byteToRune[byteIdx] = runeIdx
+		_, size := utf8.DecodeRuneInString(name[byteIdx:])
+		byteIdx += size
+	}
+	var positions []int
+	for _, b := range matches[0].MatchedIndexes {
+		if r, ok := byteToRune[b]; ok {
+			positions = append(positions, r)
+		}
+	}
+	return positions
 }
 
 // grepResult is one matching line the Grep Picker can show (S4): which file

@@ -924,3 +924,27 @@
 - Why: low risk either way — the test is harmless and cheap to keep, and dropping it would
   lose a regression guard that becomes meaningful the moment the implementation it shadows
   changes shape. Not worth the churn of rewriting to force distinctness today.
+
+## D57: Recompute File Picker match positions at render time; highlight with bold only (M6.1)
+
+- Status: decided
+- Cycle: C2
+- Date: 2026-08-04
+- Context: S5/M6.1 needs the fuzzy-matched character positions of a file name inside a
+  rendered Results row. `fuzzyFiles` (files_search.go) discards `fuzzy.Match.MatchedIndexes`,
+  so the positions were either carried out of the search alongside each result or recomputed
+  at render time. Carrying them means a second result type (pickerFile + its match) threaded
+  through `pickerResults`, the Preview/Activate accessors and every test that hand-builds a
+  result set. Separately, the highlight has to read on both a plain row and the selected row's
+  reverse-video bar (`pickerSelectedStyle`).
+- Decision: Recompute via `fileNameMatchPositions` (files_search.go) — one `fuzzy.Find` over
+  one short name per *visible* row — and guard the two against drift with a test asserting
+  every row `fuzzyFiles` ranked is highlightable. Style matches with bold only, derived from
+  the row's own base style (`base.Bold(true)`) rather than a standalone style, and render every
+  run (matched and unmatched) with its style fully specified.
+- Why: recomputation is exact, not approximate (same matcher, same string), so the only real
+  cost is a bounded per-render match the drift test pins. Bold composes with reverse video,
+  where a foreground colour would land on the selected row's text colour and can vanish;
+  fully-specified runs avoid lipgloss's inner-style full reset (`ESC[m`) cancelling the
+  selection bar mid-row — the failure mode
+  `TestPickerFileRowHighlightKeepsSelectionBar` now pins.

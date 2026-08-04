@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // pickerSizes exercises the modal at a range of terminal sizes, the same
@@ -274,7 +275,11 @@ func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
 	}
 
 	wantRow := wantLabel + "  report.md"
-	got := pickerFileRow(f, width, false)
+	// Empty query: this test pins the row's layout arithmetic, so it renders
+	// the row with no match highlighting (M6.1) in play — the exact-string
+	// comparison below is over plain text, and highlighting is pinned
+	// separately by TestPickerFileRowHighlightsMatchedNameCharacters.
+	got := pickerFileRow(f, "", width, false)
 	if got != wantRow {
 		t.Errorf("pickerFileRow() = %q, want %q", got, wantRow)
 	}
@@ -491,4 +496,157 @@ func TestPickerStatusStates(t *testing.T) {
 			}
 		})
 	}
+}
+
+// cellStyle is the styling in force at one visible cell of a rendered row,
+// as far as the Picker's row highlighting cares: bold (the match emphasis,
+// M6.1) and reverse video (the selection bar, pickerSelectedStyle).
+type cellStyle struct {
+	bold, reverse bool
+}
+
+// cellStyles walks a rendered string's SGR escape sequences and reports the
+// style in force at each visible cell — the only way to check *where* a
+// highlight landed, which ansi.Strip (plainLines) deliberately discards and
+// a string comparison against a hand-built expected string could only check
+// by pinning lipgloss's exact escape serialization. Handles the subset
+// lipgloss emits here: bold on/off (1/21/22), reverse on/off (7/27) and a
+// full reset (0, or the empty parameter list lipgloss writes as `ESC[m`).
+func cellStyles(s string) []cellStyle {
+	var (
+		cells   []cellStyle
+		current cellStyle
+		runes   = []rune(s)
+	)
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == '\x1b' && i+1 < len(runes) && runes[i+1] == '[' {
+			j := i + 2
+			for j < len(runes) && runes[j] != 'm' {
+				j++
+			}
+			if j < len(runes) {
+				params := string(runes[i+2 : j])
+				if params == "" {
+					current = cellStyle{}
+				}
+				for _, p := range strings.Split(params, ";") {
+					switch p {
+					case "", "0":
+						current = cellStyle{}
+					case "1":
+						current.bold = true
+					case "21", "22":
+						current.bold = false
+					case "7":
+						current.reverse = true
+					case "27":
+						current.reverse = false
+					}
+				}
+			}
+			i = j
+			continue
+		}
+		cells = append(cells, current)
+	}
+	return cells
+}
+
+// boldColumns is which cells of a rendered row carry the match emphasis.
+func boldColumns(s string) []int {
+	var cols []int
+	for i, c := range cellStyles(s) {
+		if c.bold {
+			cols = append(cols, i)
+		}
+	}
+	return cols
+}
+
+// TestPickerFileRowHighlightsMatchedNameCharacters is M6.1's own acceptance
+// criterion (S5): the styled runs in a rendered File Picker row fall exactly
+// on the fuzzy-matched positions of the file name, and nowhere else. The
+// expected columns are hand-computed rather than derived from the highlighter
+// — the fuzzy match of "rpt" against "report.md" can only be r(0), p(2),
+// t(5) (those are the name's only r/p/t after the first, in order), offset by
+// where the name starts in the row — so a highlighter that drifted onto the
+// path, the Root label or the wrong characters of the name fails here.
+// Synthetic (non-tempdir) paths keep every column knowable, the same reason
+// TestPickerFileRowFillsItsFullBudget uses them.
+func TestPickerFileRowHighlightsMatchedNameCharacters(t *testing.T) {
+	f := pickerFile{
+		root: root{path: "/home/user/notes"},
+		path: "/home/user/notes/sub/report.md",
+	}
+	const width = 40
+	const name = "report.md"
+
+	got := pickerFileRow(f, "rpt", width, false)
+
+	// The highlight is styling only: the row's displayed characters must be
+	// exactly the unhighlighted row's.
+	plain := ansi.Strip(got)
+	if want := pickerFileRow(f, "", width, false); plain != want {
+		t.Fatalf("highlighted row's plain text = %q, want %q (highlighting must not change the row's content or width)", plain, want)
+	}
+
+	nameAt := strings.LastIndex(plain, name)
+	if nameAt < 0 {
+		t.Fatalf("row %q does not contain %q; fixture is broken", plain, name)
+	}
+	// "report.md": r=0, e=1, p=2, o=3, r=4, t=5 — the match for "rpt".
+	want := []int{nameAt + 0, nameAt + 2, nameAt + 5}
+	if gotCols := boldColumns(got); !equalInts(gotCols, want) {
+		t.Errorf("bold columns = %v, want %v\nrow: %q\nplain: %q", gotCols, want, got, plain)
+	}
+	// The Root label and the path components are matched against nothing
+	// (D31: the File Picker matches the file name only), so nothing before
+	// the name may be emphasized — implied by the exact comparison above,
+	// asserted separately so a failure says which half broke.
+	for _, c := range boldColumns(got) {
+		if c < nameAt {
+			t.Errorf("bold column %d falls before the file name (starts at %d) — highlighting escaped into the Root label or path", c, nameAt)
+		}
+	}
+}
+
+// TestPickerFileRowHighlightKeepsSelectionBar guards the nesting hazard
+// highlightMatches' own comment describes: lipgloss closes an inner style
+// with a full reset, so highlighting a selected row by wrapping it in
+// pickerSelectedStyle after the fact would cancel the reverse-video bar from
+// the first matched character onward. Every cell of a selected row — padding
+// included — must stay reversed, while the matched cells are additionally
+// bold.
+func TestPickerFileRowHighlightKeepsSelectionBar(t *testing.T) {
+	f := pickerFile{
+		root: root{path: "/home/user/notes"},
+		path: "/home/user/notes/sub/report.md",
+	}
+	const width = 40
+
+	got := pickerFileRow(f, "rpt", width, true)
+	cells := cellStyles(got)
+	if len(cells) != width {
+		t.Fatalf("selected row rendered %d cells, want %d", len(cells), width)
+	}
+	for i, c := range cells {
+		if !c.reverse {
+			t.Fatalf("cell %d of the selected row is not reversed — the selection bar is broken from there on\nrow: %q", i, got)
+		}
+	}
+	if bold := boldColumns(got); len(bold) != 3 {
+		t.Errorf("selected row bold columns = %v, want 3 (the match's own characters)", bold)
+	}
+}
+
+func equalInts(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

@@ -17,31 +17,38 @@
 
 ## Cursor
 
-No task in progress. M1-M5 and M4.2a are done and now validated; M7.1b plus M6/M7 remain todo.
-Next recommended step: M6 (D32's pre-agreed cut — skip to M7.1/M7.1b if time is short).
+No task in progress. M6.1 is done (not yet reviewed/validated); M6.2, M7.1, M7.1a, M7.1b, M7.2
+remain todo. Next recommended step: M6.2 (grep-row match highlighting), which now has
+`highlightMatches` to reuse.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-charm-validate pass on M5.1-M5.3 and M4.2a (fresh session, no code changes): all pass, no
-discrepancies. Deterministic: `go build`, `go vet`, `go test ./...`, gofmt, and `make check-pty`
-all green on the clean working tree. Verified each acceptance criterion against the actual
-implementation, not just PROGRESS.md's claim: `switchPickerMode`/`switchPickerScope`
-(picker.go:286,302) only flip `mode`/`scope` and re-run `queuePickerSearch`, leaving the Prompt
-untouched, matching M5.1/M5.2's tests verbatim; `listFiles`/`grepFiles` both route through
-`liveRootsInScope`'s Broken-Root skip for All-Roots Scope; `resetPicker`/`dismissPicker`/
-`openPicker` (picker.go:177-227) are the only reset path and `toggleStore` (S2 stars) is the
-only store writer in the codebase — nothing in picker.go calls it, confirming M5.3's
-no-persistence claim. For M4.2a, confirmed `pickerFileRow`/`pickerGrepRow` both delegate to the
-shared `styleRow` (picker_view.go:236,257,311) and manually broke `pickerGrepRow` to drop
-`g.text` — `TestPickerGrepResultsShowFileLineNumberAndText`'s new hand-computed assertion failed
-as claimed, confirming it's a real regression catcher, then reverted (working tree confirmed
-clean after).
+M6.1 (File Picker match highlighting) landed. Shape: `fileNameMatchPositions` (files_search.go)
+recomputes the fuzzy match positions for one name and converts fuzzy's **byte** offsets to rune
+indexes; `highlightMatches` (picker_view.go) bolds those runes inside the row's file-name suffix
+and `pickerFileRow` gained a `query` parameter (existing callers/tests pass `""` for the plain
+row). D57 records why positions are recomputed rather than carried through `pickerResults`, and
+why the highlight is bold derived from the row's base style.
 
-Next step: M6 (match highlighting, D32's pre-agreed cut — mark deferred and skip to M7.1/M7.1b
-if time is short).
+Gotcha worth carrying into M6.2: lipgloss closes an inner style with a **full** reset (`ESC[m`),
+so wrapping a partly-styled line in `pickerSelectedStyle` kills the selection's reverse video
+from the first highlight onward. `highlightMatches` therefore renders *every* run — matched and
+unmatched — with its style fully specified, base included; reuse it for grep rows rather than
+re-deriving. `styleRow` still does the padding/width clamp on top and copes with ANSI in the
+line. Both new tests were mutation-checked (wrong offset; nested styling) and each failed as
+intended.
+
+M6.2 should be able to call `highlightMatches` directly: positions there are a literal
+(`--fixed-strings`) query occurrence in `g.text`, not a fuzzy match, and must be computed
+*after* `rightTruncate` (a truncated row's match may be partly or wholly cut) — note the
+name-is-a-suffix guard in `highlightMatches` assumes a suffix, so grep rows will need the
+matched substring located by index instead.
+
+Next step: M6.2 (grep row highlighting), or skip the rest of M6 per D32's pre-agreed cut and go
+to M7.1/M7.1b if time is short.
 
 ## Status
 
@@ -78,7 +85,7 @@ if time is short).
 | M5.1 | done   | 2026-08-04 | 2026-08-04 |      |
 | M5.2 | done   | 2026-08-04 | 2026-08-04 |      |
 | M5.3 | done   | 2026-08-04 | 2026-08-04 |      |
-| M6.1 | todo   | -        | -         | pre-agreed cut (D32) |
+| M6.1 | done   | -        | -         | pre-agreed cut (D32); D57 |
 | M6.2 | todo   | -        | -         | pre-agreed cut (D32) |
 | M7.1 | todo   | -        | -         |      |
 | M7.1a| todo   | -        | -         | TRIAGE T11, T24 |
