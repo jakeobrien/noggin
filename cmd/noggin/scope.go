@@ -3,7 +3,8 @@ package main
 // pickerScope selects which Roots a Picker searches (S6, GLOSSARY.md
 // "Scope"): the session's single Active Root, or every Root at once. Shared
 // by the File Picker's listing (M1.2) and the Grep Picker's search (M1.4),
-// and by the in-Picker switch between them (M5.2) later.
+// and by the in-Picker switch between them (picker.go's switchPickerScope,
+// M5.2).
 type pickerScope int
 
 const (

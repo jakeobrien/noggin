@@ -292,6 +292,22 @@ func (m model) switchPickerMode() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
+// switchPickerScope flips the open Picker's Scope (Active Root ↔ All
+// Roots, S7/M5.2), the exact same shape switchPickerMode gives mode
+// (above): only p.scope changes, the Prompt is untouched, and the switch
+// goes through queuePickerSearch so the new Scope's search for the same
+// query follows the same debounce/generation contract as everything else
+// — resultsCurrent's scope comparison stales the old Scope's rows
+// immediately, the same way it stales an old mode's.
+func (m model) switchPickerScope() (model, tea.Cmd) {
+	if m.picker.scope == allRootsScope {
+		m.picker.scope = activeRootScope
+	} else {
+		m.picker.scope = allRootsScope
+	}
+	return m.queuePickerSearch()
+}
+
 // dispatchPickerSearch runs a matured debounce timer's search, or drops the
 // timer if its generation has been superseded (the user typed on) or the
 // Picker has since been dismissed. This is the debounce: every keystroke
@@ -667,16 +683,14 @@ func resolveGrepLanding(src []byte, rendered, query string, line int) (ordinal i
 // second letter).
 //
 // The non-typing set is exactly S2's list: Cancel dismisses; PickerUp/
-// PickerDown now move the Results selection cursor (M3.1, picker.move);
-// Activate, PageUp/PageDown/HalfPageUp/HalfPageDown (Preview scrolling,
-// reused as-is from the Document Viewer's own scroll bindings — they are
-// already non-printable, so nothing about "always typing" requires a second
-// copy) and PickerMode/PickerScope (mode/Scope switch) are all recognised and
-// swallowed here. Activate now opens the previewed Result and dismisses the
-// Picker (M3.3, activatePicker); Preview scrolling is reused as-is.
-// PickerMode now switches mode in place (M5.1, switchPickerMode);
-// PickerScope still has no state to act on — M5.2 gives Scope its own —
-// so that key still does nothing beyond not typing (M2.3's original job).
+// PickerDown move the Results selection cursor (M3.1, picker.move);
+// PageUp/PageDown/HalfPageUp/HalfPageDown scroll the Preview (reused as-is
+// from the Document Viewer's own scroll bindings — they are already
+// non-printable, so nothing about "always typing" requires a second copy);
+// Activate opens the previewed Result and dismisses the Picker (M3.3,
+// activatePicker); PickerMode and PickerScope switch mode and Scope in
+// place (M5.1 switchPickerMode, M5.2 switchPickerScope). All are
+// recognised and handled here rather than falling through to the Prompt.
 func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
@@ -704,7 +718,7 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.PickerMode):
 		return m.switchPickerMode()
 	case key.Matches(msg, keys.PickerScope):
-		return m, nil
+		return m.switchPickerScope()
 	}
 	before := m.picker.input.Value()
 	next, cmd := m.picker.input.Update(msg)

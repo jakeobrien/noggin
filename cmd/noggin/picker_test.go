@@ -1079,6 +1079,82 @@ func TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch(t *testing.T) {
 	}
 }
 
+// TestPickerScopeSwitchFindsNonActiveRootOnlyAfterSwitchingToAllRoots is
+// M5.2's own acceptance criterion, verbatim: a query matching only in a
+// non-active Root finds nothing under Active Root Scope, finds it once
+// switched to All Roots, the Prompt is unchanged throughout, and a Broken
+// Root in the session produces no error row (S6's "All Roots silently
+// skips Broken Roots", already M1.2's contract at the listFiles layer;
+// this is the same guarantee observed through the Picker's own state).
+func TestPickerScopeSwitchFindsNonActiveRootOnlyAfterSwitchingToAllRoots(t *testing.T) {
+	requireRipgrep(t)
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+
+	activeDir := t.TempDir()
+	writeFileContent(t, filepath.Join(activeDir, "other.md"), "unrelated\n")
+	otherDir := t.TempDir()
+	writeFileContent(t, filepath.Join(otherDir, "report.md"), "quarterly report\n")
+	brokenDir := filepath.Join(t.TempDir(), "gone")
+
+	m.roots = m.roots.setRoots([]root{{path: activeDir}, {path: brokenDir}, {path: otherDir}}, 0)
+	m, _ = m.openPicker()
+
+	const query = "report"
+	m, seqs := typePickerQuery(t, m, query)
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches == 0 {
+		t.Fatal("no initial Active Root search was dispatched; setup is broken")
+	}
+	if m.picker.scope != activeRootScope {
+		t.Fatalf("scope = %v, want activeRootScope before any switch", m.picker.scope)
+	}
+	if got := len(m.picker.results.files); got != 0 {
+		t.Fatalf("Active Root results = %d files, want 0 (the match is only in a non-active Root)", got)
+	}
+	if m.message != "" {
+		t.Fatalf("message after Active Root search = %q, want empty (no error row)", m.message)
+	}
+
+	// Switch to All Roots: the PickerScope key is swallowed as a non-typing
+	// key (handlePickerInput), so it must not touch the Prompt.
+	next, cmd := m.Update(keyPress(keys.PickerScope.Keys()[0]))
+	m = concrete(t, next)
+	if m.picker.input.Value() != query {
+		t.Fatalf("Prompt after switching Scope = %q, want unchanged %q", m.picker.input.Value(), query)
+	}
+	if m.picker.scope != allRootsScope {
+		t.Fatalf("scope after PickerScope = %v, want allRootsScope", m.picker.scope)
+	}
+	if cmd == nil {
+		t.Fatal("switching Scope scheduled no debounce timer")
+	}
+	msg, ok := cmd().(pickerSearchMsg)
+	if !ok {
+		t.Fatalf("switching Scope's Cmd produced %T, want pickerSearchMsg", cmd())
+	}
+	m, searches = deliverPickerTicks(t, m, []int{msg.seq})
+	if searches == 0 {
+		t.Fatal("no All Roots search was dispatched after the Scope switch")
+	}
+	if m.picker.results.scope != allRootsScope {
+		t.Fatalf("results.scope after switch = %v, want allRootsScope", m.picker.results.scope)
+	}
+	gotPaths := make([]string, 0, len(m.picker.results.files))
+	for _, f := range m.picker.results.files {
+		gotPaths = append(gotPaths, f.path)
+	}
+	want := filepath.Join(otherDir, "report.md")
+	if !reflect.DeepEqual(gotPaths, []string{want}) {
+		t.Fatalf("All Roots results = %v, want [%s]", gotPaths, want)
+	}
+	if m.picker.input.Value() != query {
+		t.Fatalf("Prompt after All Roots results landed = %q, want unchanged %q", m.picker.input.Value(), query)
+	}
+	if m.message != "" {
+		t.Fatalf("message after All Roots search = %q, want empty (Broken Root produced no error row)", m.message)
+	}
+}
+
 // typePickerQuery types s into the open Picker one rune at a time, returning
 // the model and the query generation (picker.seq) each keystroke left behind
 // — i.e. the generation each keystroke's debounce timer will report when it

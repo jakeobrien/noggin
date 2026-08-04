@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M5.2
+Current task: M5.3
 
 ## Handoff
 
@@ -62,36 +62,37 @@ Also noted directly in PROGRESS's M3.3a row (no TRIAGE item needed, just documen
 "Grep-mode no-op" test was correctly superseded/removed by M4.3 (897ef6a) once grep Activate
 became real — criterion-as-written is no longer checkable, not a regression.
 
-M5.1 done this session: added `switchPickerMode` (picker.go) — toggles `picker.mode` between
-fileMode/grepMode, leaves the Prompt's text untouched, and calls the existing
-`queuePickerSearch` (its own doc comment already named "a mode or Scope switch from M5.1/M5.2"
-as a future caller, so this is that call arriving, not new machinery) so the new mode's search
-for the same query follows the same debounce/generation/stale-discard contract every other
-search trigger already does. Wired `keys.PickerMode` (already reserved, Tab, since M2.3) to it
-in `handlePickerInput`; `keys.PickerScope` (Shift+Tab) is still a swallowed no-op, left for
-M5.2. No changes needed to `pickerModeScope` (picker_view.go) — it already renders off
-`p.mode` live. Added `TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch` (picker_test.go):
-types a query in File mode, delivers its tick, asserts File results landed; presses PickerMode,
-asserts the Prompt is unchanged and a new debounce Cmd was scheduled, delivers that tick,
-asserts Grep results landed with the same Prompt; presses PickerMode again and repeats back to
-File. Sanity-sabotaged `switchPickerMode` into a no-op to confirm the test fails without the
-fix (it did, on the mode assertion) — reverted, `git diff --stat` confirmed clean. `make check`
-and `make check-pty` both green.
+M5.1 done previously this session: added `switchPickerMode` (picker.go) — toggles
+`picker.mode` between fileMode/grepMode, leaves the Prompt's text untouched, and calls
+`queuePickerSearch` so the new mode's search for the same query follows the existing
+debounce/generation contract. Wired `keys.PickerMode` (Tab) to it.
 
-Also committed, separately, a prior session's uncommitted `charm-validate` backfill (Validated
-column for M1.4a/b/c, M2.1a, all of M3; TRIAGE T1-T4 logged) that had been sitting in the
-working tree since before this session started — no code in that commit, tracking docs only.
+M5.2 done this session: added `switchPickerScope` (picker.go), the exact same shape as
+`switchPickerMode` — toggles `picker.scope` between activeRootScope/allRootsScope, Prompt
+untouched, goes through `queuePickerSearch`. Wired `keys.PickerScope` (Shift+Tab) to it in
+`handlePickerInput`, replacing its former no-op. Tidied `handlePickerInput`'s and
+`scope.go`'s doc comments, which still described PickerMode/PickerScope as "swallowed"/future
+work. Added `TestPickerScopeSwitchFindsNonActiveRootOnlyAfterSwitchingToAllRoots`
+(picker_test.go): a 3-root fixture (active Root with an unrelated file, a Broken Root, and a
+non-active Root holding the match) asserts Active Root Scope finds nothing, switching Scope
+leaves the Prompt unchanged and schedules a new search, and the All Roots search after that
+finds only the non-active Root's file with `m.message` staying empty throughout (Broken Root
+produced no error row). Sanity-sabotaged `switchPickerScope` into a no-op to confirm the test
+fails without the fix (it did, on the scope assertion) — reverted, `git diff --stat` confirmed
+clean. `make check` and `make check-pty` both green.
 
-Next step: M5.2 — switch Scope (Active Root ↔ All Roots) inside the open Picker in either mode,
-carrying the Prompt over. Same shape as M5.1: a `switchPickerScope`-style toggle on
-`keys.PickerScope` that flips `picker.scope` and calls `queuePickerSearch`; Broken Roots must
-still produce no error row (existing `liveRootsInScope`/M1.2 contract, scope.go) when All Roots
-is selected.
+Next step: M5.3 — no memory: mode, Scope and query are all discarded on dismissal, within a
+session and across sessions. Likely already true by construction — `dismissPicker`/`resetPicker`
+replace the whole struct with `newPicker()`'s zero state (S8, D51/M2.1a) — so this task is
+largely confirming the existing reset contract now covers mode/Scope too (it was written
+before either had a switch to reset from) with a test in the shape of
+`TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt`/`TestPickerDismissRestoresThePreOpenFrame
+ByteForByte`, plus confirming no Picker state reaches the config/data store.
 
 Also queued, non-blocking: M7.1a (TRIAGE T11 already triaged/routed there, removed from inbox).
 
 No blockers. TRIAGE.md has 4 open items (T1-T4), all low-severity test-coverage observations
-from the prior session's validation passes, awaiting charm-replan triage.
+from an earlier session's validation passes, awaiting charm-replan triage.
 
 ## Status
 
@@ -125,7 +126,7 @@ from the prior session's validation passes, awaiting charm-replan triage.
 | M4.3 | done   | 2026-08-03 | 2026-08-03 | M4.3 test coupling note, see handoff |
 | M4.4 | done   | -        | 2026-08-03 |      |
 | M5.1 | done   | -        | -         |      |
-| M5.2 | todo   | -        | -         |      |
+| M5.2 | done   | -        | -         |      |
 | M5.3 | todo   | -        | -         |      |
 | M6.1 | todo   | -        | -         | pre-agreed cut (D32) |
 | M6.2 | todo   | -        | -         | pre-agreed cut (D32) |
