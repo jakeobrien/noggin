@@ -326,6 +326,11 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	rootB := t.TempDir()
 	writeFileContent(t, filepath.Join(rootA, "existing.md"), "root A doc\n")
 	writeFileContent(t, filepath.Join(rootA, "other.md"), "root A other\n")
+	subDir := filepath.Join(rootA, "sub")
+	if err := os.Mkdir(subDir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", subDir, err)
+	}
+	writeFileContent(t, filepath.Join(subDir, "child.md"), "root A sub child\n")
 	fileB := filepath.Join(rootB, "report.md")
 	writeFileContent(t, fileB, "root B report\n")
 
@@ -337,6 +342,12 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
 	m.roots = m.roots.setRoots([]root{{path: rootA}, {path: rootB}}, 0)
 	m = m.openFolder(nodeA)
+	// Expand "sub" (TRIAGE T4/D56): without at least one expanded
+	// subdirectory, m.files.expanded is empty both before and after
+	// Activate, so the reflect.DeepEqual check below would pass even if
+	// Activate started clearing or replacing expansion state — an empty
+	// map equals an empty map regardless of what produced it.
+	m.files = m.files.withExpanded(subDir, true)
 	m.files = m.files.move(1) // off the tree's initial selection
 	wantSelected := m.files.selected
 	// A cloned copy, not just m.files.expanded itself (still less its
@@ -347,6 +358,9 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	wantExpanded := make(map[string]bool, len(m.files.expanded))
 	for k, v := range m.files.expanded {
 		wantExpanded[k] = v
+	}
+	if len(wantExpanded) == 0 {
+		t.Fatal("setup is broken: expanded set is empty")
 	}
 
 	m, _ = m.openPicker()
@@ -426,7 +440,14 @@ func TestPickerActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
 // TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight's setup, is
 // exactly why the assertion below checks by content/offset rather than
 // pinning the exact rendered line index the way that Preview-side test can
-// for raw text).
+// for raw text). This single-match fixture alone does not isolate D34's
+// ordinal-resolution bridge (resolveGrepLanding) from a plain "land
+// somewhere near the match" bridge: with only one occurrence, disabling
+// resolveGrepLanding's ordinal lookup would still happen to land in the
+// right place (M7.1b/TRIAGE T1). Only paired with the sibling test below,
+// TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst
+// (two occurrences, activating the second), is the criterion actually
+// covered end to end.
 func TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -470,6 +491,79 @@ func TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine(t *testing.T
 	}
 }
 
+// TestPickerActivateGrepResultDoesNotChangeFilesNav is M7.1b's grep-mode
+// counterpart to TestPickerActivateOpensResultAsActiveDocumentOnly
+// (M3.3, M7.1b/TRIAGE T2): S10 ("does not change the Active Root, and does
+// not move, expand or re-select the Files Nav tree") applies to Activate
+// regardless of Picker mode, since both paths end at the same
+// model.openDocument (which never touches m.files or m.roots) — but only
+// the file-mode path had a direct assertion for it. Activating a Grep
+// Result belonging to a non-active Root must leave the Active Root, the
+// Files Nav tree's expansion and its selection exactly as they were.
+func TestPickerActivateGrepResultDoesNotChangeFilesNav(t *testing.T) {
+	rootA := t.TempDir()
+	rootB := t.TempDir()
+	writeFileContent(t, filepath.Join(rootA, "existing.md"), "root A doc\n")
+	subDir := filepath.Join(rootA, "sub")
+	if err := os.Mkdir(subDir, 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", subDir, err)
+	}
+	writeFileContent(t, filepath.Join(subDir, "child.md"), "root A sub child\n")
+	fileB := filepath.Join(rootB, "report.md")
+	writeFileContent(t, fileB, "a report line\n")
+
+	nodeA, err := tree.Walk(rootA)
+	if err != nil {
+		t.Fatalf("walking %s: %v", rootA, err)
+	}
+
+	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
+	m.roots = m.roots.setRoots([]root{{path: rootA}, {path: rootB}}, 0)
+	m = m.openFolder(nodeA)
+	m.files = m.files.withExpanded(subDir, true)
+	m.files = m.files.move(1) // off the tree's initial selection
+	wantSelected := m.files.selected
+	wantExpanded := make(map[string]bool, len(m.files.expanded))
+	for k, v := range m.files.expanded {
+		wantExpanded[k] = v
+	}
+	if len(wantExpanded) == 0 {
+		t.Fatal("setup is broken: expanded set is empty")
+	}
+
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  grepMode,
+		scope: activeRootScope,
+		grep:  []grepResult{{file: pickerFile{root: root{path: rootB}, path: fileB}, line: 1, text: "a report line"}},
+	}
+	m.picker.selected = 0
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.picker.open {
+		t.Error("picker.open = true after Activate, want dismissed")
+	}
+	if got.viewer.doc.path != fileB {
+		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, fileB)
+	}
+	if got.roots.active != 0 {
+		t.Errorf("Active Root index = %d, want unchanged 0 (rootA)", got.roots.active)
+	}
+	if got.files.selected != wantSelected {
+		t.Errorf("Files Nav selection = %d, want unchanged %d", got.files.selected, wantSelected)
+	}
+	if !reflect.DeepEqual(got.files.expanded, wantExpanded) {
+		t.Errorf("Files Nav expansion = %v, want unchanged %v", got.files.expanded, wantExpanded)
+	}
+	if got.files.root.Path != rootA {
+		t.Errorf("Files Nav root = %q, want unchanged %q", got.files.root.Path, rootA)
+	}
+}
+
 // TestPickerActivateGrepResultWithAReadErrorLeavesSessionRunning is M4.3's
 // read-error case, mirroring TestPickerActivateWithAReadErrorLeavesSessionRunning's
 // fileMode shape (T15, M3.3a/TRIAGE T7): a Grep Result whose file can no
@@ -506,7 +600,10 @@ func TestPickerActivateGrepResultWithAReadErrorLeavesSessionRunning(t *testing.T
 }
 
 // TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst
-// guards against resolveGrepLanding's ordinal lookup silently degrading to
+// is the sibling half of
+// TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine's pair
+// (M7.1b/TRIAGE T1, that test's own doc comment) and guards against
+// resolveGrepLanding's ordinal lookup silently degrading to
 // the same "first match" landing a broken lookup would also produce
 // (code-reviewer finding, C2): with two grep matches in the same file, far
 // enough apart in the *rendered* document that they cannot both be on

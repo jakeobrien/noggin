@@ -17,31 +17,36 @@
 
 ## Cursor
 
-M7.1a done (2026-08-04): Picker-code comments standardized on GLOSSARY.md's "Results list"
-term; no comment in cmd/noggin/picker.go, picker_view.go or their tests uses the
-"Results region"/"Results column" variants any more (two `t.Error` assertion strings in
-picker_view_test.go deliberately left as-is — see Handoff). M7.1b, M7.2 remain todo — M7.2
-needs M7.1, already satisfied; M7.1b has no dependency. Next recommended step: M7.1b, then
-M7.2.
+M7.1b done (2026-08-04): all five validation-pass test-hygiene sub-items (TRIAGE T1–T4, T23 /
+D56) addressed — see Handoff for detail. Only M7.2 remains todo in this milestone; it needs
+M7.1, already satisfied. Next recommended step: M7.2 (docs + cycle-level acceptance
+walkthrough), the last task in the cycle.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M7.1a (terminology housekeeping, TRIAGE T11/T24) is done: every comment in
-cmd/noggin/picker.go and cmd/noggin/picker_view.go (plus picker_view_test.go, since the
-criterion is codebase-wide) that read "Results region" or "Results column" now reads "Results
-list", matching GLOSSARY.md's fixed term. Deliberately left alone: two `t.Error(...)` message
-strings in picker_view_test.go (`TestPickerModalRendersThreeRegionsAtSize`) that say "Results
-region" — these aren't comments, and they're one leg of a parallel Prompt/Results/Preview
-"region" triple used purely as test-failure text; renaming only the Results one would break
-that symmetry for no functional gain. `make check` (build/vet/fmt/test) is green.
+M7.1b (validation-pass test hygiene backfill) is done, all five sub-items in
+cmd/noggin/picker_test.go, picker_view_test.go and files_search_test.go:
+(a) `TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine` and
+`TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst` (T1) now cross-
+reference each other's doc comments as a pair covering D34's ordinal-resolution bridge; (b)
+new `TestPickerActivateGrepResultDoesNotChangeFilesNav` (T2) covers S10 for the grep Activate
+path, mirroring M3.3's file-mode `TestPickerActivateOpensResultAsActiveDocumentOnly`; (c)
+`TestPickerFileResultsDisambiguateSameBasenameRoots`'s doc comment (T3) now explains its
+rowA/rowB check is over whole frame lines, not isolated pickerFileRow output, and
+cross-references `TestPickerFileRowFillsItsFullBudget` as the test that actually isolates it;
+(d) that same M3.3 fixture (T4) now expands a real subdirectory so its
+`reflect.DeepEqual(m.files.expanded, ...)` assertion exercises a non-empty map (mirrored into
+the new (b) test too); (e) `TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated` (T23/D56)
+got the one-line forward-looking-guard comment D56 called for. `make check` (build/vet/fmt/
+test) is green; all touched/added tests individually verified passing.
 
-Next step: M7.1b (test-hygiene backfill, TRIAGE T1–T4/T23, D56) — cheap, no dependency. Then
-M7.2 (docs + cycle-level acceptance walkthrough), which needs M7.1 and already has it. TRIAGE
-still carries one open, low-severity item (T25, a Status-table wording nit) — not blocking, but
-due for `charm-replan` to drain alongside routine milestone-boundary triage.
+Next step: M7.2 (docs + cycle-level acceptance walkthrough) — the cycle's last planned task.
+TRIAGE still carries one open, low-severity item (T25, a Status-table wording nit) — not
+blocking, but due for `charm-replan` to drain once the cycle reaches a milestone/close
+boundary.
 
 ## Status
 
@@ -82,5 +87,5 @@ due for `charm-replan` to drain alongside routine milestone-boundary triage.
 | M6.2 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32) not taken; D57 |
 | M7.1 | done   | -        | -         | pty checks for the Picker; findings/picker-pty-async-ordering.md |
 | M7.1a| done   | -        | -         | TRIAGE T11, T24 |
-| M7.1b| todo   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
+| M7.1b| done   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
 | M7.2 | todo   | -        | -         |      |

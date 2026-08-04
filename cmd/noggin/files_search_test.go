@@ -372,6 +372,13 @@ func TestGrepFilesBatchesAcrossArgSizeLimit(t *testing.T) {
 // grepArgMaxBytes batches still reports truncated = false, not a false
 // positive from batch-boundary accounting (e.g. checking the cap only at
 // the end of a batch rather than as each result is appended).
+//
+// D56 (TRIAGE T23): today grepFiles checks the cap per-appended-result
+// inside the innermost loop regardless of batch boundaries, so this test
+// can't yet exercise a path TestGrepFilesCapsAndReportsTruncation doesn't
+// already cover — kept anyway as a forward-looking regression guard: it
+// starts covering real distinct behavior the moment a future batching
+// refactor moves the cap check outside the per-result loop.
 func TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()

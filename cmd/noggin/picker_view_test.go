@@ -193,6 +193,16 @@ func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
 // (TestRootsNavDistinguishesSameNamedRootsByParent) — pickerRootLabel
 // (picker_view.go) reuses that exact strategy instead of the bare
 // filepath.Base(f.root.path) M3.1 shipped with.
+//
+// This test's own rowA/rowB comparison is over whole rendered terminal
+// lines (plainLines(m.View().Content)), not pickerFileRow's output in
+// isolation (M7.1b/TRIAGE T3) — it can only tell two Roots' rows apart,
+// not prove pickerRootLabel's budget math correct in isolation from
+// incidental surrounding frame content (nav pane, footer). That isolated
+// proof is TestPickerFileRowFillsItsFullBudget below, which pins an
+// independently hand-computed pickerFileRow string directly, confirmed by
+// mutation to catch T13/D52's now-fixed bug (which this test's own
+// wider-fixture history, T16/D52, shows it once missed).
 func TestPickerFileResultsDisambiguateSameBasenameRoots(t *testing.T) {
 	base := t.TempDir()
 	rootA := mkdir(t, filepath.Join(base, "work", "admin", "project"))
