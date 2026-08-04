@@ -1002,6 +1002,83 @@ func pickerRoot(t *testing.T) (model, string) {
 	return m, dir
 }
 
+// TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch is M5.1's own
+// acceptance criterion, verbatim: typing a query in File mode, switching to
+// Grep, and switching back, at each step re-running the same Prompt's
+// search in the new mode without the Prompt itself ever changing.
+func TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch(t *testing.T) {
+	requireRipgrep(t)
+	m, _ := pickerRoot(t)
+
+	const query = "report"
+	m, seqs := typePickerQuery(t, m, query)
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches == 0 {
+		t.Fatal("no initial File search was dispatched; setup is broken")
+	}
+	if m.picker.mode != fileMode {
+		t.Fatalf("mode = %v, want fileMode before any switch", m.picker.mode)
+	}
+	if got := len(m.picker.results.files); got == 0 {
+		t.Fatal("File mode results are empty; setup is broken")
+	}
+
+	// Switch to Grep: the PickerMode key is swallowed as a non-typing key
+	// (handlePickerInput), so it must not touch the Prompt.
+	next, cmd := m.Update(keyPress(keys.PickerMode.Keys()[0]))
+	m = concrete(t, next)
+	if m.picker.input.Value() != query {
+		t.Fatalf("Prompt after switching to Grep = %q, want unchanged %q", m.picker.input.Value(), query)
+	}
+	if m.picker.mode != grepMode {
+		t.Fatalf("mode after PickerMode = %v, want grepMode", m.picker.mode)
+	}
+	if cmd == nil {
+		t.Fatal("switching mode scheduled no debounce timer")
+	}
+	msg, ok := cmd().(pickerSearchMsg)
+	if !ok {
+		t.Fatalf("switching mode's Cmd produced %T, want pickerSearchMsg", cmd())
+	}
+	m, searches = deliverPickerTicks(t, m, []int{msg.seq})
+	if searches == 0 {
+		t.Fatal("no Grep search was dispatched after the mode switch")
+	}
+	if m.picker.results.mode != grepMode {
+		t.Fatalf("results.mode after switch = %v, want grepMode", m.picker.results.mode)
+	}
+	if got := len(m.picker.results.grep); got == 0 {
+		t.Fatal("Grep mode results are empty after the mode switch")
+	}
+	if m.picker.input.Value() != query {
+		t.Fatalf("Prompt after Grep results landed = %q, want unchanged %q", m.picker.input.Value(), query)
+	}
+
+	// Switch back to File: same Prompt, results become File results again.
+	next, cmd = m.Update(keyPress(keys.PickerMode.Keys()[0]))
+	m = concrete(t, next)
+	if m.picker.input.Value() != query {
+		t.Fatalf("Prompt after switching back to File = %q, want unchanged %q", m.picker.input.Value(), query)
+	}
+	if m.picker.mode != fileMode {
+		t.Fatalf("mode after second PickerMode = %v, want fileMode", m.picker.mode)
+	}
+	msg, ok = cmd().(pickerSearchMsg)
+	if !ok {
+		t.Fatalf("switching mode back's Cmd produced %T, want pickerSearchMsg", cmd())
+	}
+	m, searches = deliverPickerTicks(t, m, []int{msg.seq})
+	if searches == 0 {
+		t.Fatal("no File search was dispatched after switching back")
+	}
+	if m.picker.results.mode != fileMode {
+		t.Fatalf("results.mode after switching back = %v, want fileMode", m.picker.results.mode)
+	}
+	if got := len(m.picker.results.files); got == 0 {
+		t.Fatal("File mode results are empty after switching back")
+	}
+}
+
 // typePickerQuery types s into the open Picker one rune at a time, returning
 // the model and the query generation (picker.seq) each keystroke left behind
 // — i.e. the generation each keystroke's debounce timer will report when it

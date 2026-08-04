@@ -271,6 +271,27 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 	})
 }
 
+// switchPickerMode flips the open Picker's mode (File ↔ Grep, S7/M5.1):
+// the Prompt's text is untouched — only p.mode changes — and the switch
+// goes through queuePickerSearch exactly like a keystroke would (its own
+// doc comment already names "a mode or Scope switch from M5.1/M5.2" as a
+// caller), so the new mode's search for the same query follows the same
+// debounce/generation contract as everything else: the old mode's results
+// go stale immediately (resultsCurrent compares p.mode against
+// results.mode) even before the new search reports back, so nothing from
+// the previous mode can flash on screen while the new one is in flight.
+// selected is left alone here for the same reason a query edit leaves it
+// alone: applyPickerResults resets it once fresh results actually land,
+// and resultsCurrent already hides the stale index in the meantime.
+func (m model) switchPickerMode() (model, tea.Cmd) {
+	if m.picker.mode == grepMode {
+		m.picker.mode = fileMode
+	} else {
+		m.picker.mode = grepMode
+	}
+	return m.queuePickerSearch()
+}
+
 // dispatchPickerSearch runs a matured debounce timer's search, or drops the
 // timer if its generation has been superseded (the user typed on) or the
 // Picker has since been dismissed. This is the debounce: every keystroke
@@ -652,9 +673,10 @@ func resolveGrepLanding(src []byte, rendered, query string, line int) (ordinal i
 // already non-printable, so nothing about "always typing" requires a second
 // copy) and PickerMode/PickerScope (mode/Scope switch) are all recognised and
 // swallowed here. Activate now opens the previewed Result and dismisses the
-// Picker (M3.3, activatePicker); Preview scrolling and mode/Scope switching
-// still have no state to act on — M5.1/M5.2 give mode/Scope theirs — so
-// today those keys do nothing beyond not typing (M2.3's original job).
+// Picker (M3.3, activatePicker); Preview scrolling is reused as-is.
+// PickerMode now switches mode in place (M5.1, switchPickerMode);
+// PickerScope still has no state to act on — M5.2 gives Scope its own —
+// so that key still does nothing beyond not typing (M2.3's original job).
 func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
@@ -679,8 +701,9 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case key.Matches(msg, keys.Activate):
 		return m.activatePicker(), nil
-	case key.Matches(msg, keys.PickerMode),
-		key.Matches(msg, keys.PickerScope):
+	case key.Matches(msg, keys.PickerMode):
+		return m.switchPickerMode()
+	case key.Matches(msg, keys.PickerScope):
 		return m, nil
 	}
 	before := m.picker.input.Value()
