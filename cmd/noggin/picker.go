@@ -363,7 +363,7 @@ func (p picker) setPreviewSize(width, height int) picker {
 // fileMode, the Result the Preview pane shows (M3.2): fileMode's selected
 // row, gated by the same resultsCurrent check pickerStatus and
 // pickerResultsContent already make — a stale generation's rows must not
-// populate the Preview any more than they may flash in the Results column
+// populate the Preview any more than they may flash in the Results list
 // — and clamped against the live result count, since a fresh (shorter)
 // result set can land between a selection move and the next render.
 //
@@ -475,7 +475,7 @@ func (p picker) syncPreview() picker {
 // resultsCurrent reports whether p.results still answers what the Prompt,
 // mode and Scope now say — the same three-way label comparison pickerStatus
 // makes to tell "searching" apart from a real empty result, pulled out here
-// so the Results region's own content (picker_view.go) can make the exact
+// so the Results list's own content (picker_view.go) can make the exact
 // same call: while a fresh search is in flight for a changed query/mode/
 // Scope, the previous mode's stale rows must not flash on screen just
 // because they are still sitting in p.results.

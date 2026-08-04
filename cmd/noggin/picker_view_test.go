@@ -203,7 +203,7 @@ func TestPickerFileResultsDisambiguateSameBasenameRoots(t *testing.T) {
 	// The project's standard fixture size (TRIAGE T16/D52): this test used
 	// to run at a wider 140x30 that masked pickerRootLabel's double-counted
 	// gap budget (T13/D52) by having budget to spare either way. At 80x24
-	// the Results column's content width (23, computePickerLayout) is tight
+	// the Results list's content width (23, computePickerLayout) is tight
 	// enough that the bug actually mattered — both rows' parent segments
 	// collapsed to a bare, identical "…" — so this size is what the fix
 	// must be verified against, not the wider one the bug hid behind.
@@ -365,7 +365,7 @@ func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 
 // TestPickerGrepRowTruncatesLongLinesWithoutWrapping is M4.1's own
 // acceptance criterion's second half: a matching line far longer than the
-// Results column's width is truncated to fit the pane rather than wrapped
+// Results list's width is truncated to fit the pane rather than wrapped
 // across multiple rows — pickerGrepRow must still return exactly one line
 // at exactly the given width, unlike a bare Style.Width(...).Render() of an
 // over-length string (lipgloss word-wraps before MaxWidth ever applies, see

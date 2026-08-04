@@ -17,39 +17,31 @@
 
 ## Cursor
 
-M7.1 done (2026-08-04): the pty check suite now covers the Picker. M7.1a, M7.1b, M7.2 remain
-todo — M7.2 needs M7.1, now satisfied; M7.1a/M7.1b have no dependency. (Correction to this
-section's prior text: M6.1/M6.2 and M4.2a were already Reviewed *and* Validated as of
-2026-08-04's "review and validate" commit — the Status table's own dates were right; only this
-narrative paragraph had drifted. No task is currently blocked on review.) Next recommended
-step: M7.1a or M7.1b (cheap, no dependency), then M7.2.
+M7.1a done (2026-08-04): Picker-code comments standardized on GLOSSARY.md's "Results list"
+term; no comment in cmd/noggin/picker.go, picker_view.go or their tests uses the
+"Results region"/"Results column" variants any more (two `t.Error` assertion strings in
+picker_view_test.go deliberately left as-is — see Handoff). M7.1b, M7.2 remain todo — M7.2
+needs M7.1, already satisfied; M7.1b has no dependency. Next recommended step: M7.1b, then
+M7.2.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M7.1 (pty checks for the Picker) is done: `test/pty/checks.py` gained an M7.1 section covering
-open, type, Results, Preview, activate, dismiss and the mode/Scope indicators against the real
-binary, including the criterion's own explicit check (dismiss-without-picking restores the
-exact frame from before the Picker opened). Split into two Sessions deliberately: a File-mode
-flow (type → Results → Preview → activate, no mode/Scope switch) and a separate mode/Scope flow
-(switch → switch → switch on an *empty* Prompt, then one Grep-mode search) — see the next
-paragraph for why.
+M7.1a (terminology housekeeping, TRIAGE T11/T24) is done: every comment in
+cmd/noggin/picker.go and cmd/noggin/picker_view.go (plus picker_view_test.go, since the
+criterion is codebase-wide) that read "Results region" or "Results column" now reads "Results
+list", matching GLOSSARY.md's fixed term. Deliberately left alone: two `t.Error(...)` message
+strings in picker_view_test.go (`TestPickerModalRendersThreeRegionsAtSize`) that say "Results
+region" — these aren't comments, and they're one leg of a parallel Prompt/Results/Preview
+"region" triple used purely as test-failure text; renaming only the Results one would break
+that symmetry for no functional gain. `make check` (build/vet/fmt/test) is green.
 
-Gotcha for anyone extending Picker pty coverage: switching mode/Scope immediately *after* an
-async search has already landed intermittently misread the indicator title under replay
-(~1-in-4 runs) — not a product bug, a pty-harness replay-ordering hazard specific to combining
-the codebase's first async `tea.Cmd` with its cell-diffing `Screen` emulator. Full diagnosis and
-the fix (switch mode/Scope only on an empty Prompt, where `queuePickerSearch` provably issues no
-search) is `.charm/cycle/findings/picker-pty-async-ordering.md`. 5 consecutive full `make
-check-pty` runs are clean with the reordered checks; `make check` is green throughout.
-
-Next step: M7.1a (terminology housekeeping, TRIAGE T11/T24) or M7.1b (test-hygiene backfill,
-TRIAGE T1–T4/T23, D56) — both cheap, no dependency, either order. Then M7.2 (docs +
-cycle-level acceptance walkthrough), which needs M7.1 and now has it. TRIAGE still carries one
-open, low-severity item (T25, a Status-table wording nit) — not blocking, but due for
-`charm-replan` to drain alongside routine milestone-boundary triage.
+Next step: M7.1b (test-hygiene backfill, TRIAGE T1–T4/T23, D56) — cheap, no dependency. Then
+M7.2 (docs + cycle-level acceptance walkthrough), which needs M7.1 and already has it. TRIAGE
+still carries one open, low-severity item (T25, a Status-table wording nit) — not blocking, but
+due for `charm-replan` to drain alongside routine milestone-boundary triage.
 
 ## Status
 
@@ -89,6 +81,6 @@ open, low-severity item (T25, a Status-table wording nit) — not blocking, but 
 | M6.1 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32); D57; TRIAGE T25 |
 | M6.2 | done   | 2026-08-04 | 2026-08-04 | pre-agreed cut (D32) not taken; D57 |
 | M7.1 | done   | -        | -         | pty checks for the Picker; findings/picker-pty-async-ordering.md |
-| M7.1a| todo   | -        | -         | TRIAGE T11, T24 |
+| M7.1a| done   | -        | -         | TRIAGE T11, T24 |
 | M7.1b| todo   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |
 | M7.2 | todo   | -        | -         |      |

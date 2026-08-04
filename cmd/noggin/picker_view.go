@@ -34,7 +34,7 @@ const (
 	// (pickerStatus). The status line lives in the Prompt's box rather than
 	// the Results box because it is the widest text the modal renders and the
 	// Prompt is the only region spanning the modal's full width — in the
-	// Results column (resultsPercent of it) "type at least 3 characters"
+	// Results list (resultsPercent of it) "type at least 3 characters"
 	// would wrap at every ordinary terminal size.
 	promptOuterHeight = 5
 
@@ -400,7 +400,7 @@ func rightTruncate(s string, width int) string {
 // lipgloss's Style.Width word-wraps first and only then applies MaxWidth
 // (style.go) — relying on Width+MaxWidth alone the way pickerFileRow does
 // would silently turn one long match into a wrapped multi-line row, growing
-// the Results column past "one row per match" (M4.1's own acceptance
+// the Results list past "one row per match" (M4.1's own acceptance
 // criterion: truncate to the pane, don't wrap the layout). Truncating first
 // means the string handed to Width is already <= width, so its word-wrap is
 // a no-op and only padding/selection styling happens there.
@@ -434,7 +434,7 @@ func pickerGrepRow(g grepResult, query string, width int, selected bool) string 
 	return styleRow(highlightMatches(line, clipColumns(columns, visible), selected), width, selected)
 }
 
-// pickerResultsContent renders the Results region's content (M3.1, M4.1),
+// pickerResultsContent renders the Results list's content (M3.1, M4.1),
 // sized to exactly width x height — the same "expected to be exactly
 // r.content() in size" contract renderPane's own doc comment gives every
 // frame pane. Each mode renders its own row shape (pickerFileRow/
