@@ -334,8 +334,12 @@ func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 
 	joined := strings.Join(plainLines(m.View().Content), "\n")
 	resultsWidth := computePickerLayout(80, 24).results.content().width
-	wantA := pickerGrepRow(m.picker.results.grep[0], resultsWidth, false)
-	wantB := pickerGrepRow(m.picker.results.grep[1], resultsWidth, false)
+	// Rendered with an empty query, so the expected strings are plain text:
+	// joined is ANSI-stripped, and match highlighting (M6.2) is styling only
+	// — it never changes a row's characters, which is itself asserted by
+	// TestPickerGrepRowHighlightsTheQueryOccurrence.
+	wantA := pickerGrepRow(m.picker.results.grep[0], "", resultsWidth, false)
+	wantB := pickerGrepRow(m.picker.results.grep[1], "", resultsWidth, false)
 	if !strings.Contains(wantA, "report.md:3") || !strings.Contains(wantB, "notes.md:12") {
 		t.Fatalf("test fixture did not produce the expected file:line prefixes: %q, %q", wantA, wantB)
 	}
@@ -372,7 +376,10 @@ func TestPickerGrepRowTruncatesLongLinesWithoutWrapping(t *testing.T) {
 	g := grepResult{file: f, line: 5, text: longText}
 	const width = 23 // computePickerLayout(80, 24).results.content().width
 
-	got := pickerGrepRow(g, width, false)
+	// Empty query: this pins the row's truncation layout, with no match
+	// highlighting in play (M6.2 covers a truncated row's highlight in
+	// TestPickerGrepRowHighlightsTheQueryOccurrence).
+	got := pickerGrepRow(g, "", width, false)
 
 	if lines := strings.Split(got, "\n"); len(lines) != 1 {
 		t.Fatalf("pickerGrepRow() produced %d lines, want exactly 1 (truncated, not wrapped):\n%q", len(lines), got)
@@ -649,4 +656,126 @@ func equalInts(a, b []int) bool {
 		}
 	}
 	return true
+}
+
+// columnRange is n consecutive columns starting at start — the shape a
+// literal query's occurrence takes in a rendered row.
+func columnRange(start, n int) []int {
+	cols := make([]int, 0, n)
+	for i := 0; i < n; i++ {
+		cols = append(cols, start+i)
+	}
+	return cols
+}
+
+// TestPickerGrepRowHighlightsTheQueryOccurrence is M6.2's own acceptance
+// criterion (S5): the styled run covers the query's occurrence within the
+// matched line, including in a row whose line was truncated. Expected
+// columns are hand-computed from the row's own construction — the prefix
+// "report.md:5  " is 13 cells (9 + ":" + "5" + two spaces), so a match at
+// index i of the line's text lands at column 13+i — rather than being read
+// back out of the highlighter.
+//
+// The fixture file is deliberately named report.md while the query is
+// "report": the prefix contains the query too, and highlighting it would be
+// a lie about what rg matched (it matched the line, not the path), so every
+// case here also pins that the prefix is never emphasized.
+func TestPickerGrepRowHighlightsTheQueryOccurrence(t *testing.T) {
+	f := pickerFile{root: root{path: "/tmp/notes"}, path: "/tmp/notes/report.md"}
+	const prefix = 13 // "report.md:5  "
+
+	cases := []struct {
+		name     string
+		text     string
+		query    string
+		width    int
+		want     []int
+		wantPlan string
+	}{
+		{
+			name:     "occurrence within the line",
+			text:     "the quarterly report is late",
+			query:    "report",
+			width:    60,
+			want:     columnRange(prefix+14, 6), // "the quarterly " is 14 cells
+			wantPlan: "the line's own occurrence, not the report.md prefix",
+		},
+		{
+			name:     "smart case: lowercase query matches mixed case",
+			text:     "the quarterly Report is late",
+			query:    "report",
+			width:    60,
+			want:     columnRange(prefix+14, 6),
+			wantPlan: "rg's --smart-case matched it, so the highlight must too",
+		},
+		{
+			name:     "smart case: uppercase query does not match lowercase",
+			text:     "the quarterly report is late",
+			query:    "Report",
+			width:    60,
+			want:     nil,
+			wantPlan: "an uppercase query is case-sensitive (S8), so nothing in this line matched",
+		},
+		{
+			name:     "every occurrence in the line",
+			text:     "report and report",
+			query:    "report",
+			width:    60,
+			want:     append(columnRange(prefix, 6), columnRange(prefix+11, 6)...), // "report and " is 11 cells
+			wantPlan: "rg reports the line once however often the query occurs in it",
+		},
+		{
+			// width 23 (the standard fixture's Results content width) means
+			// the row keeps 22 cells of text plus rightTruncate's ellipsis.
+			// The match starts at column 13+7=20 and runs to 25, so only
+			// columns 20 and 21 survive the cut — and the ellipsis at 22 is
+			// not part of the match.
+			name:     "truncated row: only the visible part of the match",
+			text:     "xxxxxxxreport and more text past the cut",
+			query:    "report",
+			width:    23,
+			want:     []int{20, 21},
+			wantPlan: "the rest of the match was truncated away",
+		},
+		{
+			name:     "truncated row: match entirely past the cut",
+			text:     strings.Repeat("x", 30) + "report",
+			query:    "report",
+			width:    23,
+			want:     nil,
+			wantPlan: "the whole match was truncated away, so there is nothing to emphasize",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			g := grepResult{file: f, line: 5, text: c.text}
+			got := pickerGrepRow(g, c.query, c.width, false)
+
+			// Highlighting is styling only: the row's characters and width
+			// must be exactly the unhighlighted row's.
+			plain := ansi.Strip(got)
+			if want := pickerGrepRow(g, "", c.width, false); plain != want {
+				t.Fatalf("highlighted row's plain text = %q, want %q", plain, want)
+			}
+			if w := lipgloss.Width(got); w != c.width {
+				t.Errorf("rendered width = %d, want %d", w, c.width)
+			}
+			if cols := boldColumns(got); !equalInts(cols, c.want) {
+				t.Errorf("bold columns = %v, want %v (%s)\nrow: %q\nplain: %q", cols, c.want, c.wantPlan, got, plain)
+			}
+		})
+	}
+
+	// A selected grep row keeps its reverse-video bar across every cell,
+	// highlight included — the same nesting hazard
+	// TestPickerFileRowHighlightKeepsSelectionBar pins for file rows, now
+	// that both share highlightMatches.
+	g := grepResult{file: f, line: 5, text: "the quarterly report is late"}
+	selected := pickerGrepRow(g, "report", 60, true)
+	for i, c := range cellStyles(selected) {
+		if !c.reverse {
+			t.Fatalf("cell %d of the selected grep row is not reversed\nrow: %q", i, selected)
+		}
+	}
 }

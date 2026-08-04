@@ -17,38 +17,42 @@
 
 ## Cursor
 
-No task in progress. M6.1 is done (not yet reviewed/validated); M6.2, M7.1, M7.1a, M7.1b, M7.2
-remain todo. Next recommended step: M6.2 (grep-row match highlighting), which now has
-`highlightMatches` to reuse.
+No task in progress. M6 is complete (M6.1, M6.2 done, neither reviewed nor validated); M7.1,
+M7.1a, M7.1b, M7.2 remain todo. Next recommended step: a fresh-context `code-review` +
+`charm-validate` pass over the M6 rows (and M4.2a, whose Reviewed cell is still `-`) before
+building M7.
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M6.1 (File Picker match highlighting) landed. Shape: `fileNameMatchPositions` (files_search.go)
-recomputes the fuzzy match positions for one name and converts fuzzy's **byte** offsets to rune
-indexes; `highlightMatches` (picker_view.go) bolds those runes inside the row's file-name suffix
-and `pickerFileRow` gained a `query` parameter (existing callers/tests pass `""` for the plain
-row). D57 records why positions are recomputed rather than carried through `pickerResults`, and
-why the highlight is bold derived from the row's base style.
+M6 (S5 match highlighting) is done — D32's pre-agreed cut was *not* taken. Shape, both rows:
+match positions are computed as rune indexes by the search layer (`fileNameMatchPositions` for
+fuzzy file-name matches, `grepMatchPositions` for literal smart-case line matches, both in
+files_search.go, both converting byte offsets via the shared `runeIndexByByte`), and
+`highlightMatches` (picker_view.go) bolds the given *columns* of an assembled row.
+`pickerFileRow`/`pickerGrepRow` each gained a `query` parameter; existing layout tests pass `""`
+and keep asserting plain text. `grepMatchPositions` reuses find.go's `foldLower`/`origSpan` so
+S8's smart-case rule and its fold-length translation have one implementation, not two. D57
+records why positions are recomputed rather than carried through `pickerResults`, and why the
+highlight is bold derived from the row's own base style.
 
-Gotcha worth carrying into M6.2: lipgloss closes an inner style with a **full** reset (`ESC[m`),
-so wrapping a partly-styled line in `pickerSelectedStyle` kills the selection's reverse video
-from the first highlight onward. `highlightMatches` therefore renders *every* run — matched and
-unmatched — with its style fully specified, base included; reuse it for grep rows rather than
-re-deriving. `styleRow` still does the padding/width clamp on top and copes with ANSI in the
-line. Both new tests were mutation-checked (wrong offset; nested styling) and each failed as
-intended.
+Gotchas for anyone touching row rendering: (1) lipgloss closes an inner style with a **full**
+reset (`ESC[m`), so wrapping a partly-styled line in `pickerSelectedStyle` kills the selection's
+reverse video from the first highlight on — `highlightMatches` therefore renders *every* run,
+matched and unmatched, with its style fully specified. (2) Grep columns are offset by the
+`rel:line  ` prefix and clipped (`clipColumns`) to the truncated row's visible cells, ellipsis
+excluded. (3) `cellStyles`/`boldColumns` (picker_view_test.go) are the test-side SGR walker for
+asserting *where* styling landed; `plainLines` throws that away.
 
-M6.2 should be able to call `highlightMatches` directly: positions there are a literal
-(`--fixed-strings`) query occurrence in `g.text`, not a fuzzy match, and must be computed
-*after* `rightTruncate` (a truncated row's match may be partly or wholly cut) — note the
-name-is-a-suffix guard in `highlightMatches` assumes a suffix, so grep rows will need the
-matched substring located by index instead.
+All five new/changed tests were mutation-checked and each failed as intended: wrong suffix
+offset, nested styling (selection bar), unclipped truncation columns, searching the whole row
+instead of the line text, and smart case disabled. `make check` and `make check-pty` green.
 
-Next step: M6.2 (grep row highlighting), or skip the rest of M6 per D32's pre-agreed cut and go
-to M7.1/M7.1b if time is short.
+Next step: M6's two rows have never been reviewed or validated (and M4.2a's Reviewed cell is
+still `-`) — a fresh-context `code-review` plus `charm-validate` over those is the gate before
+M7. Then M7.1 (pty checks for the Picker), with M7.1a/M7.1b as cheap opportunistic backfill.
 
 ## Status
 
@@ -86,7 +90,7 @@ to M7.1/M7.1b if time is short.
 | M5.2 | done   | 2026-08-04 | 2026-08-04 |      |
 | M5.3 | done   | 2026-08-04 | 2026-08-04 |      |
 | M6.1 | done   | -        | -         | pre-agreed cut (D32); D57 |
-| M6.2 | todo   | -        | -         | pre-agreed cut (D32) |
+| M6.2 | done   | -        | -         | pre-agreed cut (D32) not taken; D57 |
 | M7.1 | todo   | -        | -         |      |
 | M7.1a| todo   | -        | -         | TRIAGE T11, T24 |
 | M7.1b| todo   | -        | -         | TRIAGE T1, T2, T3, T4, T23; D56 |

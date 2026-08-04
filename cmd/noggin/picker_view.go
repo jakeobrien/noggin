@@ -245,16 +245,49 @@ func pickerFileRow(f pickerFile, query string, width int, selected bool) string 
 	suffix := "  " + rel
 	line := pickerRootLabel(f, width, suffix) + suffix
 	name := filepath.Base(f.path)
-	return styleRow(highlightMatches(line, name, fileNameMatchPositions(name, query), selected), width, selected)
+	columns := suffixColumns(line, name, fileNameMatchPositions(name, query))
+	return styleRow(highlightMatches(line, columns, selected), width, selected)
 }
 
-// highlightMatches bolds the characters of name inside line at the given
-// rune positions within name (fileNameMatchPositions), leaving every other
-// character alone. name is expected to be line's suffix — every File Picker
-// row ends with the file name (pickerFileRow's rel always does) — and if it
-// is not, the line is returned untouched rather than highlighting the wrong
-// columns: a row missing its emphasis is a cosmetic loss, emphasis on the
-// wrong characters is a lie about what matched.
+// suffixColumns translates positions within name — rune indexes into the
+// name itself (fileNameMatchPositions) — into columns of line, given that
+// name is line's suffix: every File Picker row ends with the file name
+// (pickerFileRow's rel always does). If it is not the suffix, nil is
+// returned and the row simply renders unhighlighted, rather than emphasis
+// landing on whatever characters happen to sit at those columns: a row
+// missing its emphasis is a cosmetic loss, emphasis on the wrong characters
+// is a lie about what matched.
+func suffixColumns(line, name string, positions []int) []int {
+	if len(positions) == 0 || !strings.HasSuffix(line, name) {
+		return nil
+	}
+	offset := len([]rune(line)) - len([]rune(name))
+	columns := make([]int, 0, len(positions))
+	for _, p := range positions {
+		columns = append(columns, offset+p)
+	}
+	return columns
+}
+
+// clipColumns keeps the columns that are still visible in a row truncated to
+// visible cells (pickerGrepRow's rightTruncate), dropping the rest: a long
+// matched line can have its match cut off entirely, or cut through the
+// middle, and only the part still on screen may be emphasized.
+func clipColumns(columns []int, visible int) []int {
+	var kept []int
+	for _, c := range columns {
+		if c >= 0 && c < visible {
+			kept = append(kept, c)
+		}
+	}
+	return kept
+}
+
+// highlightMatches bolds line's runes at the given columns (rune indexes
+// into line itself), leaving every other character alone — S5's match
+// emphasis, shared by both modes' rows (M6.1's fuzzy-matched file-name
+// characters via suffixColumns, M6.2's literal query occurrences via
+// grepMatchPositions).
 //
 // A matched character is picked out with bold, and bold only. The emphasis
 // has to read both on a plain row and on the selected row's reverse-video
@@ -275,15 +308,14 @@ func pickerFileRow(f pickerFile, query string, width int, selected bool) string 
 // selected row would lose its bar from the first highlight to the end of the
 // text. Self-contained runs have nothing to cancel. styleRow still applies
 // the same base style outside for the row's padding and width clamp.
-func highlightMatches(line, name string, positions []int, selected bool) string {
-	if len(positions) == 0 || !strings.HasSuffix(line, name) {
+func highlightMatches(line string, columns []int, selected bool) string {
+	if len(columns) == 0 {
 		return line
 	}
 	runes := []rune(line)
-	offset := len(runes) - len([]rune(name))
-	matched := make(map[int]bool, len(positions))
-	for _, p := range positions {
-		matched[offset+p] = true
+	matched := make(map[int]bool, len(columns))
+	for _, c := range columns {
+		matched[c] = true
 	}
 	base := lipgloss.NewStyle()
 	if selected {
@@ -372,13 +404,34 @@ func rightTruncate(s string, width int) string {
 // criterion: truncate to the pane, don't wrap the layout). Truncating first
 // means the string handed to Width is already <= width, so its word-wrap is
 // a no-op and only padding/selection styling happens there.
-func pickerGrepRow(g grepResult, width int, selected bool) string {
+// query is what rg matched to produce this row, needed only to highlight the
+// matched text within the line (S5/M6.2) — an empty query renders exactly
+// the unhighlighted row M4.1 shipped. The match is located within g.text
+// only, offset by the prefix's width, never searched for in the row as a
+// whole: a query like "md" or "3" occurs in the file/line-number prefix of
+// plenty of rows without that being what matched.
+func pickerGrepRow(g grepResult, query string, width int, selected bool) string {
 	rel, err := filepath.Rel(g.file.root.path, g.file.path)
 	if err != nil {
 		rel = g.file.path
 	}
-	line := rightTruncate(fmt.Sprintf("%s:%d  %s", rel, g.line, g.text), width)
-	return styleRow(line, width, selected)
+	prefix := fmt.Sprintf("%s:%d  ", rel, g.line)
+	full := prefix + g.text
+	line := rightTruncate(full, width)
+
+	// A truncated row's last cell is rightTruncate's own ellipsis, not the
+	// line's text, so it is never part of a match — hence visible stops one
+	// short of the rendered row there.
+	visible := len([]rune(line))
+	if line != full {
+		visible = max(visible-1, 0)
+	}
+	offset := len([]rune(prefix))
+	var columns []int
+	for _, p := range grepMatchPositions(g.text, query) {
+		columns = append(columns, offset+p)
+	}
+	return styleRow(highlightMatches(line, clipColumns(columns, visible), selected), width, selected)
 }
 
 // pickerResultsContent renders the Results region's content (M3.1, M4.1),
@@ -400,7 +453,7 @@ func pickerResultsContent(p picker, width, height int) string {
 			return ""
 		}
 		return windowedView(width, height, p.selected, len(grep), func(idx int) string {
-			return pickerGrepRow(grep[idx], width, idx == p.selected)
+			return pickerGrepRow(grep[idx], p.results.query, width, idx == p.selected)
 		})
 	}
 	files := p.results.files

@@ -139,16 +139,88 @@ func fileNameMatchPositions(name, query string) []int {
 	if len(matches) == 0 {
 		return nil
 	}
-	byteToRune := make(map[int]int, len(name))
-	for runeIdx, byteIdx := 0, 0; byteIdx < len(name); runeIdx++ {
-		byteToRune[byteIdx] = runeIdx
-		_, size := utf8.DecodeRuneInString(name[byteIdx:])
-		byteIdx += size
-	}
+	byteToRune := runeIndexByByte(name)
 	var positions []int
 	for _, b := range matches[0].MatchedIndexes {
 		if r, ok := byteToRune[b]; ok {
 			positions = append(positions, r)
+		}
+	}
+	return positions
+}
+
+// runeIndexByByte maps each rune's starting byte offset in s to its rune
+// index. Both match-position functions need it: matching works in byte
+// offsets (fuzzy's MatchedIndexes, strings.Index) while a rendered row is
+// addressed in runes/cells, and the two only coincide for ASCII.
+func runeIndexByByte(s string) map[int]int {
+	byteToRune := make(map[int]int, len(s))
+	for runeIdx, byteIdx := 0, 0; byteIdx < len(s); runeIdx++ {
+		byteToRune[byteIdx] = runeIdx
+		_, size := utf8.DecodeRuneInString(s[byteIdx:])
+		byteIdx += size
+	}
+	return byteToRune
+}
+
+// grepMatchPositions is which characters of a matched line the grep query
+// matched (S5/M6.2: "highlight the matched text within the line"), as rune
+// indexes into text — the Grep Picker's counterpart to
+// fileNameMatchPositions, returning the same shape (one position per matched
+// rune) so both modes' rows share one highlighter (highlightMatches,
+// picker_view.go).
+//
+// Matching mirrors what actually produced the row: a literal substring
+// search (rg's --fixed-strings, D29 — a query's regex metacharacters are
+// just characters) with smart case (rg's --smart-case: an all-lowercase
+// query matches either case, any uppercase makes it case-sensitive). Every
+// occurrence in the line is reported, not just the first: rg reports the
+// line once however many times the query occurs in it, so emphasizing only
+// one of several identical hits would misrepresent the row it labels.
+//
+// The smart-case path searches a folded copy and maps offsets back through
+// toOrig (foldLower/origSpan, find.go) rather than folding in place, for the
+// reason findMatches' own comment gives: folding is not byte-length
+// preserving (U+212A, three bytes, folds to a one-byte 'k'), so offsets from
+// the folded string are not offsets into text. Reusing find.go's helpers
+// here keeps one implementation of that translation, and one of S8's
+// smart-case rule, rather than a second copy that can drift.
+func grepMatchPositions(text, query string) []int {
+	if query == "" || text == "" {
+		return nil
+	}
+	smartCase := query == strings.ToLower(query)
+	haystack, needle := text, query
+	var toOrig []int
+	if smartCase {
+		haystack, toOrig = foldLower(text)
+		needle = strings.ToLower(query)
+	}
+
+	type span struct{ start, end int }
+	var spans []span
+	for pos := 0; ; {
+		idx := strings.Index(haystack[pos:], needle)
+		if idx < 0 {
+			break
+		}
+		hStart := pos + idx
+		hEnd := hStart + len(needle)
+		start, end := origSpan(hStart, hEnd, smartCase, toOrig)
+		spans = append(spans, span{start, end})
+		pos = hEnd // non-overlapping, in haystack's own byte space
+	}
+	if len(spans) == 0 {
+		return nil
+	}
+
+	var positions []int
+	runes := runeIndexByByte(text)
+	for _, s := range spans {
+		for b := s.start; b < s.end; b++ {
+			if r, ok := runes[b]; ok {
+				positions = append(positions, r)
+			}
 		}
 	}
 	return positions

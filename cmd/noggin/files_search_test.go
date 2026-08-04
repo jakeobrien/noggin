@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"unicode"
 )
 
 // requireRipgrep skips a test when the real ripgrep binary isn't on PATH.
@@ -486,6 +487,44 @@ func TestFileNameMatchPositionsCoverEveryRankedResult(t *testing.T) {
 		name := filepath.Base(f.path)
 		if positions := fileNameMatchPositions(name, "rpt"); len(positions) == 0 {
 			t.Errorf("fuzzyFiles ranked %q but fileNameMatchPositions(%q, %q) found no match", f.path, name, "rpt")
+		}
+	}
+}
+
+// TestGrepMatchPositionsAreRuneIndexesUnderFolding guards grepMatchPositions'
+// reuse of find.go's fold-and-map translation (foldLower/origSpan): the Kelvin
+// sign U+212A is three bytes and folds to a one-byte 'k', so a smart-case
+// search over a line containing one produces byte offsets in the *folded*
+// string that are two short of the line's own — and rune positions two
+// columns off — unless they are mapped back. The reported positions must
+// point at the matched characters themselves, whatever precedes them.
+func TestGrepMatchPositionsAreRuneIndexesUnderFolding(t *testing.T) {
+	cases := []struct {
+		text, query string
+		want        []int
+	}{
+		// runes: 0 'K'(U+212A), 1 ' ', 2 'a', 3 'b', 4 'c', 5 ' ', 6-11 "report"
+		{"\u212A abc report", "report", []int{6, 7, 8, 9, 10, 11}},
+		// café: the é is one rune, two bytes, before the match
+		{"café report", "report", []int{5, 6, 7, 8, 9, 10}},
+		{"no match here", "report", nil},
+		{"report", "", nil},
+	}
+	for _, c := range cases {
+		got := grepMatchPositions(c.text, c.query)
+		if !equalInts(got, c.want) {
+			t.Errorf("grepMatchPositions(%q, %q) = %v, want %v", c.text, c.query, got, c.want)
+			continue
+		}
+		runes := []rune(c.text)
+		for i, p := range got {
+			if p >= len(runes) {
+				t.Errorf("grepMatchPositions(%q, %q) = %v: position %d out of range", c.text, c.query, got, p)
+				continue
+			}
+			if want := []rune(strings.ToLower(c.query))[i]; unicode.ToLower(runes[p]) != want {
+				t.Errorf("grepMatchPositions(%q, %q) = %v: position %d points at %q, want %q", c.text, c.query, got, p, runes[p], want)
+			}
 		}
 	}
 }

@@ -925,7 +925,7 @@
   lose a regression guard that becomes meaningful the moment the implementation it shadows
   changes shape. Not worth the churn of rewriting to force distinctness today.
 
-## D57: Recompute File Picker match positions at render time; highlight with bold only (M6.1)
+## D57: Recompute Picker match positions at render time; highlight with bold only (M6.1, M6.2)
 
 - Status: decided
 - Cycle: C2
@@ -948,3 +948,10 @@
   fully-specified runs avoid lipgloss's inner-style full reset (`ESC[m`) cancelling the
   selection bar mid-row — the failure mode
   `TestPickerFileRowHighlightKeepsSelectionBar` now pins.
+- Extended at M6.2: the same shape covers grep rows. `grepMatchPositions` (files_search.go)
+  reports rune positions for a literal, smart-case query occurrence — every occurrence in the
+  line, since rg reports the line once however often it occurs — reusing find.go's
+  `foldLower`/`origSpan` so S8's smart-case rule and its fold-length offset translation have one
+  implementation. `highlightMatches` now takes row *columns*, with each mode supplying its own
+  mapping (`suffixColumns` for file names, prefix offset + `clipColumns` for grep rows, whose
+  match can be partly or wholly cut by `rightTruncate`).
