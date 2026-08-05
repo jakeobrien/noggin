@@ -1,4 +1,4 @@
-# Progress — C3 compare
+# Progress — C2a polish
 
 <!-- Per-cycle. Cursor and statuses ONLY — no work summaries (git history carries those).
      The Handoff section is the single exception: overwrite it each session, never append.

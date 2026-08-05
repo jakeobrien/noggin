@@ -496,3 +496,61 @@
   not spec'd; S8's "no memory" is untouched because a generation count carries no information
   about mode, Scope or query.
 
+
+## D42: An interstitial cycle is keyed C2a, not C6
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-05
+- Context: A short cycle of dogfooding tweaks was inserted ahead of the already-slotted
+  `C3 compare`. Cycle keys are durable and already referenced by intent in durable docs
+  (`DECISIONS.md` D-entries citing "(C3)", "C4 per-root document state", "Tags are C5";
+  `GLOSSARY.md`'s "documents in C4"), so renumbering C3/C4/C5 was not available.
+- Decision: allocate the suffixed key **C2a** and insert its row ahead of C3 in the roadmap
+  ledger. Ledger order is independent of key order.
+- Why: suffixed insertion is the sanctioned idiom for durable keys, and `C2a` sorts correctly
+  in `archive/` between C2 and C3, which a bare `C6` would not. Cost: `C2a` reads as a
+  follow-on to `find`, which it is not — accepted as cheaper than a positionally misleading key.
+
+## D43: The render-mode toggle and per-line git gutter are cut without a roadmap entry
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-05
+- Context: C2a was pitched with a toggleable markdown render mode (wrapped "read" mode vs
+  unwrapped "info" mode), a per-line git gutter, and exact-word Find highlighting.
+  `cycle/findings/git-status-gutter-approach.md` established that the dual-mode approach does
+  make the gutter tractable without forking Glamour (`WithWordWrap(0)` +
+  `WithPreservedNewLines()`, plus a goldmark-based source-to-rendered line map, ~3/5 overall)
+  — but also that (a) Find is already wrap-mode-independent (`find.go:186-190` matches against
+  `ansi.Strip(content)` in rendered-line space), so inline-span highlighting is an orthogonal
+  problem the mode does not solve and the ANSI-offset drift of
+  `knowledge/viewport-search-ansi-offsets.md` still applies; (b) an unwrapped mode is unreadable
+  without horizontal scrolling, which noggin has never wired up and which cuts against D4's
+  "scrolling only, no cursor" framing; (c) a per-*file* indicator is mapping-free and cheap.
+- Decision: cut the render modes, the per-line gutter, exact-word highlighting and horizontal
+  scroll from C2a, keep only per-file `M`/`A` markers (C2a/S8) — and deliberately do **not**
+  create ROADMAP Unscheduled entries for the cut items.
+- Why: the mode toggle's remaining justification was the gutter alone, and it would have cost
+  two divergent reading experiences plus a new scroll idiom for it. Omitting the roadmap
+  entries is intentional: the user wants to discover whether per-file markers and refresh
+  satisfy the underlying need before re-committing to the expensive version. If the need is
+  still felt after C2a, it gets re-raised from scratch rather than inherited as a stale
+  backlog item.
+
+## D44: Peek is allowed to feel unfinished
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-05
+- Context: C2a/S7 renders the Files Nav selection in the Document Viewer without changing the
+  Active Document. That creates a second viewer state, which collides with globals defined on
+  the Active Document — most sharply `e` (Edit), where acting on the Peeked document
+  contradicts the glossary and acting on the Active Document is astonishing.
+- Decision: keep Peek deliberately inert — no scrolling, no Find, `e` a silent no-op, cleared
+  by any selection change, Focus change, Picker open, second `p` or Refresh, with `<enter>` the
+  only promotion path. One concession to UX: an inverted header naming the Peeked document.
+- Why: Peek is an experiment and a cheap stand-in for the still-deferred Follow mode. Choosing
+  "feels broken at the edges" over "premature machinery" keeps it a few hours of work instead of
+  a redesign of the Active Document contract. If Peek proves itself, its edges get specified
+  then — with real usage as evidence.

@@ -351,4 +351,5 @@ Considerations:
 - Sync (git?)
 - wikipedia pane
 - agent chat pane
+- scrap notes
 

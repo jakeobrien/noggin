@@ -1,4 +1,4 @@
-# Triage — C3 compare
+# Triage — C2a polish
 
 <!-- Per-cycle triage INBOX for actionable items surfaced out-of-band: code-review and
      validate findings, bugs / in-scope issues discovered during build that were not
