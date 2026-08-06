@@ -28,6 +28,19 @@ func fixtureTree() *tree.Node {
 	}
 }
 
+// fixtureTreeB is a second, differently-Path'd tree (M3.1): distinct from
+// fixtureTree's Path so filesNav.setRoot treats switching to/from it as a
+// different Root to remember state against, not the same one reshown.
+func fixtureTreeB() *tree.Node {
+	return &tree.Node{
+		Name: "root-b", Path: "/root-b", IsDir: true,
+		Children: []*tree.Node{
+			{Name: "top.md", Path: "/root-b/top.md"},
+			{Name: "other.md", Path: "/root-b/other.md"},
+		},
+	}
+}
+
 // rowNames is the Name of each currently visible row, top to bottom.
 func rowNames(f filesNav) []string {
 	var names []string
@@ -142,6 +155,42 @@ func TestFilesExpansionIsValueSemantic(t *testing.T) {
 	}
 	if !containsRow(after, "guide.md") {
 		t.Error("expand did not open the folder on the copy that asked for it")
+	}
+}
+
+// TestFilesNavRestoresPerRootStateAcrossSwitches is M3.1's own acceptance
+// criterion at the filesNav level: expanding/collapsing nodes and selecting
+// one in Root A, switching to Root B and back to Root A, shows the same
+// expansion and selection as left. TestActivateRootRestoresFilesNavPerRoot
+// (rootsnav_test.go) checks the same thing driven through model.activateRoot,
+// the path a user's keypresses actually take.
+func TestFilesNavRestoresPerRootStateAcrossSwitches(t *testing.T) {
+	rootA, rootB := fixtureTree(), fixtureTreeB()
+
+	f := newFilesNav().setRoot(rootA)
+	f = f.expand() // open docs
+	f = f.move(1)  // select guide.md, inside it
+
+	wantExpanded := len(f.expanded)
+	wantSelected := f.selectedNode().Name
+	if wantSelected != "guide.md" {
+		t.Fatalf("setup: selection = %q, want guide.md", wantSelected)
+	}
+
+	// Root B has never been shown: setRoot starts it fresh, not carrying A's
+	// expansion/selection over by accident.
+	f = f.setRoot(rootB)
+	if len(f.expanded) != 0 || f.selected != 0 {
+		t.Fatalf("Root B's first visit = expanded %v selected %d, want fresh (empty, 0)", f.expanded, f.selected)
+	}
+
+	// Back to Root A: restored exactly as left, not reset like B's first visit.
+	f = f.setRoot(rootA)
+	if len(f.expanded) != wantExpanded {
+		t.Errorf("Root A expansion after the A\u2192B\u2192A round trip = %v, want %d folder(s) open as left", f.expanded, wantExpanded)
+	}
+	if got := f.selectedNode(); got == nil || got.Name != wantSelected {
+		t.Errorf("Root A selection after the round trip = %v, want %q", got, wantSelected)
 	}
 }
 

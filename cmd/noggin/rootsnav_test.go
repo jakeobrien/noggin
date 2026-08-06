@@ -277,11 +277,14 @@ func TestToggleStarWithNoStorePathDeclinesAndMessages(t *testing.T) {
 
 // TestActivateRootLeavesOpenDocumentUntouched is M3.4's acceptance criterion:
 // with a document open from root A, activating root B re-roots the Files Nav
-// (collapsed at top level, selection reset) while the viewer keeps showing A's
-// document at its previous scroll position, unmoved. This mostly falls out of
-// M3.3's activateRoot reusing openFolder (which only ever touches
-// m.files/m.focus) and filesNav.setRoot resetting expansion/selection — this
-// test is what proves it rather than leaving it an assumption.
+// (collapsed at top level, selection reset, since B has never been shown
+// before — M3.1's own restore only kicks in on a return visit, exercised
+// separately by TestActivateRootRestoresFilesNavPerRoot below) while the
+// viewer keeps showing A's document at its previous scroll position,
+// unmoved. This mostly falls out of M3.3's activateRoot reusing openFolder
+// (which only ever touches m.files/m.focus) and filesNav.setRoot's
+// fresh-Root reset — this test is what proves it rather than leaving it an
+// assumption.
 func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
 	rootA, err := tree.Walk("testdata/tree")
 	if err != nil {
@@ -347,5 +350,56 @@ func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
 	}
 	if m.viewer.label() == "" {
 		t.Error("viewer lost its open document after activating a different root")
+	}
+}
+
+// TestActivateRootRestoresFilesNavPerRoot is M3.1's acceptance criterion,
+// driven through the same keypresses a user takes (Roots Nav selection +
+// Activate) rather than filesNav directly (that version lives alongside
+// filesNav's own tests as TestFilesNavRestoresPerRootStateAcrossSwitches):
+// expanding/collapsing nodes and selecting one in Root A, activating Root B
+// then reactivating Root A, shows the same expansion and selection Root A
+// was left with.
+func TestActivateRootRestoresFilesNavPerRoot(t *testing.T) {
+	rootAPath := mkdir(t, filepath.Join(t.TempDir(), "root-a"))
+	sub := mkdir(t, filepath.Join(rootAPath, "sub"))
+	writeFile(t, filepath.Join(sub, "nested.md"))
+	rootBPath := mkdir(t, filepath.Join(t.TempDir(), "root-b"))
+	writeFile(t, filepath.Join(rootBPath, "top.md"))
+
+	m := sized(t, newModel(), 80, 24)
+	m.roots = m.roots.setRoots([]root{{path: rootAPath}, {path: rootBPath}}, -1)
+
+	// Activate Root A, expand its one subfolder, select the nested file inside.
+	m = m.activateRoot()
+	m.files = m.files.expand()
+	m.files = m.files.move(1)
+	wantExpanded := len(m.files.expanded)
+	wantSelected := m.files.selectedNode()
+	if wantSelected == nil || wantSelected.Name != "nested.md" {
+		t.Fatalf("setup: selection = %v, want nested.md", wantSelected)
+	}
+
+	// Activate Root B: a first visit, so it starts fresh (not asserted again
+	// here — TestActivateRootLeavesOpenDocumentUntouched already covers it).
+	m.roots = m.roots.move(1)
+	m = m.activateRoot()
+
+	// Back to Root A: restored, not reset.
+	m.roots = m.roots.move(-1)
+	m = m.activateRoot()
+
+	if m.roots.active != 0 {
+		t.Fatalf("active root after reactivating A = %d, want 0", m.roots.active)
+	}
+	if len(m.files.expanded) != wantExpanded {
+		t.Errorf("Root A expansion after A\u2192B\u2192A = %v, want %d folder(s) open as left", m.files.expanded, wantExpanded)
+	}
+	got := m.files.selectedNode()
+	if got == nil || got.Path != wantSelected.Path {
+		t.Errorf("Root A selection after A\u2192B\u2192A = %v, want %v (as left)", got, wantSelected)
+	}
+	if !strings.Contains(m.files.view(), "nested.md") {
+		t.Errorf("Files Nav view after reactivating A = %q, want sub still expanded (nested.md visible)", m.files.view())
 	}
 }

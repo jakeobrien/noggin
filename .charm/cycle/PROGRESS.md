@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.1
+Current task: M4.1
 
 ## Handoff
 
@@ -61,9 +61,33 @@ Found but not fixed (logged to TRIAGE T1, not this task's scope): README.md stil
 `ctrl+p` opening the Picker in three places — no plan task owns README sync the way M9.1 owns
 Footer/Help Modal, so it's flagged for replan rather than silently touched.
 
-Next step: M3.1 — Files Nav expansion/selection state remembered per Root. Re-read the two
-relevant foot-guns before starting: `selected` is a flattened-row index today, not a stable
-node key (files.go) — key state by path, not index.
+M3.1 done: `filesNav` gained `memory map[string]filesNavMemory` (files.go), keyed by a Root's
+own `Path` (not the `*tree.Node` pointer — `activateRoot` re-walks a fresh Node every
+activation even when nothing on disk changed, exactly the flagged foot-gun). `setRoot` now
+calls `remember` on the outgoing root before switching (snapshots `expanded` by reference —
+safe because `withExpanded` only ever builds new maps, never mutates in place — plus the
+selected node's `Path`, not its index), then either restores a previously-visited Root's
+memory or resets fresh for a first visit, same as before M3.1. Restoring recomputes `selected`
+via a new `indexOfPath` lookup against the restored expansion's visible rows rather than
+trusting a stale int, which is what makes it correct across however many other Roots were
+visited in between. Tests: `TestFilesNavRestoresPerRootStateAcrossSwitches` (files_test.go,
+filesNav-level, exercises setRoot directly) and `TestActivateRootRestoresFilesNavPerRoot`
+(rootsnav_test.go, model-level through `activateRoot` — the actual keypress path); both are
+the cycle's stated acceptance criterion verbatim (expand/select in A, switch to B, switch back
+to A, same state). `TestActivateRootLeavesOpenDocumentUntouched`'s comment updated to note its
+B-is-a-first-visit case is now one of two paths, not the only one. `make check` and
+`make check-pty` both green (full pty suite, no new pty check added — this is pure model
+state with no rendering ambiguity, already deterministic under `go test`). No findings; no new
+triage items.
+
+Next step: M4.1 — per-file git status markers (M/A) in the Files Nav. New territory: no git
+plumbing exists yet in the tree package (`internal/tree`) or `cmd/noggin`; needs a way to
+resolve each Root's containing repository (if any) and its working-tree status, without
+erroring on a Root outside any repo. Likely shells out to `git status --porcelain` or reads
+`.git` plumbing directly — worth a quick research pass on which is more robust before
+committing to an approach, given the security-review's eye on shelling out (cf. how
+`internal/tree/gitignore.go` deliberately hand-rolled `.gitignore` instead of shelling to
+`git check-ignore`, per `.charm/knowledge/gitignore-matching.md`).
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) are ordered ahead of M5 (refresh, S2)
@@ -89,7 +113,7 @@ Known foot-guns flagged by research, worth re-reading before M3/M5/M7:
 | M1.1  | done   | -        | -         |      |
 | M2.1  | done   | -        | -         |      |
 | M2.2  | done   | -        | -         |      |
-| M3.1  | todo   | -        | -         |      |
+| M3.1  | done   | -        | -         |      |
 | M4.1  | todo   | -        | -         |      |
 | M5.1  | todo   | -        | -         |      |
 | M6.1  | todo   | -        | -         |      |

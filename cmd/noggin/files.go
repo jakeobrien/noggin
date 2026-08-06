@@ -32,23 +32,94 @@ type filesNav struct {
 	// expansion rather than a fixed node.
 	selected int
 
+	// memory holds, per Root, the expansion set and selected node's Path last
+	// left there (M3.1/S3), keyed by the Root's own Path — the same value
+	// model.activateRoot re-walks into a brand new *tree.Node each time a Root
+	// is (re)activated, even when nothing on disk changed, so memory is keyed
+	// by Path rather than Node identity, the same way expanded already is. A
+	// Root with no entry here has never been visited this session.
+	memory map[string]filesNavMemory
+
 	// width and height are the content box the pane draws into, borders and
 	// title already deducted (see computeLayout / rect.content).
 	width  int
 	height int
 }
 
-func newFilesNav() filesNav {
-	return filesNav{expanded: map[string]bool{}}
+// filesNavMemory is one Root's remembered browse state: which folders were
+// open, and which node was selected. The selection is remembered by Path,
+// not the flattened-row index `selected` itself uses — an index is only
+// meaningful against the expansion set that produced it, so setRoot
+// recomputes the index against whatever the restored expansion set's visible
+// rows turn out to be (indexOfPath), rather than trusting a stale int.
+type filesNavMemory struct {
+	expanded     map[string]bool
+	selectedPath string
 }
 
-// setRoot points the pane at a new tree, collapsing everything and resetting
-// the selection to the top — re-rooting is a fresh browse (M3.4 leans on this).
+func newFilesNav() filesNav {
+	return filesNav{expanded: map[string]bool{}, memory: map[string]filesNavMemory{}}
+}
+
+// setRoot points the pane at root. A Root the pane has never shown this
+// session starts a fresh browse — collapsed at the top level, selection at
+// the top (S5) — the same as before M3.1. A Root shown before instead
+// restores exactly the expansion and selection it was left with, however
+// many other Roots were visited in between (M3.1/S3). Either way, the
+// outgoing root's own state (if there was one) is captured into memory
+// first, so leaving it is round-trippable the next time it becomes active.
 func (f filesNav) setRoot(root *tree.Node) filesNav {
+	if f.root != nil {
+		f = f.remember(f.root.Path)
+	}
+
 	f.root = root
-	f.expanded = map[string]bool{}
-	f.selected = 0
+	if saved, ok := f.memory[root.Path]; ok {
+		f.expanded = saved.expanded
+		f.selected = f.indexOfPath(saved.selectedPath)
+	} else {
+		f.expanded = map[string]bool{}
+		f.selected = 0
+	}
 	return f
+}
+
+// remember snapshots the pane's current expansion and selection into memory
+// under path (the outgoing root's own Path) — setRoot's own call, just
+// before switching away from it. The expansion map is stored by reference,
+// not cloned: withExpanded never mutates a map in place, it always builds a
+// fresh one, so the copy kept here can never be changed out from under it by
+// a later expand/collapse on the pane that moved on.
+func (f filesNav) remember(path string) filesNav {
+	selPath := ""
+	if n := f.selectedNode(); n != nil {
+		selPath = n.Path
+	}
+	memory := make(map[string]filesNavMemory, len(f.memory)+1)
+	for k, v := range f.memory {
+		memory[k] = v
+	}
+	memory[path] = filesNavMemory{expanded: f.expanded, selectedPath: selPath}
+	f.memory = memory
+	return f
+}
+
+// indexOfPath is the visible-row index of the node at path against the
+// pane's current root and expansion, or 0 when path is empty or no row
+// matches. M3.1 only promises correctness when the tree shape underneath
+// hasn't changed, in which case a remembered path always has a row; the
+// zero fallback is defensive for the shape-changed case M5's refresh will
+// refine into "nearest surviving ancestor", not a case M3.1 itself produces.
+func (f filesNav) indexOfPath(path string) int {
+	if path == "" {
+		return 0
+	}
+	for i, row := range f.visibleRows() {
+		if row.node.Path == path {
+			return i
+		}
+	}
+	return 0
 }
 
 // setSize sets the content box the pane draws into.
