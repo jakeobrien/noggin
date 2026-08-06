@@ -2,6 +2,7 @@
 
 import os
 import re
+import subprocess
 import sys
 import tempfile
 
@@ -479,6 +480,65 @@ check("M3.4 pty: Files Nav re-rooted to root-b's entries",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M3.4 pty: exits 0 after switching roots with a document open", code == 0, f"exit {code}")
+
+# --- C2a/M4.1: per-file git status markers in the Files Nav --------------
+# (Named M4.1 in this cycle, C2a; the pre-existing "M4.1" label just below
+# belongs to an earlier cycle's edit-round-trip milestone. checks.py reuses
+# M/S keys across cycles as plain descriptive labels, not durable ids.)
+
+def run_git(cwd, *args):
+    subprocess.run(["git", *args], cwd=cwd, check=True,
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    env={**os.environ,
+                         "GIT_AUTHOR_NAME": "noggin-pty", "GIT_AUTHOR_EMAIL": "noggin-pty@example.com",
+                         "GIT_COMMITTER_NAME": "noggin-pty", "GIT_COMMITTER_EMAIL": "noggin-pty@example.com"})
+
+git_repo = tempfile.mkdtemp()
+run_git(git_repo, "init", "-q")
+with open(os.path.join(git_repo, "tracked.md"), "w") as f:
+    f.write("one\n")
+with open(os.path.join(git_repo, "clean.md"), "w") as f:
+    f.write("stays clean\n")
+run_git(git_repo, "add", "-A")
+run_git(git_repo, "commit", "-q", "-m", "init")
+with open(os.path.join(git_repo, "tracked.md"), "w") as f:
+    f.write("one\nmodified\n")
+with open(os.path.join(git_repo, "new.md"), "w") as f:
+    f.write("new\n")
+
+s = Session([BINARY, git_repo], 80, 24)
+s.pump(1.5)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M4.1 pty: a modified tracked file is marked M in the Files Nav",
+      "M tracked.md" in body, repr(body[:300]))
+check("C2a/M4.1 pty: a new untracked file is marked A in the Files Nav",
+      "A new.md" in body, repr(body[:300]))
+check("C2a/M4.1 pty: an unchanged tracked file carries no marker",
+      "clean.md" in body and "M clean.md" not in body and "A clean.md" not in body,
+      repr(body[:300]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M4.1 pty: exits 0 with a git-status-marked Root open", code == 0, f"exit {code}")
+
+# A Root outside any git repository (a bare tempdir, never git-init'd) shows
+# no markers and no error — the session still runs normally.
+plain_root = tempfile.mkdtemp()
+with open(os.path.join(plain_root, "note.md"), "w") as f:
+    f.write("just a file\n")
+
+s = Session([BINARY, plain_root], 80, 24)
+s.pump(1.5)
+sc = screen_of(s.out, 80, 24)
+body = "\n".join(sc.raw_lines())
+footer = sc.lines()[-1]
+check("C2a/M4.1 pty: a non-repo Root shows its file with no git status marker",
+      "note.md" in body and "M note.md" not in body and "A note.md" not in body,
+      repr(body[:300]))
+check("C2a/M4.1 pty: a non-repo Root raises no footer error",
+      "error" not in footer.lower() and "fatal" not in footer.lower(), repr(footer))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M4.1 pty: exits 0 with a non-repo Root open", code == 0, f"exit {code}")
 
 # --- M4.1: edit hands the active document to $EDITOR and resumes -----------
 

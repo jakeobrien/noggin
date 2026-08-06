@@ -573,3 +573,34 @@
   land; low risk, purely a sequencing call, but worth recording since a later replan or a
   fresh session might otherwise wonder why S2 — the deliverable most of the cycle's pitch is
   about — is M5 and not M2.
+
+## D46: Git status markers shell out to `git`, resolved via repo toplevel
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-06
+- Context: M4.1/S8 needs per-file modified/new markers, resolved relative to the containing
+  repository's root, for a Root that may or may not be inside a git repository. The
+  gitignore-matching precedent (`.charm/knowledge/gitignore-matching.md`, D18) rejected
+  shelling out to `git check-ignore` for a *different* reason — it needs an arbitrary,
+  possibly non-repo directory to behave like a git worktree, which arbitrary noggin Roots
+  are not. S8's ask is the opposite: it explicitly wants real git semantics, only within a
+  real repo, with staged/unstaged/deleted/renamed/submodule/worktree cases pre-declared out
+  of scope — a much shallower contract than gitignore matching, and one hand-rolling would
+  mean reimplementing (index parsing, blob hashing) for no correctness gain.
+- Decision: `gitstatus.go` shells out to the real `git` binary (`exec.LookPath`-detected, the
+  same degrade-quietly shape as S14's `detectRipgrep`), two calls per Root load: `rev-parse
+  --show-toplevel` (doubles as the "inside a repo at all" check) then `status
+  --porcelain=v1 --untracked-files=all --no-renames -z -- .`. Porcelain paths are always
+  toplevel-relative regardless of invocation directory (verified empirically, git 2.53) — so
+  toplevel resolves the absolute path per S8's "relative to the containing repository's root,
+  not the Root" wording, and pathspec `.` (with `-C root`) scopes results to files under the
+  Root without walking the whole repo status separately. `--no-renames` disables rename
+  detection so every changed path is one flat entry (no orig-path continuation field to parse
+  and discard), matching S8's "no renamed marking" directly. Computed fresh in
+  `model.openFolder` on every call (launch and every Root switch) — not cached, unlike M3.1's
+  per-Root memory — since the point is current status, not a remembered browse state.
+- Why: git binary is a reasonable runtime dependency the same way ripgrep already is (S14);
+  hand-rolling git's index/worktree diff algorithm is a different order of complexity than
+  hand-rolling `.gitignore` glob matching, with no upside since S8 deliberately wants real git
+  behaviour, simplified, not an independent approximation of it.

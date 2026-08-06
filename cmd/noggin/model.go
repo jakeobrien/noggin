@@ -134,9 +134,12 @@ func (m model) applyResolution(res resolution) model {
 }
 
 // openFolder points the Files Nav at root and puts focus on it, which is what
-// browsing a folder means.
+// browsing a folder means. S8's git status markers are (re)computed here,
+// fresh on every call — both the launch-time path (applyResolution) and
+// every Root switch (activateRoot) count as a "load" for S8's purposes, so
+// neither is worth special-casing separately from the other.
 func (m model) openFolder(root *tree.Node) model {
-	m.files = m.files.setRoot(root)
+	m.files = m.files.setRoot(root).withStatus(gitStatus(root.Path))
 	m.focus = m.resolveFocus(filesPane)
 	return m
 }

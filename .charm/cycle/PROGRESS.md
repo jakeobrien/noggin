@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M5.1
 
 ## Handoff
 
@@ -80,14 +80,39 @@ B-is-a-first-visit case is now one of two paths, not the only one. `make check` 
 state with no rendering ambiguity, already deterministic under `go test`). No findings; no new
 triage items.
 
-Next step: M4.1 — per-file git status markers (M/A) in the Files Nav. New territory: no git
-plumbing exists yet in the tree package (`internal/tree`) or `cmd/noggin`; needs a way to
-resolve each Root's containing repository (if any) and its working-tree status, without
-erroring on a Root outside any repo. Likely shells out to `git status --porcelain` or reads
-`.git` plumbing directly — worth a quick research pass on which is more robust before
-committing to an approach, given the security-review's eye on shelling out (cf. how
-`internal/tree/gitignore.go` deliberately hand-rolled `.gitignore` instead of shelling to
-`git check-ignore`, per `.charm/knowledge/gitignore-matching.md`).
+M4.1 done: new `cmd/noggin/gitstatus.go` shells out to the real `git` binary (detected via
+`exec.LookPath`, same degrade-quietly shape as S14's `detectRipgrep`) — `rev-parse
+--show-toplevel` (doubles as the "inside a repo at all" check) then `status --porcelain=v1
+--untracked-files=all --no-renames -z -- .`, scoped to the Root via `-C root` + pathspec `.`.
+Porcelain paths are always toplevel-relative regardless of invocation dir (verified
+empirically against git 2.53 — see D46), so `parseGitStatus` joins them onto the resolved
+toplevel to get absolute paths matching `tree.Node.Path` directly. `--no-renames` keeps every
+changed path a flat single entry, matching S8's "no renamed marking". Any failure (no git, not
+a repo, anything else) degrades to a nil map, never an error — `model.openFolder` calls it
+fresh on every load (launch and every Root switch, not cached like M3.1's memory) and installs
+it via `filesNav.withStatus`; `renderRow` prefixes a file row (never a directory) with `M `/
+`A `/`  ` in the same 2-char-column style the expand/collapse marker already uses. Full
+design rationale in DECISIONS.md D46.
+Tests: `cmd/noggin/gitstatus_test.go` (new) — `parseGitStatus` unit-level against synthetic
+porcelain output (M/A priority table, deleted/staged-deletion left unmarked); `gitStatus`
+end-to-end against real temp git repos (modified/untracked/staged-add-then-edited, pathspec
+scoping inside a larger repo, outside-any-repo silence, missing-git-binary silence);
+`filesNav` render-level (marker on the right row, never on a directory); and
+`TestActivateRootShowsGitStatusMarkersAtLaunchAndOnSwitch` driving the real `model.activateRoot`
+path. New `test/pty/checks.py` section (labelled `C2a/M4.1` — the bare `M4.1` label already
+belongs to an earlier cycle's edit-round-trip checks in this same file) spins up a real temp
+git repo and a real non-repo dir and confirms M/A markers reach the actual terminal, and that a
+non-repo Root's footer never shows an error. `make check` and `make check-pty` both green,
+including the 6 new pty checks. No findings; no new triage items — T1/T2 unchanged.
+
+Next step: M5.1 — manual refresh (`R`). Needs: re-read the Active Root's tree and Active
+Document from disk on demand, preserving Files Nav expansion/selection (M3.1's mechanism,
+nearest-surviving-ancestor when the selected node is gone), preserving Viewer scroll (clamped
+if the document shrank), recomputing S8's git markers in the same pass (`gitStatus` is already
+a plain function of a root path — refresh can just call it again after re-`tree.Walk`ing), and
+emptying the Viewer if the Active Document is gone/unreadable. Find state may be lost. Re-read
+the two foot-gun notes below (viewer.open/filesNav.setRoot both reset state — refresh must
+bypass them) before starting.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) are ordered ahead of M5 (refresh, S2)
@@ -110,11 +135,11 @@ Known foot-guns flagged by research, worth re-reading before M3/M5/M7:
 
 | Key   | Status | Reviewed | Validated | Note |
 |-------|--------|----------|-----------|------|
-| M1.1  | done   | -        | -         |      |
-| M2.1  | done   | -        | -         |      |
-| M2.2  | done   | -        | -         |      |
-| M3.1  | done   | -        | -         |      |
-| M4.1  | todo   | -        | -         |      |
+| M1.1  | done   | 2026-08-06 | 2026-08-06 |      |
+| M2.1  | done   | 2026-08-06 | 2026-08-06 |      |
+| M2.2  | done   | 2026-08-06 | 2026-08-06 |      |
+| M3.1  | done   | 2026-08-06 | 2026-08-06 |      |
+| M4.1  | done   | -        | -         |      |
 | M5.1  | todo   | -        | -         |      |
 | M6.1  | todo   | -        | -         |      |
 | M6.2  | todo   | -        | -         |      |

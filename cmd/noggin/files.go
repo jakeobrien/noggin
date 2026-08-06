@@ -40,6 +40,14 @@ type filesNav struct {
 	// Root with no entry here has never been visited this session.
 	memory map[string]filesNavMemory
 
+	// status holds S8's per-file git markers for the current root, keyed by
+	// absolute Path (gitStatus's return shape, ready to match tree.Node.Path
+	// directly). Unlike memory, it is never restored from a prior visit — the
+	// caller (model.openFolder) recomputes it fresh on every load, since the
+	// underlying git state can change between visits to the same Root. Nil
+	// (the zero value) renders identically to an empty map: no markers.
+	status map[string]gitFileStatus
+
 	// width and height are the content box the pane draws into, borders and
 	// title already deducted (see computeLayout / rect.content).
 	width  int
@@ -120,6 +128,16 @@ func (f filesNav) indexOfPath(path string) int {
 		}
 	}
 	return 0
+}
+
+// withStatus installs S8's per-file git status markers for the pane's
+// current root. It is a separate setter from setRoot rather than a
+// parameter to it: status is always freshly computed by the caller for
+// every load (see the status field's own comment), never something setRoot
+// itself would know how to produce or restore from memory.
+func (f filesNav) withStatus(status map[string]gitFileStatus) filesNav {
+	f.status = status
+	return f
 }
 
 // setSize sets the content box the pane draws into.
@@ -263,7 +281,19 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 			marker = "▸ "
 		}
 	}
-	line := strings.Repeat("  ", r.depth) + marker + r.node.Name
+	// Git status (S8) applies to files only — an expanded/collapsed folder
+	// already occupies this pane's other marker column, and aggregating a
+	// directory's descendants' statuses is out of scope.
+	status := "  "
+	if !r.node.IsDir {
+		switch f.status[r.node.Path] {
+		case gitStatusModified:
+			status = "M "
+		case gitStatusAdded:
+			status = "A "
+		}
+	}
+	line := strings.Repeat("  ", r.depth) + marker + status + r.node.Name
 
 	style := lipgloss.NewStyle()
 	if selected {
