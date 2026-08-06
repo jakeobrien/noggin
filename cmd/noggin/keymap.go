@@ -72,6 +72,16 @@ type keyMap struct {
 	// exactly as it was.
 	Navigator key.Binding
 
+	// FocusRoots and FocusFiles (S6, M2.1) move Focus straight to the Roots
+	// Nav or Files Nav from any of the Roots Nav, Files Nav or Document
+	// Viewer, revealing the Navigator first if the S9 toggle has it hidden
+	// — never hiding it. Global like Navigator/Edit/Find, so both are inert
+	// while the Picker owns the keyboard (model.Update's picker.open gate
+	// runs before the switch these are matched in, the same way it already
+	// shields Navigator/Edit/Find).
+	FocusRoots key.Binding
+	FocusFiles key.Binding
+
 	// Cancel dismisses a modal or in-progress input without acting on it.
 	// M5.1's first use was dismissing a find query; a generic name and
 	// binding on purpose, since S12's help modal (M5.3) uses the same
@@ -193,6 +203,14 @@ var keys = keyMap{
 	Navigator: key.NewBinding(
 		key.WithKeys("ctrl+n"),
 		key.WithHelp("ctrl+n", "sidebar"),
+	),
+	FocusRoots: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "roots"),
+	),
+	FocusFiles: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "files"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),

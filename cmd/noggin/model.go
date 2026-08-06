@@ -264,6 +264,23 @@ func (m model) toggleNavigator() model {
 	return m.resize(m.width, m.height, resizeCauseNavigatorToggle)
 }
 
+// focusPane moves Focus straight to target (S6, M2.1: FocusRoots/FocusFiles),
+// revealing the Navigator first via the same resize path toggleNavigator
+// uses if the S9 toggle currently has it hidden — but only ever un-hiding,
+// never the reverse, which is what keeps this one-directional where
+// toggleNavigator is a flip. resolveFocus (not a bare assignment) is what
+// makes this a no-op rather than a focus jump to an invisible pane on a
+// terminal too narrow to carry the Navigator at all (computeLayout): target
+// only wins here when it is actually visible.
+func (m model) focusPane(target pane) model {
+	if m.navigatorHidden {
+		m.navigatorHidden = false
+		m = m.resize(m.width, m.height, resizeCauseNavigatorToggle)
+	}
+	m.focus = m.resolveFocus(target)
+	return m
+}
+
 // startFind begins an S8 search over the active document, moving focus to
 // the viewer the same way activate() and activateRoot() do — the keys a
 // search needs next (typing, Cancel, Activate to commit) all target it. With
@@ -397,6 +414,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case key.Matches(msg, keys.Navigator):
 			return m.toggleNavigator(), nil
+		case key.Matches(msg, keys.FocusRoots):
+			return m.focusPane(rootsPane), nil
+		case key.Matches(msg, keys.FocusFiles):
+			return m.focusPane(filesPane), nil
 		case key.Matches(msg, keys.Help):
 			return m.openHelp(), nil
 		case key.Matches(msg, keys.Picker):
