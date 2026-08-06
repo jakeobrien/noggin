@@ -81,7 +81,7 @@ state with no rendering ambiguity, already deterministic under `go test`). No fi
 triage items.
 
 M4.1 done: new `cmd/noggin/gitstatus.go` shells out to the real `git` binary (detected via
-`exec.LookPath`, same degrade-quietly shape as S14's `detectRipgrep`) — `rev-parse
+`exec.LookPath`, same degrade-quietly shape as C2/S14's `detectRipgrep`) — `rev-parse
 --show-toplevel` (doubles as the "inside a repo at all" check) then `status --porcelain=v1
 --untracked-files=all --no-renames -z -- .`, scoped to the Root via `-C root` + pathspec `.`.
 Porcelain paths are always toplevel-relative regardless of invocation dir (verified

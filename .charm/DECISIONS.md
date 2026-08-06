@@ -589,7 +589,7 @@
   of scope — a much shallower contract than gitignore matching, and one hand-rolling would
   mean reimplementing (index parsing, blob hashing) for no correctness gain.
 - Decision: `gitstatus.go` shells out to the real `git` binary (`exec.LookPath`-detected, the
-  same degrade-quietly shape as S14's `detectRipgrep`), two calls per Root load: `rev-parse
+  same degrade-quietly shape as C2/S14's `detectRipgrep`), two calls per Root load: `rev-parse
   --show-toplevel` (doubles as the "inside a repo at all" check) then `status
   --porcelain=v1 --untracked-files=all --no-renames -z -- .`. Porcelain paths are always
   toplevel-relative regardless of invocation directory (verified empirically, git 2.53) — so
@@ -600,7 +600,7 @@
   and discard), matching S8's "no renamed marking" directly. Computed fresh in
   `model.openFolder` on every call (launch and every Root switch) — not cached, unlike M3.1's
   per-Root memory — since the point is current status, not a remembered browse state.
-- Why: git binary is a reasonable runtime dependency the same way ripgrep already is (S14);
+- Why: git binary is a reasonable runtime dependency the same way ripgrep already is (C2/S14);
   hand-rolling git's index/worktree diff algorithm is a different order of complexity than
   hand-rolling `.gitignore` glob matching, with no upside since S8 deliberately wants real git
   behaviour, simplified, not an independent approximation of it.

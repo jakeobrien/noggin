@@ -23,7 +23,7 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 |-----|--------------------|---------|------------------|---------|
 | C1  | read-across-roots  | done    | Delivered all 12 spec'd deliverables (S1–S12) across 26 plan tasks; none of D8's pre-agreed cuts were needed | `archive/C1-2026-08-read-across-roots/` |
 | C2  | find               | done    | Fuzzy filename find and literal grep with preview, scoped to Active Root or All Roots, ripgrep-backed | `archive/C2-2026-08-find/` |
-| C2a | polish             | planned | Dogfooding friction: install target, manual refresh, dotfiles in the Pickers, two-line Roots Nav rows, new bindings, Peek, per-file git markers | - |
+| C2a | polish             | active  | Dogfooding friction: install target, manual refresh, dotfiles in the Pickers, two-line Roots Nav rows, new bindings, Peek, per-file git markers | - |
 | C3  | compare            | planned | More than one document on screen at once, with keyboard targeting | - |
 | C4  | recall             | planned | The session remembers: document history, starred documents, recent, wiki-links | - |
 | C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |

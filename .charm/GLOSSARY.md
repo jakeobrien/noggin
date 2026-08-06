@@ -28,27 +28,25 @@
 - **Grep Picker** — the Picker whose Results are matching lines across files (C2).
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
   footer's help affordance and dismissible with one key.
+- **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
+  vim-oriented. Provisional, like all bindings.
+- **Navigator** — the left sidebar: Roots Nav above, Files Nav below. Hideable.
 - **Peek** — render the Files Nav's selected document in the Document Viewer *without* making
   it the Active Document and without moving Focus. Transient and read-only: cannot be scrolled
   or searched, marked by an inverted header, cleared by any selection change, Focus change,
   Picker open or Refresh — restoring the Active Document at its previous scroll position.
   `<enter>` is the only promotion path. Distinct from the Picker's Preview pane (C2a).
-
-- **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
-  vim-oriented. Provisional, like all bindings.
-- **Navigator** — the left sidebar: Roots Nav above, Files Nav below. Hideable.
 - **Picker** — the modal fuzzy-finding UI: a Prompt, a Results list, and a Preview pane.
   Comes in modes — File Picker and Grep Picker (C2). "Finder" is deliberately avoided; it
   means the OS file manager.
 - **Preview pane** — the part of a Picker that shows the selected Result's file. Lives inside
   the Picker only; it never changes the Active Document (C2).
 - **Prompt** — a Picker's input field; Results update as it is typed (C2).
+- **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
+  `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
 - **Refresh** — the on-demand re-read of the Active Root's file tree and the Active Document
   from disk, preserving tree expansion, selection and scroll position. Manual only; noggin never
   watches the filesystem (C2a).
-
-- **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
-  `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
@@ -59,6 +57,5 @@
 - **Staleness indicator** — a passive UI signal that the Active Document or the Active Root's
   tree changed on disk. Reports only that *something* changed, and never refreshes on its own
   (C2a).
-
 - **Starred** — bookmarked and persisted across sessions. Applies to Roots in C1, to documents
   in C4.
