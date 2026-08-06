@@ -221,8 +221,8 @@ var keys = keyMap{
 		key.WithHelp("?", "help"),
 	),
 	Picker: key.NewBinding(
-		key.WithKeys("ctrl+p"),
-		key.WithHelp("ctrl+p", "picker"),
+		key.WithKeys("space"),
+		key.WithHelp("space", "picker"),
 	),
 	PickerUp: key.NewBinding(
 		key.WithKeys("up"),

@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.2
+Current task: M3.1
 
 ## Handoff
 
@@ -43,11 +43,27 @@ reveal-hidden-Navigator case, the never-hide case, and the Picker-open inertness
 `make check` and `make check-pty` both green. Footer hints and the Help Modal do not yet
 mention `r`/`f` — deliberately deferred to M9 (S9 sweep), not missed.
 
-Deliberately not touched (in scope for M2.2, not this task): `ctrl+p` still opens the Picker;
-`<space>` does nothing yet.
+M2.2 done: `keys.Picker` is now `key.WithKeys("space")` (keymap.go) — `ctrl+p` is gone, not
+kept as an alias, and no other binding claims it, so pressing it now falls through every
+switch unmatched (D2's "keymap.go is the only file naming a key" makes that structural, not
+just observed). Two test-only key-encoding tables needed the new key added to stay in sync,
+per their own comments: `cmd/noggin/keymap_test.go`'s `namedKeys` (`"space": tea.KeySpace`,
+keymap.go's exempted test-only carve-out) and `test/pty/checks.py`'s `KEY` table (the pty
+harness's real-bytes-on-the-wire carve-out, same rationale, different language boundary) —
+neither is scope creep, both are the existing carve-out mechanism doing its job for a changed
+binding. `TestPickerOpensFromEveryFocusAndNavigatorHidden` (picker_test.go) already drives the
+binding indirectly via `keys.Picker.Keys()[0]`, so it picked up the change with no edit and
+confirms the Picker opens from every Focus on the new key; the pty check formerly named
+"ctrl+p opens the Picker modal" is renamed and now sends the space byte, still green.
+`make check` and `make check-pty` both green.
 
-Next step: M2.2 — bind `<space>` to `keys.Picker` and retire `ctrl+p` outright (keymap.go's
-`Picker` binding, currently `key.WithKeys("ctrl+p")`).
+Found but not fixed (logged to TRIAGE T1, not this task's scope): README.md still documents
+`ctrl+p` opening the Picker in three places — no plan task owns README sync the way M9.1 owns
+Footer/Help Modal, so it's flagged for replan rather than silently touched.
+
+Next step: M3.1 — Files Nav expansion/selection state remembered per Root. Re-read the two
+relevant foot-guns before starting: `selected` is a flattened-row index today, not a stable
+node key (files.go) — key state by path, not index.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) are ordered ahead of M5 (refresh, S2)
@@ -66,16 +82,13 @@ Known foot-guns flagged by research, worth re-reading before M3/M5/M7:
 - Peek (M7) touches many call sites (shiftFocus, openPicker, refresh, selection change) — each
   is a place its "clear on X" rule can be forgotten.
 
-Next step: M2.1 — `r`/`f` focus bindings; check keymap.go and nav.go for existing focus-shift
-plumbing before adding new bindings.
-
 ## Status
 
 | Key   | Status | Reviewed | Validated | Note |
 |-------|--------|----------|-----------|------|
 | M1.1  | done   | -        | -         |      |
 | M2.1  | done   | -        | -         |      |
-| M2.2  | todo   | -        | -         |      |
+| M2.2  | done   | -        | -         |      |
 | M3.1  | todo   | -        | -         |      |
 | M4.1  | todo   | -        | -         |      |
 | M5.1  | todo   | -        | -         |      |

@@ -40,7 +40,7 @@ KEY = {
     "Navigator":    b"\x0e",    # keys.Navigator: ctrl+n
     "Cancel":       b"\x1b",    # keys.Cancel: esc
     "Help":         b"?",       # keys.Help
-    "Picker":       b"\x10",    # keys.Picker: ctrl+p
+    "Picker":       b" ",       # keys.Picker: space
     "PickerUp":     b"\x1b[A",  # keys.PickerUp: up arrow
     "PickerDown":   b"\x1b[B",  # keys.PickerDown: down arrow
     "PickerMode":   b"\t",      # keys.PickerMode: tab
@@ -825,7 +825,7 @@ before_lines = screen_of(s.out, 80, 24).raw_lines()
 
 s.send(KEY["Picker"], 0.5)
 opened_body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
-check("M7.1 ctrl+p opens the Picker modal",
+check("M7.1 space opens the Picker modal",
       "Results" in opened_body and "Preview" in opened_body, repr(opened_body[:200]))
 check("M7.1 the Picker opens in File mode, Active Root Scope (S1's fixed default)",
       "File · Active Root" in opened_body, repr(opened_body[:200]))

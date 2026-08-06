@@ -25,4 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T1 | review | high | `src/foo.ts:42` | <one-line description + concrete recommendation> | open |
+| T1 | build | low | `README.md:96,134,204` | M2.2 retired `ctrl+p`/bound `space` to `keys.Picker`; README still documents `ctrl+p` opening the Picker in three places (bindings table, section heading, prose) — needs a doc-sync pass (no plan task currently owns README, unlike M9.1's Footer/Help Modal scope). | open |

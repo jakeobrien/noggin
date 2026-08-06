@@ -68,4 +68,5 @@ var namedKeys = map[string]rune{
 	"home":   tea.KeyHome,
 	"end":    tea.KeyEnd,
 	"esc":    tea.KeyEscape,
+	"space":  tea.KeySpace,
 }
