@@ -133,7 +133,7 @@ func (p picker) promptView(width int) string {
 // is the Picker's answer to "what would Enter search?", and the surface
 // M5.1/M5.2's in-place switching will be seen through — the reason it reads
 // off p.mode/p.scope rather than being passed in as text.
-func pickerModeScope(p picker) string {
+func pickerModeScope(p picker, hideDotfiles bool) string {
 	mode := "File"
 	if p.mode == grepMode {
 		mode = "Grep"
@@ -142,7 +142,15 @@ func pickerModeScope(p picker) string {
 	if p.scope == allRootsScope {
 		scope = "All Roots"
 	}
-	return mode + " · " + scope
+	label := mode + " · " + scope
+	if hideDotfiles {
+		// S4/M6.2's alt+h toggle has no other visible confirmation — the
+		// title is the one place mode/Scope already surface "what would
+		// Enter search", and a dotfile-hiding candidate set is exactly that
+		// same kind of fact about the search, not a new indicator of its own.
+		label += " · Hidden"
+	}
+	return label
 }
 
 // Picker status lines (S12, S14). Exact strings, asserted by
@@ -167,7 +175,7 @@ const (
 // (pickerResults), "do these results describe what the Prompt now says" is a
 // comparison rather than an assumption — the only honest way to caption an
 // asynchronously-filled list (M2.4).
-func pickerStatus(p picker, avail ripgrepAvailability) string {
+func pickerStatus(p picker, avail ripgrepAvailability, hideDotfiles bool) string {
 	if !avail.available {
 		return "Picker unavailable: " + avail.reason
 	}
@@ -175,7 +183,7 @@ func pickerStatus(p picker, avail ripgrepAvailability) string {
 	if len([]rune(query)) < pickerQueryMinLength {
 		return pickerBelowThresholdStatus
 	}
-	if !p.resultsCurrent() {
+	if !p.resultsCurrent(hideDotfiles) {
 		return pickerSearchingStatus
 	}
 	if p.searching {
@@ -443,8 +451,8 @@ func pickerGrepRow(g grepResult, query string, width int, selected bool) string 
 // for either mode — pickerStatus is already saying "searching" for that
 // same mismatch, and showing the previous mode's stale rows underneath that
 // caption would contradict it.
-func pickerResultsContent(p picker, width, height int) string {
-	if width <= 0 || height <= 0 || !p.resultsCurrent() {
+func pickerResultsContent(p picker, width, height int, hideDotfiles bool) string {
+	if width <= 0 || height <= 0 || !p.resultsCurrent(hideDotfiles) {
 		return ""
 	}
 	if p.mode == grepMode {
@@ -473,13 +481,13 @@ func pickerResultsContent(p picker, width, height int) string {
 // whichever frame pane currently has focus — Results/Preview use the plain
 // borderStyle, same as an unfocused frame pane. Results now carries the File
 // Picker's rows (M3.1); Preview still carries none (M3.2 fills it).
-func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability) string {
+func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfiles bool) string {
 	promptContent := p.promptView(l.prompt.content().width)
-	if status := pickerStatus(p, avail); status != "" {
+	if status := pickerStatus(p, avail, hideDotfiles); status != "" {
 		promptContent += "\n" + status
 	}
-	prompt := renderBox(focusedBorderStyle, l.prompt, pickerModeScope(p), promptContent)
-	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height)
+	prompt := renderBox(focusedBorderStyle, l.prompt, pickerModeScope(p, hideDotfiles), promptContent)
+	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, hideDotfiles)
 	results := renderBox(borderStyle, l.results, "Results", resultsContent)
 	preview := renderBox(borderStyle, l.preview, "Preview", p.preview.View())
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
@@ -495,9 +503,9 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability) string {
 // here is the suspenders to computePickerLayout's belt (layout-correct
 // sizing does not by itself guarantee lipgloss never pads a row wider, the
 // same reasoning overlayHelp's comment already spells out).
-func overlayPicker(frame string, width, height int, p picker, avail ripgrepAvailability) string {
+func overlayPicker(frame string, width, height int, p picker, avail ripgrepAvailability, hideDotfiles bool) string {
 	l := computePickerLayout(width, height)
-	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l, avail))
+	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l, avail, hideDotfiles))
 	bw, bh := lipgloss.Width(box), lipgloss.Height(box)
 	x := max((width-bw)/2, 0)
 	y := max((height-bh)/2, 0)

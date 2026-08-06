@@ -57,7 +57,7 @@ func TestListFilesAppliesReadableAllowlist(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "image.png"))
 	roots := []root{{path: dir}}
 
-	got := filePaths(listFiles(roots, 0, activeRootScope))
+	got := filePaths(listFiles(roots, 0, activeRootScope, false))
 
 	want := sortedCopy([]string{notesMd, readme})
 	if !equalStrings(got, want) {
@@ -83,7 +83,7 @@ func TestListFilesOmitsGitignored(t *testing.T) {
 	writeFile(t, filepath.Join(dir, ".ignored-dotfile.md"))
 	roots := []root{{path: dir}}
 
-	got := filePaths(listFiles(roots, 0, activeRootScope))
+	got := filePaths(listFiles(roots, 0, activeRootScope, false))
 
 	want := []string{kept}
 	if !equalStrings(got, want) {
@@ -107,11 +107,35 @@ func TestListFilesIncludesDotfiles(t *testing.T) {
 	writeFileContent(t, filepath.Join(dir, ".bashrc"), "not Readable: no allowlisted extension\n")
 	roots := []root{{path: dir}}
 
-	got := filePaths(listFiles(roots, 0, activeRootScope))
+	got := filePaths(listFiles(roots, 0, activeRootScope, false))
 
 	want := sortedCopy([]string{dotfile, insideDotdir})
 	if !equalStrings(got, want) {
 		t.Fatalf("listFiles() = %v, want %v (dotfiles present, .bashrc excluded by the allowlist)", got, want)
+	}
+}
+
+// TestListFilesHidesDotfilesWhenToggled is S4/M6.2's alt+h toggle at
+// listFiles' own level: hideDotfiles=true drops both a dotfile's own base
+// name and a Readable file merely living inside a dot-directory (the same
+// two candidates TestListFilesIncludesDotfiles pins as present by default),
+// leaving only a plain Readable file untouched. The excluded-regardless
+// non-Readable dotfile is unaffected either way — the toggle narrows an
+// already-Readable candidate set, it does not widen the allowlist.
+func TestListFilesHidesDotfilesWhenToggled(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, ".hidden.md"))
+	mkdir(t, filepath.Join(dir, ".hiddendir"))
+	writeFile(t, filepath.Join(dir, ".hiddendir", "inside.md"))
+	plain := writeFile(t, filepath.Join(dir, "plain.md"))
+	roots := []root{{path: dir}}
+
+	got := filePaths(listFiles(roots, 0, activeRootScope, true))
+
+	want := []string{plain}
+	if !equalStrings(got, want) {
+		t.Fatalf("listFiles(hideDotfiles=true) = %v, want %v", got, want)
 	}
 }
 
@@ -136,7 +160,7 @@ func TestListFilesStillExcludesGitDirectory(t *testing.T) {
 	writeFile(t, filepath.Join(nestedGitDir, "COMMIT_EDITMSG.md"))
 	roots := []root{{path: dir}}
 
-	got := filePaths(listFiles(roots, 0, activeRootScope))
+	got := filePaths(listFiles(roots, 0, activeRootScope, false))
 
 	want := []string{kept}
 	if !equalStrings(got, want) {
@@ -156,7 +180,7 @@ func TestListFilesAllRootsCoversLiveRootsAndSkipsBroken(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "gone")
 	roots := []root{{path: a}, {path: missing}, {path: b}}
 
-	got := filePaths(listFiles(roots, 0, allRootsScope))
+	got := filePaths(listFiles(roots, 0, allRootsScope, false))
 
 	want := sortedCopy([]string{aFile, bFile})
 	if !equalStrings(got, want) {
@@ -174,7 +198,7 @@ func TestListFilesActiveRootScopeIgnoresOtherRoots(t *testing.T) {
 	bFile := writeFile(t, filepath.Join(b, "two.md"))
 	roots := []root{{path: a}, {path: b}}
 
-	got := filePaths(listFiles(roots, 1, activeRootScope))
+	got := filePaths(listFiles(roots, 1, activeRootScope, false))
 
 	want := []string{bFile}
 	if !equalStrings(got, want) {
@@ -193,7 +217,7 @@ func TestListFilesEachResultCarriesItsRoot(t *testing.T) {
 	writeFile(t, filepath.Join(b, "same.md"))
 	roots := []root{{path: a}, {path: b}}
 
-	files := listFiles(roots, 0, allRootsScope)
+	files := listFiles(roots, 0, allRootsScope, false)
 
 	if len(files) != 2 {
 		t.Fatalf("listFiles() returned %d files, want 2", len(files))
@@ -296,7 +320,7 @@ func TestGrepFilesMatchesLiterally(t *testing.T) {
 	writeFileContent(t, filepath.Join(dir, "notes.md"), "see v1.2 here\nnot v1x2 though\n")
 	roots := []root{{path: dir}}
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "v1.2")
+	results, truncated := grepFiles(roots, 0, activeRootScope, "v1.2", false)
 
 	if truncated {
 		t.Fatalf("grepFiles() truncated = true, want false")
@@ -320,7 +344,7 @@ func TestGrepFilesFindsMatchesInsideDotfiles(t *testing.T) {
 	writeFileContent(t, filepath.Join(dir, ".hidden.md"), "needle in a dotfile\n")
 	roots := []root{{path: dir}}
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", false)
 
 	if truncated {
 		t.Fatalf("grepFiles() truncated = true, want false")
@@ -328,6 +352,53 @@ func TestGrepFilesFindsMatchesInsideDotfiles(t *testing.T) {
 	want := []string{filepath.Join(dir, ".hidden.md") + ":1:needle in a dotfile"}
 	if got := grepLines(results); !equalStrings(got, want) {
 		t.Fatalf("grepFiles(\"needle\") = %v, want %v", got, want)
+	}
+}
+
+// TestGrepFilesHidesDotfilesWhenToggled is S4/M6.2's Grep Picker half:
+// hideDotfiles=true drops a dotfile from grepFiles' own candidate set (it
+// reuses listFiles, TestListFilesHidesDotfilesWhenToggled's own guarantee)
+// just as it does for the File Picker, so a match that only exists inside a
+// dotfile is not found at all — not merely hidden after being found — while
+// a match in a plain file is unaffected.
+func TestGrepFilesHidesDotfilesWhenToggled(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, ".hidden.md"), "needle in a dotfile\n")
+	writeFileContent(t, filepath.Join(dir, "plain.md"), "needle in a plain file\n")
+	roots := []root{{path: dir}}
+
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", true)
+
+	if truncated {
+		t.Fatalf("grepFiles(hideDotfiles=true) truncated = true, want false")
+	}
+	want := []string{filepath.Join(dir, "plain.md") + ":1:needle in a plain file"}
+	if got := grepLines(results); !equalStrings(got, want) {
+		t.Fatalf("grepFiles(hideDotfiles=true) = %v, want %v", got, want)
+	}
+}
+
+// TestIsDotfilePath pins the path-component rule directly: a match on any
+// component between the Root and the file (not just the file's own base
+// name), no match for an all-plain path, and no false match from a `.` that
+// merely appears mid-component (e.g. "a.b/c.md") rather than starting one.
+func TestIsDotfilePath(t *testing.T) {
+	cases := []struct {
+		rel  string
+		want bool
+	}{
+		{"plain.md", false},
+		{"docs/plain.md", false},
+		{".hidden.md", true},
+		{".hiddendir/inside.md", true},
+		{"docs/.hiddendir/inside.md", true},
+		{"a.b/c.md", false},
+	}
+	for _, c := range cases {
+		if got := isDotfilePath(c.rel); got != c.want {
+			t.Errorf("isDotfilePath(%q) = %v, want %v", c.rel, got, c.want)
+		}
 	}
 }
 
@@ -340,12 +411,12 @@ func TestGrepFilesIsSmartCase(t *testing.T) {
 	writeFileContent(t, filepath.Join(dir, "notes.md"), "Hello World\n")
 	roots := []root{{path: dir}}
 
-	lower, _ := grepFiles(roots, 0, activeRootScope, "hello")
+	lower, _ := grepFiles(roots, 0, activeRootScope, "hello", false)
 	if len(lower) != 1 {
 		t.Fatalf("grepFiles(\"hello\") = %v, want one match against mixed-case text", grepLines(lower))
 	}
 
-	upper, _ := grepFiles(roots, 0, activeRootScope, "HELLO")
+	upper, _ := grepFiles(roots, 0, activeRootScope, "HELLO", false)
 	if len(upper) != 0 {
 		t.Fatalf("grepFiles(\"HELLO\") = %v, want no match against differently-cased text", grepLines(upper))
 	}
@@ -361,7 +432,7 @@ func TestGrepFilesOnlySearchesReadableFiles(t *testing.T) {
 	writeFileContent(t, filepath.Join(dir, "image.png"), "needle here too\n")
 	roots := []root{{path: dir}}
 
-	results, _ := grepFiles(roots, 0, activeRootScope, "needle")
+	results, _ := grepFiles(roots, 0, activeRootScope, "needle", false)
 
 	want := []string{filepath.Join(dir, "notes.md") + ":1:needle here"}
 	if got := grepLines(results); !equalStrings(got, want) {
@@ -388,7 +459,7 @@ func TestGrepFilesCapsAndReportsTruncation(t *testing.T) {
 		return []root{{path: dir}}
 	}
 
-	results, truncated := grepFiles(notesWithLines(t, pickerResultCap+50), 0, activeRootScope, "needle")
+	results, truncated := grepFiles(notesWithLines(t, pickerResultCap+50), 0, activeRootScope, "needle", false)
 	if !truncated {
 		t.Fatalf("grepFiles() truncated = false, want true")
 	}
@@ -396,7 +467,7 @@ func TestGrepFilesCapsAndReportsTruncation(t *testing.T) {
 		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)
 	}
 
-	results, truncated = grepFiles(notesWithLines(t, pickerResultCap), 0, activeRootScope, "needle")
+	results, truncated = grepFiles(notesWithLines(t, pickerResultCap), 0, activeRootScope, "needle", false)
 	if truncated {
 		t.Fatalf("grepFiles() truncated = true at exactly the cap, want false")
 	}
@@ -428,7 +499,7 @@ func TestGrepFilesBatchesAcrossArgSizeLimit(t *testing.T) {
 	grepArgMaxBytes = 1 // forces a new batch for every file
 	defer func() { grepArgMaxBytes = orig }()
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", false)
 	if truncated {
 		t.Fatalf("grepFiles() truncated = true, want false")
 	}
@@ -436,7 +507,7 @@ func TestGrepFilesBatchesAcrossArgSizeLimit(t *testing.T) {
 		t.Fatalf("grepFiles() with batching = %v, want %v", got, want)
 	}
 
-	noMatch, truncated := grepFiles(roots, 0, activeRootScope, "absent")
+	noMatch, truncated := grepFiles(roots, 0, activeRootScope, "absent", false)
 	if truncated {
 		t.Fatalf("grepFiles(\"absent\") truncated = true, want false")
 	}
@@ -480,7 +551,7 @@ func TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated(t *testing.T) {
 	grepArgMaxBytes = 1 // forces a new batch per file, spreading the cap-sized total across fileCount batches
 	defer func() { grepArgMaxBytes = orig }()
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", false)
 	if truncated {
 		t.Fatalf("grepFiles() truncated = true at exactly the cap spread across batches, want false")
 	}

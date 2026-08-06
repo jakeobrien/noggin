@@ -950,7 +950,7 @@ func TestPickerPreviewShowsUnavailableMessageOnReadError(t *testing.T) {
 		files: []pickerFile{{path: missing}},
 	}
 
-	p = p.syncPreview()
+	p = p.syncPreview(false)
 
 	_, readErr := os.ReadFile(missing)
 	want := "preview unavailable: " + readErr.Error()
@@ -1147,6 +1147,124 @@ func TestPickerFindsADotfileInBothModesWithNoExtraKeystroke(t *testing.T) {
 	}
 	if len(m.picker.results.grep) != 1 || filepath.Base(m.picker.results.grep[0].file.path) != ".config.md" {
 		t.Fatalf("Grep mode results = %v, want one match inside the dotfile", m.picker.results.grep)
+	}
+}
+
+// TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen is S4/M6.2's own
+// acceptance criterion, verbatim: alt+h hides dotfiles from both modes'
+// Results, pressing it again restores them, and the hidden/shown state is
+// unchanged after closing and reopening the Picker in the same session.
+func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, ".config.md"), "dotfile needle content\n")
+	writeFileContent(t, filepath.Join(dir, "plain.md"), "plain needle content\n")
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+
+	if m.hideDotfiles {
+		t.Fatal("hideDotfiles starts true; want false (S4's default: dotfiles shown)")
+	}
+
+	// File mode: the dotfile is a Result by default (M6.1's own contract).
+	m, seqs := typePickerQuery(t, m, "config")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches == 0 {
+		t.Fatal("no File search was dispatched; setup is broken")
+	}
+	if len(m.picker.results.files) != 1 {
+		t.Fatalf("File mode results before alt+h = %v, want the dotfile alone", m.picker.results.files)
+	}
+
+	// alt+h hides it: a non-typing key (handlePickerInput), so the Prompt is
+	// untouched and the toggle re-runs the same query through the narrowed
+	// candidate set (files_search.go's listFiles), the same queuePickerSearch
+	// path a mode/Scope switch already reuses for its own in-place switch.
+	next, cmd := m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
+	m = concrete(t, next)
+	if !m.hideDotfiles {
+		t.Fatal("hideDotfiles after alt+h = false, want true")
+	}
+	if got := m.picker.input.Value(); got != "config" {
+		t.Fatalf("Prompt after alt+h = %q, want unchanged %q", got, "config")
+	}
+	msg, ok := cmd().(pickerSearchMsg)
+	if !ok {
+		t.Fatalf("alt+h's Cmd produced %T, want pickerSearchMsg", cmd())
+	}
+	m, searches = deliverPickerTicks(t, m, []int{msg.seq})
+	if searches == 0 {
+		t.Fatal("no File search was dispatched after alt+h")
+	}
+	if len(m.picker.results.files) != 0 {
+		t.Fatalf("File mode results after alt+h = %v, want none (dotfile hidden)", m.picker.results.files)
+	}
+
+	// A second alt+h restores it.
+	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
+	m = concrete(t, next)
+	if m.hideDotfiles {
+		t.Fatal("hideDotfiles after a second alt+h = true, want false")
+	}
+	msg, ok = cmd().(pickerSearchMsg)
+	if !ok {
+		t.Fatalf("second alt+h's Cmd produced %T, want pickerSearchMsg", cmd())
+	}
+	m, searches = deliverPickerTicks(t, m, []int{msg.seq})
+	if searches == 0 {
+		t.Fatal("no File search was dispatched after the second alt+h")
+	}
+	if len(m.picker.results.files) != 1 {
+		t.Fatalf("File mode results after the second alt+h = %v, want the dotfile restored", m.picker.results.files)
+	}
+
+	// Hide again, then close and reopen the Picker (dismissPicker replaces
+	// the whole picker struct, resetPicker) — the toggle must survive that
+	// within the session (model.hideDotfiles, not picker-owned) even though
+	// mode/Scope/Prompt do not.
+	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
+	m = concrete(t, next)
+	msg, _ = cmd().(pickerSearchMsg)
+	m, _ = deliverPickerTicks(t, m, []int{msg.seq})
+
+	m = press(t, m, keys.Cancel.Keys()[0])
+	m, _ = m.openPicker()
+	if !m.hideDotfiles {
+		t.Fatal("hideDotfiles after closing and reopening the Picker = false, want true (unchanged)")
+	}
+
+	// Grep mode: switching to it and searching again confirms the toggle is
+	// shared by both modes (S4), still narrowing grepFiles' own candidate
+	// set (files_search.go), not just fuzzyFiles'.
+	next, _ = m.Update(keyPress(keys.PickerMode.Keys()[0]))
+	m = concrete(t, next)
+	m, seqs = typePickerQuery(t, m, "needle")
+	m, searches = deliverPickerTicks(t, m, seqs)
+	if searches == 0 {
+		t.Fatal("no Grep search was dispatched; setup is broken")
+	}
+	if len(m.picker.results.grep) != 1 || filepath.Base(m.picker.results.grep[0].file.path) != "plain.md" {
+		t.Fatalf("Grep mode results while hidden = %v, want the plain file's match alone", m.picker.results.grep)
+	}
+
+	// A second alt+h, still in Grep mode, restores the dotfile's own match.
+	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
+	m = concrete(t, next)
+	if m.hideDotfiles {
+		t.Fatal("hideDotfiles after alt+h in Grep mode = true, want false")
+	}
+	msg, ok = cmd().(pickerSearchMsg)
+	if !ok {
+		t.Fatalf("alt+h in Grep mode's Cmd produced %T, want pickerSearchMsg", cmd())
+	}
+	m, searches = deliverPickerTicks(t, m, []int{msg.seq})
+	if searches == 0 {
+		t.Fatal("no Grep search was dispatched after alt+h in Grep mode")
+	}
+	if len(m.picker.results.grep) != 2 {
+		t.Fatalf("Grep mode results after restoring = %v, want both files' matches", m.picker.results.grep)
 	}
 }
 

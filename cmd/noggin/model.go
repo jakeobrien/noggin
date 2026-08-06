@@ -58,6 +58,17 @@ type model struct {
 	// restoring it leaves that state exactly as it was (M5.2).
 	navigatorHidden bool
 
+	// hideDotfiles is S4/M6.2's session-scoped `alt+h` toggle: hides
+	// dotfiles (and files under a dot-directory) from both Picker modes'
+	// Results (files_search.go's listFiles/isDotfilePath). Lives on model,
+	// not picker, deliberately: resetPicker (openPicker/dismissPicker)
+	// replaces the whole picker struct with newPicker()'s zero value every
+	// close/reopen, which is exactly what a field needing to survive that
+	// within a session cannot be subject to — the same reason
+	// navigatorHidden lives here rather than on any one pane. Only a fresh
+	// model (relaunch) resets it, matching S4's "reset on relaunch".
+	hideDotfiles bool
+
 	// roots is the session's note sources (S1): the Roots Nav pane and its
 	// selection, doubling as the record of which root is active. message
 	// carries a transient footer notice — a launch-time rejection (S1) or a
@@ -699,7 +710,7 @@ func (m model) render() string {
 	case m.helpOpen:
 		return overlayHelp(frame, m.width, m.height, m.focus)
 	case m.picker.open:
-		return overlayPicker(frame, m.width, m.height, m.picker, m.ripgrep)
+		return overlayPicker(frame, m.width, m.height, m.picker, m.ripgrep, m.hideDotfiles)
 	default:
 		return frame
 	}

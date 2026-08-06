@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M6.2
+Current task: M7.1
 
 ## Handoff
 
@@ -171,14 +171,46 @@ severity test-coverage gaps it flagged (nested-`.git` depth, dotfile-under-`.git
 backfilled inline before this handoff, since they were cheap and directly strengthened claims
 already made in code comments — nothing left to log.
 
-Next step: M6.2 — a session-scoped `alt+h` toggle hiding/showing dotfiles in both Picker modes
-(needs M6.1, done). Must live on `model`, not `picker` (see foot-gun below) — `resetPicker`
-(picker.go) wipes anything stored on `picker` every close/reopen, but the toggle must survive
-that within a session and only reset on relaunch. The toggle presumably threads through to
-`listFiles`/`grepFiles` (files_search.go) as an extra parameter (skip dotfile candidates when
-hidden) rather than a second rg flag, since M6.1's `rgFiles` has no notion of the toggle's
-state and re-deriving it from `rg` invocation flags per search would duplicate the Readable-
-allowlist-style filtering `listFiles` already does in Go, not in rg.
+M6.2 done: `keys.ToggleHidden` (`alt+h`, keymap.go) is a non-typing key inside the Picker
+(handlePickerInput), handled by the new `model.toggleHiddenFiles()` (picker.go) exactly like
+`switchPickerMode`/`switchPickerScope` already are — flips `model.hideDotfiles` and re-runs
+the current query through `queuePickerSearch`. `hideDotfiles` lives on `model` (model.go), not
+`picker`, per the foot-gun this handoff flagged: `resetPicker` replaces the whole `picker`
+struct with `newPicker()`'s zero value on every open/close, so anything needing to survive
+that within a session cannot live there — the same reason `navigatorHidden` (S9) already
+lives on `model`. `listFiles`/`grepFiles` (files_search.go) both gained a `hideDotfiles bool`
+parameter (grepFiles' own reuse of listFiles' candidate set means one filter point covers both
+modes): true drops a candidate if any path component between the Root and the file starts
+with `.` (new `isDotfilePath`, matching what M6.1's `--hidden` widened `rgFiles` to walk into,
+not just the file's own base name). `pickerResults` gained a matching `hideDotfiles` label and
+`resultsCurrent` compares it alongside query/mode/scope — the same "do these results still
+answer what's currently asked" contract mode/Scope switches already rely on, now covering the
+toggle too, threaded through `pickerPreviewCandidate`/`pickerPreviewTarget`/
+`pickerGrepCandidate`/`syncPreview`/`pickerStatus`/`pickerResultsContent`/`renderPicker`/
+`overlayPicker`. `pickerModeScope`'s title indicator (already showing mode/Scope) gained a
+" · Hidden" suffix when active — not spec-mandated, but the toggle's only user-visible
+confirmation beyond the Results list itself changing, and cheap given the title already
+answers the same kind of question.
+Tests: `cmd/noggin/files_search_test.go` — `TestListFilesHidesDotfilesWhenToggled`,
+`TestGrepFilesHidesDotfilesWhenToggled`, `TestIsDotfilePath` (path-component rule directly,
+including the `a.b/c.md` non-dot-prefix negative case). `cmd/noggin/picker_test.go`'s
+`TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen` is the cycle's stated acceptance
+criterion verbatim: hide/restore in File mode, survives Cancel + reopen, then Grep mode too.
+`frame_test.go`'s `allBindings()` updated for the new field. New `test/pty/checks.py` section
+(`C2a/M6.2`) drives the real binary in both modes. It hit the exact ordering hazard
+`picker-pty-async-ordering.md` (D58) already documented — toggling immediately after a landed
+search intermittently misread the title — confirmed by reproducing it, then fixed the way that
+finding prescribes: every `alt+h` in the pty section is sent on an empty Prompt, before that
+Picker-open's first search, never right after one lands; 4+ consecutive full `make check-pty`
+runs clean after the reorder. `make check` and `make check-pty` both green. No code-reviewer
+pass run yet this task (see Status table).
+Found but not fixed (logged to TRIAGE T6, not this task's scope): README.md's Picker section
+still only describes dotfiles as included by default, with no mention of the new toggle —
+M9.1 owns the Footer/Help Modal half of S4's sweep but nothing owns README, same shape as T1.
+
+Next step: M7.1 — Peek (`p` in the Files Nav shows a non-Active document in the Document
+Viewer without changing the Active Document or moving Focus). See the foot-gun list below
+(many call sites) before starting; M7.2 (clearing Peek) needs M7.1 done first.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
@@ -188,15 +220,13 @@ the same pass — confirmed by M5.1 landing exactly that way with no rework need
 M2/M5/M6/M7 define. M10 (staleness, S10) is last per the spec's own "pre-agreed cut, dropped
 without ceremony".
 
-Known foot-guns flagged by research, worth re-reading before M6.2/M7:
-- A dotfile-toggle (M6.2) must live on `model`, not `picker` — `resetPicker` wipes anything
-  stored on `picker` every close/reopen.
+Known foot-guns flagged by research, worth re-reading before M7:
 - Peek (M7) touches many call sites (shiftFocus, openPicker, refresh, selection change) — each
   is a place its "clear on X" rule can be forgotten. M5.1's `refresh()` is now one more call
   site Peek (M7) will need its own "clear on refresh" rule at, per S7's own bullet list.
-- M9 (footer/help sweep) still owes `r`/`f` (M2.1) and now `R` (M5.1) their footer hints and
-  Help Modal entries — none of the three add one yet, deliberately deferred to M9 (see M2.1's
-  own handoff note above). M6.2's `alt+h` will be a fourth.
+- M9 (footer/help sweep) still owes `r`/`f` (M2.1), `R` (M5.1) and now `alt+h` (M6.2) their
+  footer hints and Help Modal entries — none of the four add one yet, deliberately deferred to
+  M9 (see M2.1's own handoff note above).
 
 ## Status
 
@@ -209,7 +239,7 @@ Known foot-guns flagged by research, worth re-reading before M6.2/M7:
 | M4.1  | done   | -        | -         |      |
 | M5.1  | done   | 2026-08-06 | -         |      |
 | M6.1  | done   | 2026-08-06 | -         |      |
-| M6.2  | todo   | -        | -         |      |
+| M6.2  | done   | -        | -         |      |
 | M7.1  | todo   | -        | -         |      |
 | M7.2  | todo   | -        | -         |      |
 | M8.1  | todo   | -        | -         |      |

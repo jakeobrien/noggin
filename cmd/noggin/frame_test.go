@@ -236,6 +236,7 @@ func allBindings() []key.Binding {
 		keys.FocusRoots, keys.FocusFiles, keys.Refresh,
 		keys.Help, keys.Picker,
 		keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
+		keys.ToggleHidden,
 	}
 }
 

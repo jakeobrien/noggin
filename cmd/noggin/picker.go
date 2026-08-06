@@ -61,12 +61,13 @@ const pickerQueryMinLength = 3
 // selected by mode. truncated is S12's cap flag, passed straight through
 // from fuzzyFiles/grepFiles.
 type pickerResults struct {
-	query     string
-	mode      pickerMode
-	scope     pickerScope
-	files     []pickerFile
-	grep      []grepResult
-	truncated bool
+	query        string
+	mode         pickerMode
+	scope        pickerScope
+	hideDotfiles bool
+	files        []pickerFile
+	grep         []grepResult
+	truncated    bool
 }
 
 // picker is the S1 modal's state: whether it is open, which mode and Scope
@@ -271,6 +272,20 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 	})
 }
 
+// toggleHiddenFiles flips the session-scoped alt+h dotfile toggle
+// (m.hideDotfiles — see its own doc comment on model for why it lives
+// there and not here) and re-searches the current query against the new
+// candidate set (files_search.go's listFiles/isDotfilePath), the same
+// queuePickerSearch path switchPickerMode/switchPickerScope already reuse
+// for their own in-place switches: the Prompt is untouched, and
+// resultsCurrent's hideDotfiles comparison stales the previous candidate
+// set's rows immediately, exactly as it already does for a mode or Scope
+// switch.
+func (m model) toggleHiddenFiles() (model, tea.Cmd) {
+	m.hideDotfiles = !m.hideDotfiles
+	return m.queuePickerSearch()
+}
+
 // switchPickerMode flips the open Picker's mode (File ↔ Grep, S7/M5.1):
 // the Prompt's text is untouched — only p.mode changes — and the switch
 // goes through queuePickerSearch exactly like a keystroke would (its own
@@ -323,7 +338,7 @@ func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
 	}
 	m.picker.searching = true
 	return m, pickerSearchCmd(m.picker.seq, m.picker.mode, m.picker.scope,
-		m.picker.input.Value(), m.roots.rootList(), m.roots.active)
+		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles)
 }
 
 // resultCount is how many Result rows the current mode has to show right
@@ -375,8 +390,8 @@ func (p picker) setPreviewSize(width, height int) picker {
 // (pickerGrepCandidate) instead of sharing this one; this function's own
 // contract ("what fileMode's Activate would open") is why it must not
 // start returning a grepMode candidate.
-func (p picker) pickerPreviewCandidate() (pickerFile, bool) {
-	if p.mode != fileMode || !p.resultsCurrent() {
+func (p picker) pickerPreviewCandidate(hideDotfiles bool) (pickerFile, bool) {
+	if p.mode != fileMode || !p.resultsCurrent(hideDotfiles) {
 		return pickerFile{}, false
 	}
 	if p.selected < 0 || p.selected >= len(p.results.files) {
@@ -395,8 +410,8 @@ func (p picker) pickerPreviewCandidate() (pickerFile, bool) {
 // has no reason to wait for M4.3's Activate hand-off the way Activate
 // does, since showing the matched file's raw bytes never changes the
 // Active Document (S9's own "never changes the Active Document").
-func (p picker) pickerPreviewTarget() (f pickerFile, line int, ok bool) {
-	if !p.resultsCurrent() {
+func (p picker) pickerPreviewTarget(hideDotfiles bool) (f pickerFile, line int, ok bool) {
+	if !p.resultsCurrent(hideDotfiles) {
 		return pickerFile{}, 0, false
 	}
 	if p.mode == grepMode {
@@ -430,8 +445,8 @@ func (p picker) pickerPreviewTarget() (f pickerFile, line int, ok bool) {
 // The read is raw bytes, straight from disk — no loadDocument, no
 // renderMarkdown: M3.2 is explicit that the Preview shows "raw, unrendered
 // text", unlike the Document Viewer's own Glamour-rendered vp.
-func (p picker) syncPreview() picker {
-	f, line, ok := p.pickerPreviewTarget()
+func (p picker) syncPreview(hideDotfiles bool) picker {
+	f, line, ok := p.pickerPreviewTarget(hideDotfiles)
 	if !ok {
 		if p.previewPath != "" {
 			p.previewPath = ""
@@ -479,8 +494,9 @@ func (p picker) syncPreview() picker {
 // same call: while a fresh search is in flight for a changed query/mode/
 // Scope, the previous mode's stale rows must not flash on screen just
 // because they are still sitting in p.results.
-func (p picker) resultsCurrent() bool {
-	return p.results.query == p.input.Value() && p.results.mode == p.mode && p.results.scope == p.scope
+func (p picker) resultsCurrent(hideDotfiles bool) bool {
+	return p.results.query == p.input.Value() && p.results.mode == p.mode && p.results.scope == p.scope &&
+		p.results.hideDotfiles == hideDotfiles
 }
 
 // searchable is whether the current Prompt may be searched at all: ripgrep
@@ -501,14 +517,14 @@ func (m model) searchable() bool {
 // a pure function of its arguments: everything it needs is copied in by
 // value, and it touches no model state, because it runs while Update keeps
 // processing keystrokes.
-func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int) tea.Cmd {
+func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int, hideDotfiles bool) tea.Cmd {
 	return func() tea.Msg {
-		results := pickerResults{query: query, mode: mode, scope: scope}
+		results := pickerResults{query: query, mode: mode, scope: scope, hideDotfiles: hideDotfiles}
 		switch mode {
 		case grepMode:
-			results.grep, results.truncated = grepFiles(roots, active, scope, query)
+			results.grep, results.truncated = grepFiles(roots, active, scope, query, hideDotfiles)
 		default:
-			results.files, results.truncated = fuzzyFiles(listFiles(roots, active, scope), query)
+			results.files, results.truncated = fuzzyFiles(listFiles(roots, active, scope, hideDotfiles), query)
 		}
 		return pickerResultsMsg{seq: seq, results: results}
 	}
@@ -527,7 +543,7 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 	m.picker.results = msg.results
 	m.picker.searching = false
 	m.picker.selected = 0
-	m.picker = m.picker.syncPreview()
+	m.picker = m.picker.syncPreview(m.hideDotfiles)
 	return m
 }
 
@@ -557,7 +573,7 @@ func (m model) activatePicker() model {
 	// close the modal — activate()'s own "silence is not an error" shape
 	// (T15) — the Picker is dismissed either way since there is nothing
 	// further for it to do once a Result has been chosen.
-	f, ok := m.picker.pickerPreviewCandidate()
+	f, ok := m.picker.pickerPreviewCandidate(m.hideDotfiles)
 	if !ok {
 		return m
 	}
@@ -576,8 +592,8 @@ func (m model) activatePicker() model {
 // any more than they may preview or render) and the live result count (a
 // fresh, shorter result set can land between a selection move and the next
 // render).
-func (p picker) pickerGrepCandidate() (grepResult, bool) {
-	if p.mode != grepMode || !p.resultsCurrent() {
+func (p picker) pickerGrepCandidate(hideDotfiles bool) (grepResult, bool) {
+	if p.mode != grepMode || !p.resultsCurrent(hideDotfiles) {
 		return grepResult{}, false
 	}
 	if p.selected < 0 || p.selected >= len(p.results.grep) {
@@ -608,7 +624,7 @@ func (p picker) pickerGrepCandidate() (grepResult, bool) {
 // A read error surfaces as a footer message the same way activatePicker's
 // fileMode half does (T15) — the Picker is dismissed either way.
 func (m model) activateGrepPicker() model {
-	g, ok := m.picker.pickerGrepCandidate()
+	g, ok := m.picker.pickerGrepCandidate(m.hideDotfiles)
 	if !ok {
 		return m
 	}
@@ -696,10 +712,10 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Cancel):
 		return m.dismissPicker(), nil
 	case key.Matches(msg, keys.PickerUp):
-		m.picker = m.picker.move(-1).syncPreview()
+		m.picker = m.picker.move(-1).syncPreview(m.hideDotfiles)
 		return m, nil
 	case key.Matches(msg, keys.PickerDown):
-		m.picker = m.picker.move(1).syncPreview()
+		m.picker = m.picker.move(1).syncPreview(m.hideDotfiles)
 		return m, nil
 	case key.Matches(msg, keys.PageUp):
 		m.picker.preview.PageUp()
@@ -719,6 +735,8 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.switchPickerMode()
 	case key.Matches(msg, keys.PickerScope):
 		return m.switchPickerScope()
+	case key.Matches(msg, keys.ToggleHidden):
+		return m.toggleHiddenFiles()
 	}
 	before := m.picker.input.Value()
 	next, cmd := m.picker.input.Update(msg)

@@ -43,16 +43,48 @@ type pickerFile struct {
 // Unranked and uncapped: M1.3 fuzzy-matches this set against the query and
 // caps it. Correctness, not speed, is this task's job — a slow-Root
 // complaint is whichever later milestone first hits one.
-func listFiles(roots []root, active int, scope pickerScope) []pickerFile {
+//
+// hideDotfiles is S4/M6.2's session-scoped `alt+h` toggle (model.hideDotfiles,
+// threaded in rather than read off a package-level var so this stays a pure
+// function of its arguments like the rest of this file): when true, a
+// candidate is dropped if any path component between the Root and the file
+// itself starts with `.` (isDotfilePath) — not just the file's own base name,
+// since M6.1's --hidden widened rgFiles to also walk into dot-directories
+// (e.g. `.config/foo.md`), and hiding dotfiles must undo that widening in
+// full, not just the dotfile-named-file half of it. `.git` needs no such
+// check here: rgFiles' own `--glob '!.git'` already keeps it out of rel
+// entirely, toggle or not.
+func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool) []pickerFile {
 	var files []pickerFile
 	for _, r := range liveRootsInScope(roots, active, scope) {
 		for _, rel := range rgFiles(r.path) {
-			if tree.IsReadable(filepath.Base(rel)) {
-				files = append(files, pickerFile{root: r, path: filepath.Join(r.path, rel)})
+			if !tree.IsReadable(filepath.Base(rel)) {
+				continue
 			}
+			if hideDotfiles && isDotfilePath(rel) {
+				continue
+			}
+			files = append(files, pickerFile{root: r, path: filepath.Join(r.path, rel)})
 		}
 	}
 	return files
+}
+
+// isDotfilePath reports whether rel — a slash-relative path as rgFiles
+// returns it, relative to its Root — has a dotfile or dot-directory
+// anywhere along it: the file's own base name, or any directory component
+// between the Root and the file. filepath.Separator is deliberately not
+// used here — rgFiles documents its own output as slash-relative
+// regardless of OS (matching the porcelain-path reasoning M4.1's D46
+// already settled for git status paths), so splitting on `/` is what
+// actually matches rgFiles' contract rather than the host OS's separator.
+func isDotfilePath(rel string) bool {
+	for _, part := range strings.Split(rel, "/") {
+		if strings.HasPrefix(part, ".") {
+			return true
+		}
+	}
+	return false
 }
 
 // rgFiles runs `rg --files` with dir as ripgrep's working directory,
@@ -340,8 +372,8 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 // to no results without invoking rg at all — an empty query would otherwise
 // be an empty-pattern rg run, which matches every line of every file, not
 // "nothing to search".
-func grepFiles(roots []root, active int, scope pickerScope, query string) (results []grepResult, truncated bool) {
-	files := listFiles(roots, active, scope)
+func grepFiles(roots []root, active int, scope pickerScope, query string, hideDotfiles bool) (results []grepResult, truncated bool) {
+	files := listFiles(roots, active, scope, hideDotfiles)
 	if len(files) == 0 || query == "" {
 		return nil, false
 	}

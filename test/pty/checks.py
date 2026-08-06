@@ -47,6 +47,7 @@ KEY = {
     "PickerDown":   b"\x1b[B",  # keys.PickerDown: down arrow
     "PickerMode":   b"\t",      # keys.PickerMode: tab
     "PickerScope":  b"\x1b[Z",  # keys.PickerScope: shift+tab
+    "ToggleHidden": b"\x1bh",   # keys.ToggleHidden: alt+h (ESC h on the wire)
 }
 
 
@@ -1064,5 +1065,94 @@ check("M7.1 the Preview highlights the matched line (reverse video on the wire)"
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("M7.1 exits 0 after the mode/Scope indicator flow", code == 0, f"exit {code}")
+
+# --- C2a/M6.2: alt+h dotfile toggle in the Picker --------------------------
+# File mode: a dotfile is a Result by default (M6.1); alt+h hides it, a
+# second alt+h restores it, and the hidden state survives Cancel + reopening
+# the Picker in the same session (S4's "reset only on relaunch").
+#
+# Every alt+h in this section is sent on an empty Prompt, before that
+# Picker-open's first search — never immediately after one has landed. This
+# is the same ordering rule the mode/Scope flow above already follows, for
+# the same reason (picker-pty-async-ordering.md, D58): toggling right after a
+# landed search races the cell-diffing emulator's cursor-relative replay
+# (confirmed empirically here too — alt+h immediately after a landed search
+# intermittently misread the title on ~1-in-3 runs; reordering to
+# toggle-before-type made 5 consecutive isolated trials and repeated full
+# `make check-pty` runs clean). Reopening the Picker (Cancel then Picker)
+# always lands on a fresh empty Prompt (S8's "no memory"), which is what
+# makes "toggle, then close and reopen, then toggle again" a sequence of
+# three empty-Prompt toggles rather than ever a toggle-after-a-search.
+hidden_root = tempfile.mkdtemp()
+with open(os.path.join(hidden_root, ".secret.md"), "w") as f:
+    f.write("needlecontent\n")
+with open(os.path.join(hidden_root, "public.md"), "w") as f:
+    f.write("public text\n")
+
+s = Session([BINARY, hidden_root], 80, 24)
+s.pump(1.5)
+s.send(KEY["Picker"], 0.4)
+s.send(KEY["ToggleHidden"], 0.4)  # empty Prompt: no search in flight to race
+s.send(b"secret", 0.9)            # single search, already hidden
+hidden = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M6.2 pty: alt+h hides the dotfile from the File Results",
+      ".secret.md" not in hidden, repr(hidden[:300]))
+check("C2a/M6.2 pty: alt+h marks the Prompt title Hidden",
+      "File \u00b7 Active Root \u00b7 Hidden" in hidden, repr(hidden[:300]))
+
+s.send(KEY["Cancel"], 0.3)
+s.send(KEY["Picker"], 0.3)   # reopen: fresh empty Prompt, toggle untouched
+s.send(b"secret", 0.9)       # no toggle this cycle -- just re-search
+reopened = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M6.2 pty: the hidden state survives closing and reopening the Picker",
+      ".secret.md" not in reopened and "Hidden" in reopened, repr(reopened[:300]))
+
+s.send(KEY["Cancel"], 0.3)
+s.send(KEY["Picker"], 0.3)
+s.send(KEY["ToggleHidden"], 0.4)  # empty Prompt again: toggle back off
+s.send(b"secret", 0.9)
+restored = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M6.2 pty: a second alt+h restores the dotfile",
+      ".secret.md" in restored, repr(restored[:300]))
+check("C2a/M6.2 pty: a second alt+h drops the Hidden title suffix",
+      "Hidden" not in restored, repr(restored[:300]))
+
+code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
+check("C2a/M6.2 pty: exits 0 after the File mode alt+h flow", code == 0, f"exit {code}")
+
+# Grep mode: the same empty-Prompt-only toggle rule, plus the mode/Scope
+# flow's own rule of switching mode only on an empty Prompt too. Reopening
+# the Picker resets mode back to File (S1's fixed opening state) but leaves
+# the alt+h toggle untouched (model.hideDotfiles, not picker-owned), so each
+# reopen below re-switches to Grep before typing.
+grep_root = tempfile.mkdtemp()
+with open(os.path.join(grep_root, ".secret.md"), "w") as f:
+    f.write("needlecontent\n")
+with open(os.path.join(grep_root, "public.md"), "w") as f:
+    f.write("public text\n")
+
+s = Session([BINARY, grep_root], 80, 24)
+s.pump(1.5)
+s.send(KEY["Picker"], 0.4)
+s.send(KEY["PickerMode"], 0.3)    # empty Prompt: mode switch
+s.send(KEY["ToggleHidden"], 0.4)  # empty Prompt: dotfile toggle
+s.send(b"needlecontent", 1.0)     # single search, already Grep + hidden
+hidden_grep = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M6.2 pty: alt+h hides a dotfile's match from the Grep Results too",
+      "needlecontent" not in hidden_grep, repr(hidden_grep[:300]))
+check("C2a/M6.2 pty: alt+h marks the Grep Prompt title Hidden",
+      "Grep \u00b7 Active Root \u00b7 Hidden" in hidden_grep, repr(hidden_grep[:300]))
+
+s.send(KEY["Cancel"], 0.3)
+s.send(KEY["Picker"], 0.3)
+s.send(KEY["PickerMode"], 0.3)    # re-enter Grep after the reopen reset it
+s.send(KEY["ToggleHidden"], 0.4)  # toggle back off, still on an empty Prompt
+s.send(b"needlecontent", 1.0)
+restored_grep = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M6.2 pty: a second alt+h restores the Grep Result",
+      "needlecontent" in restored_grep, repr(restored_grep[:300]))
+
+code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
+check("C2a/M6.2 pty: exits 0 after the Grep mode alt+h flow", code == 0, f"exit {code}")
 
 done()

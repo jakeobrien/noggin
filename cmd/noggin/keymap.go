@@ -132,6 +132,15 @@ type keyMap struct {
 	// non-printable, so typing a query is never at odds with switching.
 	PickerMode  key.Binding
 	PickerScope key.Binding
+
+	// ToggleHidden is S4/M6.2's session-scoped dotfile toggle: hides and
+	// shows dotfiles (and files under a dot-directory) in both Picker
+	// modes' Results, reset only on relaunch (model.hideDotfiles, not
+	// picker-owned — see its own doc comment for why). alt+h rather than
+	// a bare letter for the same non-printable reason PickerMode/
+	// PickerScope avoid one: S2's "always-typing" Prompt (handlePickerInput)
+	// must not treat this as query text.
+	ToggleHidden key.Binding
 }
 
 // keys is the program's keymap.
@@ -255,5 +264,9 @@ var keys = keyMap{
 	PickerScope: key.NewBinding(
 		key.WithKeys("shift+tab"),
 		key.WithHelp("shift+tab", "scope"),
+	),
+	ToggleHidden: key.NewBinding(
+		key.WithKeys("alt+h"),
+		key.WithHelp("alt+h", "hidden files"),
 	),
 }
