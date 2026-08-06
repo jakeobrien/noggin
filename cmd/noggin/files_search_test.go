@@ -65,26 +65,82 @@ func TestListFilesAppliesReadableAllowlist(t *testing.T) {
 	}
 }
 
-// TestListFilesOmitsGitignoredAndHidden: a .gitignore'd file and hidden
-// dotfiles/dot-directories are absent, even though they're Readable by
-// extension — rg's own ignore rules decide this, ahead of the allowlist
-// (S14).
-func TestListFilesOmitsGitignoredAndHidden(t *testing.T) {
+// TestListFilesOmitsGitignored: a .gitignore'd file is absent even though
+// it's Readable by extension — rg's own ignore rules decide this, ahead of
+// the allowlist (S14). S4/M6.1 leaves this half of the old
+// TestListFilesOmitsGitignoredAndHidden unchanged; the hidden half is now
+// the opposite assertion, split out below (TestListFilesIncludesDotfiles).
+func TestListFilesOmitsGitignored(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	kept := writeFile(t, filepath.Join(dir, "kept.md"))
-	writeFileContent(t, filepath.Join(dir, ".gitignore"), "ignored.md\n")
+	// M6.1 widened rgFiles to see dotfiles at all; a .gitignore'd dotfile is
+	// the case that could regress silently if --hidden ever came ahead of
+	// ignore-file handling instead of alongside it — pinned here next to the
+	// non-dotfile case rather than assumed from it.
+	writeFileContent(t, filepath.Join(dir, ".gitignore"), "ignored.md\n.ignored-dotfile.md\n")
 	writeFile(t, filepath.Join(dir, "ignored.md"))
-	writeFile(t, filepath.Join(dir, ".hidden.md"))
-	mkdir(t, filepath.Join(dir, ".hiddendir"))
-	writeFile(t, filepath.Join(dir, ".hiddendir", "inside.md"))
+	writeFile(t, filepath.Join(dir, ".ignored-dotfile.md"))
 	roots := []root{{path: dir}}
 
 	got := filePaths(listFiles(roots, 0, activeRootScope))
 
 	want := []string{kept}
 	if !equalStrings(got, want) {
-		t.Fatalf("listFiles() = %v, want %v", got, want)
+		t.Fatalf("listFiles() = %v, want %v (both the plain and the dotfile .gitignore entry must stay excluded)", got, want)
+	}
+}
+
+// TestListFilesIncludesDotfiles is S4/M6.1's own acceptance criterion at
+// the File Picker's own layer: a dotfile and a Readable file inside a
+// dot-directory — both already shown by the Files Nav tree (tree.Walk
+// applies no hidden-file rule of its own) — are now found here too,
+// matching that pane with no extra keystroke. A non-Readable dotfile
+// (wrong extension) stays excluded, same allowlist as ever — M6.1 widens
+// which files are *candidates*, not the Readable policy itself.
+func TestListFilesIncludesDotfiles(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	dotfile := writeFile(t, filepath.Join(dir, ".hidden.md"))
+	mkdir(t, filepath.Join(dir, ".hiddendir"))
+	insideDotdir := writeFile(t, filepath.Join(dir, ".hiddendir", "inside.md"))
+	writeFileContent(t, filepath.Join(dir, ".bashrc"), "not Readable: no allowlisted extension\n")
+	roots := []root{{path: dir}}
+
+	got := filePaths(listFiles(roots, 0, activeRootScope))
+
+	want := sortedCopy([]string{dotfile, insideDotdir})
+	if !equalStrings(got, want) {
+		t.Fatalf("listFiles() = %v, want %v (dotfiles present, .bashrc excluded by the allowlist)", got, want)
+	}
+}
+
+// TestListFilesStillExcludesGitDirectory checks the flip side of M6.1's
+// --hidden flag: `.git` must stay excluded unconditionally (S4), the same
+// as tree.Walk's own by-name check, not merely as a side effect of the
+// hidden-file rule --hidden just widened past. Uses a Readable-by-extension
+// name inside `.git` so a regression (dropping the `.git` glob but keeping
+// --hidden) would otherwise list it.
+func TestListFilesStillExcludesGitDirectory(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	kept := writeFile(t, filepath.Join(dir, "kept.md"))
+	gitDir := mkdir(t, filepath.Join(dir, ".git"))
+	writeFile(t, filepath.Join(gitDir, "COMMIT_EDITMSG.md"))
+	// A .git nested under a subfolder (e.g. a vendored/nested checkout) must
+	// stay excluded too — the glob's doc comment claims "any depth", matching
+	// tree.Walk's by-name check regardless of nesting; pinned here rather
+	// than left to only the depth-1 case above.
+	sub := mkdir(t, filepath.Join(dir, "sub"))
+	nestedGitDir := mkdir(t, filepath.Join(sub, ".git"))
+	writeFile(t, filepath.Join(nestedGitDir, "COMMIT_EDITMSG.md"))
+	roots := []root{{path: dir}}
+
+	got := filePaths(listFiles(roots, 0, activeRootScope))
+
+	want := []string{kept}
+	if !equalStrings(got, want) {
+		t.Fatalf("listFiles() = %v, want %v (.git must stay excluded at any depth)", got, want)
 	}
 }
 
@@ -248,6 +304,30 @@ func TestGrepFilesMatchesLiterally(t *testing.T) {
 	want := []string{filepath.Join(dir, "notes.md") + ":1:see v1.2 here"}
 	if got := grepLines(results); !equalStrings(got, want) {
 		t.Fatalf("grepFiles(\"v1.2\") = %v, want %v", got, want)
+	}
+}
+
+// TestGrepFilesFindsMatchesInsideDotfiles is S4/M6.1's Grep Picker half:
+// once listFiles includes a dotfile (TestListFilesIncludesDotfiles above),
+// grepFiles searches it too with no extra keystroke — it runs over exactly
+// that file list (grepFiles' own doc comment), so this is really pinning
+// that grepBatch's explicit-file-argument invocation of rg does not itself
+// re-apply a hidden-file filter on top (verified against the sandbox's real
+// rg: an explicitly-named file is always searched regardless of --hidden).
+func TestGrepFilesFindsMatchesInsideDotfiles(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, ".hidden.md"), "needle in a dotfile\n")
+	roots := []root{{path: dir}}
+
+	results, truncated := grepFiles(roots, 0, activeRootScope, "needle")
+
+	if truncated {
+		t.Fatalf("grepFiles() truncated = true, want false")
+	}
+	want := []string{filepath.Join(dir, ".hidden.md") + ":1:needle in a dotfile"}
+	if got := grepLines(results); !equalStrings(got, want) {
+		t.Fatalf("grepFiles(\"needle\") = %v, want %v", got, want)
 	}
 }
 

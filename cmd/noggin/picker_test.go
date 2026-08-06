@@ -1099,6 +1099,57 @@ func pickerRoot(t *testing.T) (model, string) {
 	return m, dir
 }
 
+// TestPickerFindsADotfileInBothModesWithNoExtraKeystroke is S4/M6.1's own
+// acceptance criterion, verbatim: a dotfile visible in the Files Nav tree
+// (tree.Walk applies no hidden-file rule of its own, internal/tree's own
+// tests) is findable by both the File Picker and the Grep Picker with no
+// extra keystroke — no toggle, no special syntax, just typing a query
+// either mode would already take for a non-dotfile. File mode matches the
+// dotfile's *name*; Grep mode separately matches its *content* — the two
+// naturally take different queries (D31: File mode never looks at path or
+// content), so this checks each mode's own natural match, not one query
+// surviving a mode switch (TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch,
+// just below, already owns that).
+func TestPickerFindsADotfileInBothModesWithNoExtraKeystroke(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, ".config.md"), "dotfile needle content\n")
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+
+	// File mode (the Picker's default on open): the dotfile's own name is a
+	// fuzzy match candidate like any other file.
+	m, _ = m.openPicker()
+	m, seqs := typePickerQuery(t, m, "config")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches == 0 {
+		t.Fatal("no File search was dispatched; setup is broken")
+	}
+	if len(m.picker.results.files) != 1 || filepath.Base(m.picker.results.files[0].path) != ".config.md" {
+		t.Fatalf("File mode results = %v, want the dotfile alone", m.picker.results.files)
+	}
+
+	// esc dismisses with no side effects (M2.3's own contract); reopening
+	// fresh and switching to Grep before typing is the plain path to a Grep
+	// search, no different from any other Grep query.
+	m = press(t, m, keys.Cancel.Keys()[0])
+	m, _ = m.openPicker()
+	next, _ := m.Update(keyPress(keys.PickerMode.Keys()[0]))
+	m = concrete(t, next)
+	if m.picker.mode != grepMode {
+		t.Fatalf("mode after PickerMode = %v, want grepMode", m.picker.mode)
+	}
+	m, seqs = typePickerQuery(t, m, "needle")
+	m, searches = deliverPickerTicks(t, m, seqs)
+	if searches == 0 {
+		t.Fatal("no Grep search was dispatched; setup is broken")
+	}
+	if len(m.picker.results.grep) != 1 || filepath.Base(m.picker.results.grep[0].file.path) != ".config.md" {
+		t.Fatalf("Grep mode results = %v, want one match inside the dotfile", m.picker.results.grep)
+	}
+}
+
 // TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch is M5.1's own
 // acceptance criterion, verbatim: typing a query in File mode, switching to
 // Grep, and switching back, at each step re-running the same Prompt's

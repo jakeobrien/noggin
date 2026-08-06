@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M6.1
+Current task: M6.2
 
 ## Handoff
 
@@ -142,14 +142,43 @@ unchanged) — a message-wording nit was fixed inline, the rest (unbounded `expa
 over many refreshes, no explicit rootsPane-focused test, no explicit multi-Root
 "nothing-else-touched" test) are left for replan to triage, not blocking.
 
-Next step: M6.1 — dotfiles in the Pickers by default. Needs: both Picker modes (File and Grep)
-include dotfiles in Results with no extra keystroke, matching what the Files Nav tree already
-shows; `.git/` stays excluded unconditionally; `.gitignore` handling is unchanged everywhere.
-Likely touches wherever the Picker's own file-listing/search currently filters dotfiles out
-(`files_search.go`/`ripgrep.go` — check whatever flag or filename-prefix check currently drops
-them) — the Files Nav's own tree walk (`internal/tree`) already keeps dotfiles, so M6.1 is
-about matching the Picker to that, not changing the tree walk. M6.2 (needs M6.1) then layers a
-session-scoped `alt+h` toggle on top.
+M6.1 done: the entire fix is one call site — `rgFiles` (files_search.go), the File Picker's
+`rg --files` invocation, gained `--hidden --glob '!.git'`. `--hidden` widens rg past its own
+default dotfile/dot-directory exclusion (verified empirically against the sandbox's real rg:
+without it, dotfiles were never even candidates before the Readable allowlist got a look);
+the `.git` glob is necessary once `--hidden` is on, since rg has no built-in "`.git` is
+special" rule the way `tree.Walk`'s own by-name check does — verified the bare pattern (no
+leading `/`) excludes a `.git` at any depth, matching `tree.Walk`. `grepFiles`/`grepBatch`
+needed *no* change: they run rg over the explicit file list `listFiles` already produced, and
+rg does not re-apply hidden-file filtering to files named explicitly on its command line
+(verified against the real binary) — so once `listFiles` includes a dotfile, Grep mode finds
+it automatically. `.gitignore`/`.ignore` handling is untouched by either new flag (orthogonal
+to both — confirmed by test, both a plain and a dotfile `.gitignore` entry still exclude).
+Tests: `cmd/noggin/files_search_test.go` — the old combined `TestListFilesOmitsGitignoredAndHidden`
+split into `TestListFilesOmitsGitignored` (unchanged half, now also covers a `.gitignore`'d
+dotfile) and the new `TestListFilesIncludesDotfiles` (S4's positive assertion: a dotfile and a
+Readable file inside a dot-directory now found, a non-Readable dotfile still excluded by the
+allowlist — M6.1 widens candidates, not the Readable policy); `TestListFilesStillExcludesGitDirectory`
+(top-level and nested `.git`); `TestGrepFilesFindsMatchesInsideDotfiles` (Grep mode's own half).
+`cmd/noggin/picker_test.go`'s new `TestPickerFindsADotfileInBothModesWithNoExtraKeystroke` is
+the cycle's stated acceptance criterion verbatim, driven through the real Picker model against
+the real `rg` binary in both modes. `README.md`'s "Requires ripgrep" section updated to drop
+the now-false "Picker disagrees with the Files Nav at the edges" caveat. `make check` and
+`make check-pty` both green (no new pty check — this is which files rg returns, already
+exercised against the real binary by `go test`, not a rendering-ambiguity case like M4.1's git
+markers). A fresh-context code-reviewer pass found no blocker/high/medium findings; two low
+severity test-coverage gaps it flagged (nested-`.git` depth, dotfile-under-`.gitignore`) were
+backfilled inline before this handoff, since they were cheap and directly strengthened claims
+already made in code comments — nothing left to log.
+
+Next step: M6.2 — a session-scoped `alt+h` toggle hiding/showing dotfiles in both Picker modes
+(needs M6.1, done). Must live on `model`, not `picker` (see foot-gun below) — `resetPicker`
+(picker.go) wipes anything stored on `picker` every close/reopen, but the toggle must survive
+that within a session and only reset on relaunch. The toggle presumably threads through to
+`listFiles`/`grepFiles` (files_search.go) as an extra parameter (skip dotfile candidates when
+hidden) rather than a second rg flag, since M6.1's `rgFiles` has no notion of the toggle's
+state and re-deriving it from `rg` invocation flags per search would duplicate the Readable-
+allowlist-style filtering `listFiles` already does in Go, not in rg.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
@@ -159,7 +188,7 @@ the same pass — confirmed by M5.1 landing exactly that way with no rework need
 M2/M5/M6/M7 define. M10 (staleness, S10) is last per the spec's own "pre-agreed cut, dropped
 without ceremony".
 
-Known foot-guns flagged by research, worth re-reading before M6/M7:
+Known foot-guns flagged by research, worth re-reading before M6.2/M7:
 - A dotfile-toggle (M6.2) must live on `model`, not `picker` — `resetPicker` wipes anything
   stored on `picker` every close/reopen.
 - Peek (M7) touches many call sites (shiftFocus, openPicker, refresh, selection change) — each
@@ -167,7 +196,7 @@ Known foot-guns flagged by research, worth re-reading before M6/M7:
   site Peek (M7) will need its own "clear on refresh" rule at, per S7's own bullet list.
 - M9 (footer/help sweep) still owes `r`/`f` (M2.1) and now `R` (M5.1) their footer hints and
   Help Modal entries — none of the three add one yet, deliberately deferred to M9 (see M2.1's
-  own handoff note above).
+  own handoff note above). M6.2's `alt+h` will be a fourth.
 
 ## Status
 
@@ -179,7 +208,7 @@ Known foot-guns flagged by research, worth re-reading before M6/M7:
 | M3.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M4.1  | done   | -        | -         |      |
 | M5.1  | done   | 2026-08-06 | -         |      |
-| M6.1  | todo   | -        | -         |      |
+| M6.1  | done   | 2026-08-06 | -         |      |
 | M6.2  | todo   | -        | -         |      |
 | M7.1  | todo   | -        | -         |      |
 | M7.2  | todo   | -        | -         |      |

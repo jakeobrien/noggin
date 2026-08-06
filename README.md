@@ -248,10 +248,10 @@ not found on PATH" instead of a search.
 
 Because `rg` supplies the file list, its own ignore rules apply, not
 noggin's Files Nav ignore rules: `.gitignore`/`.ignore` files are respected
-(consistent with the Files Nav), but unlike the Files Nav, `rg`'s hidden-file
-defaults mean dotfiles and hidden directories are *not* searched or shown in
-the Picker even though they're visible in the Files Nav (e.g. `.github/`).
-The two panes can disagree at the edges as a result — accepted, not a bug.
+(consistent with the Files Nav). Dotfiles and dot-directories (e.g. `.github/`)
+are included by default in both modes, matching what the Files Nav tree
+already shows — `.git/` itself stays excluded unconditionally, in either
+pane.
 
 ## Scope
 

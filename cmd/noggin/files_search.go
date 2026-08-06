@@ -69,8 +69,32 @@ func listFiles(roots []root, active int, scope pickerScope) []pickerFile {
 // silently ignored). A Root is a plain folder, not necessarily a git
 // checkout, so this flag is what makes D28's "rg's ignore rules govern"
 // hold for one regardless.
+//
+// --hidden is S4/M6.1: without it, rg's own default silently drops every
+// dotfile and dot-directory before the Readable allowlist (listFiles' own
+// filepath.Base + tree.IsReadable) ever sees them — the mismatch the Picker
+// used to have with the Files Nav tree, which never applied a hidden-file
+// rule of its own (tree.Walk's doc comment: "dotfiles and hidden
+// directories are otherwise kept"). Adding it is what makes the two panes
+// agree at the edges, per S4's own "matching what the Files Nav tree
+// already shows". `--glob '!.git'` is what keeps `.git` excluded once
+// --hidden would otherwise walk into it (verified empirically against the
+// sandbox's real rg: --hidden alone lists `.git/HEAD`, `.git/objects/...`
+// etc. — rg has no built-in ".git is special" rule the way tree.Walk's own
+// `.git` check does), matching tree.Walk's "`.git` is always excluded"
+// unconditionally, not just when hidden files are otherwise dropped. The
+// glob's leading `!` negates a match the way a `.gitignore` line would
+// (rg's glob syntax is gitignore-glob syntax), and the bare pattern (no
+// leading `/`) matches `.git` at any depth, the same as tree.Walk's
+// by-name check does regardless of nesting.
+//
+// `.gitignore`/`.ignore` handling itself is unaffected by either flag —
+// --no-require-git only widens *where* rg looks for an ignore file, and
+// --hidden only changes whether a dotfile is a candidate for those rules to
+// apply to at all, not whether the rules themselves run (S4's "`.gitignore`
+// handling is unchanged everywhere").
 func rgFiles(dir string) []string {
-	cmd := exec.Command(ripgrepBinary, "--files", "--no-require-git")
+	cmd := exec.Command(ripgrepBinary, "--files", "--no-require-git", "--hidden", "--glob", "!.git")
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
