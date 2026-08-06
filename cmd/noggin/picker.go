@@ -195,6 +195,8 @@ func (m model) resetPicker() model {
 // it's a modal layered on top of whichever pane already has focus, the same
 // non-pane shape m.helpOpen has (model.go's openHelp).
 func (m model) openPicker() (model, tea.Cmd) {
+	// S7/M7.1: opening the Picker is one of Peek's clearing triggers.
+	m = m.clearPeek()
 	m = m.resetPicker()
 	m.picker.open = true
 	cmd := m.picker.input.Focus()

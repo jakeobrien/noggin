@@ -42,6 +42,8 @@ KEY = {
     "Cancel":       b"\x1b",    # keys.Cancel: esc
     "Help":         b"?",       # keys.Help
     "Refresh":      b"R",       # keys.Refresh
+    "FocusFiles":   b"f",       # keys.FocusFiles
+    "Peek":         b"p",       # keys.Peek
     "Picker":       b" ",       # keys.Picker: space
     "PickerUp":     b"\x1b[A",  # keys.PickerUp: up arrow
     "PickerDown":   b"\x1b[B",  # keys.PickerDown: down arrow
@@ -1154,5 +1156,55 @@ check("C2a/M6.2 pty: a second alt+h restores the Grep Result",
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("C2a/M6.2 pty: exits 0 after the Grep mode alt+h flow", code == 0, f"exit {code}")
+
+# --- C2a/M7.1: Peek (`p` in the Files Nav) ---------------------------------
+# The inverted header (colour, unlike the plain-text checks go test already
+# covers) is exactly the kind of rendering ambiguity M4.1's git markers
+# needed a pty check for (.charm/knowledge/pty-verification.md) — go test
+# has no TTY and so never exercises the SGR reverse-video code at all.
+
+peek_root = tempfile.mkdtemp()
+with open(os.path.join(peek_root, "active.md"), "w") as f:
+    f.write("# Active\n")
+with open(os.path.join(peek_root, "peeked.md"), "w") as f:
+    f.write("# Peeked\n")
+
+s = Session([BINARY, peek_root], 80, 24)
+s.pump(1.2)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M7.1 pty: both files listed before Peeking",
+      "active.md" in body and "peeked.md" in body, repr(body[:300]))
+
+s.send(KEY["Activate"], 0.5)  # active.md becomes the Active Document; focus -> viewer
+s.send(KEY["FocusFiles"], 0.4)  # back to the Files Nav (S6)
+s.send(KEY["Down"], 0.4)  # select peeked.md
+
+mark = len(s.out)
+s.send(KEY["Peek"], 0.6)
+sc = screen_of(s.out, 80, 24)
+body = "\n".join(sc.raw_lines())
+check("C2a/M7.1 pty: Peek shows the non-Active file's content",
+      "Peeked" in body, repr(body[:300]))
+check("C2a/M7.1 pty: Peek header names the Peeked document",
+      "Peek: peeked.md" in body, repr(body[:300]))
+check("C2a/M7.1 pty: the Active Document's own content is hidden while Peeking",
+      "# Active" not in body, repr(body[:300]))
+# lipgloss combines Bold+Reverse into one SGR run (e.g. \x1b[1;7m), not the
+# bare \x1b[7m M2.2's own reverse-video check gets away with checking for
+# directly — titleStyle is Bold, and peekTitleStyle adds Reverse on top of
+# it, so the "7" parameter has to be matched inside whatever run it lands in.
+reverse_sgr = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")
+check("C2a/M7.1 pty: the inverted Peek header reaches the wire as reverse video",
+      reverse_sgr.search(s.out[mark:]) is not None, repr(s.out[mark:][:200]))
+
+frame_before_scroll = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+s.send(KEY["HalfPageDown"], 0.4)  # a scroll-only binding, never a Files Nav one
+frame_after_scroll = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M7.1 pty: a Peeked document cannot be scrolled",
+      frame_after_scroll == frame_before_scroll,
+      f"before={frame_before_scroll[:200]!r} after={frame_after_scroll[:200]!r}")
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M7.1 pty: exits 0 after Peeking", code == 0, f"exit {code}")
 
 done()

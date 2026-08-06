@@ -141,6 +141,18 @@ type keyMap struct {
 	// PickerScope avoid one: S2's "always-typing" Prompt (handlePickerInput)
 	// must not treat this as query text.
 	ToggleHidden key.Binding
+
+	// Peek (S7, M7.1) shows the Files Nav's selected document in the
+	// Document Viewer without making it the Active Document and without
+	// moving Focus off the Files Nav — Files-Nav-only, unlike every other
+	// binding above it, so it is matched in Update's filesPane case, not
+	// the global switch. model.togglePeek is both "start" and "end": a
+	// second p while already Peeking clears it (S7's own "a second p"
+	// clearing rule), and it is a no-op on the Active Document (S7's own
+	// carve-out) or a directory. Every other clearing trigger S7 lists
+	// (selection change, Focus change, opening the Picker, a refresh) is
+	// enforced at its own call site — see model.setFocus and model.refresh.
+	Peek key.Binding
 }
 
 // keys is the program's keymap.
@@ -268,5 +280,9 @@ var keys = keyMap{
 	ToggleHidden: key.NewBinding(
 		key.WithKeys("alt+h"),
 		key.WithHelp("alt+h", "hidden files"),
+	),
+	Peek: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "peek"),
 	),
 }

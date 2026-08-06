@@ -28,7 +28,28 @@ type viewer struct {
 	err error
 
 	findState find
+
+	// peek is S7/M7.1's minimal preview state: a document shown in the pane
+	// instead of doc, without becoming the Active Document. The zero value
+	// (peekState{}, doc.isOpen() == false) means not Peeking, the same
+	// sentinel document itself already uses — a pointer would work too, but
+	// every other field on viewer is value-semantic (see withOffset's own
+	// doc comment) and this keeps that true.
+	peek peekState
 }
+
+// peekState is one Peeked document: its own read-only viewport, kept
+// entirely separate from vp so Peek can never move the Active Document's
+// scroll position — clearing Peek must restore vp exactly as it was found.
+// It never scrolls (S7), so GotoTop on every (re-)render is deliberate, not
+// a no-op that happens not to matter.
+type peekState struct {
+	doc document
+	vp  viewport.Model
+	err error
+}
+
+func (p peekState) isOpen() bool { return p.doc.isOpen() }
 
 func newViewer() viewer {
 	vp := viewport.New(viewport.WithWidth(0), viewport.WithHeight(0))
@@ -42,10 +63,18 @@ func newViewer() viewer {
 }
 
 // setSize sets the content box the viewer draws into, re-rendering (and so
-// re-wrapping) only when the width actually changed.
+// re-wrapping) only when the width actually changed. Peek's own viewport
+// (S7, M7.1) always tracks the same box dimensions here, even on a
+// height-only change render() would skip — render()/renderPeek only re-wrap
+// the content on a width change, but a stale height would clip Peek wrong
+// on a height-only resize if this didn't run unconditionally.
 func (v viewer) setSize(width, height int) viewer {
 	v.vp.SetWidth(max(width, 0))
 	v.vp.SetHeight(max(height, 0))
+	if v.peeking() {
+		v.peek.vp.SetWidth(max(width, 0))
+		v.peek.vp.SetHeight(max(height, 0))
+	}
 	if v.vp.Width() != v.renderedWidth {
 		v = v.render()
 	}
@@ -83,6 +112,61 @@ func (v viewer) close() viewer {
 	return v.render()
 }
 
+// peeking reports whether a document is currently Peeked (S7, M7.1).
+func (v viewer) peeking() bool { return v.peek.isOpen() }
+
+// peekLabel names the Peeked document for the pane title, or is empty when
+// not Peeking — the Peek equivalent of label().
+func (v viewer) peekLabel() string {
+	if !v.peeking() {
+		return ""
+	}
+	return filepath.Base(v.peek.doc.path)
+}
+
+// startPeek shows d in the pane without disturbing doc or vp (S7, M7.1): a
+// fresh viewport sized to match the Active Document's, rendered once at the
+// current width. model.togglePeek is the one caller, and is what enforces
+// the surrounding rules (not the Active Document, not already Peeking) —
+// this method only ever renders whatever it is given.
+func (v viewer) startPeek(d document) viewer {
+	vp := viewport.New(viewport.WithWidth(v.vp.Width()), viewport.WithHeight(v.vp.Height()))
+	vp.FillHeight = true
+	v.peek = peekState{doc: d, vp: vp}
+	return v.renderPeek()
+}
+
+// clearPeek ends Peek, restoring the Active Document's own view — nothing
+// to restore on vp itself, since Peek never touched it (S7, M7.1).
+func (v viewer) clearPeek() viewer {
+	v.peek = peekState{}
+	return v
+}
+
+// renderPeek (re-)renders the Peeked document into its own viewport, sized
+// to the pane's current width/height — called from startPeek and from
+// render() so a width change (setSize) reflows Peek exactly like the Active
+// Document, and a no-op when not Peeking. GotoTop on every call is
+// deliberate: Peek never scrolls (S7), so it is always shown from the top
+// regardless of what a previous render left YOffset at.
+func (v viewer) renderPeek() viewer {
+	if !v.peeking() {
+		return v
+	}
+	v.peek.vp.SetWidth(v.vp.Width())
+	v.peek.vp.SetHeight(v.vp.Height())
+	out, err := renderMarkdown(v.peek.doc.src, v.peek.vp.Width())
+	if err != nil {
+		v.peek.err = err
+		v.peek.vp.SetContent("")
+		return v
+	}
+	v.peek.err = nil
+	v.peek.vp.SetContent(strings.TrimRight(out, "\n"))
+	v.peek.vp.GotoTop()
+	return v
+}
+
 // render rebuilds the viewport's content from the document at the current width.
 //
 // A re-render invalidates any find in progress (M5.1): a resize re-wraps the
@@ -96,18 +180,19 @@ func (v viewer) render() viewer {
 	v.vp.StyleLineFunc = nil
 	if !v.doc.isOpen() {
 		v.vp.SetContent("")
-		return v
-	}
-	out, err := renderMarkdown(v.doc.src, v.vp.Width())
-	if err != nil {
+	} else if out, err := renderMarkdown(v.doc.src, v.vp.Width()); err != nil {
 		v.err = err
 		v.vp.SetContent("")
-		return v
+	} else {
+		// Glamour pads the document with trailing blank lines; they would
+		// be scrollable emptiness past the end.
+		v.vp.SetContent(strings.TrimRight(out, "\n"))
 	}
-	// Glamour pads the document with trailing blank lines; they would be
-	// scrollable emptiness past the end.
-	v.vp.SetContent(strings.TrimRight(out, "\n"))
-	return v
+	// A width change reflows Peek (S7, M7.1) exactly like the Active
+	// Document above — render() is the one path both go through on a
+	// setSize; a doc-only re-render (open/refreshDoc/close) re-renders Peek
+	// too, harmlessly, since renderPeek is a no-op when not Peeking.
+	return v.renderPeek()
 }
 
 // offset is the viewport's current vertical scroll position, in rendered lines.
@@ -143,6 +228,15 @@ var emptyViewerStyle = lipgloss.NewStyle().Foreground(dimColor)
 func (v viewer) view() string {
 	if v.vp.Width() <= 0 || v.vp.Height() <= 0 {
 		return ""
+	}
+	// A Peeked document (S7, M7.1) takes over the content box entirely,
+	// ahead of the Active Document's own err/empty/open cases below — those
+	// describe vp, which Peek never touches or replaces.
+	if v.peeking() {
+		if v.peek.err != nil {
+			return v.fill(emptyViewerStyle, v.peek.err.Error())
+		}
+		return v.peek.vp.View()
 	}
 	switch {
 	case v.err != nil:

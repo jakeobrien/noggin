@@ -151,7 +151,7 @@ func (m model) applyResolution(res resolution) model {
 // neither is worth special-casing separately from the other.
 func (m model) openFolder(root *tree.Node) model {
 	m.files = m.files.setRoot(root).withStatus(gitStatus(root.Path))
-	m.focus = m.resolveFocus(filesPane)
+	m = m.setFocus(m.resolveFocus(filesPane))
 	return m
 }
 
@@ -159,7 +159,25 @@ func (m model) openFolder(root *tree.Node) model {
 // asking to read a document means.
 func (m model) openDocument(d document) model {
 	m.viewer = m.viewer.open(d)
-	m.focus = m.resolveFocus(viewerPane)
+	m = m.setFocus(m.resolveFocus(viewerPane))
+	return m
+}
+
+// setFocus moves Focus to p, clearing Peek (S7, M7.1) whenever Focus
+// actually changes. Peek only ever lives while Focus sits on the Files Nav
+// (see togglePeek, the only place that starts it), so every one of the
+// many call sites that can move Focus — shiftFocus, focusPane, openFolder,
+// openDocument, and a resize that resolves Focus off a pane that just
+// became invisible — needs the same "leaving filesPane ends Peek" rule.
+// Routing every Focus assignment through here is what keeps that a
+// structural guarantee instead of a per-call-site rule someone can forget
+// to add at the next one (flagged before M7 started, see PROGRESS.md's
+// foot-gun list).
+func (m model) setFocus(p pane) model {
+	if p != m.focus {
+		m = m.clearPeek()
+	}
+	m.focus = p
 	return m
 }
 
@@ -248,6 +266,12 @@ type editFinishedMsg struct {
 // focused pane". With no document open it reports that in the footer rather
 // than doing nothing.
 func (m model) startEdit() (model, tea.Cmd) {
+	// S7/M7.1: Edit is a silent no-op while Peeking — unlike every other
+	// refusal below, not even a footer message, since Peek's whole point is
+	// a look that leaves nothing else disturbed.
+	if m.viewer.peeking() {
+		return m, nil
+	}
 	if !m.viewer.doc.isOpen() {
 		m.message = "no document open to edit"
 		return m, nil
@@ -291,7 +315,49 @@ func (m model) focusPane(target pane) model {
 		m.navigatorHidden = false
 		m = m.resize(m.width, m.height, resizeCauseNavigatorToggle)
 	}
-	m.focus = m.resolveFocus(target)
+	m = m.setFocus(m.resolveFocus(target))
+	return m
+}
+
+// togglePeek is S7/M7.1's `p` binding: shows the Files Nav's selected
+// document in the Document Viewer without making it the Active Document
+// and without moving Focus (Update's filesPane case is what keeps this
+// Files-Nav-only — the binding is matched there, not in the global
+// switch). It is also Peek's own "end" path: pressing p again while
+// already Peeking clears it (S7's "a second p" clearing rule) rather than
+// re-starting on the same node — every other clearing trigger moves Focus,
+// changes the selection, or refreshes, none of which a bare second p does,
+// so it needs its own toggle-off here. A folder, an empty pane, or the
+// Active Document itself (S7's own carve-out, "p on the Active Document is
+// a no-op") leave Peek exactly as found; a read failure is a footer
+// message, the same "silence is not an error" shape activate()'s own read
+// failure already gives.
+func (m model) togglePeek() model {
+	if m.viewer.peeking() {
+		return m.clearPeek()
+	}
+	n := m.files.selectedNode()
+	if n == nil || n.IsDir {
+		return m
+	}
+	if m.viewer.doc.isOpen() && n.Path == m.viewer.doc.path {
+		return m
+	}
+	d, err := loadDocument(n.Path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
+		return m
+	}
+	m.viewer = m.viewer.startPeek(d)
+	return m
+}
+
+// clearPeek ends Peek (S7, M7.1) if it is active; a no-op otherwise. The
+// one place every clearing trigger but the Focus-change rule (setFocus) and
+// the second-p toggle (togglePeek) routes through — currently just
+// refresh(), per S7's own list.
+func (m model) clearPeek() model {
+	m.viewer = m.viewer.clearPeek()
 	return m
 }
 
@@ -330,6 +396,8 @@ func (m model) focusPane(target pane) model {
 // message above, the same priority resize gives cause over its own
 // dismissed/cleared text.
 func (m model) refresh() model {
+	// S7/M7.1: a refresh is one of Peek's clearing triggers.
+	m = m.clearPeek()
 	if m.files.root != nil {
 		if node, err := tree.Walk(m.files.root.Path); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", m.files.root.Path, err)
@@ -360,6 +428,14 @@ func (m model) refresh() model {
 // search needs next (typing, Cancel, Activate to commit) all target it. With
 // no document open it reports that instead, the same shape as startEdit.
 func (m model) startFind() (model, tea.Cmd) {
+	// S7/M7.1: Find is a silent no-op while Peeking, the same shape as
+	// startEdit's own guard — the Peeked document "cannot be searched with
+	// Find" (S7), and Find only ever targets the Active Document underneath
+	// it, never the Peeked one, so the safe answer is to do nothing at all
+	// rather than search a document that is not even on screen right now.
+	if m.viewer.peeking() {
+		return m, nil
+	}
 	if !m.viewer.doc.isOpen() {
 		m.message = "no document open to find in"
 		return m, nil
@@ -481,10 +557,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, keys.NextPane):
-			m.focus = m.shiftFocus(1)
+			m = m.setFocus(m.shiftFocus(1))
 			return m, nil
 		case key.Matches(msg, keys.PrevPane):
-			m.focus = m.shiftFocus(-1)
+			m = m.setFocus(m.shiftFocus(-1))
 			return m, nil
 		case key.Matches(msg, keys.Navigator):
 			return m.toggleNavigator(), nil
@@ -529,6 +605,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, keys.Activate) {
 				return m.activate(), nil
 			}
+			// Peek (S7, M7.1) is Files-Nav-only, unlike every other binding
+			// matched above in the global switch — that is what keeps it
+			// from firing on the Roots Nav or Document Viewer.
+			if key.Matches(msg, keys.Peek) {
+				return m.togglePeek(), nil
+			}
+			// A selection change is one of Peek's clearing triggers (S7);
+			// Expand/Collapse leave the selected node itself unchanged
+			// (only the rows around it), so only LineUp/LineDown count.
+			if key.Matches(msg, keys.LineUp) || key.Matches(msg, keys.LineDown) {
+				m = m.clearPeek()
+			}
 			if next, handled := m.files.handleKey(msg); handled {
 				m.files = next
 				return m, nil
@@ -570,7 +658,7 @@ const (
 // the two actually happened, for the messages below.
 func (m model) resize(width, height int, cause resizeCause) model {
 	m.width, m.height = width, height
-	m.focus = m.resolveFocus(m.focus)
+	m = m.setFocus(m.resolveFocus(m.focus))
 	l := m.layout()
 	viewerContent := l.viewer.content()
 	// A width change re-renders the viewer (setSize), and a re-render
@@ -686,6 +774,11 @@ var (
 	titleStyle  = lipgloss.NewStyle().Bold(true)
 	footerStyle = lipgloss.NewStyle().
 			Foreground(dimColor)
+	// peekTitleStyle is S7/M7.1's inverted Peek header: the same title row
+	// every pane already draws, in reverse video instead of bold, so a
+	// Peeked document's heading cannot be mistaken for the Active
+	// Document's own (which stays titleStyle).
+	peekTitleStyle = titleStyle.Reverse(true)
 )
 
 // View returns the frame. Bubble Tea v2 derives terminal state (alt screen,
@@ -750,13 +843,27 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	if m.focus == p {
 		style = focusedBorderStyle
 	}
-	return renderBox(style, r, m.paneTitle(p), content)
+	// S7/M7.1: a Peeked document gets the inverted header instead of the
+	// title row every other pane (and the Active Document) draws with
+	// titleStyle — the one visible way S7 requires Peek to be identifiable
+	// as not the Active Document.
+	titleRenderStyle := titleStyle
+	if p == viewerPane && m.viewer.peeking() {
+		titleRenderStyle = peekTitleStyle
+	}
+	return renderBox(style, r, titleRenderStyle.Render(m.paneTitle(p)), content)
 }
 
 // paneTitle is a pane's heading: its name, plus what it is currently showing
-// where that is worth saying.
+// where that is worth saying. While Peeking (S7, M7.1), the Document
+// Viewer's title names the Peeked document instead of the Active one —
+// renderPane is what styles that differently (inverted, not bold) so the
+// two are never visually confusable.
 func (m model) paneTitle(p pane) string {
 	if p == viewerPane {
+		if m.viewer.peeking() {
+			return "Peek: " + m.viewer.peekLabel()
+		}
 		if label := m.viewer.label(); label != "" {
 			return p.title() + ": " + label
 		}

@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M7.1
+Current task: M8.1
 
 ## Handoff
 
@@ -208,9 +208,41 @@ Found but not fixed (logged to TRIAGE T6, not this task's scope): README.md's Pi
 still only describes dotfiles as included by default, with no mention of the new toggle —
 M9.1 owns the Footer/Help Modal half of S4's sweep but nothing owns README, same shape as T1.
 
-Next step: M7.1 — Peek (`p` in the Files Nav shows a non-Active document in the Document
-Viewer without changing the Active Document or moving Focus). See the foot-gun list below
-(many call sites) before starting; M7.2 (clearing Peek) needs M7.1 done first.
+M7.1/M7.2 done together: Peek (`p`, `keys.Peek`) shows the Files Nav's selected non-Active
+file in the Document Viewer via a new `viewer.peek` (`peekState`, viewer.go) — its own
+read-only `viewport.Model`, sized/rendered alongside the Active Document's on every width
+change (`render`/`renderPeek`) but never touching `v.vp`'s own scroll, which is what lets a
+clear restore it untouched. `model.togglePeek` (model.go) starts it (no-op on a folder or the
+Active Document's own row, per S7) and is also its own "second p" clear path.
+`model.setFocus` (new — replaces every direct `m.focus = ...` assignment: openFolder,
+openDocument, focusPane, resize, and Update's shiftFocus cases) is the one place a Focus
+change clears Peek, since Peek can only ever exist while focus sits on `filesPane`;
+`refresh()` and `openPicker()` clear it explicitly for their own triggers, and a Files Nav
+selection move (LineUp/LineDown only — Expand/Collapse leave the selected node itself
+unchanged) clears it in Update's `filesPane` case. `e` and `/` are silent no-ops while Peeking
+(`startEdit`/`startFind`); scroll keys never reach the viewer at all during Peek since focus
+never leaves `filesPane` — no separate scroll guard was needed. The inverted header is a new
+`peekTitleStyle` (`titleStyle.Reverse(true)`); `renderBox` (picker_view.go) now takes an
+already-styled title instead of styling it itself, since Peek needs a style other panes don't
+— its three non-frame call sites (Prompt/Results/Preview) now wrap their titles in
+`titleStyle.Render(...)` themselves.
+
+M7.1 and M7.2 were built and verified together, not sequentially, despite the plan's split:
+M7.1's own "cannot be scrolled" claim only holds if a Focus change clears Peek first
+(otherwise `tab` then a scroll key would silently scroll the Active Document's real viewport
+behind the still-shown Peek content) — the two milestones turned out to be one mechanism, not
+two independently-choosable ones. Tests: `cmd/noggin/peek_test.go` (M7.1's own acceptance:
+shows/header/focus-unchanged/active-doc-untouched, no-op on the Active Document and on a
+folder, cannot scroll/find/edit) and `cmd/noggin/peek_clear_test.go` (M7.2's acceptance: each
+of the five clearing triggers, scroll position preserved, view actually shows the Active
+Document again, and the no-Active-Document case reverting to the empty Viewer).
+`test/pty/checks.py`'s new `C2a/M7.1` section verifies the inverted header reaches the wire
+as real reverse video (`\x1b[1;7m`, Bold+Reverse combined — not the bare `\x1b[7m` M2.2's own
+check gets away with) and that a scroll-only key leaves the frame unchanged while Peeking.
+`make check` and `make check-pty` both green (200 pty checks). No findings; no new triage
+items.
+
+Next step: M8.1 — two-line Roots Nav rows (S5).
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
@@ -220,13 +252,10 @@ the same pass — confirmed by M5.1 landing exactly that way with no rework need
 M2/M5/M6/M7 define. M10 (staleness, S10) is last per the spec's own "pre-agreed cut, dropped
 without ceremony".
 
-Known foot-guns flagged by research, worth re-reading before M7:
-- Peek (M7) touches many call sites (shiftFocus, openPicker, refresh, selection change) — each
-  is a place its "clear on X" rule can be forgotten. M5.1's `refresh()` is now one more call
-  site Peek (M7) will need its own "clear on refresh" rule at, per S7's own bullet list.
-- M9 (footer/help sweep) still owes `r`/`f` (M2.1), `R` (M5.1) and now `alt+h` (M6.2) their
-  footer hints and Help Modal entries — none of the four add one yet, deliberately deferred to
-  M9 (see M2.1's own handoff note above).
+Known foot-guns flagged by research, worth re-reading before M9:
+- M9 (footer/help sweep) still owes `r`/`f` (M2.1), `R` (M5.1), `alt+h` (M6.2) and now `p`
+  (M7.1/M7.2) their footer hints and Help Modal entries — none add one yet, deliberately
+  deferred to M9.
 
 ## Status
 
@@ -240,8 +269,8 @@ Known foot-guns flagged by research, worth re-reading before M7:
 | M5.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.2  | done   | 2026-08-06 | 2026-08-06 |      |
-| M7.1  | todo   | -        | -         |      |
-| M7.2  | todo   | -        | -         |      |
+| M7.1  | done   | -        | -         |      |
+| M7.2  | done   | -        | -         |      |
 | M8.1  | todo   | -        | -         |      |
 | M9.1  | todo   | -        | -         |      |
 | M10.1 | todo   | -        | -         |      |

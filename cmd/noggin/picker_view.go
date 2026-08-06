@@ -97,21 +97,25 @@ func splitPickerWidth(total int) (results, preview int) {
 }
 
 // renderBox draws one bordered region at exactly r's outer size, border
-// included: a styled title on the first content row, then content. This is
-// the frame's own renderPane's box-drawing shape, pulled out so the
-// Picker's regions (which have no pane/focus of their own) can reuse it
-// instead of a second copy — renderPane itself now just supplies its
-// per-pane style and title and delegates here.
+// included: styledTitle (already styled by the caller) on the first content
+// row, then content. This is the frame's own renderPane's box-drawing
+// shape, pulled out so the Picker's regions (which have no pane/focus of
+// their own) can reuse it instead of a second copy — renderPane itself now
+// just supplies its per-pane style and title and delegates here.
+//
+// The title arrives pre-styled, not as a bare string renderBox styles
+// itself, since S7/M7.1 needs one title (the Document Viewer's, while
+// Peeking) styled differently (inverted, peekTitleStyle) from every other
+// pane's titleStyle — a choice only the caller can make.
 //
 // lipgloss v2 counts the border inside Width/Height (PR #451), so r's outer
 // size is passed straight through rather than pre-deducting the border, the
 // same "pass it straight through" renderPane's own comment already notes.
-func renderBox(style lipgloss.Style, r rect, title, content string) string {
+func renderBox(style lipgloss.Style, r rect, styledTitle, content string) string {
 	if r.empty() {
 		return ""
 	}
 	box := style.Width(r.width).Height(r.height)
-	styledTitle := titleStyle.Render(title)
 	if content == "" {
 		return box.Render(styledTitle)
 	}
@@ -486,10 +490,10 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfi
 	if status := pickerStatus(p, avail, hideDotfiles); status != "" {
 		promptContent += "\n" + status
 	}
-	prompt := renderBox(focusedBorderStyle, l.prompt, pickerModeScope(p, hideDotfiles), promptContent)
+	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerModeScope(p, hideDotfiles)), promptContent)
 	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, hideDotfiles)
-	results := renderBox(borderStyle, l.results, "Results", resultsContent)
-	preview := renderBox(borderStyle, l.preview, "Preview", p.preview.View())
+	results := renderBox(borderStyle, l.results, titleStyle.Render("Results"), resultsContent)
+	preview := renderBox(borderStyle, l.preview, titleStyle.Render("Preview"), p.preview.View())
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
 	return lipgloss.JoinVertical(lipgloss.Left, prompt, body)
 }
