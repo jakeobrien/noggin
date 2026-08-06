@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M5.1
+Current task: M6.1
 
 ## Handoff
 
@@ -105,31 +105,69 @@ git repo and a real non-repo dir and confirms M/A markers reach the actual termi
 non-repo Root's footer never shows an error. `make check` and `make check-pty` both green,
 including the 6 new pty checks. No findings; no new triage items — T1/T2 unchanged.
 
-Next step: M5.1 — manual refresh (`R`). Needs: re-read the Active Root's tree and Active
-Document from disk on demand, preserving Files Nav expansion/selection (M3.1's mechanism,
-nearest-surviving-ancestor when the selected node is gone), preserving Viewer scroll (clamped
-if the document shrank), recomputing S8's git markers in the same pass (`gitStatus` is already
-a plain function of a root path — refresh can just call it again after re-`tree.Walk`ing), and
-emptying the Viewer if the Active Document is gone/unreadable. Find state may be lost. Re-read
-the two foot-gun notes below (viewer.open/filesNav.setRoot both reset state — refresh must
-bypass them) before starting.
+M5.1 done: `keys.Refresh` ("R", keymap.go) is global like Edit/Find/Navigator, reachable from
+every pane and inert while the Picker/Help Modal/an in-progress find own the keyboard (same
+early-return gates FocusRoots/FocusFiles already relied on). `model.refresh()` (model.go) is the
+one place both halves happen together: it re-`tree.Walk`s `m.files.root.Path` (a nil root, i.e.
+no launch argument and no roots at all, is left untouched — nothing to refresh) and, on
+success, calls the new `filesNav.refreshRoot` plus `gitStatus(node.Path)` in the same branch, so
+S8's markers are never stale behind the tree they describe. `refreshRoot` (files.go) preserves
+the expansion set as-is (a dead path is just absent from `visibleRows`, harmless) and moves
+selection via the new `nearestSurvivingIndex`: walks the selected node's path upward through
+`filepath.Dir` until a still-visible row matches or the walk reaches `f.root.Path` (falls back
+to index 0) — correct in one pass because every ancestor a visible row sits under is, by
+construction, already expanded, so the walk only ever asks "does this path still exist", never
+"is it visible". `indexOfPath` (M3.1's own restore-from-memory lookup) now shares the same
+`rowIndexOf` primitive rather than duplicating the loop. The Document Viewer's own half:
+`viewer.refreshDoc` (viewer.go) re-renders in place without `open()`'s `GotoTop()` — bubbles
+v2's `viewport.SetContentLines` already clamps `YOffset` down to the new end if the document
+shrank past it, so no extra clamping code was needed, only *not* resetting to the top; a
+read failure instead calls the new `viewer.close()`, which empties the pane. A committed find's
+matches being dropped by the re-render (the same T43 mechanism `resize` already has) now also
+surfaces a "refreshed; search cleared" footer message rather than losing them silently, for the
+same reason `resize` bothers to.
+Tests: `cmd/noggin/refresh_test.go` (new) — `filesNav.refreshRoot`/`nearestSurvivingIndex` at
+the unit level (unchanged tree, ancestor substitution, whole-branch-gone fallback);
+`viewer.refreshDoc`/`close` (scroll preserved, clamped on shrink, empties on close); and
+model-level end-to-end covering the cycle's stated acceptance verbatim (create/edit/delete
+under the Active Root then `R`, nearest-surviving-ancestor selection, preserved scroll, git
+markers recomputed, Active-Document-deleted empties the viewer, no-root-at-all is a no-op, and
+the committed-find-cleared message). New `test/pty/checks.py` section (`C2a/M5.1`) drives the
+real binary: a file added/removed on disk without relaunching, a scroll position preserved
+across a refresh that only grows the document (with `Bottom` confirming the grown content is
+reachable), and the Active Document vanishing emptying the viewer. `make check` and
+`make check-pty` both green (183 pty checks, 0 failures). A fresh-context code-reviewer pass
+found no blocker/high findings; five low-severity items logged as TRIAGE T3–T5 (T1/T2
+unchanged) — a message-wording nit was fixed inline, the rest (unbounded `expanded` map growth
+over many refreshes, no explicit rootsPane-focused test, no explicit multi-Root
+"nothing-else-touched" test) are left for replan to triage, not blocking.
+
+Next step: M6.1 — dotfiles in the Pickers by default. Needs: both Picker modes (File and Grep)
+include dotfiles in Results with no extra keystroke, matching what the Files Nav tree already
+shows; `.git/` stays excluded unconditionally; `.gitignore` handling is unchanged everywhere.
+Likely touches wherever the Picker's own file-listing/search currently filters dotfiles out
+(`files_search.go`/`ripgrep.go` — check whatever flag or filename-prefix check currently drops
+them) — the Files Nav's own tree walk (`internal/tree`) already keeps dotfiles, so M6.1 is
+about matching the Picker to that, not changing the tree walk. M6.2 (needs M6.1) then layers a
+session-scoped `alt+h` toggle on top.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
-M3 (tree-state memory, S3) and M4 (git markers, S8) are ordered ahead of M5 (refresh, S2)
+M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
 because S2 explicitly reuses S3's per-Root preserve mechanism and recomputes S8's markers in
-the same pass — building refresh first would mean redoing it once those land. M9 (footer/help,
-S9) is last of the binding-affecting work since it is a sweep over bindings M2/M5/M6/M7 define.
-M10 (staleness, S10) is last per the spec's own "pre-agreed cut, dropped without ceremony".
+the same pass — confirmed by M5.1 landing exactly that way with no rework needed. M9
+(footer/help, S9) is last of the binding-affecting work since it is a sweep over bindings
+M2/M5/M6/M7 define. M10 (staleness, S10) is last per the spec's own "pre-agreed cut, dropped
+without ceremony".
 
-Known foot-guns flagged by research, worth re-reading before M3/M5/M7:
-- Files Nav `selected` is a flattened-row index today, not a stable node key — M3/M5 need to
-  key state by path, not index (files.go).
-- `viewer.open`/`filesNav.setRoot` both reset state (scroll-to-top / collapse-all) — M5 must
-  bypass them, not call them, to preserve position.
+Known foot-guns flagged by research, worth re-reading before M6/M7:
 - A dotfile-toggle (M6.2) must live on `model`, not `picker` — `resetPicker` wipes anything
   stored on `picker` every close/reopen.
 - Peek (M7) touches many call sites (shiftFocus, openPicker, refresh, selection change) — each
-  is a place its "clear on X" rule can be forgotten.
+  is a place its "clear on X" rule can be forgotten. M5.1's `refresh()` is now one more call
+  site Peek (M7) will need its own "clear on refresh" rule at, per S7's own bullet list.
+- M9 (footer/help sweep) still owes `r`/`f` (M2.1) and now `R` (M5.1) their footer hints and
+  Help Modal entries — none of the three add one yet, deliberately deferred to M9 (see M2.1's
+  own handoff note above).
 
 ## Status
 
@@ -140,7 +178,7 @@ Known foot-guns flagged by research, worth re-reading before M3/M5/M7:
 | M2.2  | done   | 2026-08-06 | 2026-08-06 |      |
 | M3.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M4.1  | done   | -        | -         |      |
-| M5.1  | todo   | -        | -         |      |
+| M5.1  | done   | 2026-08-06 | -         |      |
 | M6.1  | todo   | -        | -         |      |
 | M6.2  | todo   | -        | -         |      |
 | M7.1  | todo   | -        | -         |      |

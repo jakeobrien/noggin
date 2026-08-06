@@ -41,6 +41,7 @@ KEY = {
     "Navigator":    b"\x0e",    # keys.Navigator: ctrl+n
     "Cancel":       b"\x1b",    # keys.Cancel: esc
     "Help":         b"?",       # keys.Help
+    "Refresh":      b"R",       # keys.Refresh
     "Picker":       b" ",       # keys.Picker: space
     "PickerUp":     b"\x1b[A",  # keys.PickerUp: up arrow
     "PickerDown":   b"\x1b[B",  # keys.PickerDown: down arrow
@@ -539,6 +540,86 @@ check("C2a/M4.1 pty: a non-repo Root raises no footer error",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M4.1 pty: exits 0 with a non-repo Root open", code == 0, f"exit {code}")
+
+# --- C2a/M5.1: manual refresh (R) ------------------------------------------
+# (Named M5.1 in this cycle, C2a; a pre-existing "M5.1" label further below
+# belongs to an earlier cycle's find-in-document milestone, same reused-label
+# convention noted at the git-status section above.)
+
+refresh_root = tempfile.mkdtemp()
+with open(os.path.join(refresh_root, "keep.md"), "w") as f:
+    f.write("kept\n")
+doomed_path = os.path.join(refresh_root, "doomed.md")
+with open(doomed_path, "w") as f:
+    f.write("about to vanish\n")
+
+s = Session([BINARY, refresh_root], 80, 24)
+s.pump(1.2)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M5.1 pty: doomed.md listed before the refresh", "doomed.md" in body, repr(body[:300]))
+
+# Outside noggin: doomed.md is deleted, new.md is created.
+os.remove(doomed_path)
+with open(os.path.join(refresh_root, "new.md"), "w") as f:
+    f.write("just created\n")
+
+s.send(KEY["Refresh"], 0.8)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M5.1 pty: new.md appears after R without relaunching", "new.md" in body, repr(body[:300]))
+check("C2a/M5.1 pty: doomed.md is gone after R", "doomed.md" not in body, repr(body[:300]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M5.1 pty: exits 0 after a refresh", code == 0, f"exit {code}")
+
+# A document open at a mid-scroll position keeps that position across a
+# refresh that only grows the file underneath it (S2's scroll-preserving
+# half) — appending never shrinks past the current offset, so this checks
+# preservation, not the separate clamp-to-end case go test already covers
+# (viewer_test.go / refresh_test.go own that unit-level clamp check).
+big_doc = os.path.join(tempfile.mkdtemp(), "big.md")
+with open(big_doc, "w") as f:
+    f.write("".join(f"- item {i}\n" for i in range(1, 61)))
+
+s = Session([BINARY, big_doc], 80, 24)
+s.pump(1.2)
+top_frame = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+s.send(KEY["HalfPageDown"], 0.4)
+before = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M5.1 pty: scrolled away from the top before refreshing",
+      before != top_frame, repr(before[:200]))
+
+with open(big_doc, "a") as f:
+    f.write("".join(f"- item {i}\n" for i in range(61, 121)))
+s.send(KEY["Refresh"], 0.8)
+after = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M5.1 pty: scroll position unchanged by a refresh that only grew the document",
+      after == before, f"before={before[:200]!r} after={after[:200]!r}")
+
+s.send(KEY["Bottom"], 0.5)
+bottom = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C2a/M5.1 pty: the grown content is actually reachable after refresh",
+      "item 120" in bottom, repr(bottom[:300]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M5.1 pty: exits 0 after a scroll-preserving refresh", code == 0, f"exit {code}")
+
+# The Active Document vanishing under a refresh empties the Document Viewer
+# rather than showing stale content, and the session keeps running.
+vanishing_doc = os.path.join(tempfile.mkdtemp(), "vanishing.md")
+with open(vanishing_doc, "w") as f:
+    f.write("# Present for now\n")
+
+s = Session([BINARY, vanishing_doc], 80, 24)
+s.pump(1.2)
+os.remove(vanishing_doc)
+s.send(KEY["Refresh"], 0.8)
+sc = screen_of(s.out, 80, 24)
+body = "\n".join(sc.raw_lines())
+check("C2a/M5.1 pty: the Document Viewer empties when the Active Document vanishes",
+      "No document open" in body, repr(body[:300]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M5.1 pty: exits 0 after the Active Document vanished", code == 0, f"exit {code}")
 
 # --- M4.1: edit hands the active document to $EDITOR and resumes -----------
 

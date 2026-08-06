@@ -82,6 +82,18 @@ type keyMap struct {
 	FocusRoots key.Binding
 	FocusFiles key.Binding
 
+	// Refresh re-reads the Active Root's file tree and the Active Document
+	// from disk on demand (S2, C2a/M5.1): global, like Edit/Find/Navigator,
+	// reachable from every pane. model.refresh preserves Files Nav
+	// expansion/selection (nearest surviving ancestor if the selected node
+	// is gone, filesNav.refreshRoot) and the viewer's scroll position
+	// (clamped to the end if the document shrank, viewer.refreshDoc), drops
+	// a committed find's matches the same way any other re-render already
+	// does (an in-progress query can't reach this binding at all —
+	// handleFindInput owns every key but Cancel/Activate while typing), and
+	// recomputes S8's git markers in the same pass.
+	Refresh key.Binding
+
 	// Cancel dismisses a modal or in-progress input without acting on it.
 	// M5.1's first use was dismissing a find query; a generic name and
 	// binding on purpose, since S12's help modal (M5.3) uses the same
@@ -211,6 +223,10 @@ var keys = keyMap{
 	FocusFiles: key.NewBinding(
 		key.WithKeys("f"),
 		key.WithHelp("f", "files"),
+	),
+	Refresh: key.NewBinding(
+		key.WithKeys("R"),
+		key.WithHelp("R", "refresh"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),

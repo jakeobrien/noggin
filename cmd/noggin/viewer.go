@@ -60,6 +60,29 @@ func (v viewer) open(d document) viewer {
 	return v
 }
 
+// refreshDoc replaces the open document with a freshly re-read d (S2,
+// C2a/M5.1) and re-renders it in place, deliberately not following open()'s
+// GotoTop(): render's SetContent call already clamps the offset down to the
+// new end if the document shrank past it (viewport.SetContentLines), which
+// is exactly S2's "clamped to the end" contract, so no extra clamping is
+// needed here — leaving the offset alone is what preserves scroll position
+// otherwise. Find state is dropped the same way any other re-render already
+// drops it (T34/T43, render's own doc comment) — S2 allows this ("Find
+// state may be lost").
+func (v viewer) refreshDoc(d document) viewer {
+	v.doc = d
+	return v.render()
+}
+
+// close empties the viewer: refresh's path (S2, C2a/M5.1) for when the
+// Active Document has vanished or become unreadable underneath it — the
+// empty state open() never produces, since it is only ever called with a
+// document that just loaded successfully.
+func (v viewer) close() viewer {
+	v.doc = document{}
+	return v.render()
+}
+
 // render rebuilds the viewport's content from the document at the current width.
 //
 // A re-render invalidates any find in progress (M5.1): a resize re-wraps the

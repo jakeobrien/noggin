@@ -233,7 +233,7 @@ func allBindings() []key.Binding {
 		keys.Top, keys.Bottom,
 		keys.Edit,
 		keys.Find, keys.FindNext, keys.FindPrevious, keys.Navigator, keys.Cancel,
-		keys.FocusRoots, keys.FocusFiles,
+		keys.FocusRoots, keys.FocusFiles, keys.Refresh,
 		keys.Help, keys.Picker,
 		keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
 	}

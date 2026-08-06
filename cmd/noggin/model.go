@@ -284,6 +284,66 @@ func (m model) focusPane(target pane) model {
 	return m
 }
 
+// refresh re-reads the Active Root's file tree and the Active Document from
+// disk on demand (S2, C2a/M5.1). It is the one place both halves of a
+// refresh happen together, so S8's git markers are always recomputed in the
+// same pass as the tree they describe, never left stale behind it:
+//   - The Files Nav's tree is re-walked from m.files.root's own Path (the
+//     Active Root; a nil root, e.g. no launch argument and no roots at all,
+//     leaves the pane exactly as it was — nothing to refresh). filesNav.
+//     refreshRoot preserves expansion and moves selection to the same node
+//     or its nearest surviving ancestor (S2), never touching M3.1's
+//     per-Root memory, which is setRoot's own concern, not a live refresh's.
+//   - The Document Viewer's document, if any is open, is re-read from its
+//     own path. A successful re-read re-renders in place via viewer.
+//     refreshDoc, which preserves scroll (clamped to the end if the
+//     document shrank, S2) the same way any re-render already does; a
+//     failed one empties the viewer via viewer.close (S2's "no longer
+//     exists or is unreadable").
+//
+// Either read failing is a footer message, the same "silence is not an
+// error" shape activate()/activateRoot()/finishEdit() already give their own
+// read failures — but a Root-walk failure wins if both happen at once
+// (rare: both the Root and the Active Document vanishing in the same
+// refresh), since a whole Root going missing is the more consequential of
+// the two.
+//
+// A successful document re-render can still silently drop a committed find
+// (T43's case in resize's own doc comment — hasFindMatches was true, now
+// isn't): refreshDoc/close both go through viewer.render(), the same
+// re-render resize already treats as confusing to lose without saying so.
+// An in-progress query (findEditing) can't reach this method at all —
+// handleFindInput owns every key but Cancel/Activate while typing, and
+// Refresh is no exception — so unlike resize's own two-case check, only the
+// committed-match case is live here; it still loses to a read-failure
+// message above, the same priority resize gives cause over its own
+// dismissed/cleared text.
+func (m model) refresh() model {
+	if m.files.root != nil {
+		if node, err := tree.Walk(m.files.root.Path); err != nil {
+			m.message = fmt.Sprintf("cannot read %s: %v", m.files.root.Path, err)
+		} else {
+			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path))
+		}
+	}
+	if m.viewer.doc.isOpen() {
+		path := m.viewer.doc.path
+		findHadMatches := m.viewer.hasFindMatches()
+		if d, err := loadDocument(path); err != nil {
+			if m.message == "" {
+				m.message = fmt.Sprintf("cannot open %s: %v", path, err)
+			}
+			m.viewer = m.viewer.close()
+		} else {
+			m.viewer = m.viewer.refreshDoc(d)
+		}
+		if m.message == "" && findHadMatches && !m.viewer.hasFindMatches() {
+			m.message = "refreshed; search cleared"
+		}
+	}
+	return m
+}
+
 // startFind begins an S8 search over the active document, moving focus to
 // the viewer the same way activate() and activateRoot() do — the keys a
 // search needs next (typing, Cancel, Activate to commit) all target it. With
@@ -421,6 +481,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.focusPane(rootsPane), nil
 		case key.Matches(msg, keys.FocusFiles):
 			return m.focusPane(filesPane), nil
+		case key.Matches(msg, keys.Refresh):
+			return m.refresh(), nil
 		case key.Matches(msg, keys.Help):
 			return m.openHelp(), nil
 		case key.Matches(msg, keys.Picker):

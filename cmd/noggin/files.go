@@ -1,6 +1,7 @@
 package main
 
 import (
+	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -116,16 +117,69 @@ func (f filesNav) remember(path string) filesNav {
 // pane's current root and expansion, or 0 when path is empty or no row
 // matches. M3.1 only promises correctness when the tree shape underneath
 // hasn't changed, in which case a remembered path always has a row; the
-// zero fallback is defensive for the shape-changed case M5's refresh will
-// refine into "nearest surviving ancestor", not a case M3.1 itself produces.
+// zero fallback is defensive for the shape-changed case a refresh
+// (refreshRoot/nearestSurvivingIndex, S2/C2a/M5.1) actually produces, but
+// setRoot's own restore-from-memory call site never needs more than the
+// fallback — M3.1's contract is exact-path-or-fresh, not ancestor-seeking.
 func (f filesNav) indexOfPath(path string) int {
+	if i := f.rowIndexOf(path); i >= 0 {
+		return i
+	}
+	return 0
+}
+
+// rowIndexOf is the visible-row index of the node at path against the
+// pane's current root and expansion, or -1 when path is empty or no row
+// matches. The shared lookup indexOfPath and nearestSurvivingIndex both
+// build on — the former stops at "no match", the latter keeps walking
+// upward when it gets one.
+func (f filesNav) rowIndexOf(path string) int {
 	if path == "" {
-		return 0
+		return -1
 	}
 	for i, row := range f.visibleRows() {
 		if row.node.Path == path {
 			return i
 		}
+	}
+	return -1
+}
+
+// refreshRoot replaces the pane's tree with a freshly re-walked root (S2,
+// C2a/M5.1), preserving the current expansion set as-is (a path for a
+// folder that no longer exists is simply absent from visibleRows — dead
+// weight no different from any other path this map has never pruned) and
+// moving selection to the same node if it survives, or its nearest
+// surviving ancestor otherwise (nearestSurvivingIndex). Unlike setRoot,
+// this never touches memory: a refresh acts on the Active Root in place,
+// not a Root switch, so there is nothing to remember or restore across.
+func (f filesNav) refreshRoot(root *tree.Node) filesNav {
+	selectedPath := ""
+	if n := f.selectedNode(); n != nil {
+		selectedPath = n.Path
+	}
+	f.root = root
+	f.selected = f.nearestSurvivingIndex(selectedPath)
+	return f
+}
+
+// nearestSurvivingIndex is refresh's own selection rule (S2, C2a/M5.1): the
+// row for path if it still exists, else its parent, grandparent and so on
+// until one does, else the top of the list. Every ancestor a visible row
+// was ever selected under is, by construction, still expanded — a row is
+// only visible because every ancestor between it and a top-level entry
+// already is (renderRow/visibleRows) — so the walk only ever has to ask
+// "does this path still exist", never "is it visible" separately.
+func (f filesNav) nearestSurvivingIndex(path string) int {
+	for path != "" && f.root != nil && path != f.root.Path {
+		if i := f.rowIndexOf(path); i >= 0 {
+			return i
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			break
+		}
+		path = parent
 	}
 	return 0
 }
