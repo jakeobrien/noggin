@@ -554,3 +554,22 @@
   "feels broken at the edges" over "premature machinery" keeps it a few hours of work instead of
   a redesign of the Active Document contract. If Peek proves itself, its edges get specified
   then — with real usage as evidence.
+
+## D45: C2a's plan orders tree-state memory and git markers ahead of refresh
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-05
+- Context: Planning C2a/PLAN.md. SPEC.md's S2 (manual refresh) explicitly reuses S3's
+  per-Root preserve mechanism ("the same mechanism S2 needs") and recomputes S8's git markers
+  "in the same pass". A researcher subagent's pass over the codebase confirmed neither
+  mechanism exists yet: Files Nav state is a single global `expanded`/`selected` pair wiped on
+  every Root switch (`files.go`), and no git tooling exists at all.
+- Decision: milestone order is M3 (S3, per-Root tree-state memory) and M4 (S8, per-file git
+  markers) ahead of M5 (S2, refresh), with M5 depending on both. M9 (S9, footer/Help Modal
+  accuracy) is ordered last of the binding-affecting milestones (M2, M5, M6, M7) since it is a
+  sweep over bindings those define, not new bindings itself.
+- Why: building refresh first would mean redoing its preserve/recompute logic once S3 and S8
+  land; low risk, purely a sequencing call, but worth recording since a later replan or a
+  fresh session might otherwise wonder why S2 — the deliverable most of the cycle's pitch is
+  about — is M5 and not M2.

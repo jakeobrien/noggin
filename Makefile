@@ -5,7 +5,10 @@
 # the host actually needs it.
 unexport GOROOT
 
-.PHONY: build vet fmt check test run
+# Install prefix for `make install`. bin/noggin ends up at $(PREFIX)/bin/noggin.
+PREFIX ?= /usr/local
+
+.PHONY: build vet fmt check test run install
 
 build:
 	go build -o bin/ ./...
@@ -24,6 +27,12 @@ check: build vet fmt test
 
 run:
 	go run ./cmd/noggin
+
+# Copies the already-built bin/noggin into place; deliberately does not depend
+# on `build` so `make install PREFIX=...` never triggers a rebuild on its own.
+install:
+	install -d $(PREFIX)/bin
+	install bin/noggin $(PREFIX)/bin/noggin
 
 # End-to-end checks against the real binary in a pty. Separate from `check`
 # because they need a pty and are slower; they are the only way to verify what
