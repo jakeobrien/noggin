@@ -149,9 +149,15 @@ func (r rootsNav) move(delta int) rootsNav {
 	return r
 }
 
+// rootRowHeight is how many physical lines one Roots Nav entry occupies
+// (S5): name-and-markers, then path. windowedViewRows uses this to window
+// and scroll in whole entries, never splitting one across the screen edge.
+const rootRowHeight = 2
+
 var (
-	rootsActiveStyle = lipgloss.NewStyle().Bold(true)
 	rootsBrokenStyle = lipgloss.NewStyle().Faint(true)
+	rootsNameStyle   = lipgloss.NewStyle().Bold(true)
+	rootsPathStyle   = lipgloss.NewStyle()
 	emptyRootsStyle  = lipgloss.NewStyle().Foreground(dimColor)
 )
 
@@ -167,15 +173,21 @@ func (r rootsNav) view() string {
 			MaxWidth(r.width).MaxHeight(r.height).
 			Render(emptyRootsText)
 	}
-	return windowedView(r.width, r.height, r.selected, len(r.rows), r.renderRow)
+	return windowedViewRows(r.width, r.height, r.selected, len(r.rows), rootRowHeight, r.renderRow)
 }
 
-// renderRow lays out one entry: an active marker, a starred marker, the base
-// name (S3's "prominently"), then its left-truncated parent path so
-// same-named roots read apart (`…/work/admin/`). A broken root is marked in
-// text (S3) and dimmed, since it cannot be activated. The selection cursor
-// draws the whole line in reverse video, matching the Files Nav's bar.
-func (r rootsNav) renderRow(idx int) string {
+// renderRow lays out one entry across its two lines (S5). Line 1 carries the
+// active marker, the starred marker, the base name in bold (S3's
+// "prominently") and the broken-root suffix. Line 2 carries the entry's full
+// path alone, unbold and left-truncated the same way the single-line layout
+// truncated its parent path, so same-named roots still read apart
+// (`…/work/admin/project`) — markers never repeat on line 2, per S5. A
+// broken root is dimmed on both lines, since it cannot be activated. The
+// selection cursor draws both lines in reverse video, matching the Files
+// Nav's bar; each line's style is fully specified (not a partial run), so
+// reverse video never gets cancelled mid-line
+// (lipgloss-v2-row-rendering-gotchas.md).
+func (r rootsNav) renderRow(idx int) []string {
 	row := r.rows[idx]
 
 	activeMark := "  "
@@ -187,31 +199,25 @@ func (r rootsNav) renderRow(idx int) string {
 		starMark = "★ "
 	}
 
-	name := filepath.Base(row.root.path)
-	parent := filepath.Dir(row.root.path) + string(filepath.Separator)
-
-	const gap = "  "
 	suffix := ""
 	if row.broken {
 		suffix = " (missing)"
 	}
-	prefixWidth := lipgloss.Width(activeMark) + lipgloss.Width(starMark)
-	budget := max(r.width-prefixWidth-lipgloss.Width(name)-lipgloss.Width(gap)-lipgloss.Width(suffix), 0)
-	parent = leftTruncate(parent, budget)
+	line1 := activeMark + starMark + filepath.Base(row.root.path) + suffix
+	line2 := leftTruncate(row.root.path, r.width)
 
-	line := activeMark + starMark + name + gap + parent + suffix
-
-	style := lipgloss.NewStyle()
-	switch {
-	case row.broken:
-		style = rootsBrokenStyle
-	case idx == r.active:
-		style = rootsActiveStyle
+	style1, style2 := rootsNameStyle, rootsPathStyle
+	if row.broken {
+		style1, style2 = rootsBrokenStyle, rootsBrokenStyle
 	}
 	if idx == r.selected {
-		style = style.Reverse(true)
+		style1 = style1.Reverse(true)
+		style2 = style2.Reverse(true)
 	}
-	return style.Width(r.width).MaxWidth(r.width).Render(line)
+	return []string{
+		style1.Width(r.width).MaxWidth(r.width).Render(line1),
+		style2.Width(r.width).MaxWidth(r.width).Render(line2),
+	}
 }
 
 // leftTruncate keeps s's suffix, replacing the front with an ellipsis when it

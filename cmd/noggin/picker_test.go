@@ -702,7 +702,13 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 	if got.viewer.offset() != 0 {
 		t.Errorf("Document Viewer offset = %d, want 0 (opened plain at the top per D34's full degrade)", got.viewer.offset())
 	}
-	view := got.View().Content
+	// Scoped to the viewer pane's own rendering, not the whole frame (S5's
+	// two-line Roots Nav rows use a bare Reverse(true) on an active row's
+	// unbold path line, which would otherwise make this substring check a
+	// false positive whenever a root is both active and selected — the
+	// common single-root case, unrelated to whether the viewer has a find
+	// match to indicate).
+	view := got.viewer.view()
 	if strings.Contains(view, "\x1b[7m") {
 		t.Error("no line should be indicated when the query has no rendered matches at all")
 	}

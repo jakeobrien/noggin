@@ -604,3 +604,28 @@
   hand-rolling git's index/worktree diff algorithm is a different order of complexity than
   hand-rolling `.gitignore` glob matching, with no upside since S8 deliberately wants real git
   behaviour, simplified, not an independent approximation of it.
+
+## D47: S5's two-line rows drop the old bold-means-active convention
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-07
+- Context: M8.1/S5 makes the base name bold on line 1 "unconditionally" (S5's own wording),
+  the path unbold on line 2. Pre-S5, the single-line layout used the *same* Bold attribute to
+  mean "this is the active root" (`rootsActiveStyle`, applied only to `idx == r.active`), with
+  the `●` marker as a second, redundant cue for the same fact. Literally implementing S5's
+  "name in bold" as unconditional (every row's name line bold, active or not) removes bold as
+  an active-root signal — a row's only remaining tell for "is this the active root" becomes
+  the `●` marker alone.
+- Decision: implemented literally: `rootsNameStyle`/`rootsPathStyle` (rootsnav.go) are the
+  same for every row regardless of `idx == r.active`; broken rows still get `rootsBrokenStyle`
+  (Faint) on both lines, and the selection cursor still reverses both lines. No attempt to
+  preserve a second active-only visual cue beyond `●`.
+- Why: S5's acceptance text ties bold specifically to the name text, not to active status; a
+  row that is both active and bold-for-being-active *and* bold-for-being-a-name-line would be
+  indistinguishable from a bold-for-being-a-name-line-only row anyway, so keeping the old
+  active-bold rule on top would have been a no-op requiring extra code, not an additional
+  signal. `●` was always present as an independent cue and is unaffected by this. Flagged here
+  rather than silently changed since it is a real, user-visible reduction in redundant
+  signalling (from two cues to one) that a fresh session might otherwise wonder about when
+  diffing `rootsnav.go` against C1-era behaviour.

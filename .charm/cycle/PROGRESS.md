@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M8.1
+Current task: M9.1
 
 ## Handoff
 
@@ -242,7 +242,60 @@ check gets away with) and that a scroll-only key leaves the frame unchanged whil
 `make check` and `make check-pty` both green (200 pty checks). No findings; no new triage
 items.
 
-Next step: M8.1 — two-line Roots Nav rows (S5).
+M8.1 done: each Roots Nav entry now renders across two physical lines (`rootsnav.go`'s
+`renderRow`, `rootRowHeight = 2`) — line 1 carries the active (`●`) / starred (`★`) markers,
+the base name (now bold unconditionally, not just when active — see D47) and the
+`(missing)` broken suffix; line 2 carries the entry's full path alone (not just its parent,
+unlike the single-line layout this retires), unbold, left-truncated the same way. `nav.go`'s
+single-line `windowedView` is now a one-line special case of a new, more general
+`windowedViewRows(width, height, selected, count, rowHeight, renderRow)`, which windows and
+scrolls in whole entries — never splitting one across the top/bottom edge — so
+`rootsNav.view()` and `filesNav.view()` (unchanged, rowHeight=1) share the same scrolling
+primitive per T16's own precedent. `move()`/`moveSelection` needed no change: selection was
+already an entry index, not a line index, so "one keypress moves one entry" was true by
+construction once rendering caught up.
+
+D47 records a real, deliberate behaviour change surfaced by implementing S5 literally: the
+pre-S5 layout used Bold to mean "this is the active root" (redundant with the `●` marker);
+S5's "name bold unconditionally" removes that second cue, leaving `●` as the sole
+active-root signal. Not a regression — a consequence of the spec text, logged since a fresh
+session diffing `rootsnav.go` might otherwise wonder about it.
+
+Tests: `cmd/noggin/rootsnav_test.go` — the four pre-existing render tests
+(`TestRootsNavDistinguishesSameNamedRootsByParent`, `TestRootsNavMarksMissingPathBroken`,
+`TestRootsNavHighlightsActiveRoot`, `TestRootsNavStarredMarked`) updated for the two-line
+line-index shape; three new ones for M8.1's own acceptance
+(`TestRootsNavRendersTwoLinesPerEntry`, `TestRootsNavSelectionHighlightsBothLines`,
+`TestRootsNavScrollsInWholeEntries` — the last pins "never split an entry across the
+screen edge" with a height that only fits one entry at a time). One pre-existing Picker test
+(`TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen`) had its
+no-reverse-video assertion rescoped from the whole frame to `viewer.view()` alone — S5's
+active+selected row's unbold path line now legitimately renders a bare `Reverse(true)` the
+old single-line layout's Bold+Reverse combination never produced as a bare-comparable
+substring, an unrelated-pane false positive the assertion was never actually testing for.
+
+New `test/pty/checks.py` section (`C2a/M8.1`): confirms the name/path land on two separate
+screen rows, that a path line never repeats the line-1 markers, that bold and reverse SGR
+both reach the wire on the pane's first paint (`Screen.raw_lines()` drops all SGR — see
+`pty-harness-ESC-M-D-gap.md` — so *which* line carries *which* attribute is a `go test`-only
+assertion, not a pty one), and a functional Down-then-Activate check that selection actually
+tracks whole entries. Building this section found and fixed a real harness gap (bare `ESC
+M`/`ESC D` were unhandled, corrupting rows exactly like a product bug would) that was also
+masking a pre-existing, always-vacuously-true assertion in the M6.2 Grep `alt+h` pty check
+(comparing against the Prompt's own query echo, not an actual Result) — both are written up
+in `pty-harness-ESC-M-D-gap.md` since they're reusable harness/testing knowledge, not
+M8.1-specific. The M3.3 Roots Nav pty fixture's own three-root scenario needed a taller
+Session (24 → 30 rows) to keep all three fixture roots visible under S5's halved per-height
+row capacity — an instance of S5's own accepted "fewer visible roots" tradeoff, not a bug —
+and its `row_with` marker-lookup helper gained a `row_pair_with` sibling that pairs a
+path-line match with its own name line (never the next entry's, which risked a false-positive
+marker read).
+
+`make check` and `make check-pty` both green (206 pty checks, repeated runs clean — the
+`alt+h`/star-toggle flakiness the harness fix removed was checked over multiple repeated
+`make check-pty` runs, not just once). No triage items opened for this task.
+
+Next step: M9.1 — Footer and Help Modal accuracy (S9).
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
@@ -271,6 +324,6 @@ Known foot-guns flagged by research, worth re-reading before M9:
 | M6.2  | done   | 2026-08-06 | 2026-08-06 |      |
 | M7.1  | done   | 2026-08-07 | -         |      |
 | M7.2  | done   | 2026-08-07 | -         |      |
-| M8.1  | todo   | -        | -         |      |
+| M8.1  | done   | -        | -         |      |
 | M9.1  | todo   | -        | -         |      |
 | M10.1 | todo   | -        | -         |      |

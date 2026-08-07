@@ -16,21 +16,34 @@ func moveSelection(selected, delta, count int) int {
 // windowedView renders a scrollable row list's content box: the selection
 // stays on screen once the list outgrows height, scrolled just enough (never
 // re-centred), and short lists pad to height with blank rows. Shared by
-// rootsNav.view and filesNav.view (T16), which differed only in how a row at
-// a given index was rendered — that is the one thing renderRow supplies.
+// filesNav.view (single-line rows) and, via windowedViewRows, rootsNav.view
+// (S5's two-line rows) — a thin one-line special case of the general form.
 func windowedView(width, height, selected, count int, renderRow func(idx int) string) string {
+	return windowedViewRows(width, height, selected, count, 1, func(idx int) []string {
+		return []string{renderRow(idx)}
+	})
+}
+
+// windowedViewRows generalizes windowedView to entries that occupy more than
+// one physical line each (rowHeight lines per entry — S5's two-line Roots
+// Nav rows). Scrolling and the on-screen window are computed in entries, not
+// lines, so an entry is never shown split across the top/bottom edge: at
+// most height/rowHeight whole entries are drawn, the selected one kept fully
+// on screen (scrolled just enough, never re-centred); any leftover lines
+// that don't make a whole entry pad blank rather than showing a cut-off row.
+// renderRow must return exactly rowHeight lines for a given idx.
+func windowedViewRows(width, height, selected, count, rowHeight int, renderRow func(idx int) []string) string {
+	perScreen := max(height/rowHeight, 1)
 	offset := 0
-	if selected >= height {
-		offset = selected - height + 1
+	if selected >= perScreen {
+		offset = selected - perScreen + 1
 	}
-	lines := make([]string, height)
-	for i := range lines {
-		idx := offset + i
-		if idx < count {
-			lines[i] = renderRow(idx)
-		} else {
-			lines[i] = strings.Repeat(" ", width)
-		}
+	lines := make([]string, 0, height)
+	for i := 0; i < perScreen && offset+i < count; i++ {
+		lines = append(lines, renderRow(offset+i)...)
 	}
-	return strings.Join(lines, "\n")
+	for len(lines) < height {
+		lines = append(lines, strings.Repeat(" ", width))
+	}
+	return strings.Join(lines[:height], "\n")
 }

@@ -303,6 +303,13 @@ check("M2.3 exits 0 after activating a file", code == 0, f"exit {code}")
 # starred path that is never created (the broken root). All three are
 # pre-starred so a bare launch shows them without any launch argument, per
 # S1 ("noggin -> starred roots only; the first is active").
+#
+# Height 30, not the usual 24: S5's two-line rows halve how many entries fit
+# in the Roots pane's fixed share of the Navigator's height; 24 rows only
+# leaves room for 2 of these 3 fixture roots on screen at once (an instance
+# of S5's own accepted "fewer visible roots" tradeoff — real, but not what
+# this fixture is testing), so this block alone uses a taller terminal to
+# keep all three visible without changing what it asserts.
 roots_base = tempfile.mkdtemp()
 root_admin = os.path.join(roots_base, "work", "admin", "project")
 root_other = os.path.join(roots_base, "other", "project")
@@ -316,12 +323,16 @@ os.makedirs(os.path.dirname(store_path))
 with open(store_path, "w") as f:
     f.write(root_admin + "\n" + root_other + "\n" + root_ghost + "\n")
 
-s = Session([BINARY], 80, 24, env=env)
+s = Session([BINARY], 80, 30, env=env)
 out = s.pump(1.5)
-body = "\n".join(screen_of(out, 80, 24).raw_lines())
+body = "\n".join(screen_of(out, 80, 30).raw_lines())
 
 check("M3.3 Roots pane lists all three starred roots",
-      body.count("project") == 2 and "ghost" in body, repr(body[:400]))
+      # S5's two-line rows repeat a "project" root's base name on line 1
+      # and again as the leaf of its full path on line 2 (4, not 2, for
+      # the two same-named roots) - "admin"/"other" below is what actually
+      # pins there being two distinct entries, not this count.
+      body.count("project") == 4 and "ghost" in body, repr(body[:400]))
 check("M3.3 same-named roots distinguished by their parent path",
       "admin" in body and "other" in body, repr(body[:400]))
 check("M3.3 a root whose path does not exist is marked broken",
@@ -329,13 +340,13 @@ check("M3.3 a root whose path does not exist is marked broken",
 
 # The first starred root (root_admin) resolved and walked cleanly, so it is
 # active and focus opens on the Files pane, same as a directory launch.
-footer = screen_of(s.out, 80, 24).lines()[-1]
+footer = screen_of(s.out, 80, 30).lines()[-1]
 check("M3.3 bare launch with starred roots opens focused on Files",
       footer.split(" \u00b7")[0] == "Files", repr(footer))
 
 # Tab back to the Roots pane before its own keys act.
 s.send(KEY["PrevPane"], 0.4)
-footer = screen_of(s.out, 80, 24).lines()[-1]
+footer = screen_of(s.out, 80, 30).lines()[-1]
 check("M3.3 shift+tab from Files moves focus to Roots",
       footer.split(" \u00b7")[0] == "Roots", repr(footer))
 
@@ -347,8 +358,30 @@ def row_with(text, lines):
     return ""
 
 
-lines = screen_of(s.out, 80, 24).raw_lines()
-admin_row = row_with("admin", lines)
+def row_pair_with(text, lines):
+    # S5's Roots Nav entries are two physical lines each (name, path); a
+    # parent-path substring used to distinguish same-named roots (e.g.
+    # "admin"/"other") only matches the path line, whose own name line -
+    # carrying the active/starred markers S5 keeps there - is always the
+    # line immediately above it (never below: S5 never repeats a marker on
+    # line 2, and a path line's own content always starts with "/" or the
+    # left-truncation ellipsis, never a marker). Pairing with the line below
+    # instead would risk pulling in the *next* entry's own markers (e.g. a
+    # neighbouring starred root), a false positive an "is this marker
+    # present" check must not risk.
+    for i, line in enumerate(lines):
+        if text not in line:
+            continue
+        content = line.strip("\u2502").strip()
+        looks_like_path = content.startswith("\u2026") or content.startswith("/")
+        if looks_like_path and i > 0:
+            return lines[i - 1] + "\n" + line
+        return line
+    return ""
+
+
+lines = screen_of(s.out, 80, 30).raw_lines()
+admin_row = row_pair_with("admin", lines)
 check("M3.3 active root is marked", "\u25cf" in admin_row, repr(admin_row))
 check("M3.3 starred roots are marked", "\u2605" in admin_row, repr(admin_row))
 
@@ -356,14 +389,14 @@ check("M3.3 starred roots are marked", "\u2605" in admin_row, repr(admin_row))
 # unstarring it, and check the change is written through to the store file
 # (M3.2's toggleStore) as well as redrawn.
 s.send(KEY["Down"], 0.4)
-lines = screen_of(s.out, 80, 24).raw_lines()
-other_row_before = row_with("other", lines)
+lines = screen_of(s.out, 80, 30).raw_lines()
+other_row_before = row_pair_with("other", lines)
 check("M3.3 selection reaches the second root (other/project)",
       "\u2605" in other_row_before, repr(other_row_before))
 
 s.send(KEY["Star"], 0.5)
-lines = screen_of(s.out, 80, 24).raw_lines()
-other_row_after = row_with("other", lines)
+lines = screen_of(s.out, 80, 30).raw_lines()
+other_row_after = row_pair_with("other", lines)
 check("M3.3 star key un-marks the selected root on screen",
       "\u2605" not in other_row_after, repr(other_row_after))
 
@@ -378,12 +411,12 @@ check("M3.3 unstarring persists: root_other dropped from the store file",
 # stay as they were.
 s.send(KEY["Down"], 0.4)
 s.send(KEY["Activate"], 0.6)
-sc = screen_of(s.out, 80, 24)
+sc = screen_of(s.out, 80, 30)
 footer = sc.lines()[-1]
 lines = sc.raw_lines()
 check("M3.3 activating a broken root is refused with a footer message",
       "ghost" in footer and "not activated" in footer, repr(footer))
-admin_row = row_with("admin", lines)
+admin_row = row_pair_with("admin", lines)
 check("M3.3 the active root did not change after the refusal",
       "\u25cf" in admin_row, repr(admin_row))
 
@@ -1140,8 +1173,13 @@ s.send(KEY["PickerMode"], 0.3)    # empty Prompt: mode switch
 s.send(KEY["ToggleHidden"], 0.4)  # empty Prompt: dotfile toggle
 s.send(b"needlecontent", 1.0)     # single search, already Grep + hidden
 hidden_grep = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+# Not "needlecontent": that's the query text itself, which the Prompt line
+# always echoes back regardless of whether the search found anything -
+# checking for its absence is a check that can never fail, hidden or not.
+# ".secret.md" is the Grep Result row's own filename, present only when an
+# actual match is listed.
 check("C2a/M6.2 pty: alt+h hides a dotfile's match from the Grep Results too",
-      "needlecontent" not in hidden_grep, repr(hidden_grep[:300]))
+      ".secret.md" not in hidden_grep, repr(hidden_grep[:300]))
 check("C2a/M6.2 pty: alt+h marks the Grep Prompt title Hidden",
       "Grep \u00b7 Active Root \u00b7 Hidden" in hidden_grep, repr(hidden_grep[:300]))
 
@@ -1152,7 +1190,7 @@ s.send(KEY["ToggleHidden"], 0.4)  # toggle back off, still on an empty Prompt
 s.send(b"needlecontent", 1.0)
 restored_grep = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("C2a/M6.2 pty: a second alt+h restores the Grep Result",
-      "needlecontent" in restored_grep, repr(restored_grep[:300]))
+      ".secret.md" in restored_grep, repr(restored_grep[:300]))
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("C2a/M6.2 pty: exits 0 after the Grep mode alt+h flow", code == 0, f"exit {code}")
@@ -1206,5 +1244,67 @@ check("C2a/M7.1 pty: a Peeked document cannot be scrolled",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M7.1 pty: exits 0 after Peeking", code == 0, f"exit {code}")
+
+# --- C2a/M8.1: two-line Roots Nav rows --------------------------------------
+
+# Two same-named roots (the shape M3.3's own fixture used) pins S5's row
+# shape: name and path must reach the wire as two separate physical lines,
+# not one. The exact bold/unbold and reverse-video SGR *combinations* per
+# line are already pinned precisely at the go-test level
+# (TestRootsNavRendersTwoLinesPerEntry, TestRootsNavSelectionHighlightsBothLines) —
+# Screen.raw_lines() parses and drops SGR entirely (pty-verification.md), so
+# it cannot re-check *which* line carries which attribute. What the pty can
+# still add: that bold and reverse video genuinely reach the wire (not just
+# a `go test`, no-TTY artifact) during this pane's very first paint, and
+# that browsing with Down actually moves between the real, distinct roots
+# on screen — a functional, not stylistic, check.
+rows_base = tempfile.mkdtemp()
+row_a = os.path.join(rows_base, "work", "admin", "project")
+row_b = os.path.join(rows_base, "other", "project")
+os.makedirs(row_a)
+os.makedirs(row_b)
+
+home_dir = tempfile.mkdtemp()
+env, store_path = config_env(home_dir)
+os.makedirs(os.path.dirname(store_path))
+with open(store_path, "w") as f:
+    f.write(row_a + "\n" + row_b + "\n")
+
+s = Session([BINARY], 80, 24, env=env)
+initial = s.pump(1.5)  # the pane's first paint: nothing to diff against yet,
+# so every visible cell's SGR is emitted in full here, unlike a later
+# incremental redraw that may only emit what actually changed.
+
+lines = screen_of(initial, 80, 24).raw_lines()
+name_line_idx = next(i for i, l in enumerate(lines) if "project" in l)
+path_line_idx = next(i for i, l in enumerate(lines) if "admin" in l)
+check("C2a/M8.1 pty: the name and its path land on two separate lines",
+      name_line_idx != path_line_idx, f"name={name_line_idx} path={path_line_idx}")
+check("C2a/M8.1 pty: the path line does not repeat the active/starred markers",
+      "\u25cf" not in lines[path_line_idx] and "\u2605" not in lines[path_line_idx],
+      repr(lines[path_line_idx]))
+
+bold_sgr = re.compile(rb"\x1b\[(?:\d+;)*1(?:;\d+)*m")
+reverse_sgr = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")
+check("C2a/M8.1 pty: a bold name line reaches the wire on the Roots pane's first paint",
+      bold_sgr.search(initial) is not None, repr(initial[:200]))
+check("C2a/M8.1 pty: a reverse-video selected row reaches the wire too",
+      reverse_sgr.search(initial) is not None, repr(initial[:200]))
+
+# One Down steps a whole entry (two lines): activating afterwards must make
+# root_b (other/project) active, not root_a — the functional proof that
+# selection tracks whole entries, not the individual lines S5 added.
+s.send(KEY["PrevPane"], 0.4)  # Files -> Roots
+s.send(KEY["Down"], 0.4)
+s.send(KEY["Activate"], 0.6)
+lines = screen_of(s.out, 80, 24).raw_lines()
+admin_after = row_pair_with("admin", lines)
+other_after = row_pair_with("other", lines)
+check("C2a/M8.1 pty: one Down then Activate makes the second entry active, not the first",
+      "\u25cf" in other_after and "\u25cf" not in admin_after,
+      f"admin={admin_after!r} other={other_after!r}")
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M8.1 pty: exits 0 after browsing two-line Roots Nav rows", code == 0, f"exit {code}")
 
 done()

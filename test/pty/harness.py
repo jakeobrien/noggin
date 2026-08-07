@@ -153,6 +153,27 @@ class Screen:
                 if m:
                     i += m.end()
                     continue
+                # RI (ESC M, cursor up one, no column change) and IND (ESC D,
+                # cursor down one): ultraviolet emits bare RI to move up a
+                # single row when repositioning for a two-line row edit is
+                # cheaper than a full CUP (provoked by S5's two-line Roots
+                # Nav rows — a pattern no earlier single-line-row screen
+                # needed). An unhandled ESC M/D falls through to the
+                # single-byte-skip case below, which then prints the
+                # following letter ('M'/'D') as a literal character — this
+                # looked exactly like a product bug (a stray letter
+                # corrupting a row) before being traced here, the same way
+                # DCH once did (see pty-verification.md). No scroll-region
+                # bookkeeping, matching this harness's existing CUU/CUD
+                # clamp-not-scroll behaviour.
+                if text[i:i + 2] == "\x1bM":
+                    self.y = max(self.y - 1, 0)
+                    i += 2
+                    continue
+                if text[i:i + 2] == "\x1bD":
+                    self.y = min(self.y + 1, self.rows - 1)
+                    i += 2
+                    continue
                 m = re.match(r"\x1b[()][0-9A-Za-z]|\x1b[=><]", text[i:])
                 i += m.end() if m else 1
                 continue
