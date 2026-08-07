@@ -42,6 +42,17 @@ no-behavior-change, so it was fixed directly rather than routed to a plan task (
 T8/T10's precedent) — see TRIAGE.md's inbox comment. `go test` (targeted) and `make check`
 reverified green after the edit.
 
+charm-document pass (2026-08-09): M11.1/M11.2 only ever scoped README sync to the TRIAGE
+items that named it (ctrl+p removal, alt+h, Peek, the Global table's r/f/R) — S3 (tree memory
+per Root), S5 (two-line Roots Nav rows), S8 (git status markers) and S10 (staleness
+indicator) had shipped and validated functionally but were never documented anywhere in
+README.md. Verified each against its implementation (rootsnav.go's renderRow/rootRowHeight,
+files.go's filesNavMemory/status map, gitstatus.go's gitStatus/parseGitStatus, staleness.go's
+staleMessage/staleBaseline) and added a Roots Nav / Files Nav bullet update plus a new
+"Keeping things in sync" section (Git status markers, Staleness indicator) documenting them,
+fixed directly (mechanical, doc-only, no behavior change — same bar as T8/T10/T20). No
+discrepancy between spec and reality found; nothing added to TRIAGE.md.
+
 Next step: none required. `/charm-close` whenever the user is ready.
 
 ## Status

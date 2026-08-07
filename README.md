@@ -63,10 +63,17 @@ the active root.
 ```
 
 - **Roots Nav** — the list of roots in this session: the ad-hoc root (if any)
-  first, then your starred roots. Broken roots (path no longer exists) are marked
-  and can't be activated.
+  first, then your starred roots. Each entry renders on two lines — the folder
+  name in bold above its full path, unbold — so two same-named roots in
+  different places stay distinguishable; moving up/down steps one whole entry
+  at a time. Broken roots (path no longer exists) are marked and can't be
+  activated.
 - **Files Nav** — the file tree of the *active* root. Switching roots re-scopes
-  this pane but leaves whatever document you're reading untouched.
+  this pane but leaves whatever document you're reading untouched; each root's
+  expanded folders and selection are remembered independently for the rest of
+  the session, so switching back restores the tree exactly as you left it.
+  Files with uncommitted changes are marked `M` (modified) or `A` (new /
+  untracked) — see [Git status markers](#git-status-markers) below.
 - **Document Viewer** — the active document, rendered as styled markdown
   (headings, tables, syntax-highlighted code fences, lists, blockquotes, rules,
   emphasis) and wrapped to the pane width. Read-only: no cursor, no selection, no
@@ -203,6 +210,43 @@ it; whatever had focus keeps it.
 
 YAML frontmatter at the top of a document is stripped before rendering — it's
 never shown as a table or raw block.
+
+## Keeping things in sync
+
+noggin never watches the filesystem — everything on screen is a snapshot from
+when the root or document was last read.
+
+Press `R` from any pane to refresh: it re-reads the Active Root's file tree
+and the Active Document from disk in one pass. Files Nav expansion and
+selection are preserved (selection moves to the nearest surviving ancestor if
+its exact node is gone); the Document Viewer's scroll position is preserved,
+clamped to the end if the document shrank past it; an in-progress or
+committed find may be lost. If the Active Document no longer exists or can't
+be read, the Viewer goes empty. Nothing outside the Active Root's tree and
+the Active Document is touched — other roots, other documents, and Picker
+results are unaffected. Refresh also recomputes the git status markers below.
+
+### Git status markers
+
+Files with uncommitted changes are marked in the Files Nav: `M` for modified,
+`A` for new/untracked. Only those two states are shown — staged vs. unstaged
+isn't distinguished, and deleted or renamed files aren't marked. Status is
+resolved against the git repository containing the Active Root (its root may
+sit above the Root itself), not the Root path directly, so a Root that is a
+subdirectory of a repo still shows correct markers. A Root outside any git
+repository, or a machine without `git` on `PATH`, shows no markers, silently.
+Markers are computed when a root is opened and recomputed on every `R`
+refresh — they are never kept live in between.
+
+### Staleness indicator
+
+Every few seconds, noggin quietly checks whether the Active Document or
+anything under the Active Root's tree has changed on disk since it was last
+read. If so, the footer appends "something changed on disk; press R to
+refresh" to its hints. It never says *what* changed, and never refreshes or
+re-reads anything on your behalf — pressing `R` is the only way to act on it.
+The indicator clears the next time you refresh and stays cleared until
+another change is detected.
 
 ## Finding across files (the Picker)
 
