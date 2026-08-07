@@ -17,7 +17,8 @@
 
 ## Cursor
 
-Current task: M10.1
+Current task: none — cycle-end validation pass done; awaiting `charm-replan` to triage T13
+(and the rest of TRIAGE.md) before this cycle can close.
 
 ## Handoff
 
@@ -408,10 +409,38 @@ perceptibly cost anything on a large Root" clause; a couple of untested-but-beni
 combinations) are accepted as-is, consistent with the rest of this codebase having no
 benchmark tests either, and are not logged to TRIAGE since none are actionable defects.
 
-This was the cycle's last planned milestone (PLAN.md has no M11+). All ten milestones are now
-`done`. M7.1, M7.2, M8.1, M9.1 and M10.1 have never been through `charm-validate` — the next
-step is a fresh-context validation pass against SPEC.md's acceptance criteria, not further
-build work.
+This was the cycle's last planned milestone (PLAN.md has no M11+). All ten milestones are
+marked `done`.
+
+Cycle-end `charm-validate` pass (2026-08-08, fresh-context validator subagent, not the
+builder) covered M7.1, M7.2, M8.1, M9.1, M10.1 (the five never-validated tasks) plus a
+post-refactor re-check of M2.1/M5.1 and the cycle-level SPEC.md acceptance list.
+`make check` and `make check-pty` both green. **M8.1, M9.1, M10.1 verified and stamped
+Validated below** — acceptance criteria independently confirmed against code/tests, no
+regressions. M2.1/M5.1's existing 2026-08-06 Validated stamps hold: M7.1's `setFocus`
+refactor (touching `focusPane`/`refresh`'s focus assignment) is a superset of the prior
+behaviour (adds only an orthogonal `clearPeek()` side effect) — traced and confirmed, no
+stale-date correction needed.
+
+**M7.1 and M7.2 did NOT pass validation cleanly — left at `Validated: -`.** The validator
+independently confirmed TRIAGE T13 (already logged, high severity, not new): `FindNext`/
+`FindPrevious` (`n`/`N`, model.go:620-627) are gated only by `hasFindMatches()`, not by
+`m.viewer.peeking()`, unlike `startEdit`/`startFind` a few lines above which both got explicit
+`peeking()` guards in the same diff. If a Find was already committed on the Active Document
+before Peek starts, `n`/`N` pressed while Peeking silently drifts `v.vp`'s real YOffset via
+`applyCurrentMatch`→`EnsureVisible` (invisible on screen, since the view shows `peek.vp`), and
+`clearPeek()` (viewer.go:139-142) never touches `v.vp`, so the drifted offset survives the
+clear. This violates S7's unqualified "cannot be searched with Find" and the cycle-level
+acceptance bullet "moving the selection restores the previous document at its previous scroll
+position" in that specific, reachable scenario (M7.1's own PLAN.md wording only tests the `/`
+key narrowly and technically passes; the broader SPEC.md guarantee does not). No fix applied
+during this validation pass (validate does not fix). No new TRIAGE item needed — T13 already
+cites this exact defect with matching file:line evidence.
+
+TRIAGE.md is **not empty** (T1-T18, all `open`) — this blocks cycle-close regardless of the
+above; the next step is `charm-replan` to triage the inbox (T13 first, given it changes a
+task's pass/fail verdict), decide whether T13 becomes its own task or folds into a reopened
+M7.1/M7.2, then re-run validate on whatever gets touched.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
@@ -438,8 +467,8 @@ Known foot-guns flagged by research, worth re-reading before M9:
 | M5.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.2  | done   | 2026-08-06 | 2026-08-06 |      |
-| M7.1  | done   | 2026-08-07 | -         |      |
-| M7.2  | done   | 2026-08-07 | -         |      |
-| M8.1  | done   | 2026-08-07 | -         |      |
-| M9.1  | done   | 2026-08-07 | -         |      |
-| M10.1 | done   | 2026-08-08 | -         |      |
+| M7.1  | done   | 2026-08-07 | -         | see T13: broader S7 "cannot be searched with Find" gap (n/N ungated by peeking()) |
+| M7.2  | done   | 2026-08-07 | -         | see T13: scroll-restore-on-clear violated in the same scenario |
+| M8.1  | done   | 2026-08-07 | 2026-08-08 |      |
+| M9.1  | done   | 2026-08-07 | 2026-08-08 |      |
+| M10.1 | done   | 2026-08-08 | 2026-08-08 | perf clause ("no perceptible cost on a large Root") verified architecturally, not benchmarked |
