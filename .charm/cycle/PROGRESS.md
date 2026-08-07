@@ -17,19 +17,32 @@
 
 ## Cursor
 
-Current task: the closing `charm-validate` pass, covering M7.3/M8.2/M11.1/M11.2/M12.1. That
-is the only work left before the cycle can close.
+Current task: none — the closing `charm-validate` pass (M7.3/M8.2/M11.1/M11.2/M12.1) is done.
+One non-blocking loose end remains before the cycle can actually close: TRIAGE.md has one
+open item (T20, added by a review pass after this validate pass's scope was cut) that still
+needs charm-replan triage.
 
 ## Handoff
 
-M11.2 done: README.md's Global keybinding table (`### Global (any pane)`) gained three rows —
-`r` (focus Roots Nav), `f` (focus Files Nav), `R` (refresh) — matching the wording style of
-the existing rows. No code changed; `make check` still green (cached, unaffected). TRIAGE.md
-is empty (T19 resolved by this task).
+Fresh-context validate pass complete, deterministic + functional, for M7.3/M8.2/M11.1/M11.2/
+M12.1 (all now stamped Validated 2026-08-07 below), plus M7.1/M7.2 (also stamped: M7.3's fix
+and its regression test directly prove the exact clauses that left them unvalidated — see
+their Note). `make check` and `make check-pty` both green, `-count=1` (not cache-trusted).
+Verified independently: FindNext/FindPrevious no-op + exact-offset restore while Peeking
+(peek_find_test.go), `startFind` routed through `setFocus`, the LineUp/LineDown broadening
+comment (model.go:666); `windowedViewRows` renders zero entries at height=1 and pads (not
+splits) at height=3 (rootsnav_test.go); README.md has zero `ctrl+p` references anywhere and
+documents `alt+h`/Peek; the Global keybinding table lists `r`/`f`/`R`; all five M12.1 backfill
+tests/checks exist, are correctly targeted, and pass. Also manually verified `make build &&
+make install` and a custom `PREFIX` both place a working binary. No discrepancies found; no
+new TRIAGE items raised by this pass.
 
-Next step: all five remaining cursor tasks (M7.3, M8.2, M11.1, M11.2, M12.1) are done. The
-only work left is the closing `charm-validate` pass, covering all five together from a fresh
-context, per the skill's independence requirement. Nothing is blocked.
+One pre-existing gap, not mine to fix: TRIAGE.md's T20 (low severity, a test-style nit in
+peek_find_test.go, review-sourced) is still `open` — the doc map requires TRIAGE.md empty
+before a cycle close, so it needs a charm-replan pass first.
+
+Next step: run charm-replan to triage T20 (the only open item), then the cycle can close.
+Nothing else is blocked.
 
 ## Status
 
@@ -43,13 +56,13 @@ context, per the skill's independence requirement. Nothing is blocked.
 | M5.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.2  | done   | 2026-08-06 | 2026-08-06 |      |
-| M7.1  | done   | 2026-08-07 | -         | see T13: broader S7 "cannot be searched with Find" gap (n/N ungated by peeking()) |
-| M7.2  | done   | 2026-08-07 | -         | see T13: scroll-restore-on-clear violated in the same scenario |
+| M7.1  | done   | 2026-08-07 | 2026-08-07 | T13's gap (n/N ungated by peeking()) fixed by M7.3 and re-verified directly |
+| M7.2  | done   | 2026-08-07 | 2026-08-07 | T13's scroll-restore-on-clear gap fixed by M7.3 and re-verified directly |
 | M8.1  | done   | 2026-08-07 | 2026-08-08 |      |
 | M9.1  | done   | 2026-08-07 | 2026-08-08 |      |
 | M10.1 | done   | 2026-08-08 | 2026-08-08 | perf clause ("no perceptible cost on a large Root") verified architecturally, not benchmarked |
-| M7.3  | done   | -          | -          | fixes TRIAGE T13/T14/T16; see DECISIONS.md D51 |
-| M8.2  | done   | -          | -          | fixes TRIAGE T18 |
-| M11.1 | done   | -          | -          | README sync, TRIAGE T1/T6/T15; see DECISIONS.md D48 |
-| M11.2 | done   | -          | -          | README Global table gap, TRIAGE T19 |
-| M12.1 | done   | -          | -          | test-coverage backfill, TRIAGE T2/T4/T5/T7/T17; see DECISIONS.md D50 |
+| M7.3  | done   | 2026-08-07 | 2026-08-07 | fixes TRIAGE T13/T14/T16; see DECISIONS.md D51 |
+| M8.2  | done   | 2026-08-07 | 2026-08-07 | fixes TRIAGE T18 |
+| M11.1 | done   | 2026-08-07 | 2026-08-07 | README sync, TRIAGE T1/T6/T15; see DECISIONS.md D48 |
+| M11.2 | done   | 2026-08-07 | 2026-08-07 | README Global table gap, TRIAGE T19 |
+| M12.1 | done   | 2026-08-07 | 2026-08-07 | test-coverage backfill, TRIAGE T2/T4/T5/T7/T17; see DECISIONS.md D50 |
