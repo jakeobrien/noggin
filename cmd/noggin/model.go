@@ -949,23 +949,40 @@ func (m model) paneTitle(p pane) string {
 // so it never competes for it. If appending would overflow the width, it is
 // dropped rather than pushing a hint out (S11's "truncate gracefully"
 // extended to this one extra element).
+//
+// M10.2: hintText/pickerHintText fill the width greedily on their own, so by
+// the time appendStaleSuffix runs there is usually no slack left for the
+// suffix at any ordinary terminal width (it only ever fit above ~200-244
+// cols — DECISIONS.md D53). When the suffix will actually be appended, the
+// hint set is built against width minus the suffix's own width instead,
+// so hintText/pickerHintText's own truncation (dropping least-essential
+// hints first, per paneHints' order) makes room for it ahead of time rather
+// than the suffix losing out to hints that already claimed the whole line.
 func (m model) renderFooter(r rect) string {
 	if m.viewer.findEditing() {
 		return lipgloss.NewStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
 			Render(m.viewer.findView(r.width))
 	}
-	text := hintText(m.focus, r.width)
+	stale := m.stale && m.message == "" // m.message wins below; reserving room for a suffix that will never be appended would truncate hints for nothing
+	hintWidth := r.width
+	if stale {
+		hintWidth = r.width - lipgloss.Width(" · "+staleMessage)
+		if hintWidth < 0 {
+			hintWidth = 0
+		}
+	}
+	text := hintText(m.focus, hintWidth)
 	// The open Picker (S2, M2.3) owns the keyboard the same exclusive way a
 	// find-in-progress does, but unlike Find it does not take over the
 	// footer row itself (its own Prompt already renders inside the modal) --
 	// it only swaps which hints the footer shows, from the pane underneath's
 	// to the Picker's own.
 	if m.picker.open {
-		text = pickerHintText(r.width)
+		text = pickerHintText(hintWidth)
 	}
 	if m.message != "" {
 		text = m.message
-	} else if m.stale {
+	} else if stale {
 		text = appendStaleSuffix(text, r.width)
 	}
 	return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)

@@ -1369,4 +1369,32 @@ check("C2a/M2.1 pty: f redraws the vacated pane's border in the unfocused colour
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M2.1 pty: exits 0 after the r/f focus-border check", code == 0, f"exit {code}")
 
+# --- M10.2: the stale indicator actually renders at an ordinary width -----
+# D53: appendStaleSuffix (model.go) requires its whole suffix to fit in
+# whatever hintText's greedy fill left over, which never happened below
+# ~200-244 cols — narrower than every width this file's own checks use.
+# staleness_test.go's TestFooterShowsStaleIndicatorAtARealisticWidth now
+# covers the render at 80/100/120/132 synthetically; this is the one live,
+# real-file, real-wall-clock check the go test suite cannot give: an actual
+# out-of-process edit, a real staleCheckInterval-length wait, at 80 cols.
+stale_doc = os.path.join(tempfile.mkdtemp(), "stale.md")
+with open(stale_doc, "w") as f:
+    f.write("# Present for now\n")
+
+s = Session([BINARY, stale_doc], 80, 24)
+s.pump(1.2)
+footer = screen_of(s.out, 80, 24).raw_lines()[-1]
+check("C2a/M10.2 pty: no stale indicator before anything has changed",
+      "press R to refresh" not in footer, repr(footer))
+
+with open(stale_doc, "a") as f:
+    f.write("\nAppended out of process\n")
+s.pump(7.0)  # past staleCheckInterval (6s)
+footer = screen_of(s.out, 80, 24).raw_lines()[-1]
+check("C2a/M10.2 pty: the stale indicator surfaces at 80 cols within one check interval",
+      "press R to refresh" in footer, repr(footer))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M10.2 pty: exits 0 after the realistic-width stale indicator check", code == 0, f"exit {code}")
+
 done()

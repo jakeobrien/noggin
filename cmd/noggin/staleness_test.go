@@ -390,6 +390,29 @@ func TestFooterMessageTakesPriorityOverStaleIndicator(t *testing.T) {
 	}
 }
 
+// TestFooterShowsStaleIndicatorAtARealisticWidth is M10.2's regression case
+// (DECISIONS.md D53): TestFooterShowsStaleIndicatorAppendedToPaneHints and
+// TestFooterShowsStaleIndicatorAlongsidePickerHints only ever exercised
+// 200/400 cols, wide enough that appendStaleSuffix always had slack left
+// over from hintText's greedy fill. Every width this project's own
+// test/pty fixtures actually use (80/100/120/132) is narrower than that,
+// and the indicator never rendered at any of them before renderFooter
+// started reserving room for the suffix ahead of hintText's fill.
+func TestFooterShowsStaleIndicatorAtARealisticWidth(t *testing.T) {
+	for _, width := range []int{80, 100, 120, 132} {
+		m := sized(t, newModel(), width, 24)
+		m.stale = true
+
+		footer := m.renderFooter(rect{width: width, height: 1})
+		if !strings.Contains(footer, staleMessage) {
+			t.Errorf("width %d: footer = %q, want it to contain %q", width, footer, staleMessage)
+		}
+		if !strings.Contains(footer, formatHint(keys.Quit)) {
+			t.Errorf("width %d: footer = %q, want alwaysHints (e.g. quit) still present", width, footer)
+		}
+	}
+}
+
 // TestFooterShowsStaleIndicatorAlongsidePickerHints covers the other hint
 // source renderFooter can append the suffix to (D49: "pane hints or the
 // open Picker's") — TestFooterShowsStaleIndicatorAppendedToPaneHints only
