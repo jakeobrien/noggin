@@ -209,6 +209,48 @@ func TestRootsNavScrollsInWholeEntries(t *testing.T) {
 	}
 }
 
+// TestRootsNavPaneShorterThanRowHeightRendersZeroEntries is TRIAGE T18: a
+// pane sized smaller than rootRowHeight (2) must never render an entry split
+// across the top/bottom edge — including the degenerate case of a
+// truncated single line. windowedViewRows must show zero entries, all
+// blank, rather than half of one.
+func TestRootsNavPaneShorterThanRowHeightRendersZeroEntries(t *testing.T) {
+	a := mkdir(t, filepath.Join(t.TempDir(), "alpha"))
+	r := newRootsNav().setRoots([]root{{path: a}}, -1).setSize(40, 1)
+
+	lines := strings.Split(r.view(), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("view has %d lines, want 1 (matches the pane height)", len(lines))
+	}
+	if strings.TrimSpace(lines[0]) != "" {
+		t.Errorf("height=1 line = %q, want a blank row (zero entries), not a truncated first line of alpha's entry", lines[0])
+	}
+}
+
+// TestRootsNavOddHeightPadsRatherThanSplitting is TRIAGE T18's other edge:
+// a height that is not an exact multiple of rootRowHeight must still show
+// only whole entries, padding the leftover line blank instead of cutting an
+// entry's second line off.
+func TestRootsNavOddHeightPadsRatherThanSplitting(t *testing.T) {
+	a := mkdir(t, filepath.Join(t.TempDir(), "alpha"))
+	b := mkdir(t, filepath.Join(t.TempDir(), "beta"))
+	r := newRootsNav().setRoots([]root{{path: a}, {path: b}}, -1).setSize(40, 3)
+
+	lines := strings.Split(r.view(), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("view has %d lines, want 3 (matches the pane height)", len(lines))
+	}
+	if !strings.Contains(lines[0], "alpha") {
+		t.Errorf("line 0 = %q, want alpha's whole first entry visible", lines[0])
+	}
+	if strings.TrimSpace(lines[1]) == "" {
+		t.Errorf("line 1 = %q, want alpha's path line, not blank", lines[1])
+	}
+	if strings.TrimSpace(lines[2]) != "" {
+		t.Errorf("line 2 = %q, want a blank pad row, not a cut-off start of beta's entry", lines[2])
+	}
+}
+
 // TestRootsNavStarredMarked checks S3's "starred roots are marked" and that
 // toggleStarred flips only the targeted row.
 func TestRootsNavStarredMarked(t *testing.T) {

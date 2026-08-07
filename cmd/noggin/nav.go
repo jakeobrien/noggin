@@ -33,7 +33,11 @@ func windowedView(width, height, selected, count int, renderRow func(idx int) st
 // that don't make a whole entry pad blank rather than showing a cut-off row.
 // renderRow must return exactly rowHeight lines for a given idx.
 func windowedViewRows(width, height, selected, count, rowHeight int, renderRow func(idx int) []string) string {
-	perScreen := max(height/rowHeight, 1)
+	// No forced minimum of 1 here (T18): a pane shorter than rowHeight must
+	// show zero entries, not a whole row rendered then sliced down to a
+	// truncated first line. perScreen=0 makes the loop below a no-op and
+	// the pad loop fills the box with blank rows instead.
+	perScreen := height / rowHeight
 	offset := 0
 	if selected >= perScreen {
 		offset = selected - perScreen + 1
