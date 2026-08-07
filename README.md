@@ -90,6 +90,9 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `tab` / `shift+tab` | next / previous pane |
 | `?` | open the Help modal (full keybinding list for the focused pane) |
 | `ctrl+n` | toggle the Navigator (hide/restore the whole left sidebar) |
+| `r` | focus the Roots Nav (reveals the Navigator if hidden) |
+| `f` | focus the Files Nav (reveals the Navigator if hidden) |
+| `R` | refresh the Active Root's file tree and the Active Document from disk |
 | `e` | edit the active document in `$EDITOR` |
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
