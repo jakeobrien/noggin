@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M9.1
+Current task: M10.1
 
 ## Handoff
 
@@ -295,7 +295,53 @@ marker read).
 `alt+h`/star-toggle flakiness the harness fix removed was checked over multiple repeated
 `make check-pty` runs, not just once). No triage items opened for this task.
 
-Next step: M9.1 — Footer and Help Modal accuracy (S9).
+M9.1 done: swept every binding S4/S6/S7 added, changed or retired this cycle into the
+Footer hints (`paneHints`/`pickerHints`, footer.go) and Help Modal (`helpBindings`,
+help.go), the two artifacts S9 names by name. FocusRoots/FocusFiles (S6, M2.1) and Refresh
+(S2, M5.1) are global — reachable from Roots Nav, Files Nav and Document Viewer alike — so
+all three now appear in every pane's footer hints and Help Modal list, the same
+aware-regardless-of-focus treatment Edit/Navigator/Picker already got. ToggleHidden (S4,
+M6.2) only does anything once the Picker is open, so it joins `pickerHints` (footer, where
+it was missing entirely) and every pane's `helpBindings` (Help Modal is unreachable while
+the Picker owns the keyboard, so these three panes are the only place it can ever be
+documented — the same reasoning already covering PickerUp/PickerDown/PickerMode/
+PickerScope). Peek (S7, M7.1/M7.2) is Files-Nav-only by design, so it was added only to
+filesPane's footer hints and Help Modal list, deliberately absent from rootsPane/
+viewerPane — verified against model.go's Update switch: Peek is matched only inside the
+filesPane case, ToggleHidden only inside handlePickerInput, the other three inside the
+global pre-focus switch, so each binding's new placement matches where it actually does
+something. No remaining `ctrl+p` reference in either artifact (grep-verified); README's own
+three ctrl+p mentions (T1) are out of this task's scope per that TRIAGE item's own reasoning,
+now recorded explicitly as D48 rather than left implicit.
+
+Growing the Help Modal's binding lists pushed filesPane's rendered box past 24 rows for the
+first time (25, from 21 entries) — `TestHelpOverlayLeavesTheFrameVisibleAroundIt` (go test)
+and its pty twin (`test/pty/checks.py`'s M5.3 section) both asserted the frame's top
+border/footer were byte-unchanged outside the modal, which only holds if the modal doesn't
+get clamped by `overlayHelp`'s MaxHeight; both were widened to a 30-row fixture so the
+assertion keeps testing what it claims to (unclamped compositing), not the already-separately-
+covered clamped case (`TestHelpOverlayNeverExceedsTheTerminal`, 40x10).
+
+Tests: `cmd/noggin/footer_test.go` — `TestPaneHintsNameFocusAndRefreshFromEveryPane`,
+`TestPaneHintsNamePeekOnlyInFilesPane` (positive for filesPane, negative for the other two),
+`TestPickerHintTextNamesToggleHidden`, `TestNoFooterHintNamesCtrlP`.
+`cmd/noggin/help_test.go` — `TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane`,
+`TestHelpBindingsListPeekOnlyForFilesPane`, `TestNoHelpModalNamesCtrlP`. These are the
+cycle's stated acceptance criterion verbatim: `?` in each pane lists exactly that pane's
+current bindings, and no ctrl+p anywhere in either artifact. `make check` and `make
+check-pty` both green (full pty suite, 206 checks).
+
+A fresh-context code-reviewer pass found no blocker/high/medium findings. Two low-severity
+comment/capacity nits (a spec-item mislabel folding Refresh's S2 under S6; an off-by-one
+allocation-capacity hint in help.go) were cheap and fixed inline before this handoff. A
+third low finding — the M5.3 viewer-context pty block (untouched by this diff) already runs
+against a Help Modal clamped past 24 rows, passing today only by luck of binding order — is
+logged as TRIAGE T17, not this task's own regression but newly exposed by this task's own
+growth of the list; the reviewer's assessment that "no ctrl+p anywhere" is Footer/Help-Modal-
+scoped (not README) matches the project's own prior TRIAGE T1/T6/T15 reasoning, now recorded
+as DECISIONS.md D48 rather than left implicit.
+
+Next step: M10.1 — staleness indicator (S10), the cycle's pre-agreed-cut last milestone.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
@@ -325,5 +371,5 @@ Known foot-guns flagged by research, worth re-reading before M9:
 | M7.1  | done   | 2026-08-07 | -         |      |
 | M7.2  | done   | 2026-08-07 | -         |      |
 | M8.1  | done   | -        | -         |      |
-| M9.1  | todo   | -        | -         |      |
+| M9.1  | done   | 2026-08-07 | -         |      |
 | M10.1 | todo   | -        | -         |      |

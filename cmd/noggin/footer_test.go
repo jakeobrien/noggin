@@ -133,3 +133,61 @@ func TestFooterShowsPickerHintsWhileOpen(t *testing.T) {
 		t.Errorf("footer after dismissal = %q, want it restored to %q", after, before)
 	}
 }
+
+// TestPaneHintsNameFocusAndRefreshFromEveryPane is C2a/M9.1's own sweep of
+// S6's global bindings: FocusRoots ("r"), FocusFiles ("f") and Refresh ("R")
+// are reachable from every pane (S6), so every pane's footer hints must name
+// all three, the same always-there treatment Edit/Navigator/Picker already
+// get.
+func TestPaneHintsNameFocusAndRefreshFromEveryPane(t *testing.T) {
+	for _, p := range paneOrder {
+		text := hintText(p, 200)
+		for _, want := range []string{"roots", "files", "refresh"} {
+			if !strings.Contains(text, want) {
+				t.Errorf("pane %v: hint text = %q, want it to contain %q", p, text, want)
+			}
+		}
+	}
+}
+
+// TestPaneHintsNamePeekOnlyInFilesPane checks S7's "Peek, in the Files Nav
+// only" against the footer: filesPane's hints name it, but rootsPane's and
+// viewerPane's — which can never trigger it — do not, the same
+// inapplicable-binding-is-worse-than-no-hint reasoning paneHints already
+// gives for the viewer's own omissions.
+func TestPaneHintsNamePeekOnlyInFilesPane(t *testing.T) {
+	if !strings.Contains(hintText(filesPane, 200), "peek") {
+		t.Errorf("filesPane hint text = %q, want it to contain %q", hintText(filesPane, 200), "peek")
+	}
+	for _, p := range []pane{rootsPane, viewerPane} {
+		text := hintText(p, 200)
+		if strings.Contains(text, "peek") {
+			t.Errorf("pane %v: hint text = %q, unexpectedly names Peek (Files-Nav-only)", p, text)
+		}
+	}
+}
+
+// TestPickerHintTextNamesToggleHidden checks S4/M6.2's dotfile toggle is
+// named among the open Picker's footer hints (pickerHints), the same
+// always-does-something-while-open reasoning PickerMode/PickerScope already
+// get.
+func TestPickerHintTextNamesToggleHidden(t *testing.T) {
+	text := pickerHintText(200)
+	if !strings.Contains(text, "hidden files") {
+		t.Errorf("pickerHintText = %q, want it to contain %q", text, "hidden files")
+	}
+}
+
+// TestNoFooterHintNamesCtrlP is S9's own literal "no remaining reference to
+// ctrl+p anywhere": M2.2 retired it in favor of "space", so no pane's hints
+// (open or Picker) may still mention it.
+func TestNoFooterHintNamesCtrlP(t *testing.T) {
+	for _, p := range paneOrder {
+		if text := hintText(p, 200); strings.Contains(text, "ctrl+p") {
+			t.Errorf("pane %v: hint text = %q, unexpectedly still names ctrl+p", p, text)
+		}
+	}
+	if text := pickerHintText(200); strings.Contains(text, "ctrl+p") {
+		t.Errorf("pickerHintText = %q, unexpectedly still names ctrl+p", text)
+	}
+}

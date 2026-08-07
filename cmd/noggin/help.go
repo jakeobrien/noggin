@@ -27,32 +27,45 @@ import (
 // from to document them. Leaving them out (the original M2.3 shape) left
 // S2's "Footer and Help Modal cover the Picker's actions" only half met:
 // they lived solely in the footer's pickerHintText, itself fragile (can
-// truncate under a narrow terminal with no Help fallback).
+// truncate under a narrow terminal with no Help fallback). keys.ToggleHidden
+// joins them for the identical reason (C2a/M9.1): it too only does anything
+// once the Picker is open, and these three panes are the only place Help
+// can ever show it.
+//
+// keys.FocusRoots/FocusFiles (S6) and keys.Refresh (S2) (C2a/M9.1) are
+// added to every case for the same reason keys.Picker already is: all
+// three are global, reachable from any Focus. keys.Peek (S7) is added only
+// to filesPane, since it is Files-Nav-only by design — listing it for
+// rootsPane/viewerPane would document a binding that pane can never
+// actually trigger.
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{
 			keys.Activate, keys.Star, keys.LineUp, keys.LineDown,
 			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
+			keys.FocusRoots, keys.FocusFiles, keys.Refresh,
 			keys.Help, keys.Quit,
 		}
 	case filesPane:
 		return []key.Binding{
 			keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown,
 			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
+			keys.FocusRoots, keys.FocusFiles, keys.Refresh, keys.Peek,
 			keys.Help, keys.Quit,
 		}
 	default: // viewerPane
-		bindings := make([]key.Binding, 0, len(scrollActions)+15)
+		bindings := make([]key.Binding, 0, len(scrollActions)+19)
 		for _, a := range scrollActions {
 			bindings = append(bindings, a.binding)
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
 			keys.Edit, keys.Navigator, keys.Picker, keys.NextPane, keys.PrevPane,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
+			keys.FocusRoots, keys.FocusFiles, keys.Refresh,
 			keys.Help, keys.Quit,
 		)
 	}

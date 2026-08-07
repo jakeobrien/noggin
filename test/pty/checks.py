@@ -926,9 +926,13 @@ check("M5.2 exits 0 after the selection-intact check", code == 0, f"exit {code}"
 # Reachable from the footer affordance (S12), and it lists the focused pane's
 # own keys: opened from Files, it must name Files' bindings (expand/collapse)
 # and not another pane's (star is Roots-only).
-s = Session([BINARY, TREE], 80, 24)
+# Height 30, not 24 (C2a/M9.1 grew filesPane's helpBindings list to 21
+# entries — a 25-row box — past what a 24-row terminal fits without
+# clamping; see the go-test-only TestHelpOverlayNeverExceedsTheTerminal for
+# the clamped case, which this check is not exercising).
+s = Session([BINARY, TREE], 80, 30)
 s.pump(1.2)
-before = screen_of(s.out, 80, 24)
+before = screen_of(s.out, 80, 30)
 before_lines = before.raw_lines()
 top_edge_before = before_lines[0]
 footer_before = before_lines[-1]
@@ -936,7 +940,7 @@ check("M5.3 focus starts on Files",
       footer_before.startswith("Files"), repr(footer_before))
 
 s.send(KEY["Help"], 0.5)
-opened = screen_of(s.out, 80, 24)
+opened = screen_of(s.out, 80, 30)
 opened_body = "\n".join(opened.raw_lines())
 check("M5.3 the modal names the focused pane's own context",
       "Help: Files" in opened_body, repr(opened_body[:200]))
@@ -957,14 +961,14 @@ check("M5.3 the footer is unchanged outside the modal",
 s.send(KEY["Down"], 0.3)
 s.send(KEY["Down"], 0.3)
 s.send(KEY["Cancel"], 0.5)
-restored = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+restored = "\n".join(screen_of(s.out, 80, 30).raw_lines())
 check("M5.3 esc dismisses the modal, restoring the exact previous screen",
       restored == "\n".join(before_lines), repr(restored[:80]))
 
 # The Help key itself dismisses it too (pressing the affordance again).
 s.send(KEY["Help"], 0.5)
 s.send(KEY["Help"], 0.5)
-restored_again = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+restored_again = "\n".join(screen_of(s.out, 80, 30).raw_lines())
 check("M5.3 pressing Help again also dismisses the modal",
       restored_again == "\n".join(before_lines), repr(restored_again[:80]))
 

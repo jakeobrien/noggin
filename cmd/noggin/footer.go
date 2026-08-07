@@ -11,18 +11,26 @@ import (
 // first (S11's "key hints relevant to the focused pane"). Order matters:
 // hintText drops from the end of this list first when the footer must
 // truncate, so put what a newcomer needs most up front.
+//
+// FocusRoots/FocusFiles (S6) and Refresh (S2) (C2a/M9.1) are global — reachable
+// from every one of these three panes, the same way Edit/Navigator/Picker
+// already are — so all three panes list them, same as those. Peek (S7) is
+// Files-Nav-only by design, so it appears only in filesPane's list, not the
+// other two — a hint for an inapplicable binding is worse than no hint, the
+// same reasoning the viewer case below already gives for omitting
+// FindNext/FindPrevious/Cancel.
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
-		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.NextPane, keys.Edit, keys.Navigator, keys.Picker}
+		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.NextPane, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.NextPane, keys.Edit, keys.Navigator, keys.Picker}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.NextPane, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.Refresh, keys.Peek}
 	default: // viewerPane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is
 		// worse than no hint (S12's help modal, M5.3, lists the full keymap
 		// regardless — that is the discoverability backstop for these).
-		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Edit, keys.Navigator, keys.NextPane, keys.Picker}
+		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Edit, keys.Navigator, keys.NextPane, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.Refresh}
 	}
 }
 
@@ -33,13 +41,16 @@ func paneHints(p pane) []key.Binding {
 // paneHints' viewer case, which omits it as "inapplicable most of the
 // time"): while the Picker is open Cancel always does something —
 // dismisses it — so it is never the inapplicable hint that comment warns
-// against.
+// against. ToggleHidden (S4/M6.2, C2a/M9.1) is included for the same
+// reason PickerMode/PickerScope are: it always does something while the
+// Picker is open, regardless of mode or Scope.
 func pickerHints() []key.Binding {
 	return []key.Binding{
 		keys.Activate, keys.Cancel,
 		keys.PickerUp, keys.PickerDown,
 		keys.PageUp, keys.PageDown,
 		keys.PickerMode, keys.PickerScope,
+		keys.ToggleHidden,
 	}
 }
 

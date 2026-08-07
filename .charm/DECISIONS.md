@@ -629,3 +629,29 @@
   rather than silently changed since it is a real, user-visible reduction in redundant
   signalling (from two cues to one) that a fresh session might otherwise wonder about when
   diffing `rootsnav.go` against C1-era behaviour.
+
+## D48: M9.1's "no remaining reference to ctrl+p anywhere" is scoped to the Footer/Help Modal, not README
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-07
+- Context: PLAN.md M9.1 and SPEC.md S9's done-when both read literally as "no remaining
+  reference to `ctrl+p` anywhere," with no explicit carve-out. README.md still documents
+  `ctrl+p` opening the Picker in three places (bindings table, section heading, prose) — a
+  gap TRIAGE T1 flagged back at M2.2 as outside that task's scope, on the grounds that "no
+  plan task currently owns README the way M9.1 owns Footer/Help Modal." T6/T15 later
+  extended the same reasoning to `alt+h` and Peek documentation gaps.
+- Decision: M9.1's own scope is read as the Footer (`paneHints`/`pickerHints`, footer.go)
+  and the Help Modal (`helpBindings`, help.go) only — the two artifacts S9 names by name
+  ("correct in the Footer hints and the Help Modal for each pane"). README.md is left
+  untouched; T1/T6/T15 remain open in TRIAGE.md for a future README-sync task to resolve
+  together, rather than picked off piecemeal by whichever task happens to touch an adjacent
+  binding.
+- Why: T1 already recorded this reading at M2.2's own handoff, before M9.1 was ever worked;
+  M9.1 implementing it consistently is following an existing call, not making a new one.
+  Splitting README fixes across three different tasks (M2.2/M6.2/M9.1) each touching one
+  binding would leave the doc updated in dribs with no task actually verifying its overall
+  consistency — a dedicated pass, once T1/T6/T15 are triaged together, does that once.
+  Recorded explicitly (not left implicit in TRIAGE rows alone) since a fresh session reading
+  PLAN.md/SPEC.md's literal "anywhere" wording could otherwise reasonably read M9.1 as
+  incomplete without this cross-reference.

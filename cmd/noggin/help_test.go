@@ -72,7 +72,11 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 // without changing what a terminal actually displays, so a byte-exact
 // comparison would fail on formatting, not content.
 func TestHelpOverlayLeavesTheFrameVisibleAroundIt(t *testing.T) {
-	m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)
+	// Height 30, not 24 (C2a/M9.1 grew filesPane's helpBindings list past
+	// what a 24-row terminal fits without clamping — see
+	// TestHelpOverlayNeverExceedsTheTerminal for that clamped case, which
+	// this test is not exercising).
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 30)
 	beforeLines := plainLines(m.View().Content)
 
 	m = press(t, m, "?")
@@ -294,6 +298,59 @@ func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
 		box := helpBox(p)
 		if !strings.Contains(box, "picker") {
 			t.Errorf("pane %v: help modal = %q, want it to name the picker", p, box)
+		}
+	}
+}
+
+// TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane is C2a/M9.1's
+// help-modal half of the same S6/S4 sweep TestPaneHintsNameFocusAndRefreshFromEveryPane
+// checks for the footer: FocusRoots/FocusFiles/Refresh are global (S6), so
+// every pane's Help Modal must list them; ToggleHidden only does anything
+// once the Picker is open, but — like PickerUp/PickerDown/PickerMode/
+// PickerScope before it — these three panes are the only place Help is ever
+// reachable from to document it (see helpBindings' own comment).
+func TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane(t *testing.T) {
+	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.Refresh, keys.ToggleHidden}
+	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+		bindings := helpBindings(p)
+		for _, w := range want {
+			found := false
+			for _, b := range bindings {
+				if b.Help().Key == w.Help().Key && b.Help().Desc == w.Help().Desc {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("pane %v: helpBindings missing %q (%q)", p, w.Help().Key, w.Help().Desc)
+			}
+		}
+	}
+}
+
+// TestHelpBindingsListPeekOnlyForFilesPane checks S7's "Peek, in the Files
+// Nav only" against the Help Modal: filesPane's binding list names it, but
+// rootsPane's and viewerPane's do not, since Peek can never be triggered
+// from either.
+func TestHelpBindingsListPeekOnlyForFilesPane(t *testing.T) {
+	filesBox := helpBox(filesPane)
+	if !strings.Contains(filesBox, "peek") {
+		t.Errorf("filesPane help modal = %q, want it to name peek", filesBox)
+	}
+	for _, p := range []pane{rootsPane, viewerPane} {
+		box := helpBox(p)
+		if strings.Contains(box, "peek") {
+			t.Errorf("pane %v: help modal = %q, unexpectedly names Peek (Files-Nav-only)", p, box)
+		}
+	}
+}
+
+// TestNoHelpModalNamesCtrlP is the Help Modal's half of S9's literal "no
+// remaining reference to ctrl+p anywhere".
+func TestNoHelpModalNamesCtrlP(t *testing.T) {
+	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+		if box := helpBox(p); strings.Contains(box, "ctrl+p") {
+			t.Errorf("pane %v: help modal = %q, unexpectedly still names ctrl+p", p, box)
 		}
 	}
 }
