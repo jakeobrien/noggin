@@ -99,6 +99,16 @@ Delivers: S7
   Peeking (or the empty Viewer if there was no Active Document) — done when: each of those five
   triggers, performed while Peeking, leaves the Viewer exactly as it was before Peek started —
   effort: 2. (needs: M7.1)
+- **M7.3** — `FindNext`/`FindPrevious` (`n`/`N`) are silent no-ops while Peeking, matching S7's
+  "cannot be searched with Find", and clearing Peek after a pre-existing committed Find
+  restores the Active Document at its exact pre-Peek scroll offset with no drift; `startFind`'s
+  Focus assignment is routed through `model.setFocus` for consistency with every other call
+  site; a one-line comment documents that `clearPeek` firing on a boundary-clamped
+  `LineUp`/`LineDown` (no actual index change) is an accepted broadening, not a bug — done
+  when: committing a Find on the Active Document, then Peeking a different file and pressing
+  `n`/`N` repeatedly, has no visible or state effect, and clearing Peek afterward returns to the
+  exact pre-Peek scroll offset, with a regression test covering it (TRIAGE T13/T14/T16; see
+  DECISIONS.md D51) — effort: 2. (needs: M7.1, M7.2)
 
 ## M8 — Two-line Roots Nav rows
 
@@ -110,6 +120,11 @@ Delivers: S5
   entry carry the selection highlight; movement steps one entry (two lines) at a time — done
   when: every Roots Nav entry shows name and path on separate lines, the selected entry's both
   lines are highlighted, and `j`/`k` move exactly one entry per keypress — effort: 2.
+- **M8.2** — `windowedViewRows` (nav.go) never renders a Roots Nav entry's two lines split
+  across the top/bottom edge, including when the pane's height is smaller than `rootRowHeight`
+  (2) or not an exact multiple of it — done when: a Roots Nav pane sized to height=1 renders
+  zero entries rather than a truncated single line, with a regression test covering height=1
+  and an odd height (e.g. 3) (TRIAGE T18) — effort: 1. (needs: M8.1)
 
 ## M9 — Footer and Help Modal accuracy
 
@@ -131,3 +146,29 @@ Delivers: S10 — *pre-agreed cut: planned last, dropped without ceremony if the
   cost anything on a large Root — done when: an out-of-process change to the Active Document
   or under the Active Root's tree surfaces the indicator within one check interval, with no
   refresh, no tree walk, and no description of the change — effort: 2.
+
+## M11 — README sync
+
+Delivers: doc accuracy for this cycle's bindings (no dedicated S-key; scope agreed in
+DECISIONS.md D48)
+
+- **M11.1** — README.md drops every remaining `ctrl+p` reference (bindings table, section
+  heading, prose) in favor of `<space>` opening the Picker; documents the `alt+h`
+  dotfile-hiding toggle in the Picker section; documents Peek (`p`) in the Files Nav
+  keybinding table — done when: README.md has no remaining reference to `ctrl+p` anywhere, and
+  its Picker/keybinding sections accurately describe `<space>`, `alt+h` and `p` (TRIAGE
+  T1/T6/T15) — effort: 1.
+
+## M12 — Test coverage hardening
+
+Delivers: regression coverage for gaps a fresh-context review found in already-shipped work;
+no functional change
+
+- **M12.1** — Backfill five review-flagged coverage gaps with no behavior change: a
+  `test/pty/checks.py` check that `r`/`f` move the visible border highlight (TRIAGE T2); a
+  `keys.Refresh` test with focus on `rootsPane` (TRIAGE T4); a multi-Root refresh test pinning
+  that only the Active Root/Document are touched (TRIAGE T5); a `hideDotfiles: true` case in
+  `TestPickerStatusStates` for the " · Hidden" title suffix (TRIAGE T7; see DECISIONS.md D50);
+  widen the M5.3 viewer-context pty session past `overlayHelp`'s clamp, mirroring the
+  Files-pane block (TRIAGE T17) — done when: all five gaps have a passing test/check exercising
+  them and `make check`/`make check-pty` stay green — effort: 2.

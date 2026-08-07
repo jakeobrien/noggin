@@ -1113,7 +1113,7 @@ check("M7.1 exits 0 after the mode/Scope indicator flow", code == 0, f"exit {cod
 # Every alt+h in this section is sent on an empty Prompt, before that
 # Picker-open's first search — never immediately after one has landed. This
 # is the same ordering rule the mode/Scope flow above already follows, for
-# the same reason (picker-pty-async-ordering.md, D58): toggling right after a
+# the same reason (picker-pty-async-ordering.md): toggling right after a
 # landed search races the cell-diffing emulator's cursor-relative replay
 # (confirmed empirically here too — alt+h immediately after a landed search
 # intermittently misread the title on ~1-in-3 runs; reordering to

@@ -604,6 +604,11 @@
   hand-rolling git's index/worktree diff algorithm is a different order of complexity than
   hand-rolling `.gitignore` glob matching, with no upside since S8 deliberately wants real git
   behaviour, simplified, not an independent approximation of it.
+- Addendum (2026-08-09, replan, TRIAGE T8): unlike D41's `rg` calls, which moved off the
+  Update thread specifically because they run on every keystroke behind a debounce, D46's two
+  `git` calls run synchronously from `openFolder`/`refresh`, gated on discrete user actions
+  (Root switch, launch, explicit `R`) rather than typing — the same synchronous-and-gated
+  shape `tree.Walk` already has, not an oversight relative to D41's async precedent.
 
 ## D47: S5's two-line rows drop the old bold-means-active convention
 
@@ -706,3 +711,76 @@
   global bindings relies on; appending rather than replacing follows from S10 itself being a
   standing condition (persists until a refresh), not a one-shot notice — D22's transient
   shape is the wrong fit for something that must still be visible many keypresses later.
+
+## D50: M6.2's " · Hidden" Prompt-title suffix is a deliberate, minimal UI affordance
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-09
+- Context: M6.2/S4's `alt+h` dotfile-hiding toggle shipped with a " · Hidden" suffix on
+  `pickerModeScope`'s title (`picker_view.go`) — not mandated by S4 or M6.2's own done-when,
+  which only require the toggle to hide/show Results. A code-review pass (TRIAGE T12) flagged
+  it as reasonable but undocumented, and separately (TRIAGE T7) found the rendering path had
+  no `go test` coverage — only the more fragile `test/pty/checks.py` exercised the string.
+- Decision: keep the suffix as shipped — it reuses the existing mode/Scope indicator
+  mechanism, adds no new binding or state, and gives the toggle its only user-visible
+  confirmation beyond the Results list itself changing. Coverage gap addressed by adding a
+  `hideDotfiles: true` case to `TestPickerStatusStates` (picker_view_test.go), tracked as
+  PLAN.md M12.1.
+- Why: a minimal, reuse-based indicator is cheap and low-risk; recording it here (rather than
+  leaving it discoverable only in the code comment) is what T12 actually asked for.
+
+## D51: Peek's Find-continuation gap is fixed, not accepted
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-09
+- Context: cycle-end validation (and TRIAGE T13, high severity) found that `FindNext`/
+  `FindPrevious` (`n`/`N`, model.go) are matched in `Update`'s global switch ungated by
+  `m.viewer.peeking()`, unlike `startEdit`/`startFind` a few lines above which both got
+  explicit `peeking()` guards in the same M7.1/M7.2 diff. A pre-existing committed Find on the
+  Active Document lets `n`/`N` silently drift the real viewport's YOffset while Peeking
+  (invisible on screen, since the view shows `peek.vp`), and `clearPeek()` never touches that
+  offset, so clearing Peek afterward restores the Active Document at the drifted position, not
+  the pre-Peek one — violating S7's "cannot be searched with Find" and the cycle-level
+  acceptance bullet on scroll restoration, in that specific reachable scenario. D44 named this
+  exact class of risk generally ("collides with globals defined on the Active Document"),
+  sharpest for Edit; the same reasoning covers Find continuation, which D44/M7.1/M7.2 did not
+  actually test.
+- Decision: gate `FindNext`/`FindPrevious` with `!m.viewer.peeking()`, mirroring
+  `startEdit`/`startFind`'s existing guard shape, plus a regression test. Bundled in the same
+  task (PLAN.md M7.3, reopening M7.1/M7.2's area rather than a fresh milestone): route
+  `startFind`'s remaining direct `m.focus = ...` assignment through `model.setFocus` for
+  consistency with every other call site (TRIAGE T14 — harmless today only because
+  `startFind`'s own `peeking()` guard always returns first, but the one remaining site the
+  `setFocus` chokepoint's own stated invariant doesn't structurally cover); and add a one-line
+  comment documenting that `clearPeek()` firing on a boundary-clamped `LineUp`/`LineDown`
+  (selection index unchanged) is an accepted broadening of "any selection change", not a bug
+  (TRIAGE T16, functionally harmless — re-arriving at the same file just re-shows the Active
+  Document).
+- Why: this is a real, reachable spec violation (not a hypothetical), cheap to fix with the
+  same guard shape already established two lines away, and the two low-severity nits sit in
+  the exact code this fix already touches.
+
+## D52: Three low-severity review nits accepted as-is
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-09
+- Context: three low-severity, non-blocking findings from code review, triaged together at
+  cycle-end replan.
+- Decision (wontfix, TRIAGE T3): `filesNav.expanded`'s unbounded growth across repeated
+  refreshes (never pruned for paths that no longer exist) stays as-is — already documented as
+  deliberate in `refreshRoot`'s own doc comment, harmless dead weight, not worth added
+  bookkeeping this cycle.
+- Decision (wontfix, TRIAGE T9): `ToggleHidden` keeps its name rather than being renamed to
+  match its `Picker*`-prefixed siblings (`PickerUp`/`PickerDown`/`PickerMode`/`PickerScope`) —
+  churn-only with no behavior change; revisit only if the Picker-only naming convention is
+  otherwise being touched.
+- Decision (wontfix, TRIAGE T11): `parseGitStatus`'s assumption that `git rev-parse
+  --show-toplevel`'s output and a Root's own path resolve identically (e.g. through the same
+  symlinks) stays untested — a divergence degrades silently to "no markers", still S8-
+  compliant, not a crash; a symlinked-Root edge case sits outside S8's explicit out-of-scope
+  list but isn't worth a dedicated test absent an actual bug report.
+- Why: all three are genuinely low risk and low value relative to the cost of acting on them
+  now; recorded so a fresh session doesn't re-raise them as new findings.
