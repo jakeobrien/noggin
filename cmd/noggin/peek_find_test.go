@@ -59,9 +59,9 @@ func TestFindNextPreviousAreNoOpsWhilePeeking(t *testing.T) {
 	// missing entirely, which would make this assertion pass for the wrong
 	// reason. A run of nexts only returns to start if each one is actually
 	// gated away.
-	m = press(t, m, "n")
-	m = press(t, m, "n")
-	m = press(t, m, "n")
+	m = press(t, m, keys.FindNext.Keys()[0])
+	m = press(t, m, keys.FindNext.Keys()[0])
+	m = press(t, m, keys.FindNext.Keys()[0])
 	if got := m.viewer.findState.current; got != wantCurrent {
 		t.Errorf("find match index after n while Peeking = %d, want unchanged %d", got, wantCurrent)
 	}
@@ -69,8 +69,8 @@ func TestFindNextPreviousAreNoOpsWhilePeeking(t *testing.T) {
 		t.Errorf("viewer offset after n while Peeking = %d, want unchanged %d", got, wantOffset)
 	}
 
-	m = press(t, m, "N")
-	m = press(t, m, "N")
+	m = press(t, m, keys.FindPrevious.Keys()[0])
+	m = press(t, m, keys.FindPrevious.Keys()[0])
 	if got := m.viewer.findState.current; got != wantCurrent {
 		t.Errorf("find match index after N while Peeking = %d, want unchanged %d", got, wantCurrent)
 	}

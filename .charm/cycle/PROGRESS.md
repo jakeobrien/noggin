@@ -17,10 +17,8 @@
 
 ## Cursor
 
-Current task: none — the closing `charm-validate` pass (M7.3/M8.2/M11.1/M11.2/M12.1) is done.
-One non-blocking loose end remains before the cycle can actually close: TRIAGE.md has one
-open item (T20, added by a review pass after this validate pass's scope was cut) that still
-needs charm-replan triage.
+Current task: none — all plan tasks done, all validated, TRIAGE.md is now empty. The cycle is
+ready to close (`/charm-close`).
 
 ## Handoff
 
@@ -37,12 +35,14 @@ tests/checks exist, are correctly targeted, and pass. Also manually verified `ma
 make install` and a custom `PREFIX` both place a working binary. No discrepancies found; no
 new TRIAGE items raised by this pass.
 
-One pre-existing gap, not mine to fix: TRIAGE.md's T20 (low severity, a test-style nit in
-peek_find_test.go, review-sourced) is still `open` — the doc map requires TRIAGE.md empty
-before a cycle close, so it needs a charm-replan pass first.
+replan (2026-08-09) closed out the one remaining loose end: TRIAGE.md's T20 (low severity,
+a test-style nit — `peek_find_test.go` pressed raw `"n"`/`"N"` instead of
+`keys.FindNext.Keys()[0]`/`keys.FindPrevious.Keys()[0]`) was low risk × value, mechanical, and
+no-behavior-change, so it was fixed directly rather than routed to a plan task (mirroring
+T8/T10's precedent) — see TRIAGE.md's inbox comment. `go test` (targeted) and `make check`
+reverified green after the edit.
 
-Next step: run charm-replan to triage T20 (the only open item), then the cycle can close.
-Nothing else is blocked.
+Next step: none required. `/charm-close` whenever the user is ready.
 
 ## Status
 
