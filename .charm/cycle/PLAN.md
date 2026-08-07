@@ -158,6 +158,9 @@ DECISIONS.md D48)
   keybinding table — done when: README.md has no remaining reference to `ctrl+p` anywhere, and
   its Picker/keybinding sections accurately describe `<space>`, `alt+h` and `p` (TRIAGE
   T1/T6/T15) — effort: 1.
+- **M11.2** — README.md's Global keybinding table adds the three bindings M11.1 didn't own:
+  `r` (FocusRoots), `f` (FocusFiles), `R` (Refresh) — done when: the Global table lists all
+  three alongside their existing entries (TRIAGE T19) — effort: 1. (needs: M11.1)
 
 ## M12 — Test coverage hardening
 

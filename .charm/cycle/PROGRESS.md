@@ -17,43 +17,21 @@
 
 ## Cursor
 
-Current task: the closing `charm-validate` pass, covering M7.3/M8.2/M11.1/M12.1. That is
-the only work left before the cycle can close.
+Current task: M11.2 (README Global table gap, TRIAGE T19), a one-line follow-on to M11.1.
+Once done, the closing `charm-validate` pass covers M7.3/M8.2/M11.1/M11.2/M12.1 — the only
+work left before the cycle can close.
 
 ## Handoff
 
-M12.1 is done (TRIAGE T2/T4/T5/T7/T17, all five; DECISIONS.md D50 named T7 specifically).
-No production code changed — test-only backfill, as the task's own done-when required:
+Replan (2026-08-09): M7.3/M8.2/M11.1/M12.1 are all done (see prior entries in git history /
+DECISIONS.md D50/D51 for detail). TRIAGE.md's sole open item, T19 (README Global table omits
+`r`/`f`/`R`), was routed to a new task M11.2 rather than deferred or dropped — a one-line
+addition continuous with M11.1's already-established README-sync scope (D48), not a new
+decision. TRIAGE.md is now empty.
 
-- T4/T5 (`cmd/noggin/refresh_test.go`): `TestRefreshWorksWithFocusOnRootsPane` drives
-  `keys.Refresh` with `m.focus = rootsPane` (the one pane the existing suite skipped, unlike
-  `focus_test.go`'s every-pane table for FocusRoots/FocusFiles); `TestRefreshDoesNotTouchOtherRoots`
-  configures two roots, deletes the *inactive* one's directory and adds a file under the
-  Active Root, then refreshes — pins that the Active Root's tree picks up the new file while
-  the inactive root's row (including its now-stale `broken` snapshot) is untouched, the
-  negative clause T5 flagged as true-by-construction but unguarded.
-- T7 (`cmd/noggin/picker_view_test.go`): added a `hideDotfiles: true` case to
-  `TestPickerStatusStates` asserting `"File · Active Root · Hidden"`, closing the gap D50
-  named (only `test/pty/checks.py` exercised the ` · Hidden` suffix before this).
-- T2 (`test/pty/checks.py`): added a `FocusRoots` (`r`) KEY entry (previously absent
-  entirely) and a new C2a/M2.1 pty section asserting `r`/`f` actually redraw the
-  focused/unfocused border colour (`38;5;205`/`38;5;240`) in the byte delta produced by each
-  keypress (the `mark = len(s.out)` idiom the Peek reverse-video check already uses) — not
-  just `m.focus`'s internal state, which go test already covered.
-- T17 (`test/pty/checks.py`): widened the M5.3 viewer-context session from 80x24 to 80x36
-  (helpBindings(viewerPane)'s list renders a measured 31-row box, taller than both the
-  24-row session and the Files-pane block's own 25-row box/30-row session just above it) and
-  added the same top-border/footer-unchanged assertions that Files-pane block already had,
-  so a future binding pushing an assertion past `overlayHelp`'s clamp would now fail loudly.
-
-Every new/changed test passes; `make check` and `make check-pty` are both green (full
-output checked, no other check regressed).
-
-Next step: all four remaining cursor tasks (M7.3, M8.2, M11.1, M12.1) are done. The only
-work left is the closing `charm-validate` pass this cycle's cursor has named throughout —
-covering all four together, from a fresh context, per the skill's independence requirement.
-TRIAGE.md carries one open, non-blocking item (T19, logged during M11.1: README's Global
-table also omits `r`/`f`/`R`) for replan to pick up; it does not block validation or close.
+Next step: do M11.2 (add `r`/`f`/`R` to README's Global keybinding table), then run the
+closing `charm-validate` pass covering M7.3/M8.2/M11.1/M11.2/M12.1 together, from a fresh
+context, per the skill's independence requirement. Nothing is blocked.
 
 ## Status
 
@@ -75,4 +53,5 @@ table also omits `r`/`f`/`R`) for replan to pick up; it does not block validatio
 | M7.3  | done   | -          | -          | fixes TRIAGE T13/T14/T16; see DECISIONS.md D51 |
 | M8.2  | done   | -          | -          | fixes TRIAGE T18 |
 | M11.1 | done   | -          | -          | README sync, TRIAGE T1/T6/T15; see DECISIONS.md D48 |
+| M11.2 | todo   | -          | -          | README Global table gap, TRIAGE T19 |
 | M12.1 | done   | -          | -          | test-coverage backfill, TRIAGE T2/T4/T5/T7/T17; see DECISIONS.md D50 |
