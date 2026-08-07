@@ -269,8 +269,8 @@ Known foot-guns flagged by research, worth re-reading before M9:
 | M5.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.1  | done   | 2026-08-06 | 2026-08-06 |      |
 | M6.2  | done   | 2026-08-06 | 2026-08-06 |      |
-| M7.1  | done   | -        | -         |      |
-| M7.2  | done   | -        | -         |      |
+| M7.1  | done   | 2026-08-07 | -         |      |
+| M7.2  | done   | 2026-08-07 | -         |      |
 | M8.1  | todo   | -        | -         |      |
 | M9.1  | todo   | -        | -         |      |
 | M10.1 | todo   | -        | -         |      |
