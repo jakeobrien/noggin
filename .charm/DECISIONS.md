@@ -655,3 +655,54 @@
   Recorded explicitly (not left implicit in TRIAGE rows alone) since a fresh session reading
   PLAN.md/SPEC.md's literal "anywhere" wording could otherwise reasonably read M9.1 as
   incomplete without this cross-reference.
+
+## D49: S10's staleness check is a directory-mtime heuristic, and its indicator is a Footer suffix
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-08
+- Context: PLAN.md M10.1/SPEC.md S10 require a periodic (~5-10s) check that reports "the
+  Active Document or the Active Root's tree has changed on disk" without refreshing or
+  re-walking anything, and must not perceptibly cost anything on a large Root; SPEC.md's own
+  "Left to the plan" list names the indicator's surface (Footer vs elsewhere) as unspecified,
+  and PLAN.md's M10.1 entry does not pin down a detection mechanism either — both were left
+  for this task to decide.
+- Decision (detection): the periodic check compares a snapshot (staleBaseline,
+  staleness.go) against the disk: one os.Stat per directory the already-loaded tree knows
+  about (root plus every directory node under it, walked in memory — no os.ReadDir call),
+  plus a direct Stat of the Active Document's own path for its mtime and size. Any mismatch,
+  or any known path that no longer stats, means "stale." It never calls tree.Walk. The whole
+  check runs off the Update goroutine (a tea.Cmd, mirroring picker.go's async search/D41).
+  Unlike that search's own debounce, a matured periodic timer always dispatches a check
+  against whichever baseline/generation are current *right now*, never ones captured at
+  schedule time — a superseded-timer discard (picker.go's own shape) would let a
+  resetStaleBaseline landing mid-flight push the next real check out to roughly two
+  intervals instead of the one M10.1's acceptance criterion names. A generation counter is
+  still used, but only at the result-applying end: a completed check's verdict is discarded
+  if the baseline it was computed against has since been superseded, so a slow check can
+  never stomp a state that has already moved on.
+- Decision (indicator surface): the Footer. Unlike a transient m.message (D22), which
+  replaces the pane's key hints outright, the indicator is appended to whatever hint line
+  would already show (pane hints or the open Picker's) as one more " · "-joined segment,
+  dropped if it would not fit at the current width — S10's fixed wording, never displacing
+  the hints someone might need to act on something else while it's showing. It loses to an
+  in-progress find and to a transient message, both of which still need the whole line.
+- Why (detection): a full recursive Stat of every file, or re-running tree.Walk, is exactly
+  the cost S10 forbids on a large Root; a directory's own mtime changing on file
+  add/remove/rename inside it is a standard, cheap signal for "this subtree changed" that
+  needs no new directory listing since the caller already has every directory's path from
+  the last real walk. It is deliberately not exhaustive: an in-place edit to a *different*,
+  non-Active file that touches neither its parent directory's entry list nor the Active
+  Document itself goes unnoticed until the next refresh. Catching that case would require
+  statting every file, which reintroduces the cost this decision exists to avoid. The Active
+  Document has no such gap — it is statted directly, every check, regardless of the
+  directory heuristic. Reusing `git status` (already shelled out to for S8, D46) was
+  considered and rejected as the general tree-changed signal: it would leave non-git Roots
+  with no coverage at all for anything but the Active Document, a bigger gap than the
+  heuristic's own, for no simplification (the git path still needs the Active Document Stat
+  either way, and mixing S8's status computation with S10's unrelated concern muddies both).
+- Why (indicator surface): the Footer is the one region already shown to every pane
+  regardless of focus (S11), the same reasoning FocusRoots/FocusFiles/Refresh already being
+  global bindings relies on; appending rather than replacing follows from S10 itself being a
+  standing condition (persists until a refresh), not a one-shot notice — D22's transient
+  shape is the wrong fit for something that must still be visible many keypresses later.

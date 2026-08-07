@@ -96,6 +96,16 @@ type model struct {
 	// Prompt. Reachable from every Focus, so — like helpOpen — it never
 	// touches m.focus; it is a layer over the frame, not a pane.
 	picker picker
+
+	// staleBaseline/staleGen/stale are S10's periodic staleness check
+	// (C2a/M10.1, staleness.go): the "known good" snapshot the disk is
+	// compared against, the generation that invalidates a check dispatched
+	// against a since-superseded baseline, and whether the last check found
+	// a mismatch. Never mutated by anything but resetStaleBaseline and
+	// runStaleCheck/applyStaleResult — see their own doc comments.
+	staleBaseline staleBaseline
+	staleGen      int
+	stale         bool
 }
 
 func newModel() model {
@@ -152,6 +162,10 @@ func (m model) applyResolution(res resolution) model {
 func (m model) openFolder(root *tree.Node) model {
 	m.files = m.files.setRoot(root).withStatus(gitStatus(root.Path))
 	m = m.setFocus(m.resolveFocus(filesPane))
+	// S10/C2a/M10.1: this is a fresh read of the Active Root's tree, so it
+	// is also the new "known good" the periodic staleness check compares
+	// against from here on.
+	m = m.resetStaleBaseline()
 	return m
 }
 
@@ -160,6 +174,10 @@ func (m model) openFolder(root *tree.Node) model {
 func (m model) openDocument(d document) model {
 	m.viewer = m.viewer.open(d)
 	m = m.setFocus(m.resolveFocus(viewerPane))
+	// S10/C2a/M10.1: this is a fresh read of the Active Document, so it is
+	// also the new "known good" the periodic staleness check compares
+	// against from here on.
+	m = m.resetStaleBaseline()
 	return m
 }
 
@@ -420,6 +438,12 @@ func (m model) refresh() model {
 			m.message = "refreshed; search cleared"
 		}
 	}
+	// S10/C2a/M10.1: a refresh is the user acting on the indicator ("press
+	// R"), so it both clears it and re-baselines against whatever the model
+	// ends up showing above — including a read failure's fallback (an
+	// emptied viewer, an untouched tree) — since that is the state now
+	// actually on screen, known-good by construction.
+	m = m.resetStaleBaseline()
 	return m
 }
 
@@ -515,7 +539,11 @@ func (m model) finishEdit(msg editFinishedMsg) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	// S10/C2a/M10.1: arms the first periodic staleness tick against
+	// whichever baseline applyResolution already established before the
+	// program started (main.go calls it before tea.NewProgram(m).Run()) —
+	// the check runs for the life of the session, not once.
+	return m.scheduleStaleCheck()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -531,6 +559,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.dispatchPickerSearch(msg)
 	case pickerResultsMsg:
 		return m.applyPickerResults(msg), nil
+	// S10/C2a/M10.1's own periodic pair, same shape as the Picker's above:
+	// a matured timer dispatches the actual (cheap) disk check, which
+	// reports back its own message so the check itself never blocks Update.
+	case staleCheckMsg:
+		return m.runStaleCheck(msg)
+	case staleResultMsg:
+		return m.applyStaleResult(msg)
 	case tea.WindowSizeMsg:
 		return m.resize(msg.Width, msg.Height, resizeCauseWindow), nil
 	case tea.KeyPressMsg:
@@ -883,6 +918,18 @@ func (m model) paneTitle(p pane) string {
 // already a complete rendering (textinput.Model.View(), cursor included) and
 // muting its own styling would fight it rather than match the other two
 // cases, which are plain, unstyled text until footerStyle colours them.
+//
+// S10's indicator (C2a/M10.1, m.stale) is the one exception to "a message
+// displaces the hints": it is appended to whatever hint line would show —
+// pane or Picker — rather than replacing it, since it is not itself a
+// one-shot notice (D22's shape) but a standing condition that lasts until a
+// refresh, and hiding the keys that let someone act on other things in the
+// meantime would be a worse tradeoff than a slightly longer line. It still
+// loses to an in-progress find and to a transient m.message (D22): both
+// need the whole line, and S10 explicitly "never acts" on the user's behalf,
+// so it never competes for it. If appending would overflow the width, it is
+// dropped rather than pushing a hint out (S11's "truncate gracefully"
+// extended to this one extra element).
 func (m model) renderFooter(r rect) string {
 	if m.viewer.findEditing() {
 		return lipgloss.NewStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
@@ -899,6 +946,21 @@ func (m model) renderFooter(r rect) string {
 	}
 	if m.message != "" {
 		text = m.message
+	} else if m.stale {
+		text = appendStaleSuffix(text, r.width)
 	}
 	return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
+}
+
+// appendStaleSuffix appends S10's indicator (staleMessage, staleness.go) to
+// text as one more " · "-joined segment — the same separator every other
+// footer join already uses (joinHints) — but only if the result still fits
+// width; otherwise text is returned unchanged, per renderFooter's own
+// truncate-gracefully note.
+func appendStaleSuffix(text string, width int) string {
+	suffixed := text + " · " + staleMessage
+	if lipgloss.Width(suffixed) <= width {
+		return suffixed
+	}
+	return text
 }

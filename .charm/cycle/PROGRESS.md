@@ -341,7 +341,77 @@ growth of the list; the reviewer's assessment that "no ctrl+p anywhere" is Foote
 scoped (not README) matches the project's own prior TRIAGE T1/T6/T15 reasoning, now recorded
 as DECISIONS.md D48 rather than left implicit.
 
-Next step: M10.1 — staleness indicator (S10), the cycle's pre-agreed-cut last milestone.
+M10.1 done: the periodic disk check (S10) lives in a new `cmd/noggin/staleness.go`. A
+`staleBaseline` (dirModTimes: one `os.Stat` per directory the already-loaded tree knows
+about — root plus every `tree.Node` under it, traversed in memory, never `os.ReadDir` — plus
+the Active Document's own path/mtime/size) is the "known good" snapshot; `resetStaleBaseline`
+(re)establishes it and bumps a generation counter from every place that already (re)reads the
+Active Root's tree or the Active Document from disk — `openFolder`, `openDocument`, `refresh`
+— so the indicator is never stuck true past the user's own next load/refresh. A `tea.Tick`
+every `staleCheckInterval` (6s, inside the spec's 5–10s band) fires `staleCheckMsg`;
+`runStaleCheck` dispatches the actual Stat work as its own Cmd against whichever baseline/
+generation are current *at that moment* (D49 records why: gating on the schedule-time
+generation, the way picker.go's own debounce discards a superseded timer, would let a
+reset landing mid-flight push real detection out to roughly two intervals instead of the one
+M10.1's acceptance names) — `applyStaleResult` still discards a result whose generation has
+since been superseded, so a slow check can't stomp a state that moved on while it ran. The
+heuristic is deliberately not exhaustive (documented in staleness.go and D49): an in-place
+edit to a *different*, non-Active file that touches neither its own directory's mtime nor the
+Active Document goes unnoticed until the next refresh — catching that would mean statting
+every file, exactly the cost S10 forbids. `git status` (already shelled out to for S8, D46)
+was considered and rejected as the general tree-changed signal — it would leave non-git Roots
+with no tree coverage at all, a bigger gap than the heuristic's own.
+
+The indicator surfaces in the Footer (D49, since SPEC.md left the surface "to the plan"): a
+fixed-wording suffix (`staleMessage`, "something changed on disk; press R to refresh" —
+never what changed) appended to whatever hint line is already showing (pane hints or the
+open Picker's, `appendStaleSuffix`) rather than replacing it, since S10 is a standing
+condition until refreshed, not a one-shot D22 message — but a transient `m.message` and an
+in-progress find still win over it, and the suffix is simply dropped (not truncated into) if
+it would overflow the current width.
+
+Tests: `cmd/noggin/staleness_test.go` (new) — `staleBaseline`/`snapshotStaleness`/`stale()` at
+the unit level (nested file added inside a known subdirectory, a known subdirectory removed,
+the Active Document edited in place or deleted, changes entirely outside the snapshotted tree
+ignored, an unstattable document left untracked rather than half-recorded); the model-level
+wiring (`openFolder`/`openDocument` establishing and advancing the baseline, `runStaleCheck`
+dispatching against current state regardless of the timer's own age, `applyStaleResult`
+dropping a superseded result, `Init` scheduling the first tick, `Update`'s own message-case
+round trip, `refresh` clearing the indicator and rebaselining); and the Footer surfacing rules
+(appended to pane hints, appended to Picker hints, losing to a transient message, omitted
+rather than overflowing a narrow width). All async Cmds are driven synchronously per
+async-cmd-testing.md's own recipe — no real `tea.Tick` is ever invoked in a test, only the
+Stat-work Cmd `runStaleCheck` dispatches, which is safe to call directly. `make check` green.
+No new `test/pty/checks.py` section, deliberately, matching M6.1's own precedent: the surfaced
+text is plain, unstyled `footerStyle` output with no rendering ambiguity already untested by
+`go test`, and the real behaviour needs a genuine ~6s wall-clock wait to observe, which would
+add real time to every future `make check-pty` run for a claim `go test` already covers
+deterministically. The claim was verified once, out-of-band, against the real binary via a
+scratch harness script (not committed): at 300 columns (wide enough that the already-long
+Files-pane hint line plus the suffix still fits), creating a nested file under a fresh Root
+surfaced the indicator at 5.7s (inside the 6s–ish interval, accounting for scheduling jitter),
+and pressing `R` cleared it on the same real process. `make check-pty`'s existing 206 checks
+still pass unchanged.
+
+A fresh-context code-reviewer pass (Pass 1 standards + Pass 2 spec-fidelity) found no
+blocker/high findings and confirmed the generation-discard logic, the "no tree.Walk anywhere
+reachable from the check path", Peek/Picker/Help-Modal non-interference, and the
+openDocument-ordering claim (baseline reads the *new* document, not the old one) all hold by
+direct code reading. Two of its low-severity findings were fixed inline before this handoff
+since they were cheap and materially tightened claims already made in the code/D49: (1) a
+document whose Stat fails right at snapshot time is now left untracked rather than half-
+recorded with a zero-value ModTime that could never compare equal and would pin `stale()`
+true forever; (2) `runStaleCheck` no longer gates on the schedule-time generation at all — see
+D49's rewritten detection rationale above, this is the two-intervals-worst-case fix, not a
+cosmetic change. The remaining low-severity items (no benchmark substantiating the "must not
+perceptibly cost anything on a large Root" clause; a couple of untested-but-benign edge
+combinations) are accepted as-is, consistent with the rest of this codebase having no
+benchmark tests either, and are not logged to TRIAGE since none are actionable defects.
+
+This was the cycle's last planned milestone (PLAN.md has no M11+). All ten milestones are now
+`done`. M7.1, M7.2, M8.1, M9.1 and M10.1 have never been through `charm-validate` — the next
+step is a fresh-context validation pass against SPEC.md's acceptance criteria, not further
+build work.
 
 Sequencing rationale (not yet worth a DECISIONS.md entry, but useful to a fresh session):
 M3 (tree-state memory, S3) and M4 (git markers, S8) were ordered ahead of M5 (refresh, S2)
@@ -370,6 +440,6 @@ Known foot-guns flagged by research, worth re-reading before M9:
 | M6.2  | done   | 2026-08-06 | 2026-08-06 |      |
 | M7.1  | done   | 2026-08-07 | -         |      |
 | M7.2  | done   | 2026-08-07 | -         |      |
-| M8.1  | done   | -        | -         |      |
+| M8.1  | done   | 2026-08-07 | -         |      |
 | M9.1  | done   | 2026-08-07 | -         |      |
-| M10.1 | todo   | -        | -         |      |
+| M10.1 | done   | 2026-08-08 | -         |      |
