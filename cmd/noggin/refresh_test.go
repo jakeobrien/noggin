@@ -380,6 +380,83 @@ func TestRefreshWithNoActiveRootIsANoOp(t *testing.T) {
 	}
 }
 
+// TestRefreshWorksWithFocusOnRootsPane is TRIAGE T4: keys.Refresh is matched
+// in model.Update's global switch, unconditional on m.focus (unlike
+// FocusRoots/FocusFiles' every-pane table in focus_test.go, there is no
+// existing test that drives Refresh specifically with focus on rootsPane —
+// only filesPane and viewerPane were exercised. This pins S2's "reachable
+// from any pane" for the one pane the existing suite skipped.
+func TestRefreshWorksWithFocusOnRootsPane(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	writeFile(t, filepath.Join(root, "keep.md"))
+
+	node, err := tree.Walk(root)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	m := sized(t, newModel().openFolder(node), 80, 24)
+	m.focus = rootsPane
+
+	writeFile(t, filepath.Join(root, "new.md")) // outside noggin, before refresh
+
+	m = press(t, m, keys.Refresh.Keys()[0])
+
+	if m.focus != rootsPane {
+		t.Errorf("focus after Refresh = %v, want unchanged rootsPane", m.focus)
+	}
+	rows := rowNames(m.files)
+	if !strings.Contains(strings.Join(rows, ","), "new.md") {
+		t.Errorf("rows after refresh with focus on rootsPane = %v, want new.md picked up from disk", rows)
+	}
+}
+
+// TestRefreshDoesNotTouchOtherRoots is TRIAGE T5: S2's negative clause
+// ("nothing else is refreshed") holds today only by construction —
+// model.refresh only ever assigns to m.files/m.viewer — but nothing
+// regression-proofs it. With two roots configured, deletes the inactive
+// root's directory (which would flip its Roots Nav broken mark if it were
+// ever recomputed) and adds a file under the Active Root, then refreshes:
+// the Active Root's tree picks up the new file, while the inactive root's
+// row is untouched down to its stale (pre-deletion) broken snapshot.
+func TestRefreshDoesNotTouchOtherRoots(t *testing.T) {
+	active := mkdir(t, filepath.Join(t.TempDir(), "active"))
+	writeFile(t, filepath.Join(active, "keep.md"))
+	inactive := mkdir(t, filepath.Join(t.TempDir(), "inactive"))
+
+	m := sized(t, newModel(), 80, 24)
+	m.roots = m.roots.setRoots([]root{{path: active}, {path: inactive}}, -1)
+	m = m.activateRoot() // selection starts on row 0 (active)
+	if m.files.root == nil || m.files.root.Path != active {
+		t.Fatalf("setup: files root = %v, want %s active", m.files.root, active)
+	}
+	if m.roots.rows[1].broken {
+		t.Fatalf("setup: inactive root already marked broken")
+	}
+
+	// Outside noggin: the inactive root's directory disappears, and a new
+	// file appears under the Active Root.
+	if err := os.RemoveAll(inactive); err != nil {
+		t.Fatalf("remove inactive root: %v", err)
+	}
+	writeFile(t, filepath.Join(active, "new.md"))
+
+	m = press(t, m, keys.Refresh.Keys()[0])
+
+	rows := rowNames(m.files)
+	if !strings.Contains(strings.Join(rows, ","), "new.md") {
+		t.Errorf("Active Root rows after refresh = %v, want new.md picked up", rows)
+	}
+	if len(m.roots.rows) != 2 {
+		t.Fatalf("roots after refresh = %d rows, want 2 (untouched)", len(m.roots.rows))
+	}
+	if m.roots.rows[1].root.path != inactive {
+		t.Errorf("inactive root path after refresh = %q, want unchanged %q", m.roots.rows[1].root.path, inactive)
+	}
+	if m.roots.rows[1].broken {
+		t.Errorf("inactive root's broken mark flipped true after a refresh that should never re-check it (its own snapshot, taken before deletion, must stand)")
+	}
+}
+
 func appendToFile(t *testing.T, path, more string) {
 	t.Helper()
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o644)

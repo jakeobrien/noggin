@@ -421,17 +421,29 @@ func TestPickerStatusStates(t *testing.T) {
 	found := []pickerFile{{root: root{path: "/tmp/notes"}, path: "/tmp/notes/report.md"}}
 
 	for _, tc := range []struct {
-		name  string
-		avail ripgrepAvailability
-		setup func(p *picker)
-		want  []string
-		deny  []string
+		name         string
+		avail        ripgrepAvailability
+		hideDotfiles bool
+		setup        func(p *picker)
+		want         []string
+		deny         []string
 	}{
 		{
 			name:  "mode and Scope indicator",
 			avail: ripgrepAvailability{available: true},
 			setup: func(p *picker) {},
 			want:  []string{"File · Active Root"},
+		},
+		{
+			// TRIAGE T7 / DECISIONS.md D50: the alt+h dotfile-hiding toggle's
+			// only visible confirmation is this " · Hidden" suffix on the
+			// same title row the mode/Scope indicator above already covers —
+			// previously only test/pty/checks.py exercised the string.
+			name:         "mode and Scope indicator with dotfiles hidden",
+			avail:        ripgrepAvailability{available: true},
+			hideDotfiles: true,
+			setup:        func(p *picker) {},
+			want:         []string{"File · Active Root · Hidden"},
 		},
 		{
 			name:  "Grep and All Roots indicator",
@@ -497,6 +509,7 @@ func TestPickerStatusStates(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := openedFixture(t, 80, 24).withRipgrep(tc.avail)
+			m.hideDotfiles = tc.hideDotfiles
 			m, _ = m.openPicker()
 			tc.setup(&m.picker)
 

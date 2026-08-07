@@ -42,6 +42,7 @@ KEY = {
     "Cancel":       b"\x1b",    # keys.Cancel: esc
     "Help":         b"?",       # keys.Help
     "Refresh":      b"R",       # keys.Refresh
+    "FocusRoots":   b"r",       # keys.FocusRoots
     "FocusFiles":   b"f",       # keys.FocusFiles
     "Peek":         b"p",       # keys.Peek
     "Picker":       b" ",       # keys.Picker: space
@@ -977,10 +978,25 @@ check("M5.3 exits 0 after a help round-trip", code == 0, f"exit {code}")
 
 # Opens over the Document Viewer too, with the viewer's own context (search
 # keys, not Files/Roots-only ones), proving "any pane" rather than one.
-s = Session([BINARY, FIXTURE], 80, 24)
+# Height 36, not 24 (TRIAGE T17): helpBindings(viewerPane)'s list renders a
+# 31-row box (8 scrollActions + 19 explicit bindings + title/blank + border),
+# taller than the Files-pane block's own 25-row box above and taller than a
+# 24-row terminal fits. A 24-row session let this block pass only by luck —
+# Find/FindNext/FindPrevious sit near the top of the list and expand/star
+# were never in it at all — silently exercising a clamped modal
+# (overlayHelp's MaxHeight) rather than the real one; a future binding added
+# ahead of those three could push an assertion past the clamp with no
+# failure to signal it. Widened the same way the Files-pane block already
+# was, plus the same top/footer-unchanged assertions that block already has.
+s = Session([BINARY, FIXTURE], 80, 36)
 s.pump(1.2)
+viewer_before = screen_of(s.out, 80, 36)
+viewer_top_before = viewer_before.raw_lines()[0]
+viewer_footer_before = viewer_before.raw_lines()[-1]
+
 s.send(KEY["Help"], 0.5)
-viewer_help = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+viewer_opened = screen_of(s.out, 80, 36)
+viewer_help = "\n".join(viewer_opened.raw_lines())
 check("M5.3 opened from the viewer, the modal names the Document context",
       "Help: Document" in viewer_help, repr(viewer_help[:200]))
 check("M5.3 opened from the viewer, next/prev match are listed",
@@ -989,6 +1005,10 @@ check("M5.3 opened from the viewer, next/prev match are listed",
 check("M5.3 opened from the viewer, a Files/Roots-only binding is not listed",
       "expand" not in viewer_help and "star" not in viewer_help,
       repr(viewer_help[:200]))
+check("M5.3 opened from the viewer, the top border is unchanged outside the modal",
+      viewer_opened.raw_lines()[0] == viewer_top_before, repr(viewer_opened.raw_lines()[0]))
+check("M5.3 opened from the viewer, the footer is unchanged outside the modal",
+      viewer_opened.raw_lines()[-1] == viewer_footer_before, repr(viewer_opened.raw_lines()[-1]))
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("M5.3 exits 0 after the viewer-context help check", code == 0, f"exit {code}")
@@ -1310,5 +1330,43 @@ check("C2a/M8.1 pty: one Down then Activate makes the second entry active, not t
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M8.1 pty: exits 0 after browsing two-line Roots Nav rows", code == 0, f"exit {code}")
+
+# --- TRIAGE T2: FocusRoots/FocusFiles (r/f) move the border highlight -----
+# go test (focus_test.go's TestFocusBindingsMoveFocusFromEveryPane) already
+# covers m.focus's internal state from every pane; ctrl+n (Navigator) has
+# both a go test and a pty check, but r/f only ever had the former. This
+# checks what actually reaches the wire: the focused/unfocused border colour
+# (M1.2's own b"38;5;205"/b"38;5;240") is redrawn in the bytes produced by
+# this specific keypress, not just present somewhere in the cumulative
+# stream since startup — mirroring the mark = len(s.out) delta idiom the
+# Peek reverse-video check above already uses, not M1.2's whole-stream check.
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.2)
+focused_sgr = re.compile(rb"38;5;205")
+unfocused_sgr = re.compile(rb"38;5;240")
+
+footer = screen_of(s.out, 80, 24).raw_lines()[-1]
+check("C2a/M2.1 pty: focus starts on Files", footer.startswith("Files"), repr(footer))
+
+mark = len(s.out)
+s.send(KEY["FocusRoots"], 0.5)
+footer = screen_of(s.out, 80, 24).raw_lines()[-1]
+check("C2a/M2.1 pty: r moves the footer's focus name to Roots", footer.startswith("Roots"), repr(footer))
+check("C2a/M2.1 pty: r redraws a border in the focused colour",
+      focused_sgr.search(s.out[mark:]) is not None, repr(s.out[mark:][:200]))
+check("C2a/M2.1 pty: r redraws the vacated pane's border in the unfocused colour",
+      unfocused_sgr.search(s.out[mark:]) is not None, repr(s.out[mark:][:200]))
+
+mark = len(s.out)
+s.send(KEY["FocusFiles"], 0.5)
+footer = screen_of(s.out, 80, 24).raw_lines()[-1]
+check("C2a/M2.1 pty: f moves the footer's focus name back to Files", footer.startswith("Files"), repr(footer))
+check("C2a/M2.1 pty: f redraws a border in the focused colour",
+      focused_sgr.search(s.out[mark:]) is not None, repr(s.out[mark:][:200]))
+check("C2a/M2.1 pty: f redraws the vacated pane's border in the unfocused colour",
+      unfocused_sgr.search(s.out[mark:]) is not None, repr(s.out[mark:][:200]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C2a/M2.1 pty: exits 0 after the r/f focus-border check", code == 0, f"exit {code}")
 
 done()
