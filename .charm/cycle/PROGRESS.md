@@ -17,38 +17,27 @@
 
 ## Cursor
 
-Current task: M7.3 — fixes the Find-during-Peek gap that left M7.1/M7.2 unvalidated. Then
-M8.2, M11.1, M12.1 in any order (no dependencies between them).
+Current task: M8.2. Then M11.1, M12.1 in any order (no dependencies between them), then a
+final `charm-validate` pass covering M7.3/M8.2/M11.1/M12.1 before the cycle can close.
 
 ## Handoff
 
-Replan (2026-08-09) triaged all 18 open TRIAGE.md items so the inbox is now empty:
+M7.3 is done (D51/TRIAGE T13/T14/T16, all three): `FindNext`/`FindPrevious` (`n`/`N`,
+model.go's global switch) are now gated `!m.viewer.peeking()`, the same shape
+`startEdit`/`startFind` already had — verified as a real fix, not a no-op change, by
+reverting it locally and confirming the new regression test
+(`TestFindNextPreviousAreNoOpsWhilePeeking`, cmd/noggin/peek_find_test.go) fails without
+the guard (drifted offset/match-index, exactly D51's described scenario) and passes with
+it. `startFind`'s own `m.focus = m.resolveFocus(viewerPane)` now routes through
+`m.setFocus(...)` like every other Focus assignment (T14). A one-line comment documents
+the boundary-clamped `LineUp`/`LineDown` clearPeek broadening as accepted, not a bug
+(T16). `make check` and `make check-pty` both green after the change — no pty coverage
+needed since this is pure model-level state, already exercised by the existing
+`TestPeekCannotBeFound` and the new unit test together.
 
-- **T13/T14/T16 → M7.3** (new task, needs M7.1/M7.2): the validator's blocking finding —
-  `FindNext`/`FindPrevious` ungated by `peeking()` — gets a real fix (guard + regression
-  test), bundled with two cheap same-area nits (`startFind`'s direct focus assignment;
-  a clarifying comment on the boundary-clamp clear condition). See DECISIONS.md D51.
-- **T18 → M8.2** (new task, needs M8.1): `windowedViewRows` can render a split two-line
-  entry when Roots Nav height < 2; fix floors `perScreen` to 0 in that case, plus a
-  height=1/height=3 regression test.
-- **T1/T6/T15 → M11.1** (new milestone): the README-sync task D48 already anticipated —
-  drops `ctrl+p`, documents `alt+h` and Peek.
-- **T2/T4/T5/T7/T17 → M12.1** (new milestone): five review-flagged test-coverage gaps,
-  no functional change, bundled into one backfill task. T7 (medium severity) also got a
-  DECISIONS.md entry (D50) since it's the one item at medium+.
-- **T8**: fixed directly — one-line addendum to D46 cross-referencing D41 (why git's Stat
-  calls are sync/gated while `rg`'s are async/debounced).
-- **T10**: fixed directly — dropped the incorrect "D58" citation from the one
-  `test/pty/checks.py` comment that misattributed the async-ordering-hazard fix to it; the
-  *other* D58 citation in the same file was actually correct (a different fix) and left
-  alone.
-- **T12 → D50, T3/T9/T11 → D52**: wontfix/documented-as-is, each with its own recorded
-  rationale (D50, D52).
-
-No spec change; SPEC.md/PLAN.md stay mutually consistent with the four new tasks appended
-(never renumbering M7.1/M7.2/M8.1's existing keys). Next step: work M7.3 first (it's what
-turned M7.1/M7.2's Validated cell to `-`), then M8.2/M11.1/M12.1 in any order, then a final
-`charm-validate` pass covering all four before the cycle can close.
+Next step: M8.2 (`windowedViewRows` split-row fix, TRIAGE T18) — read PLAN.md's M8.2 entry
+and nav.go directly; no dependency on M7.3's area. M11.1 and M12.1 remain independent of
+both. TRIAGE.md is empty; nothing else outstanding from the 2026-08-09 replan.
 
 ## Status
 
@@ -67,7 +56,7 @@ turned M7.1/M7.2's Validated cell to `-`), then M8.2/M11.1/M12.1 in any order, t
 | M8.1  | done   | 2026-08-07 | 2026-08-08 |      |
 | M9.1  | done   | 2026-08-07 | 2026-08-08 |      |
 | M10.1 | done   | 2026-08-08 | 2026-08-08 | perf clause ("no perceptible cost on a large Root") verified architecturally, not benchmarked |
-| M7.3  | todo   | -          | -          | fixes TRIAGE T13/T14/T16; see DECISIONS.md D51 |
+| M7.3  | done   | -          | -          | fixes TRIAGE T13/T14/T16; see DECISIONS.md D51 |
 | M8.2  | todo   | -          | -          | fixes TRIAGE T18 |
 | M11.1 | todo   | -          | -          | README sync, TRIAGE T1/T6/T15; see DECISIONS.md D48 |
 | M12.1 | todo   | -          | -          | test-coverage backfill, TRIAGE T2/T4/T5/T7/T17; see DECISIONS.md D50 |

@@ -466,7 +466,12 @@ func (m model) startFind() (model, tea.Cmd) {
 	}
 	next, cmd := m.viewer.startFind()
 	m.viewer = next
-	m.focus = m.resolveFocus(viewerPane)
+	// C2a/M7.3 (D51/TRIAGE T14): routed through setFocus like every other
+	// Focus assignment, not a bare m.focus = ..., for consistency with the
+	// chokepoint's own stated invariant — harmless in practice today only
+	// because the peeking() guard above always fires first, but this way
+	// nothing else has to reason about that ordering to trust setFocus.
+	m = m.setFocus(m.resolveFocus(viewerPane))
 	return m, cmd
 }
 
@@ -617,13 +622,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// viewer focus: stepping through matches is meaningless anywhere else,
 		// but the query lives in the Document Viewer regardless of which pane
 		// currently has focus.
+		//
+		// C2a/M7.3 (D51/TRIAGE T13): both are silent no-ops while Peeking, the
+		// same shape startEdit/startFind already had — without this guard a
+		// pre-existing committed Find on the Active Document lets n/N drift
+		// the real viewport's YOffset while the screen shows peek.vp instead,
+		// invisibly violating S7's "cannot be searched with Find" and leaving
+		// clearPeek() to restore the drifted position rather than the exact
+		// pre-Peek one.
 		case key.Matches(msg, keys.FindNext):
-			if m.viewer.hasFindMatches() {
+			if !m.viewer.peeking() && m.viewer.hasFindMatches() {
 				m.viewer = m.viewer.findNext()
 			}
 			return m, nil
 		case key.Matches(msg, keys.FindPrevious):
-			if m.viewer.hasFindMatches() {
+			if !m.viewer.peeking() && m.viewer.hasFindMatches() {
 				m.viewer = m.viewer.findPrevious()
 			}
 			return m, nil
@@ -649,6 +662,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// A selection change is one of Peek's clearing triggers (S7);
 			// Expand/Collapse leave the selected node itself unchanged
 			// (only the rows around it), so only LineUp/LineDown count.
+			//
+			// C2a/M7.3 (D51/TRIAGE T16): this also fires on a boundary-clamped
+			// LineUp/LineDown that leaves the selected index unchanged (already
+			// at the top/bottom) — an accepted broadening of "any selection
+			// change", not a bug, since re-arriving at the same file just
+			// re-shows the Active Document.
 			if key.Matches(msg, keys.LineUp) || key.Matches(msg, keys.LineDown) {
 				m = m.clearPeek()
 			}
