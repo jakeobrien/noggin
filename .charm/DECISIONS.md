@@ -784,3 +784,40 @@
   list but isn't worth a dedicated test absent an actual bug report.
 - Why: all three are genuinely low risk and low value relative to the cost of acting on them
   now; recorded so a fresh session doesn't re-raise them as new findings.
+
+## D53: S10's staleness indicator is a real footer-width bug, not the documented detection gap
+
+- Status: decided
+- Cycle: C2a
+- Date: 2026-08-10
+- Context: user report, post-"ready to close" ("the background monitoring that should
+  indicate when a file has changed does not seem to be working"). A researcher pass
+  static-traced `staleness.go`'s scheduling/baseline/wiring and found it sound. A validator
+  pass then live-repro'd via the pty harness at real wall-clock intervals and multiple
+  terminal widths and found the actual defect one layer up, in footer composition:
+  `appendStaleSuffix` (model.go:979-985) requires its entire ~48-char suffix to fit in
+  whatever slack remains after `hintText` (footer.go) has already greedily filled the width
+  with key hints, with no partial truncation of hints to make room. Measured thresholds:
+  the suffix never fits below roughly 200-244 columns depending on pane — i.e. never, at
+  every width this project's own `staleness_test.go` (200/400 cols) and `test/pty/checks.py`
+  fixtures actually use. The underlying tick-reschedule/baseline-reset/generation-discard
+  logic (D49) all fired correctly in the live repro once the width was widened past the
+  threshold, and the documented in-place-edit-to-a-non-Active-tracked-file gap (staleness.go
+  doc comment) reproduced exactly as designed — confirming the bug is footer rendering,
+  not detection.
+- Decision: accept as a real functional gap against M10.1/S10's own acceptance criterion
+  ("surfaces the indicator within one check interval"), not a wontfix or a documented
+  limitation — reopen M10 with a new task, PLAN.md M10.2, to reserve room for the suffix
+  ahead of `hintText`'s greedy fill (or fall back to a minimal hint set while stale) and add
+  a realistic-width live check to `test/pty/checks.py` so this class of gap is caught by
+  `make check-pty` going forward. PROGRESS.md's M10.1 Validated stamp is cleared back to `-`:
+  the 2026-08-08 validate pass exercised the render only at `staleness_test.go`'s existing
+  200/400-column cases, never a live run at an ordinary terminal size, so it did not actually
+  cover this clause of the acceptance criterion despite stamping it validated.
+- Why: high value (a shipped, spec'd cycle deliverable is invisible in ordinary use — the
+  cycle's own "ready to close" state was wrong) and low/medium risk (the fix is localized to
+  footer composition; the detection engine is independently confirmed sound, so this doesn't
+  reopen M10.1's harder design decisions, D49's heuristic or its indicator-surface choice) —
+  accept and fix, don't defer. Logged because it reopens a milestone PROGRESS.md had marked
+  both done and validated; a fresh session would otherwise trust that stamp without this
+  trail explaining why it's now `-` again.

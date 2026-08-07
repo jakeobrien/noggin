@@ -146,6 +146,17 @@ Delivers: S10 — *pre-agreed cut: planned last, dropped without ceremony if the
   cost anything on a large Root — done when: an out-of-process change to the Active Document
   or under the Active Root's tree surfaces the indicator within one check interval, with no
   refresh, no tree walk, and no description of the change — effort: 2.
+- **M10.2** — Fix the indicator being unrenderable at realistic terminal widths:
+  `appendStaleSuffix` (model.go) currently requires the entire stale suffix to fit in whatever
+  space is left after `hintText` greedily fills the width, so it never appears below
+  roughly 200–244 columns in any pane — every width this project's own test/pty fixtures use
+  (80/100/120/132/200) — even though the underlying tick/baseline/generation logic is sound;
+  reserve room for the suffix ahead of `hintText`'s greedy fill (or fall back to a minimal
+  hint set while stale) so it can appear at ordinary terminal sizes — done when: a
+  `test/pty/checks.py` check at a standard width (80 or 100 cols) performs a real
+  out-of-process file edit, waits past `staleCheckInterval`, and asserts the Footer shows the
+  indicator, and the existing `go test` width-based staleness render tests gain a realistic-
+  width case (not only 200/400) (see DECISIONS.md D53) — effort: 2. (needs: M10.1)
 
 ## M11 — README sync
 

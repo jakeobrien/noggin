@@ -41,3 +41,9 @@
      find_test.go predates this cycle) — the two-convention split there is now the accepted
      state, not revisited. `go test` and `make check` verified green after the change. Inbox
      empty; cycle can close. -->
+
+<!-- T1 triaged 2026-08-10 (replan): user report ("background monitoring... does not seem to
+     be working", S10/M10.1) investigated live via researcher + validator subagents rather
+     than added to the table then immediately cleared. High value, non-blocking, real bug
+     (footer-width rendering, not the detection engine) — accepted straight to PLAN.md M10.2;
+     see DECISIONS.md D53. Inbox empty. -->

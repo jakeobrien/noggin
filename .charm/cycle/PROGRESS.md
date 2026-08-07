@@ -17,43 +17,36 @@
 
 ## Cursor
 
-Current task: none — all plan tasks done, all validated, TRIAGE.md is now empty. The cycle is
-ready to close (`/charm-close`).
+Current task: **M10.2** — fix the S10 staleness indicator being unrenderable at realistic
+terminal widths (see DECISIONS.md D53). The cycle is no longer ready to close.
 
 ## Handoff
 
-Fresh-context validate pass complete, deterministic + functional, for M7.3/M8.2/M11.1/M11.2/
-M12.1 (all now stamped Validated 2026-08-07 below), plus M7.1/M7.2 (also stamped: M7.3's fix
-and its regression test directly prove the exact clauses that left them unvalidated — see
-their Note). `make check` and `make check-pty` both green, `-count=1` (not cache-trusted).
-Verified independently: FindNext/FindPrevious no-op + exact-offset restore while Peeking
-(peek_find_test.go), `startFind` routed through `setFocus`, the LineUp/LineDown broadening
-comment (model.go:666); `windowedViewRows` renders zero entries at height=1 and pads (not
-splits) at height=3 (rootsnav_test.go); README.md has zero `ctrl+p` references anywhere and
-documents `alt+h`/Peek; the Global keybinding table lists `r`/`f`/`R`; all five M12.1 backfill
-tests/checks exist, are correctly targeted, and pass. Also manually verified `make build &&
-make install` and a custom `PREFIX` both place a working binary. No discrepancies found; no
-new TRIAGE items raised by this pass.
+replan (2026-08-10): user reported the staleness indicator (S10/M10.1) "does not seem to be
+working," discovered *after* the previous session had marked the cycle ready to close.
+Investigated via a researcher (static trace: scheduling/baseline/wiring in staleness.go all
+sound) then a validator (live repro via the pty harness, real wall-clock ticks, multiple
+terminal widths) — confirmed a real bug, not a false alarm: `appendStaleSuffix` (model.go)
+requires its whole ~48-char suffix to fit in whatever's left after `hintText` greedily fills
+the footer, so it never renders below ~200-244 columns in any pane, i.e. never at any width
+this project's own test/pty fixtures use (80/100/120/132/200). The detection engine itself is
+confirmed sound (fires correctly once width is widened past the threshold), and the separately
+documented in-place-edit-to-a-non-Active-file gap reproduced exactly as designed — this is a
+footer-rendering bug layered on top, not a flaw in D49's heuristic. Added PLAN.md M10.2
+(reserve suffix room ahead of hintText's greedy fill; add a realistic-width `test/pty/checks.py`
+check) and DECISIONS.md D53. Cleared M10.1's Validated stamp below to `-`: the 2026-08-08
+validate pass only exercised staleness_test.go's existing 200/400-col render cases, never a
+live run at an ordinary width, so it did not actually cover the "surfaces within one check
+interval" clause end-to-end. TRIAGE.md stays empty (routed straight through rather than
+parked as a row then immediately cleared — see its inbox comment).
 
-replan (2026-08-09) closed out the one remaining loose end: TRIAGE.md's T20 (low severity,
-a test-style nit — `peek_find_test.go` pressed raw `"n"`/`"N"` instead of
-`keys.FindNext.Keys()[0]`/`keys.FindPrevious.Keys()[0]`) was low risk × value, mechanical, and
-no-behavior-change, so it was fixed directly rather than routed to a plan task (mirroring
-T8/T10's precedent) — see TRIAGE.md's inbox comment. `go test` (targeted) and `make check`
-reverified green after the edit.
+Everything from the prior handoff (fresh-context validate of M7.3/M8.2/M11.1/M11.2/M12.1/
+M7.1/M7.2; T20's peek_find_test.go fix; the charm-document README-sync pass for S3/S5/S8/S10)
+stands unchanged — see git history (`3796e5c`, `2b0a1b3`, `e633738`) for that work; not
+repeated here per the handoff's overwrite rule.
 
-charm-document pass (2026-08-09): M11.1/M11.2 only ever scoped README sync to the TRIAGE
-items that named it (ctrl+p removal, alt+h, Peek, the Global table's r/f/R) — S3 (tree memory
-per Root), S5 (two-line Roots Nav rows), S8 (git status markers) and S10 (staleness
-indicator) had shipped and validated functionally but were never documented anywhere in
-README.md. Verified each against its implementation (rootsnav.go's renderRow/rootRowHeight,
-files.go's filesNavMemory/status map, gitstatus.go's gitStatus/parseGitStatus, staleness.go's
-staleMessage/staleBaseline) and added a Roots Nav / Files Nav bullet update plus a new
-"Keeping things in sync" section (Git status markers, Staleness indicator) documenting them,
-fixed directly (mechanical, doc-only, no behavior change — same bar as T8/T10/T20). No
-discrepancy between spec and reality found; nothing added to TRIAGE.md.
-
-Next step: none required. `/charm-close` whenever the user is ready.
+Next step: implement M10.2 (charm-build), then re-validate M10.1+M10.2 together at a
+realistic width before the cycle is offered as ready to close again.
 
 ## Status
 
@@ -71,7 +64,8 @@ Next step: none required. `/charm-close` whenever the user is ready.
 | M7.2  | done   | 2026-08-07 | 2026-08-07 | T13's scroll-restore-on-clear gap fixed by M7.3 and re-verified directly |
 | M8.1  | done   | 2026-08-07 | 2026-08-08 |      |
 | M9.1  | done   | 2026-08-07 | 2026-08-08 |      |
-| M10.1 | done   | 2026-08-08 | 2026-08-08 | perf clause ("no perceptible cost on a large Root") verified architecturally, not benchmarked |
+| M10.1 | done   | 2026-08-08 | -          | perf clause ("no perceptible cost on a large Root") verified architecturally, not benchmarked; indicator unrenderable below ~200-244 cols, see M10.2/D53 |
+| M10.2 | todo   | -          | -          | fixes footer-width bug found post-close-readiness; see DECISIONS.md D53 |
 | M7.3  | done   | 2026-08-07 | 2026-08-07 | fixes TRIAGE T13/T14/T16; see DECISIONS.md D51 |
 | M8.2  | done   | 2026-08-07 | 2026-08-07 | fixes TRIAGE T18 |
 | M11.1 | done   | 2026-08-07 | 2026-08-07 | README sync, TRIAGE T1/T6/T15; see DECISIONS.md D48 |
