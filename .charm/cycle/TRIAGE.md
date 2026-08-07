@@ -25,6 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T19 | docs | low | `README.md:87-98` (Global keybinding table) | While fixing M11.1's `ctrl+p`/`alt+h`/Peek gaps, found the Global table also never lists `r`/`f` (FocusRoots/FocusFiles, S6) or `R` (Refresh, S2) — both shipped in earlier milestones (M2.1, M5.1) with no README task ever owning them, the same "no plan task owns README" shape as T1/T6/T15. Left out of M11.1 since its acceptance criterion named only `ctrl+p`/`alt+h`/`p`. | open |
 
 <!-- All items triaged 2026-08-09. Routed to: PLAN.md M7.3 (T13/T14/T16), M8.2 (T18),
      M11.1 (T1/T6/T15), M12.1 (T2/T4/T5/T7/T17); fixed directly (T8: D46 addendum; T10:

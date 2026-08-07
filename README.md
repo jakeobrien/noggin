@@ -93,7 +93,7 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `e` | edit the active document in `$EDITOR` |
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
-| `ctrl+p` | open the Picker (fuzzy find files or grep across files, see below) |
+| `space` | open the Picker (fuzzy find files or grep across files, see below) |
 | `q` / `ctrl+c` | quit |
 | `esc` | context-dependent cancel (dismiss find, close Help, close Picker) |
 
@@ -113,6 +113,7 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `l`/`→` | expand the selected folder |
 | `h`/`←` | collapse the selected folder |
 | `enter` | open the selected file in the Document Viewer and move focus there |
+| `p` | peek at the selected file in the Document Viewer, without opening it or moving focus (press `p` again, or move the selection, to return) |
 
 ### Document Viewer
 
@@ -131,7 +132,7 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `enter` | commit the search — matches stay live for `n`/`N` |
 | `esc` | dismiss the search entirely |
 
-### While the Picker is open (`ctrl+p`)
+### While the Picker is open (`space`)
 
 Every printable key types into the Prompt — there's no separate typing mode to
 leave. Everything else is on a non-printable key:
@@ -142,6 +143,7 @@ leave. Everything else is on a non-printable key:
 | `↑` / `↓` | move the Results selection; the Preview follows it |
 | `tab` | switch mode: File ↔ Grep (the typed query carries over) |
 | `shift+tab` | switch Scope: Active Root ↔ All Roots (the typed query carries over) |
+| `alt+h` | toggle hiding dotfiles from the Results, for the rest of this session |
 | `enter` | activate the selected Result |
 | `esc` | dismiss the Picker — nothing about the session changes |
 
@@ -201,7 +203,7 @@ never shown as a table or raw block.
 
 ## Finding across files (the Picker)
 
-Press `ctrl+p` from any pane, including with the Navigator hidden, to open the
+Press `space` from any pane, including with the Navigator hidden, to open the
 Picker: a modal fuzzy-finder over the files in scope. It always opens the same
 way — File mode, Active Root scope, empty Prompt — and never remembers
 anything between opens, in this session or the next.
@@ -251,7 +253,9 @@ noggin's Files Nav ignore rules: `.gitignore`/`.ignore` files are respected
 (consistent with the Files Nav). Dotfiles and dot-directories (e.g. `.github/`)
 are included by default in both modes, matching what the Files Nav tree
 already shows — `.git/` itself stays excluded unconditionally, in either
-pane.
+pane. `alt+h` toggles hiding them again, in both modes at once; the title
+above the Prompt gains a ` · Hidden` suffix while the toggle is on. It's
+session-only — relaunching noggin resets it to showing dotfiles.
 
 ## Scope
 

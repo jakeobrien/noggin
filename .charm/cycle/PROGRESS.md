@@ -17,33 +17,31 @@
 
 ## Cursor
 
-Current task: M11.1 and M12.1, in any order (no dependencies between them), then a final
-`charm-validate` pass covering M7.3/M8.2/M11.1/M12.1 before the cycle can close.
+Current task: M12.1. Then a final `charm-validate` pass covering M7.3/M8.2/M11.1/M12.1
+before the cycle can close.
 
 ## Handoff
 
-M8.2 is done (TRIAGE T18): `windowedViewRows` (nav.go) computed `perScreen :=
-max(height/rowHeight, 1)`, which forced at least one whole entry to render even when the
-pane's height was smaller than `rowHeight` — the entry's lines were then sliced down to
-`height`, producing a truncated first line rather than the intended zero entries. Dropped
-the forced minimum (`perScreen := height/rowHeight`); when `height < rowHeight`,
-`perScreen` is 0, the render loop is a no-op, and the existing pad loop fills the box with
-blank rows instead. Verified as a real fix by reverting it locally and confirming the new
-regression test (`TestRootsNavPaneShorterThanRowHeightRendersZeroEntries`,
-cmd/noggin/rootsnav_test.go) fails without the guard (renders alpha's reverse-video name
-line truncated to one row) and passes with it. A companion test
-(`TestRootsNavOddHeightPadsRatherThanSplitting`, height=3 with rowHeight=2) was added for
-the acceptance criterion's other edge case but passed even before the fix — that path
-(`height/rowHeight` already >= 1) was never broken, only the below-rowHeight case was.
-`make check` and `make check-pty` both green — no new pty case added since this is pure
-model-level windowing logic already exercised by unit tests, and the existing M8.1 pty
-checks (two-line row rendering) exercise the same view path at a normal height without
-regressing.
+M11.1 is done (TRIAGE T1/T6/T15, all three; DECISIONS.md D48 scoped this as the dedicated
+README-sync task): every remaining `ctrl+p` reference in README.md is gone (Global
+keybinding table row, the "While the Picker is open" heading, and the "Finding across
+files" opening prose all now say `space`, matching `keys.Picker`). `alt+h` (T6) is now
+documented in both the Picker's own keybinding table and a new sentence in the "Requires
+ripgrep" prose describing the ` · Hidden` title suffix and its session-only scope — wording
+cross-checked against `pickerModeScope` (picker_view.go) verbatim. Peek (T15) got a new
+row in the Files Nav keybinding table (`p`, what it does, how it ends). Verified with
+`grep -n ctrl+p README.md` (no hits) and a manual re-read of every touched section against
+the keymap/S4/S7 spec text. No code changed, so only `make check` was run (green); no
+`check-pty` needed.
 
-Next step: M11.1 (README sync, TRIAGE T1/T6/T15, see DECISIONS.md D48) and M12.1
-(test-coverage backfill, TRIAGE T2/T4/T5/T7/T17, see DECISIONS.md D50) remain, in either
-order — no dependencies between them or on M8.2's area. TRIAGE.md is empty; nothing else
-outstanding from the 2026-08-09 replan.
+While fixing this, noticed the Global table also never mentions `r`/`f`/`R`
+(FocusRoots/FocusFiles/Refresh) — out of M11.1's named scope (its acceptance criterion
+named only `ctrl+p`/`alt+h`/`p`), so logged as TRIAGE T19 rather than folded in here.
+
+Next step: M12.1 (test-coverage backfill, TRIAGE T2/T4/T5/T7/T17, see DECISIONS.md D50) is
+the last cursor task before the closing `charm-validate` pass. TRIAGE.md carries one open
+item (T19, low severity, doc-only) from this session — not blocking, but replan should
+triage it before close.
 
 ## Status
 
@@ -64,5 +62,5 @@ outstanding from the 2026-08-09 replan.
 | M10.1 | done   | 2026-08-08 | 2026-08-08 | perf clause ("no perceptible cost on a large Root") verified architecturally, not benchmarked |
 | M7.3  | done   | -          | -          | fixes TRIAGE T13/T14/T16; see DECISIONS.md D51 |
 | M8.2  | done   | -          | -          | fixes TRIAGE T18 |
-| M11.1 | todo   | -          | -          | README sync, TRIAGE T1/T6/T15; see DECISIONS.md D48 |
+| M11.1 | done   | -          | -          | README sync, TRIAGE T1/T6/T15; see DECISIONS.md D48 |
 | M12.1 | todo   | -          | -          | test-coverage backfill, TRIAGE T2/T4/T5/T7/T17; see DECISIONS.md D50 |
