@@ -20,7 +20,7 @@ import (
 // still opens it when the Navigator has been toggled away (so no Navigator
 // pane could possibly have focus).
 func TestPickerOpensFromEveryFocusAndNavigatorHidden(t *testing.T) {
-	for _, p := range paneOrder {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
 		m := openedFixture(t, 80, 24)
 		m.focus = p
 
@@ -78,9 +78,9 @@ func TestPickerDismissRestoresThePreOpenFrameByteForByte(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m = press(t, m, "j") // move the viewer's scroll position off zero
 	beforeFrame := m.View().Content
-	beforeDoc := m.viewer.doc.path
+	beforeDoc := m.dv1.doc.path
 	beforeRoot := m.roots.active
-	beforeOffset := m.viewer.offset()
+	beforeOffset := m.dv1.offset()
 
 	m, _ = m.openPicker()
 	if !m.picker.open {
@@ -101,14 +101,14 @@ func TestPickerDismissRestoresThePreOpenFrameByteForByte(t *testing.T) {
 	if got := m.View().Content; got != beforeFrame {
 		t.Errorf("frame after dismissal does not match the pre-open frame")
 	}
-	if m.viewer.doc.path != beforeDoc {
-		t.Errorf("active document = %q, want %q", m.viewer.doc.path, beforeDoc)
+	if m.dv1.doc.path != beforeDoc {
+		t.Errorf("active document = %q, want %q", m.dv1.doc.path, beforeDoc)
 	}
 	if m.roots.active != beforeRoot {
 		t.Errorf("active root = %d, want %d", m.roots.active, beforeRoot)
 	}
-	if m.viewer.offset() != beforeOffset {
-		t.Errorf("scroll offset = %d, want %d", m.viewer.offset(), beforeOffset)
+	if m.dv1.offset() != beforeOffset {
+		t.Errorf("scroll offset = %d, want %d", m.dv1.offset(), beforeOffset)
 	}
 	// A reopen must not resurrect the discarded mode/Scope/Prompt (S8).
 	m, _ = m.openPicker()
@@ -171,8 +171,8 @@ func TestPickerOwnsKeyboardWhileOpen(t *testing.T) {
 func TestPickerTypesEveryPrintableKeyIncludingBindingsElsewhere(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m, _ = m.openPicker()
-	beforeDoc := m.viewer.doc.path
-	beforeOffset := m.viewer.offset()
+	beforeDoc := m.dv1.doc.path
+	beforeOffset := m.dv1.offset()
 
 	const query = "jog/report"
 	m = typeText(t, m, query)
@@ -183,13 +183,13 @@ func TestPickerTypesEveryPrintableKeyIncludingBindingsElsewhere(t *testing.T) {
 	if !m.picker.open {
 		t.Error("picker.open = false after typing, want true")
 	}
-	if m.viewer.doc.path != beforeDoc {
-		t.Errorf("active document changed to %q while typing, want unchanged (%q)", m.viewer.doc.path, beforeDoc)
+	if m.dv1.doc.path != beforeDoc {
+		t.Errorf("active document changed to %q while typing, want unchanged (%q)", m.dv1.doc.path, beforeDoc)
 	}
-	if m.viewer.offset() != beforeOffset {
-		t.Errorf("viewer scroll offset changed to %d while typing, want unchanged (%d)", m.viewer.offset(), beforeOffset)
+	if m.dv1.offset() != beforeOffset {
+		t.Errorf("viewer scroll offset changed to %d while typing, want unchanged (%d)", m.dv1.offset(), beforeOffset)
 	}
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Error("\"/\" in the query started a Find, want it to only type")
 	}
 	if m.helpOpen {
@@ -378,8 +378,8 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	if got.picker.open {
 		t.Error("picker.open = true after Activate, want dismissed")
 	}
-	if got.viewer.doc.path != fileB {
-		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, fileB)
+	if got.dv1.doc.path != fileB {
+		t.Errorf("Active Document = %q, want %q", got.dv1.doc.path, fileB)
 	}
 	if got.roots.active != 0 {
 		t.Errorf("Active Root index = %d, want unchanged 0 (rootA)", got.roots.active)
@@ -416,15 +416,15 @@ func TestPickerActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
 		files: []pickerFile{{path: missing}},
 	}
 	m.picker.selected = 0
-	beforeDoc := m.viewer.doc.path
+	beforeDoc := m.dv1.doc.path
 
 	got := press(t, m, keys.Activate.Keys()[0])
 
 	if got.picker.open {
 		t.Error("picker.open = true after a failed Activate, want dismissed")
 	}
-	if got.viewer.doc.path != beforeDoc {
-		t.Errorf("Active Document = %q after a failed Activate, want unchanged %q", got.viewer.doc.path, beforeDoc)
+	if got.dv1.doc.path != beforeDoc {
+		t.Errorf("Active Document = %q after a failed Activate, want unchanged %q", got.dv1.doc.path, beforeDoc)
 	}
 	if got.message == "" {
 		t.Error("message is empty after a failed Activate, want a footer message")
@@ -470,13 +470,13 @@ func TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine(t *testing.T
 	if got.picker.open {
 		t.Error("picker.open = true after Activate, want dismissed")
 	}
-	if got.viewer.doc.path != path {
-		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	if got.dv1.doc.path != path {
+		t.Errorf("Active Document = %q, want %q", got.dv1.doc.path, path)
 	}
-	if !got.viewer.hasFindMatches() {
+	if !got.dv1.hasFindMatches() {
 		t.Fatal("Activate did not leave the Document Viewer with find matches for the grep query")
 	}
-	if got.viewer.offset() == 0 {
+	if got.dv1.offset() == 0 {
 		t.Error("Document Viewer did not scroll away from the top to reach the matched line")
 	}
 	view := got.View().Content
@@ -547,8 +547,8 @@ func TestPickerActivateGrepResultDoesNotChangeFilesNav(t *testing.T) {
 	if got.picker.open {
 		t.Error("picker.open = true after Activate, want dismissed")
 	}
-	if got.viewer.doc.path != fileB {
-		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, fileB)
+	if got.dv1.doc.path != fileB {
+		t.Errorf("Active Document = %q, want %q", got.dv1.doc.path, fileB)
 	}
 	if got.roots.active != 0 {
 		t.Errorf("Active Root index = %d, want unchanged 0 (rootA)", got.roots.active)
@@ -584,15 +584,15 @@ func TestPickerActivateGrepResultWithAReadErrorLeavesSessionRunning(t *testing.T
 		grep:  []grepResult{{file: pickerFile{path: missing}, line: 1, text: "report"}},
 	}
 	m.picker.selected = 0
-	beforeDoc := m.viewer.doc.path
+	beforeDoc := m.dv1.doc.path
 
 	got := press(t, m, keys.Activate.Keys()[0])
 
 	if got.picker.open {
 		t.Error("picker.open = true after a failed Activate, want dismissed")
 	}
-	if got.viewer.doc.path != beforeDoc {
-		t.Errorf("Active Document = %q after a failed Activate, want unchanged %q", got.viewer.doc.path, beforeDoc)
+	if got.dv1.doc.path != beforeDoc {
+		t.Errorf("Active Document = %q after a failed Activate, want unchanged %q", got.dv1.doc.path, beforeDoc)
 	}
 	if got.message == "" {
 		t.Error("message is empty after a failed Activate, want a footer message")
@@ -646,8 +646,8 @@ func TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst(t *
 
 	got := press(t, m, keys.Activate.Keys()[0])
 
-	if got.viewer.doc.path != path {
-		t.Fatalf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	if got.dv1.doc.path != path {
+		t.Fatalf("Active Document = %q, want %q", got.dv1.doc.path, path)
 	}
 	view := got.View().Content
 	if strings.Contains(view, "first report line") {
@@ -693,14 +693,14 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 	if got.picker.open {
 		t.Error("picker.open = true after Activate, want dismissed")
 	}
-	if got.viewer.doc.path != path {
-		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	if got.dv1.doc.path != path {
+		t.Errorf("Active Document = %q, want %q", got.dv1.doc.path, path)
 	}
-	if got.viewer.hasFindMatches() {
+	if got.dv1.hasFindMatches() {
 		t.Error("degrade path found a find match, want none: the query's only raw occurrence is inside an HTML comment Glamour strips entirely")
 	}
-	if got.viewer.offset() != 0 {
-		t.Errorf("Document Viewer offset = %d, want 0 (opened plain at the top per D34's full degrade)", got.viewer.offset())
+	if got.dv1.offset() != 0 {
+		t.Errorf("Document Viewer offset = %d, want 0 (opened plain at the top per D34's full degrade)", got.dv1.offset())
 	}
 	// Scoped to the viewer pane's own rendering, not the whole frame (S5's
 	// two-line Roots Nav rows use a bare Reverse(true) on an active row's
@@ -708,7 +708,7 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 	// false positive whenever a root is both active and selected — the
 	// common single-root case, unrelated to whether the viewer has a find
 	// match to indicate).
-	view := got.viewer.view()
+	view := got.dv1.view()
 	if strings.Contains(view, "\x1b[7m") {
 		t.Error("no line should be indicated when the query has no rendered matches at all")
 	}
@@ -751,10 +751,10 @@ func TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch(t *te
 
 	got := press(t, m, keys.Activate.Keys()[0])
 
-	if got.viewer.doc.path != path {
-		t.Errorf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	if got.dv1.doc.path != path {
+		t.Errorf("Active Document = %q, want %q", got.dv1.doc.path, path)
 	}
-	if !got.viewer.hasFindMatches() {
+	if !got.dv1.hasFindMatches() {
 		t.Fatal("degrade path lost the body's own match entirely, want the body occurrence still found")
 	}
 	view := got.View().Content
@@ -802,32 +802,32 @@ func TestPickerActivateGrepResultCommitsFindWithNextPreviousTraversal(t *testing
 
 	got := press(t, m, keys.Activate.Keys()[0])
 
-	if got.viewer.doc.path != path {
-		t.Fatalf("Active Document = %q, want %q", got.viewer.doc.path, path)
+	if got.dv1.doc.path != path {
+		t.Fatalf("Active Document = %q, want %q", got.dv1.doc.path, path)
 	}
-	if got := got.viewer.findState.input.Value(); got != "report" {
+	if got := got.dv1.findState.input.Value(); got != "report" {
 		t.Fatalf("committed find query = %q, want the grep query %q", got, "report")
 	}
-	n := len(got.viewer.findState.matches)
+	n := len(got.dv1.findState.matches)
 	if n != 3 {
 		t.Fatalf("committed find has %d match(es), want 3 (one per grep result)", n)
 	}
-	start := got.viewer.findState.current
+	start := got.dv1.findState.current
 	if start < 0 {
 		t.Fatal("committed find has no current match indicated after activation")
 	}
 
 	next := press(t, got, keys.FindNext.Keys()[0])
-	if want := (start + 1) % n; next.viewer.findState.current != want {
-		t.Errorf("FindNext after activation: current = %d, want %d", next.viewer.findState.current, want)
+	if want := (start + 1) % n; next.dv1.findState.current != want {
+		t.Errorf("FindNext after activation: current = %d, want %d", next.dv1.findState.current, want)
 	}
 	if next.picker.open {
 		t.Error("FindNext after activation re-opened the Picker; want it to stay dismissed")
 	}
 
 	prev := press(t, next, keys.FindPrevious.Keys()[0])
-	if prev.viewer.findState.current != start {
-		t.Errorf("FindPrevious after a FindNext: current = %d, want back at %d", prev.viewer.findState.current, start)
+	if prev.dv1.findState.current != start {
+		t.Errorf("FindPrevious after a FindNext: current = %d, want back at %d", prev.dv1.findState.current, start)
 	}
 }
 

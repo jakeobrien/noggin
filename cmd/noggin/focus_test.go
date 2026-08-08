@@ -6,7 +6,7 @@ import "testing"
 // (M2.1): FocusRoots ("r") and FocusFiles ("f") each move Focus to their
 // pane from any of the Roots Nav, Files Nav or Document Viewer.
 func TestFocusBindingsMoveFocusFromEveryPane(t *testing.T) {
-	for _, start := range []pane{rootsPane, filesPane, viewerPane} {
+	for _, start := range []pane{rootsPane, filesPane, dv1Pane} {
 		t.Run(start.title(), func(t *testing.T) {
 			m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)
 			m.focus = start

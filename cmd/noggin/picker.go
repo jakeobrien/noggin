@@ -636,11 +636,14 @@ func (m model) activateGrepPicker() model {
 		m.message = fmt.Sprintf("cannot open %s: %v", g.file.path, err)
 		return m.dismissPicker()
 	}
+	// A plain Activate always targets DV1 (S3), so this reads/writes m.dv1
+	// directly — not the focused-viewer accessor, whose "whichever pane has
+	// Focus" question does not apply to an explicit-target action.
 	m = m.openDocument(d)
-	m.viewer = m.viewer.commitQuery(query)
-	if ordinal, ok := resolveGrepLanding(d.src, m.viewer.vp.GetContent(), query, g.line); ok {
-		m.viewer.findState.current = ordinal
-		m.viewer = m.viewer.applyCurrentMatch()
+	m.dv1 = m.dv1.commitQuery(query)
+	if ordinal, ok := resolveGrepLanding(d.src, m.dv1.vp.GetContent(), query, g.line); ok {
+		m.dv1.findState.current = ordinal
+		m.dv1 = m.dv1.applyCurrentMatch()
 	}
 	return m.dismissPicker()
 }

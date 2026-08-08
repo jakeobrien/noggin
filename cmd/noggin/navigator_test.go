@@ -24,9 +24,9 @@ func TestNavigatorToggleHidesAndRestoresTheSidebar(t *testing.T) {
 		t.Errorf("viewer width after hiding = %d, want %d (full terminal width)", hidden.viewer.width, 80)
 	}
 	wantWidth := hidden.viewer.content().width
-	if m.viewer.renderedWidth != wantWidth {
+	if m.dv1.renderedWidth != wantWidth {
 		t.Errorf("viewer did not re-wrap to the width it gained: rendered at %d, want %d",
-			m.viewer.renderedWidth, wantWidth)
+			m.dv1.renderedWidth, wantWidth)
 	}
 
 	m = press(t, m, keys.Navigator.Keys()[0])
@@ -47,17 +47,17 @@ func TestNavigatorToggleHidesAndRestoresTheSidebar(t *testing.T) {
 // ordinary resize.
 func TestNavigatorToggleRewrapsTheOpenDocument(t *testing.T) {
 	m := openedFixture(t, 80, 24)
-	withSidebar := m.viewer.lineCount()
+	withSidebar := m.dv1.lineCount()
 
 	m = press(t, m, keys.Navigator.Keys()[0])
-	fullWidth := m.viewer.lineCount()
+	fullWidth := m.dv1.lineCount()
 	if fullWidth >= withSidebar {
 		t.Errorf("line count with the sidebar hidden = %d, want fewer than %d (wider viewport wraps less)",
 			fullWidth, withSidebar)
 	}
 
 	m = press(t, m, keys.Navigator.Keys()[0])
-	if got := m.viewer.lineCount(); got != withSidebar {
+	if got := m.dv1.lineCount(); got != withSidebar {
 		t.Errorf("line count after restoring the sidebar = %d, want %d", got, withSidebar)
 	}
 }
@@ -96,8 +96,8 @@ func TestNavigatorToggleMovesFocusOffAHiddenPane(t *testing.T) {
 	}
 
 	m = press(t, m, keys.Navigator.Keys()[0])
-	if m.focus != viewerPane {
-		t.Errorf("focus after hiding the navigator = %v, want %v", m.focus, viewerPane)
+	if m.focus != dv1Pane {
+		t.Errorf("focus after hiding the navigator = %v, want %v", m.focus, dv1Pane)
 	}
 	if m.visible(filesPane) || m.visible(rootsPane) {
 		t.Error("a Navigator pane reports visible while the sidebar is hidden")

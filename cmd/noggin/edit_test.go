@@ -48,9 +48,9 @@ func TestEditWithOpenDocumentReleasesTheTerminal(t *testing.T) {
 	if got.message != "" {
 		t.Errorf("message = %q, want empty (a command was produced instead)", got.message)
 	}
-	if got.viewer.doc.path != fixturePath {
+	if got.dv1.doc.path != fixturePath {
 		t.Errorf("open document = %q, want unchanged (%q) until the editor exits",
-			got.viewer.doc.path, fixturePath)
+			got.dv1.doc.path, fixturePath)
 	}
 }
 
@@ -80,7 +80,7 @@ func TestFinishEditReloadsDocumentFromDisk(t *testing.T) {
 	if got.message != "" {
 		t.Errorf("message = %q, want cleared on a successful reload", got.message)
 	}
-	if !strings.Contains(got.viewer.view(), "appended line") {
+	if !strings.Contains(got.dv1.view(), "appended line") {
 		t.Errorf("viewer content does not contain the edit made on disk")
 	}
 }
@@ -101,8 +101,8 @@ func TestFinishEditWithEditorErrorReportsFooterMessage(t *testing.T) {
 	if got.message == "" {
 		t.Error("message is empty, want a report that the edit failed")
 	}
-	if got.viewer.doc.path != fixturePath {
-		t.Errorf("open document = %q, want unchanged after an editor error", got.viewer.doc.path)
+	if got.dv1.doc.path != fixturePath {
+		t.Errorf("open document = %q, want unchanged after an editor error", got.dv1.doc.path)
 	}
 }
 

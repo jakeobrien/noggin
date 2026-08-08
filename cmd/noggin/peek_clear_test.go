@@ -30,11 +30,11 @@ func peekFixtureScrollable(t *testing.T) (m model, wantOffset int) {
 		t.Fatalf("loadDocument(active): %v", err)
 	}
 	m = m.openDocument(d)
-	if total := m.viewer.lineCount(); total <= m.viewer.height() {
-		t.Fatalf("active.md renders %d lines into a %d-line viewport; nothing to preserve a scroll over", total, m.viewer.height())
+	if total := m.dv1.lineCount(); total <= m.dv1.height() {
+		t.Fatalf("active.md renders %d lines into a %d-line viewport; nothing to preserve a scroll over", total, m.dv1.height())
 	}
-	m.viewer = m.viewer.withOffset(7)
-	wantOffset = m.viewer.offset()
+	m.dv1 = m.dv1.withOffset(7)
+	wantOffset = m.dv1.offset()
 
 	m = m.focusPane(filesPane)
 	m.files = m.files.move(1) // active.md -> peeked.md
@@ -42,7 +42,7 @@ func peekFixtureScrollable(t *testing.T) (m model, wantOffset int) {
 		t.Fatalf("setup: selection = %q, want peeked.md", m.files.selectedNode().Name)
 	}
 	m = press(t, m, keys.Peek.Keys()[0])
-	if !m.viewer.peeking() {
+	if !m.dv1.peeking() {
 		t.Fatalf("setup: Peek did not start")
 	}
 	return m, wantOffset
@@ -53,10 +53,10 @@ func peekFixtureScrollable(t *testing.T) (m model, wantOffset int) {
 // is exactly what it was before Peeking started (S7/M7.2).
 func assertPeekClearedRestoringScroll(t *testing.T, m model, wantOffset int) {
 	t.Helper()
-	if m.viewer.peeking() {
+	if m.dv1.peeking() {
 		t.Error("still Peeking after the clearing trigger")
 	}
-	if got := m.viewer.offset(); got != wantOffset {
+	if got := m.dv1.offset(); got != wantOffset {
 		t.Errorf("Active Document offset after Peek cleared = %d, want %d (preserved)", got, wantOffset)
 	}
 }
@@ -70,13 +70,14 @@ func TestPeekClearedBySelectionChange(t *testing.T) {
 }
 
 // TestPeekClearedByFocusChange checks the second trigger, including the
-// explicit "l/tab/f" examples S7 names: NextPane (tab) moves Focus off the
-// Files Nav.
+// explicit "l/tab/f" examples S7 names (Tab-cycling itself is gone as of
+// C3/M1.1, S5; FocusRoots is one of its direct-jump replacements): FocusRoots
+// moves Focus off the Files Nav.
 func TestPeekClearedByFocusChange(t *testing.T) {
 	m, wantOffset := peekFixtureScrollable(t)
-	m = press(t, m, keys.NextPane.Keys()[0])
-	if m.focus != viewerPane {
-		t.Fatalf("setup: tab did not move focus to viewerPane, got %v", m.focus)
+	m = press(t, m, keys.FocusRoots.Keys()[0])
+	if m.focus != rootsPane {
+		t.Fatalf("setup: FocusRoots did not move focus to rootsPane, got %v", m.focus)
 	}
 	assertPeekClearedRestoringScroll(t, m, wantOffset)
 }
@@ -143,20 +144,20 @@ func TestPeekClearedWithNoActiveDocumentEmptiesTheViewer(t *testing.T) {
 		t.Fatalf("tree.Walk: %v", err)
 	}
 	m := sized(t, newModel().openFolder(node), 80, 24)
-	if m.viewer.doc.isOpen() {
+	if m.dv1.doc.isOpen() {
 		t.Fatalf("setup: an Active Document is already open")
 	}
 
 	m = press(t, m, keys.Peek.Keys()[0])
-	if !m.viewer.peeking() {
+	if !m.dv1.peeking() {
 		t.Fatalf("setup: Peek did not start")
 	}
 
 	m = press(t, m, keys.Peek.Keys()[0]) // second p: clear
-	if m.viewer.peeking() {
+	if m.dv1.peeking() {
 		t.Error("still Peeking after the second p")
 	}
-	if m.viewer.doc.isOpen() {
+	if m.dv1.doc.isOpen() {
 		t.Error("an Active Document appeared after clearing Peek with none open before")
 	}
 	if !strings.Contains(m.View().Content, emptyViewerText) {

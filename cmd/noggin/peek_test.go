@@ -28,7 +28,7 @@ func peekFixture(t *testing.T) (m model, activePath, peekedPath string) {
 	if err != nil {
 		t.Fatalf("loadDocument(active): %v", err)
 	}
-	m = m.openDocument(d) // Active Document set, focus -> viewerPane
+	m = m.openDocument(d) // Active Document set, focus -> dv1Pane
 
 	m = m.focusPane(filesPane) // S6: back to the Files Nav
 	// active.md, peeked.md sort alphabetically before active.md — walk
@@ -54,11 +54,11 @@ func TestPeekShowsSelectedDocumentWithoutChangingActiveDocumentOrFocus(t *testin
 	if m.focus != filesPane {
 		t.Errorf("focus after Peek = %v, want filesPane (unchanged)", m.focus)
 	}
-	if !m.viewer.peeking() {
+	if !m.dv1.peeking() {
 		t.Fatal("viewer not Peeking after p")
 	}
-	if m.viewer.doc.path != activePath {
-		t.Errorf("Active Document path after Peek = %q, want unchanged %q", m.viewer.doc.path, activePath)
+	if m.dv1.doc.path != activePath {
+		t.Errorf("Active Document path after Peek = %q, want unchanged %q", m.dv1.doc.path, activePath)
 	}
 	view := m.View().Content
 	if !strings.Contains(view, "Peeked") {
@@ -77,7 +77,7 @@ func TestPeekShowsSelectedDocumentWithoutChangingActiveDocumentOrFocus(t *testin
 // Active Document's own view already uses — not just different text.
 func TestPeekHeaderIsInvertedFromTheActiveDocuments(t *testing.T) {
 	m, _, _ := peekFixture(t)
-	plainViewerTitle := titleStyle.Render(m.paneTitle(viewerPane)) // "Document: active.md", not inverted
+	plainViewerTitle := titleStyle.Render(m.paneTitle(dv1Pane)) // "Document: active.md", not inverted
 	if !strings.Contains(m.View().Content, plainViewerTitle) {
 		t.Fatalf("setup: Active Document's own (non-inverted) title not found before Peeking")
 	}
@@ -104,11 +104,11 @@ func TestPeekOnTheActiveDocumentIsANoOp(t *testing.T) {
 
 	m = press(t, m, keys.Peek.Keys()[0])
 
-	if m.viewer.peeking() {
+	if m.dv1.peeking() {
 		t.Error("Peek started on the Active Document's own row, want a no-op")
 	}
-	if m.viewer.doc.path != activePath {
-		t.Errorf("Active Document path = %q, want unchanged %q", m.viewer.doc.path, activePath)
+	if m.dv1.doc.path != activePath {
+		t.Errorf("Active Document path = %q, want unchanged %q", m.dv1.doc.path, activePath)
 	}
 }
 
@@ -123,7 +123,7 @@ func TestPeekCannotBeScrolled(t *testing.T) {
 
 	m = press(t, m, keys.HalfPageDown.Keys()[0])
 
-	if !m.viewer.peeking() {
+	if !m.dv1.peeking() {
 		t.Error("Peek cleared by a scroll-only key, want it to still be Peeking")
 	}
 	if got := m.View().Content; got != viewBefore {
@@ -140,10 +140,10 @@ func TestPeekCannotBeFound(t *testing.T) {
 
 	m = press(t, m, keys.Find.Keys()[0])
 
-	if !m.viewer.peeking() {
+	if !m.dv1.peeking() {
 		t.Error("Peek cleared by Find, want it to still be Peeking")
 	}
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Error("Find started while Peeking, want a silent no-op")
 	}
 	if m.focus != filesPane {
@@ -160,7 +160,7 @@ func TestPeekEditIsASilentNoOp(t *testing.T) {
 
 	m = press(t, m, keys.Edit.Keys()[0])
 
-	if !m.viewer.peeking() {
+	if !m.dv1.peeking() {
 		t.Error("Peek cleared by Edit, want it to still be Peeking")
 	}
 	if m.message != "" {
@@ -185,7 +185,7 @@ func TestPeekOnAFolderIsANoOp(t *testing.T) {
 
 	m = press(t, m, keys.Peek.Keys()[0])
 
-	if m.viewer.peeking() {
+	if m.dv1.peeking() {
 		t.Error("Peek started on a folder, want a no-op")
 	}
 }

@@ -452,11 +452,11 @@ func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
 	writeFile(t, filepath.Join(sub, "nested.md"))
 
 	m := openedFixture(t, 80, 24)
-	if total := m.viewer.lineCount(); total <= m.viewer.height() {
-		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to preserve a scroll position over", total, m.viewer.height())
+	if total := m.dv1.lineCount(); total <= m.dv1.height() {
+		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to preserve a scroll position over", total, m.dv1.height())
 	}
-	m.viewer = m.viewer.withOffset(3)
-	wantOffset, wantView := m.viewer.offset(), m.viewer.view()
+	m.dv1 = m.dv1.withOffset(3)
+	wantOffset, wantView := m.dv1.offset(), m.dv1.view()
 
 	// Root A open in the Files Nav, one folder expanded and selection off the
 	// top, so re-rooting to B has something to reset.
@@ -498,13 +498,13 @@ func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
 		t.Errorf("Files Nav view after re-rooting = %q, want sub collapsed (nested.md not shown)", view)
 	}
 
-	if got := m.viewer.offset(); got != wantOffset {
+	if got := m.dv1.offset(); got != wantOffset {
 		t.Errorf("viewer offset after activating a different root = %d, want unchanged %d", got, wantOffset)
 	}
-	if got := m.viewer.view(); got != wantView {
+	if got := m.dv1.view(); got != wantView {
 		t.Error("viewer content after activating a different root changed, want the open document unchanged")
 	}
-	if m.viewer.label() == "" {
+	if m.dv1.label() == "" {
 		t.Error("viewer lost its open document after activating a different root")
 	}
 }

@@ -34,15 +34,15 @@ func TestFindNextPreviousAreNoOpsWhilePeeking(t *testing.T) {
 	m = press(t, m, "/")
 	m = typeText(t, m, "item 5")
 	m = press(t, m, "enter")
-	if !m.viewer.hasFindMatches() {
+	if !m.dv1.hasFindMatches() {
 		t.Fatalf("setup: committed find has no matches")
 	}
-	n := len(m.viewer.findState.matches)
+	n := len(m.dv1.findState.matches)
 	if n < 2 {
 		t.Fatalf(`setup: only %d match(es) for "item 5", want at least 2 to test traversal`, n)
 	}
-	wantOffset := m.viewer.offset()
-	wantCurrent := m.viewer.findState.current
+	wantOffset := m.dv1.offset()
+	wantCurrent := m.dv1.findState.current
 
 	m = m.focusPane(filesPane)
 	m.files = m.files.move(1) // active.md -> peeked.md
@@ -50,7 +50,7 @@ func TestFindNextPreviousAreNoOpsWhilePeeking(t *testing.T) {
 		t.Fatalf("setup: selection = %q, want peeked.md", m.files.selectedNode().Name)
 	}
 	m = press(t, m, keys.Peek.Keys()[0])
-	if !m.viewer.peeking() {
+	if !m.dv1.peeking() {
 		t.Fatalf("setup: Peek did not start")
 	}
 
@@ -62,30 +62,30 @@ func TestFindNextPreviousAreNoOpsWhilePeeking(t *testing.T) {
 	m = press(t, m, keys.FindNext.Keys()[0])
 	m = press(t, m, keys.FindNext.Keys()[0])
 	m = press(t, m, keys.FindNext.Keys()[0])
-	if got := m.viewer.findState.current; got != wantCurrent {
+	if got := m.dv1.findState.current; got != wantCurrent {
 		t.Errorf("find match index after n while Peeking = %d, want unchanged %d", got, wantCurrent)
 	}
-	if got := m.viewer.offset(); got != wantOffset {
+	if got := m.dv1.offset(); got != wantOffset {
 		t.Errorf("viewer offset after n while Peeking = %d, want unchanged %d", got, wantOffset)
 	}
 
 	m = press(t, m, keys.FindPrevious.Keys()[0])
 	m = press(t, m, keys.FindPrevious.Keys()[0])
-	if got := m.viewer.findState.current; got != wantCurrent {
+	if got := m.dv1.findState.current; got != wantCurrent {
 		t.Errorf("find match index after N while Peeking = %d, want unchanged %d", got, wantCurrent)
 	}
-	if got := m.viewer.offset(); got != wantOffset {
+	if got := m.dv1.offset(); got != wantOffset {
 		t.Errorf("viewer offset after N while Peeking = %d, want unchanged %d", got, wantOffset)
 	}
 
 	m = press(t, m, keys.Peek.Keys()[0]) // second p: clear
-	if m.viewer.peeking() {
+	if m.dv1.peeking() {
 		t.Error("still Peeking after the second p")
 	}
-	if got := m.viewer.offset(); got != wantOffset {
+	if got := m.dv1.offset(); got != wantOffset {
 		t.Errorf("Active Document offset after clearing Peek = %d, want exact pre-Peek offset %d (no drift)", got, wantOffset)
 	}
-	if got := m.viewer.findState.current; got != wantCurrent {
+	if got := m.dv1.findState.current; got != wantCurrent {
 		t.Errorf("find match index after clearing Peek = %d, want unchanged %d", got, wantCurrent)
 	}
 }

@@ -159,18 +159,18 @@ func TestEmptyStateWithNoDocumentOpen(t *testing.T) {
 	if !strings.Contains(m.View().Content, emptyViewerText) {
 		t.Errorf("view with no document open does not contain %q", emptyViewerText)
 	}
-	if got := m.paneTitle(viewerPane); got != viewerPane.title() {
-		t.Errorf("viewer title with no document = %q, want %q", got, viewerPane.title())
+	if got := m.paneTitle(dv1Pane); got != dv1Pane.title() {
+		t.Errorf("viewer title with no document = %q, want %q", got, dv1Pane.title())
 	}
 }
 
 func TestScrollActionsMoveTheViewport(t *testing.T) {
 	base := openedFixture(t, 80, 24)
-	page := base.viewer.height()
-	if total := base.viewer.lineCount(); total <= page {
+	page := base.dv1.height()
+	if total := base.dv1.lineCount(); total <= page {
 		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to scroll", total, page)
 	}
-	bottom := base.viewer.lineCount() - page
+	bottom := base.dv1.lineCount() - page
 
 	for _, tc := range []struct {
 		name    string
@@ -191,9 +191,9 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 			// Every key the action is bound to must perform it.
 			for _, k := range tc.binding.Keys() {
 				m := base
-				m.viewer = m.viewer.withOffset(tc.start)
+				m.dv1 = m.dv1.withOffset(tc.start)
 				m = press(t, m, k)
-				if got := m.viewer.offset(); got != tc.want {
+				if got := m.dv1.offset(); got != tc.want {
 					t.Errorf("%q from offset %d left offset %d, want %d", k, tc.start, got, tc.want)
 				}
 			}
@@ -202,7 +202,7 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 
 	// The last screen is reachable and is not the first screen.
 	m := press(t, base, keys.Bottom.Keys()[0])
-	if !m.viewer.atBottom() {
+	if !m.dv1.atBottom() {
 		t.Error("bottom key did not reach the bottom of the document")
 	}
 	if !strings.Contains(m.View().Content, fixtureStructure["tail"]) {
@@ -215,17 +215,19 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 
 func TestScrollKeysOnlyActWhenTheViewerHasFocus(t *testing.T) {
 	m := openedFixture(t, 80, 24)
-	if m.focus != viewerPane {
-		t.Fatalf("focus after opening a document = %v, want %v", m.focus, viewerPane)
+	if m.focus != dv1Pane {
+		t.Fatalf("focus after opening a document = %v, want %v", m.focus, dv1Pane)
 	}
-	m = press(t, m, keys.PrevPane.Keys()[0])
-	if m.focus == viewerPane {
+	// Tab-cycling is gone (S5, C3/M1.1); FocusRoots is one of its
+	// direct-jump replacements for moving Focus off the viewer.
+	m = press(t, m, keys.FocusRoots.Keys()[0])
+	if m.focus == dv1Pane {
 		t.Fatal("focus did not leave the viewer")
 	}
 
 	for _, k := range keys.LineDown.Keys() {
 		next := press(t, m, k)
-		if next.viewer.offset() != 0 {
+		if next.dv1.offset() != 0 {
 			t.Errorf("%q scrolled the viewer while %v had focus", k, m.focus)
 		}
 	}
@@ -244,17 +246,17 @@ func TestViewerRewrapsOnResize(t *testing.T) {
 		{"narrow", narrow, 80, 24},
 	} {
 		want := computeLayout(tc.width, tc.height, false).viewer.content()
-		if got := tc.m.viewer.renderedWidth; got != want.width {
+		if got := tc.m.dv1.renderedWidth; got != want.width {
 			t.Errorf("%s: rendered at width %d, want %d", tc.name, got, want.width)
 		}
-		if got := tc.m.viewer.height(); got != want.height {
+		if got := tc.m.dv1.height(); got != want.height {
 			t.Errorf("%s: viewport height = %d, want %d", tc.name, got, want.height)
 		}
 	}
 
-	if narrow.viewer.lineCount() <= wide.viewer.lineCount() {
+	if narrow.dv1.lineCount() <= wide.dv1.lineCount() {
 		t.Errorf("narrowing the viewer did not re-wrap the document: %d lines at 120 columns, %d at 80",
-			wide.viewer.lineCount(), narrow.viewer.lineCount())
+			wide.dv1.lineCount(), narrow.dv1.lineCount())
 	}
 }
 
@@ -279,7 +281,7 @@ func TestFrameStaysWithinTheTerminalWhileScrolling(t *testing.T) {
 				t.Fatalf("step %d row %d: width = %d, want %d: %q", step, i, got, w, line)
 			}
 		}
-		if m.viewer.atBottom() {
+		if m.dv1.atBottom() {
 			return
 		}
 		m = press(t, m, keys.PageDown.Keys()[0])

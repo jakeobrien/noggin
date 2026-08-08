@@ -33,7 +33,7 @@ func TestMessageDisplayedThenClearedNextKeypress(t *testing.T) {
 		t.Fatalf("frame does not show the message before the next keypress:\n%s", m.frame())
 	}
 
-	m = press(t, m, keys.NextPane.Keys()[0])
+	m = press(t, m, keys.LineDown.Keys()[0])
 
 	if strings.Contains(m.frame(), "cannot save starred roots") {
 		t.Errorf("frame still shows the message after a keypress:\n%s", m.frame())

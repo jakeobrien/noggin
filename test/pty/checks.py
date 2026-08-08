@@ -23,8 +23,8 @@ TREE = "cmd/noggin/testdata/tree"
 KEY = {
     "Quit":         b"q",       # keys.Quit
     "QuitCtrlC":    b"\x03",    # keys.Quit, second key: ctrl+c
-    "NextPane":     b"\t",      # keys.NextPane: tab
-    "PrevPane":     b"\x1b[Z",  # keys.PrevPane: shift+tab
+    "Tab":          b"\t",      # raw tab byte; unbound as of C3/M1.1 (S5) except inside the Picker
+    "ShiftTab":     b"\x1b[Z",  # raw shift+tab byte; ditto
     "HalfPageDown": b"\x04",    # keys.HalfPageDown: ctrl+d
     "PageUp":       b"\x02",    # keys.PageUp, second key: ctrl+b
     "Bottom":       b"G",       # keys.Bottom
@@ -48,8 +48,8 @@ KEY = {
     "Picker":       b" ",       # keys.Picker: space
     "PickerUp":     b"\x1b[A",  # keys.PickerUp: up arrow
     "PickerDown":   b"\x1b[B",  # keys.PickerDown: down arrow
-    "PickerMode":   b"\t",      # keys.PickerMode: tab
-    "PickerScope":  b"\x1b[Z",  # keys.PickerScope: shift+tab
+    "PickerMode":   b"\t",      # keys.PickerMode: tab (still bound, Picker-only)
+    "PickerScope":  b"\x1b[Z",  # keys.PickerScope: shift+tab (still bound, Picker-only)
     "ToggleHidden": b"\x1bh",   # keys.ToggleHidden: alt+h (ESC h on the wire)
 }
 
@@ -109,27 +109,32 @@ for cols, rows in [(80, 24), (100, 30)]:
 
     # Focus moves, and the footer names where it is. Reading focus off the
     # footer is what makes this a real check rather than "something redrew":
-    # it also exercises bubbletea v2's own decoding of tab and shift+tab, which
-    # the synthetic keyPress() helper in keymap.go cannot vouch for.
+    # it also exercises bubbletea v2's own decoding of these keys, which the
+    # synthetic keyPress() helper in keymap.go cannot vouch for.
     def focused():
         return screen_of(s.out, cols, rows).lines()[-1].split(" ·")[0]
 
     check(f"M1.2 focus starts in the Files pane at {cols}x{rows}",
           focused() == "Files", repr(focused()))
 
-    forward = []
-    for _ in range(3):
-        s.send(KEY["NextPane"], 0.5)
-        forward.append(focused())
-    check(f"M1.2 tab cycles focus through all three panes at {cols}x{rows}",
-          forward == ["Document", "Roots", "Files"], f"{forward}")
+    # C3/M1.1 (S5): Tab-cycling is removed in favor of direct focus-jump
+    # keys — FocusRoots/FocusFiles reach their panes from anywhere non-modal.
+    s.send(KEY["FocusRoots"], 0.5)
+    check(f"M1.2 FocusRoots jumps focus to Roots at {cols}x{rows}",
+          focused() == "Roots", repr(focused()))
 
-    backward = []
-    for _ in range(3):
-        s.send(KEY["PrevPane"], 0.5)
-        backward.append(focused())
-    check(f"M1.2 shift+tab cycles focus back at {cols}x{rows}",
-          backward == ["Roots", "Document", "Files"], f"{backward}")
+    s.send(KEY["FocusFiles"], 0.5)
+    check(f"M1.2 FocusFiles jumps focus back to Files at {cols}x{rows}",
+          focused() == "Files", repr(focused()))
+
+    before = focused()
+    s.send(KEY["Tab"], 0.5)
+    after_tab = focused()
+    s.send(KEY["ShiftTab"], 0.5)
+    after_shift_tab = focused()
+    check(f"M1.2 tab/shift+tab no longer cycle focus at {cols}x{rows}",
+          after_tab == before and after_shift_tab == before,
+          f"tab -> {after_tab!r}, shift+tab -> {after_shift_tab!r}")
 
     s.send(KEY["Quit"], 0.6)
     s.close()
@@ -345,10 +350,11 @@ footer = screen_of(s.out, 80, 30).lines()[-1]
 check("M3.3 bare launch with starred roots opens focused on Files",
       footer.split(" \u00b7")[0] == "Files", repr(footer))
 
-# Tab back to the Roots pane before its own keys act.
-s.send(KEY["PrevPane"], 0.4)
+# FocusRoots jumps back to the Roots pane before its own keys act (C3/M1.1,
+# S5: Tab-cycling is removed).
+s.send(KEY["FocusRoots"], 0.4)
 footer = screen_of(s.out, 80, 30).lines()[-1]
-check("M3.3 shift+tab from Files moves focus to Roots",
+check("M3.3 FocusRoots from Files moves focus to Roots",
       footer.split(" \u00b7")[0] == "Roots", repr(footer))
 
 
@@ -438,7 +444,7 @@ persist_name = os.path.basename(persist_target)
 
 s = Session([BINARY, persist_target], 80, 24, env=persist_env)
 s.pump(1.5)
-s.send(KEY["PrevPane"], 0.4)  # Files -> Roots (shift+tab)
+s.send(KEY["FocusRoots"], 0.4)  # Files -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
 check("M3.2 restart fixture: focus reaches Roots to star the ad-hoc root",
       footer.split(" \u00b7")[0] == "Roots", repr(footer))
@@ -499,9 +505,9 @@ check("M3.4 pty: README.md opens in the viewer before switching roots",
 nav_edge = lines_before[0].index("\u256e")  # box edge ╮ closing the nav column
 viewer_before = [line[nav_edge + 1:] for line in lines_before[:-1]]
 
-s.send(KEY["NextPane"], 0.4)  # Document -> Roots (tab)
+s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
-check("M3.4 pty: tab from the Document pane reaches Roots",
+check("M3.4 pty: FocusRoots from the Document pane reaches Roots",
       footer.split(" \u00b7")[0] == "Roots", repr(footer))
 
 s.send(KEY["Down"], 0.4)   # selection off the ad-hoc TREE root, onto root-b
@@ -718,12 +724,17 @@ check("M4.2 Files pane footer names its own actions",
       "expand" in footer_files and "collapse" in footer_files and "open" in footer_files,
       repr(footer_files))
 
-s.send(KEY["NextPane"], 0.4)  # Files -> Document
+# No direct focus-jump key reaches the Document pane yet (M1.3, C3), so this
+# opens README.md to get there — docs, empty, README.md, notes.txt (M2.2's
+# own order), two Downs from the docs default.
+s.send(KEY["Down"], 0.4)
+s.send(KEY["Down"], 0.4)
+s.send(KEY["Activate"], 0.6)  # Files -> Document (opens README.md)
 footer_doc = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.2 hints change with focus (Document differs from Files)",
       footer_doc != footer_files and "page" in footer_doc, repr(footer_doc))
 
-s.send(KEY["NextPane"], 0.4)  # Document -> Roots
+s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer_roots = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.2 hints change with focus (Roots differs from Files and Document)",
       footer_roots not in (footer_files, footer_doc) and "star" in footer_roots,
@@ -759,8 +770,7 @@ with open(ghost_store, "w") as f:
 
 s = Session([BINARY], 80, 24, env=ghost_env)
 s.pump(1.2)
-s.send(KEY["NextPane"], 0.4)  # Files -> Document
-s.send(KEY["NextPane"], 0.4)  # Document -> Roots
+s.send(KEY["FocusRoots"], 0.4)  # Files -> Roots
 s.send(KEY["Activate"], 0.6)  # refused: the starred root is broken
 footer_message = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.2 a rejected activation shows a footer message",
@@ -898,17 +908,17 @@ check("M5.2 exits 0 after a navigator round-trip", code == 0, f"exit {code}")
 # The Files Nav's own selection must survive a hide/restore cycle. Toggling
 # moves focus off the Files pane (it is hidden, so it cannot hold focus, the
 # same rule a narrow-terminal resize follows); S9 says nothing about
-# restoring focus, only the sidebar's own selection, so PrevPane brings focus
-# back to Files deliberately before checking it. The selection survives iff
-# activating from it still opens README.md (row 2 of docs, empty, README.md,
-# notes.txt), not docs (row 0, the reset-to-top default).
+# restoring focus, only the sidebar's own selection, so FocusFiles brings
+# focus back to Files deliberately before checking it. The selection
+# survives iff activating from it still opens README.md (row 2 of docs,
+# empty, README.md, notes.txt), not docs (row 0, the reset-to-top default).
 s = Session([BINARY, TREE], 80, 24)
 s.pump(1.2)
 for _ in range(2):
     s.send(KEY["Down"], 0.3)  # docs -> empty -> README.md
 s.send(KEY["Navigator"], 0.5)
 s.send(KEY["Navigator"], 0.5)
-s.send(KEY["PrevPane"], 0.4)  # deliberately back to Files; S9 owes no focus
+s.send(KEY["FocusFiles"], 0.4)  # deliberately back to Files; S9 owes no focus
 footer_focus = screen_of(s.out, 80, 24).lines()[-1]
 check("M5.2 focus is back on Files before activating",
       footer_focus.startswith("Files"), repr(footer_focus))
@@ -1318,7 +1328,7 @@ check("C2a/M8.1 pty: a reverse-video selected row reaches the wire too",
 # One Down steps a whole entry (two lines): activating afterwards must make
 # root_b (other/project) active, not root_a — the functional proof that
 # selection tracks whole entries, not the individual lines S5 added.
-s.send(KEY["PrevPane"], 0.4)  # Files -> Roots
+s.send(KEY["FocusRoots"], 0.4)  # Files -> Roots
 s.send(KEY["Down"], 0.4)
 s.send(KEY["Activate"], 0.6)
 lines = screen_of(s.out, 80, 24).raw_lines()

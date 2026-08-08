@@ -80,7 +80,7 @@ func TestViewRendersThreeRegionsAtSize(t *testing.T) {
 			}{
 				{1, rootsPane.title()},
 				{l.roots.height + 1, filesPane.title()},
-				{1, viewerPane.title()},
+				{1, dv1Pane.title()},
 			} {
 				if !strings.Contains(lines[want.row], want.title) {
 					t.Errorf("row %d = %q, want it to contain %q", want.row, lines[want.row], want.title)
@@ -89,7 +89,7 @@ func TestViewRendersThreeRegionsAtSize(t *testing.T) {
 
 			// The Navigator column ends where the viewer begins.
 			bodyRow := lines[1]
-			if got := lipgloss.Width(bodyRow[:strings.Index(bodyRow, viewerPane.title())]); got < l.navigatorWidth() {
+			if got := lipgloss.Width(bodyRow[:strings.Index(bodyRow, dv1Pane.title())]); got < l.navigatorWidth() {
 				t.Errorf("viewer starts at column %d, want at or after %d", got, l.navigatorWidth())
 			}
 
@@ -117,35 +117,23 @@ func TestViewReflowsOnResize(t *testing.T) {
 	}
 }
 
-func TestFocusMovesBetweenPanesAndBack(t *testing.T) {
+// TestFocusJumpsReachEveryVisiblePane covers S5's replacement for Tab-
+// cycling (removed as of C3/M1.1): FocusRoots/FocusFiles jump Focus
+// directly, from any starting pane, to a pane that stays put otherwise —
+// there is no cycle to walk any more, just direct jumps (focus_test.go
+// covers the jumps themselves in full; this only pins that Tab/Shift+Tab
+// no longer do anything).
+func TestTabAndShiftTabAreUnbound(t *testing.T) {
 	m := sized(t, newModel(), 80, 24)
 	start := m.focus
 
-	var forward []pane
-	for range paneOrder {
-		m = press(t, m, keys.NextPane.Keys()[0])
-		forward = append(forward, m.focus)
-	}
+	m = press(t, m, "tab")
 	if m.focus != start {
-		t.Errorf("focus after a full cycle = %v, want %v", m.focus, start)
+		t.Errorf("focus after tab = %v, want unchanged %v (Tab-cycling is removed, S5)", m.focus, start)
 	}
-	seen := map[pane]bool{}
-	for _, p := range forward {
-		seen[p] = true
-	}
-	if len(seen) != len(paneOrder) {
-		t.Errorf("forward cycle visited %d panes, want %d", len(seen), len(paneOrder))
-	}
-
-	for i := len(forward) - 2; i >= 0; i-- {
-		m = press(t, m, keys.PrevPane.Keys()[0])
-		if m.focus != forward[i] {
-			t.Errorf("focus stepping back = %v, want %v", m.focus, forward[i])
-		}
-	}
-	m = press(t, m, keys.PrevPane.Keys()[0])
+	m = press(t, m, "shift+tab")
 	if m.focus != start {
-		t.Errorf("focus after cycling back = %v, want %v", m.focus, start)
+		t.Errorf("focus after shift+tab = %v, want unchanged %v (Tab-cycling is removed, S5)", m.focus, start)
 	}
 }
 
@@ -160,12 +148,16 @@ func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 	}
 
 	m := sized(t, newModel(), narrow, 24)
-	if m.focus != viewerPane {
-		t.Errorf("focus after hiding the navigator = %v, want %v", m.focus, viewerPane)
+	if m.focus != dv1Pane {
+		t.Errorf("focus after hiding the navigator = %v, want %v", m.focus, dv1Pane)
 	}
-	m = press(t, m, keys.NextPane.Keys()[0])
-	if m.focus != viewerPane {
-		t.Errorf("focus after next-pane with no navigator = %v, want %v", m.focus, viewerPane)
+	// FocusFiles cannot reveal a Navigator hidden by lack of width (unlike
+	// the S9 toggle, model.focusPane only ever un-hides that toggle, never
+	// widens the terminal) — resolveFocus falls back to dv1Pane, the one
+	// pane still visible, so the jump is a no-op here.
+	m = press(t, m, keys.FocusFiles.Keys()[0])
+	if m.focus != dv1Pane {
+		t.Errorf("focus after FocusFiles on a too-narrow terminal = %v, want unchanged %v", m.focus, dv1Pane)
 	}
 }
 
@@ -224,7 +216,7 @@ func concrete(t *testing.T, m tea.Model) model {
 // so the round-trip below covers them.
 func allBindings() []key.Binding {
 	return []key.Binding{
-		keys.NextPane, keys.PrevPane, keys.Quit,
+		keys.Quit,
 		keys.Star,
 		keys.Expand, keys.Collapse, keys.Activate,
 		keys.LineUp, keys.LineDown,

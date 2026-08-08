@@ -18,12 +18,19 @@ type pane int
 const (
 	rootsPane pane = iota
 	filesPane
-	viewerPane
+	dv1Pane
+	dv2Pane
 )
 
-// paneOrder is the focus cycle order: down the Navigator column, then out to
-// the Document Viewer.
-var paneOrder = []pane{rootsPane, filesPane, viewerPane}
+// focusOrder is the fallback order resolveFocus walks when the wanted pane
+// is not visible: down the Navigator column, then out to DV1. DV2 is
+// deliberately absent — falling back onto a pane that does not exist would
+// be nonsensical, and DV1 (S1's always-present viewer) is the natural
+// landing spot Tab/Shift+Tab's removal (S5) leaves as the one non-Navigator
+// fallback. (Tab-cycling itself, and the paneOrder/shiftFocus it drove, are
+// gone as of C3/M1.1 — S5 replaces cycling with four direct focus-jump
+// keys.)
+var focusOrder = []pane{rootsPane, filesPane, dv1Pane}
 
 // title is the pane's heading, shown in its border and the footer. It is a
 // short display label, not the GLOSSARY.md term ("Roots Nav", "Files Nav",
@@ -37,7 +44,7 @@ func (p pane) title() string {
 		return "Roots"
 	case filesPane:
 		return "Files"
-	default:
+	default: // dv1Pane, dv2Pane
 		return "Document"
 	}
 }
@@ -49,7 +56,21 @@ type model struct {
 	height int
 	focus  pane
 	files  filesNav
-	viewer viewer
+
+	// dv1 is the always-present Document Viewer (S1, C3). dv2 is the second,
+	// optional one beside it (S1) — nil when it does not exist, which is
+	// always, for now: M1.1 only introduces the pair and the focused-viewer
+	// accessors below (viewerFor/focusedViewer and their write halves); DV2's
+	// actual creation and Focus-reachability land in later tasks (M1.3's
+	// focus-jump key, M1.4's Files Nav targeting modifier). A pointer, unlike
+	// every other value-semantic field here (viewer.go's withOffset doc
+	// comment gives the same reasoning for viewer itself), is what lets
+	// "does not exist" be represented directly rather than through a second
+	// bool that could drift out of sync with it — safe under model's
+	// copy-by-value style only because every write goes through
+	// withViewerFor (a fresh *viewer, never an in-place *m.dv2 mutation).
+	dv1 viewer
+	dv2 *viewer
 
 	// navigatorHidden is the S9 Navigator toggle: hides the whole sidebar
 	// (Roots Nav and Files Nav) and gives the Document Viewer the full width
@@ -80,7 +101,7 @@ type model struct {
 
 	// helpOpen is the S12 Help Modal (M5.3): when set, it owns the keyboard
 	// (handleHelpInput) and the frame gains its overlay (overlayHelp), the
-	// same shape m.viewer.findEditing() gives an in-progress search — an
+	// same shape focusedViewer().findEditing() gives an in-progress search — an
 	// exclusive input mode layered on top of the model's other state, not a
 	// pane of its own, so it never touches m.focus.
 	helpOpen bool
@@ -109,7 +130,56 @@ type model struct {
 }
 
 func newModel() model {
-	return model{focus: filesPane, files: newFilesNav(), viewer: newViewer(), roots: newRootsNav(), picker: newPicker()}
+	return model{focus: filesPane, files: newFilesNav(), dv1: newViewer(), roots: newRootsNav(), picker: newPicker()}
+}
+
+// viewerFor is the viewer paired with a Document Viewer pane: dv2Pane maps
+// to dv2 (DV1 if dv2 does not exist — the same "falls back to DV1" shape
+// focusedViewer gives a non-viewer Focus), anything else to dv1. The read
+// half of the pair with withViewerFor.
+func (m model) viewerFor(p pane) viewer {
+	if p == dv2Pane && m.dv2 != nil {
+		return *m.dv2
+	}
+	return m.dv1
+}
+
+// withViewerFor writes v back to the viewer paired with pane p (see
+// viewerFor) — creating dv2 if p is dv2Pane and it did not already exist,
+// which is exactly the mechanism a later task's "create DV2 first if
+// absent" targeting modifier (M1.4) needs; nothing in M1.1 calls it with
+// dv2Pane yet, so dv2 stays nil throughout this task.
+func (m model) withViewerFor(p pane, v viewer) model {
+	if p == dv2Pane {
+		m.dv2 = &v
+	} else {
+		m.dv1 = v
+	}
+	return m
+}
+
+// focusedViewer is the viewer whose pane currently holds Focus (S6): DV2
+// when Focus is dv2Pane, DV1 otherwise — including when Focus is on a
+// Navigator pane, matching today's single-viewer behavior exactly. This is
+// what keeps every viewer-focus-scoped command (Edit, Find, FindNext/
+// FindPrevious, scroll) behavior-preserving while DV2 stays unreachable
+// (M1.1); it is not used for actions with an explicit, non-focus-dependent
+// target — Peek and a plain Activate always target DV1 (S3), never
+// "whichever pane has Focus" — so those read/write m.dv1 directly instead.
+func (m model) focusedViewer() viewer { return m.viewerFor(m.focus) }
+
+// withFocusedViewer is focusedViewer's write half.
+func (m model) withFocusedViewer(v viewer) model { return m.withViewerFor(m.focus, v) }
+
+// focusedViewerPane is the pane focusedViewer's value came from: dv2Pane
+// when Focus is already there, dv1Pane otherwise — the target startEdit/
+// startFind move Focus onto once they act, and the pane finishEdit reopens
+// an edited document into.
+func (m model) focusedViewerPane() pane {
+	if m.focus == dv2Pane {
+		return dv2Pane
+	}
+	return dv1Pane
 }
 
 // withStorePath sets the resolved starred-roots config path (M3.2's
@@ -169,11 +239,28 @@ func (m model) openFolder(root *tree.Node) model {
 	return m
 }
 
-// openDocument makes d the active document and puts focus on it, which is what
-// asking to read a document means.
+// openDocument makes d DV1's Active Document and puts Focus on DV1 — the
+// unmodified-key target every "plain" load uses (S3): Files Nav's Activate,
+// the Picker's Activate, launch-time resolution (applyResolution) and
+// finishEdit's own DV1 case. openDocumentInto is the general form a
+// Targeting-modified load (a later task) or an edit resumed on DV2
+// (finishEdit) needs instead.
 func (m model) openDocument(d document) model {
-	m.viewer = m.viewer.open(d)
-	m = m.setFocus(m.resolveFocus(viewerPane))
+	return m.openDocumentInto(dv1Pane, d)
+}
+
+// openDocumentInto makes d pane p's Active Document and puts Focus on p,
+// which is what asking to read a document into a specific viewer means. p
+// is normalized to dv1Pane unless it is exactly dv2Pane — the only other
+// valid target — so a zero-value editFinishedMsg.pane (rootsPane, pane's
+// own zero value) from an older test literal that predates the pane field
+// still lands on DV1, matching every plain load's own target (S3).
+func (m model) openDocumentInto(p pane, d document) model {
+	if p != dv2Pane {
+		p = dv1Pane
+	}
+	m = m.withViewerFor(p, m.viewerFor(p).open(d))
+	m = m.setFocus(m.resolveFocus(p))
 	// S10/C2a/M10.1: this is a fresh read of the Active Document, so it is
 	// also the new "known good" the periodic staleness check compares
 	// against from here on.
@@ -184,8 +271,8 @@ func (m model) openDocument(d document) model {
 // setFocus moves Focus to p, clearing Peek (S7, M7.1) whenever Focus
 // actually changes. Peek only ever lives while Focus sits on the Files Nav
 // (see togglePeek, the only place that starts it), so every one of the
-// many call sites that can move Focus — shiftFocus, focusPane, openFolder,
-// openDocument, and a resize that resolves Focus off a pane that just
+// many call sites that can move Focus — focusPane, openDocumentInto,
+// openFolder, openDocument, and a resize that resolves Focus off a pane that just
 // became invisible — needs the same "leaving filesPane ends Peek" rule.
 // Routing every Focus assignment through here is what keeps that a
 // structural guarantee instead of a per-call-site rule someone can forget
@@ -270,11 +357,16 @@ func (m model) toggleStar() model {
 
 // editFinishedMsg reports that $EDITOR has exited (S10, D3). path is the
 // document that was handed off, carried on the message rather than re-read
-// from m.viewer at delivery time, since focus and the open document could in
+// from the viewer at delivery time, since focus and the open document could in
 // principle have changed while the terminal was away. err is any failure
 // starting or running the editor.
 type editFinishedMsg struct {
 	path string
+	// pane is which Document Viewer was handed to $EDITOR (startEdit's own
+	// focusedViewerPane at the time), so finishEdit reopens the re-read
+	// document into the same one — DV1 by default, or DV2 once it is
+	// reachable and holding Focus (M1.6).
+	pane pane
 	err  error
 }
 
@@ -284,13 +376,14 @@ type editFinishedMsg struct {
 // focused pane". With no document open it reports that in the footer rather
 // than doing nothing.
 func (m model) startEdit() (model, tea.Cmd) {
+	v := m.focusedViewer()
 	// S7/M7.1: Edit is a silent no-op while Peeking — unlike every other
 	// refusal below, not even a footer message, since Peek's whole point is
 	// a look that leaves nothing else disturbed.
-	if m.viewer.peeking() {
+	if v.peeking() {
 		return m, nil
 	}
-	if !m.viewer.doc.isOpen() {
+	if !v.doc.isOpen() {
 		m.message = "no document open to edit"
 		return m, nil
 	}
@@ -298,9 +391,10 @@ func (m model) startEdit() (model, tea.Cmd) {
 	if editor == "" {
 		editor = "vi"
 	}
-	path := m.viewer.doc.path
+	path := v.doc.path
+	p := m.focusedViewerPane()
 	return m, tea.ExecProcess(exec.Command(editor, path), func(err error) tea.Msg {
-		return editFinishedMsg{path: path, err: err}
+		return editFinishedMsg{path: path, pane: p, err: err}
 	})
 }
 
@@ -351,14 +445,19 @@ func (m model) focusPane(target pane) model {
 // message, the same "silence is not an error" shape activate()'s own read
 // failure already gives.
 func (m model) togglePeek() model {
-	if m.viewer.peeking() {
+	// S3: the unmodified key always targets DV1 (a later task adds shift+p's
+	// DV2 targeting) — hardwired to m.dv1, not the focused-viewer accessor,
+	// since Peek's target is never "whichever pane has Focus" (Peek is
+	// Files-Nav-only by design, so Focus is never on a viewer pane here
+	// anyway).
+	if m.dv1.peeking() {
 		return m.clearPeek()
 	}
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
 		return m
 	}
-	if m.viewer.doc.isOpen() && n.Path == m.viewer.doc.path {
+	if m.dv1.doc.isOpen() && n.Path == m.dv1.doc.path {
 		return m
 	}
 	d, err := loadDocument(n.Path)
@@ -366,7 +465,7 @@ func (m model) togglePeek() model {
 		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
 		return m
 	}
-	m.viewer = m.viewer.startPeek(d)
+	m.dv1 = m.dv1.startPeek(d)
 	return m
 }
 
@@ -375,7 +474,7 @@ func (m model) togglePeek() model {
 // the second-p toggle (togglePeek) routes through — currently just
 // refresh(), per S7's own list.
 func (m model) clearPeek() model {
-	m.viewer = m.viewer.clearPeek()
+	m.dv1 = m.dv1.clearPeek()
 	return m
 }
 
@@ -423,18 +522,23 @@ func (m model) refresh() model {
 			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path))
 		}
 	}
-	if m.viewer.doc.isOpen() {
-		path := m.viewer.doc.path
-		findHadMatches := m.viewer.hasFindMatches()
+	// M1.1: hardwired to DV1, not the focused-viewer accessor — a refresh is
+	// not focus-scoped (S7 names "regardless of which pane holds Focus"), so
+	// this is not the same "whichever viewer has Focus" question Edit/Find/
+	// scroll ask. DV2 does not exist yet; a later task (M3.1) extends this to
+	// loop both DV1 and DV2 in the same pass.
+	if m.dv1.doc.isOpen() {
+		path := m.dv1.doc.path
+		findHadMatches := m.dv1.hasFindMatches()
 		if d, err := loadDocument(path); err != nil {
 			if m.message == "" {
 				m.message = fmt.Sprintf("cannot open %s: %v", path, err)
 			}
-			m.viewer = m.viewer.close()
+			m.dv1 = m.dv1.close()
 		} else {
-			m.viewer = m.viewer.refreshDoc(d)
+			m.dv1 = m.dv1.refreshDoc(d)
 		}
-		if m.message == "" && findHadMatches && !m.viewer.hasFindMatches() {
+		if m.message == "" && findHadMatches && !m.dv1.hasFindMatches() {
 			m.message = "refreshed; search cleared"
 		}
 	}
@@ -452,31 +556,32 @@ func (m model) refresh() model {
 // search needs next (typing, Cancel, Activate to commit) all target it. With
 // no document open it reports that instead, the same shape as startEdit.
 func (m model) startFind() (model, tea.Cmd) {
+	v := m.focusedViewer()
 	// S7/M7.1: Find is a silent no-op while Peeking, the same shape as
 	// startEdit's own guard — the Peeked document "cannot be searched with
 	// Find" (S7), and Find only ever targets the Active Document underneath
 	// it, never the Peeked one, so the safe answer is to do nothing at all
 	// rather than search a document that is not even on screen right now.
-	if m.viewer.peeking() {
+	if v.peeking() {
 		return m, nil
 	}
-	if !m.viewer.doc.isOpen() {
+	if !v.doc.isOpen() {
 		m.message = "no document open to find in"
 		return m, nil
 	}
-	next, cmd := m.viewer.startFind()
-	m.viewer = next
+	next, cmd := v.startFind()
+	m = m.withFocusedViewer(next)
 	// C2a/M7.3 (D51/TRIAGE T14): routed through setFocus like every other
 	// Focus assignment, not a bare m.focus = ..., for consistency with the
 	// chokepoint's own stated invariant — harmless in practice today only
 	// because the peeking() guard above always fires first, but this way
 	// nothing else has to reason about that ordering to trust setFocus.
-	m = m.setFocus(m.resolveFocus(viewerPane))
+	m = m.setFocus(m.resolveFocus(m.focusedViewerPane()))
 	return m, cmd
 }
 
 // handleFindInput is where a keypress goes while a find query has the
-// keyboard (m.viewer.findEditing()): Cancel dismisses it, Activate (enter)
+// keyboard (focusedViewer().findEditing()): Cancel dismisses it, Activate (enter)
 // commits it, and everything else — including keys bound elsewhere, like q
 // or the scroll keys — types into the query instead of acting on its usual
 // binding. That exclusivity is deliberate: a query for the word "question"
@@ -484,14 +589,14 @@ func (m model) startFind() (model, tea.Cmd) {
 func (m model) handleFindInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
-		m.viewer = m.viewer.cancelFind()
+		m = m.withFocusedViewer(m.focusedViewer().cancelFind())
 		return m, nil
 	case key.Matches(msg, keys.Activate):
-		m.viewer = m.viewer.commitFind()
+		m = m.withFocusedViewer(m.focusedViewer().commitFind())
 		return m, nil
 	}
-	next, cmd := m.viewer.updateFindQuery(msg)
-	m.viewer = next
+	next, cmd := m.focusedViewer().updateFindQuery(msg)
+	m = m.withFocusedViewer(next)
 	return m, cmd
 }
 
@@ -540,7 +645,7 @@ func (m model) finishEdit(msg editFinishedMsg) model {
 		return m
 	}
 	m.message = ""
-	return m.openDocument(d)
+	return m.openDocumentInto(msg.pane, d)
 }
 
 func (m model) Init() tea.Cmd {
@@ -581,7 +686,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// A find query in progress owns every key but Cancel and Activate
 		// (see handleFindInput); this must run before Quit and the rest below
 		// get a look at the keypress.
-		if m.viewer.findEditing() {
+		if m.focusedViewer().findEditing() {
 			return m.handleFindInput(msg)
 		}
 		if m.helpOpen {
@@ -596,12 +701,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Quit):
 			return m, tea.Quit
-		case key.Matches(msg, keys.NextPane):
-			m = m.setFocus(m.shiftFocus(1))
-			return m, nil
-		case key.Matches(msg, keys.PrevPane):
-			m = m.setFocus(m.shiftFocus(-1))
-			return m, nil
 		case key.Matches(msg, keys.Navigator):
 			return m.toggleNavigator(), nil
 		case key.Matches(msg, keys.FocusRoots):
@@ -631,22 +730,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// clearPeek() to restore the drifted position rather than the exact
 		// pre-Peek one.
 		case key.Matches(msg, keys.FindNext):
-			if !m.viewer.peeking() && m.viewer.hasFindMatches() {
-				m.viewer = m.viewer.findNext()
+			if !m.focusedViewer().peeking() && m.focusedViewer().hasFindMatches() {
+				m = m.withFocusedViewer(m.focusedViewer().findNext())
 			}
 			return m, nil
 		case key.Matches(msg, keys.FindPrevious):
-			if !m.viewer.peeking() && m.viewer.hasFindMatches() {
-				m.viewer = m.viewer.findPrevious()
+			if !m.focusedViewer().peeking() && m.focusedViewer().hasFindMatches() {
+				m = m.withFocusedViewer(m.focusedViewer().findPrevious())
 			}
 			return m, nil
 		}
-		// Movement keys belong to whichever pane has focus: the viewer scrolls,
-		// the Files Nav moves its selection and opens/closes folders.
+		// Movement keys belong to whichever pane has focus: a Document Viewer
+		// scrolls (S6), the Files Nav moves its selection and opens/closes
+		// folders.
 		switch m.focus {
-		case viewerPane:
-			if next, scrolled := m.viewer.scroll(msg); scrolled {
-				m.viewer = next
+		case dv1Pane, dv2Pane:
+			if next, scrolled := m.focusedViewer().scroll(msg); scrolled {
+				m = m.withFocusedViewer(next)
 				return m, nil
 			}
 		case filesPane:
@@ -715,7 +815,9 @@ func (m model) resize(width, height int, cause resizeCause) model {
 	m = m.setFocus(m.resolveFocus(m.focus))
 	l := m.layout()
 	viewerContent := l.viewer.content()
-	// A width change re-renders the viewer (setSize), and a re-render
+	// M1.1: DV2 does not exist yet, so only DV1 is sized/checked here — a
+	// later task (M1.2's layout split) extends this to DV2 too. A width
+	// change re-renders the viewer (setSize), and a re-render
 	// silently drops any find in progress (viewer.render's doc comment) --
 	// fine when nothing was actively being typed, but a query mid-edit
 	// vanishing with no explanation violates S1/S8's "confusion is not
@@ -737,13 +839,13 @@ func (m model) resize(width, height int, cause resizeCause) model {
 	// resize: toggleNavigator can in fact reach the committed-find branch
 	// (unlike the mid-edit one above, nothing gates it), so the message must
 	// name whichever of the two actually fired.
-	findWasEditing := m.viewer.findEditing()
-	findHadMatches := m.viewer.hasFindMatches()
-	m.viewer = m.viewer.setSize(viewerContent.width, viewerContent.height)
+	findWasEditing := m.dv1.findEditing()
+	findHadMatches := m.dv1.hasFindMatches()
+	m.dv1 = m.dv1.setSize(viewerContent.width, viewerContent.height)
 	switch {
-	case findWasEditing && !m.viewer.findEditing():
+	case findWasEditing && !m.dv1.findEditing():
 		m.message = fmt.Sprintf("%s; search dismissed", cause)
-	case findHadMatches && !m.viewer.hasFindMatches():
+	case findHadMatches && !m.dv1.hasFindMatches():
 		m.message = fmt.Sprintf("%s; search cleared", cause)
 	}
 	filesContent := l.files.content()
@@ -778,45 +880,31 @@ func (m model) visible(p pane) bool {
 		return !l.roots.empty()
 	case filesPane:
 		return !l.files.empty()
-	default:
+	case dv2Pane:
+		// M1.1: DV2 is never visible yet — it does not exist (m.dv2 is always
+		// nil until a later task creates it), which alone is enough to gate
+		// this regardless of l.viewer (M1.2's layout split has not happened
+		// either, so there is no dedicated DV2 rect yet to check).
+		return m.dv2 != nil && !l.viewer.empty()
+	default: // dv1Pane
 		return !l.viewer.empty()
 	}
 }
 
-// shiftFocus moves focus by delta positions through paneOrder, wrapping, and
-// skipping panes that are not currently visible.
-func (m model) shiftFocus(delta int) pane {
-	start := indexOfPane(m.focus)
-	n := len(paneOrder)
-	for i := 1; i <= n; i++ {
-		candidate := paneOrder[((start+delta*i)%n+n)%n]
-		if m.visible(candidate) {
-			return candidate
-		}
-	}
-	return m.focus
-}
-
-// resolveFocus keeps focus on a visible pane across a resize.
+// resolveFocus keeps focus on a visible pane across a resize, falling back
+// through focusOrder (Roots Nav, Files Nav, DV1) when want is not visible.
+// DV2 is deliberately never a fallback target — see focusOrder's own doc
+// comment.
 func (m model) resolveFocus(want pane) pane {
 	if m.visible(want) {
 		return want
 	}
-	for _, p := range paneOrder {
+	for _, p := range focusOrder {
 		if m.visible(p) {
 			return p
 		}
 	}
 	return want
-}
-
-func indexOfPane(p pane) int {
-	for i, candidate := range paneOrder {
-		if candidate == p {
-			return i
-		}
-	}
-	return 0
 }
 
 var (
@@ -870,7 +958,10 @@ func (m model) frame() string {
 	}
 	l := m.layout()
 
-	body := m.renderPane(viewerPane, l.viewer, m.viewer.view())
+	// M1.1: DV2 does not exist yet, so the viewer region renders DV1 alone
+	// — a later task (M1.2) splits l.viewer into a DV1/DV2 pair and renders
+	// both here.
+	body := m.renderPane(dv1Pane, l.viewer, m.dv1.view())
 	if l.navigatorWidth() > 0 {
 		navigator := lipgloss.JoinVertical(lipgloss.Left,
 			m.renderPane(rootsPane, l.roots, m.roots.view()),
@@ -902,7 +993,7 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	// titleStyle — the one visible way S7 requires Peek to be identifiable
 	// as not the Active Document.
 	titleRenderStyle := titleStyle
-	if p == viewerPane && m.viewer.peeking() {
+	if (p == dv1Pane || p == dv2Pane) && m.viewerFor(p).peeking() {
 		titleRenderStyle = peekTitleStyle
 	}
 	return renderBox(style, r, titleRenderStyle.Render(m.paneTitle(p)), content)
@@ -914,11 +1005,12 @@ func (m model) renderPane(p pane, r rect, content string) string {
 // renderPane is what styles that differently (inverted, not bold) so the
 // two are never visually confusable.
 func (m model) paneTitle(p pane) string {
-	if p == viewerPane {
-		if m.viewer.peeking() {
-			return "Peek: " + m.viewer.peekLabel()
+	if p == dv1Pane || p == dv2Pane {
+		v := m.viewerFor(p)
+		if v.peeking() {
+			return "Peek: " + v.peekLabel()
 		}
-		if label := m.viewer.label(); label != "" {
+		if label := v.label(); label != "" {
 			return p.title() + ": " + label
 		}
 	}
@@ -959,9 +1051,9 @@ func (m model) paneTitle(p pane) string {
 // hints first, per paneHints' order) makes room for it ahead of time rather
 // than the suffix losing out to hints that already claimed the whole line.
 func (m model) renderFooter(r rect) string {
-	if m.viewer.findEditing() {
+	if m.focusedViewer().findEditing() {
 		return lipgloss.NewStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
-			Render(m.viewer.findView(r.width))
+			Render(m.focusedViewer().findView(r.width))
 	}
 	stale := m.stale && m.message == "" // m.message wins below; reserving room for a suffix that will never be appended would truncate hints for nothing
 	hintWidth := r.width

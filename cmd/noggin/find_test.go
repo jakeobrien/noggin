@@ -12,17 +12,17 @@ import (
 // screen and its line indicated, from a cold start at the top.
 func TestFindLocatesAPhraseNearTheEndOfTheDocument(t *testing.T) {
 	m := openedFixture(t, 80, 24)
-	if m.viewer.offset() != 0 {
-		t.Fatalf("fixture did not open at the top: offset = %d", m.viewer.offset())
+	if m.dv1.offset() != 0 {
+		t.Fatalf("fixture did not open at the top: offset = %d", m.dv1.offset())
 	}
 
 	m = press(t, m, "/")
-	if !m.viewer.findEditing() {
+	if !m.dv1.findEditing() {
 		t.Fatal("/ did not start a find")
 	}
 	m = typeText(t, m, "final line of the fixture")
 
-	if got := m.viewer.offset(); got == 0 {
+	if got := m.dv1.offset(); got == 0 {
 		t.Error("typing a query matching the document's tail did not scroll the viewport")
 	}
 	view := m.View().Content
@@ -37,10 +37,10 @@ func TestFindLocatesAPhraseNearTheEndOfTheDocument(t *testing.T) {
 	}
 
 	m = press(t, m, "enter")
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Error("enter did not commit the find (still editing)")
 	}
-	if !m.viewer.hasFindMatches() {
+	if !m.dv1.hasFindMatches() {
 		t.Error("committing the find lost its matches")
 	}
 }
@@ -53,14 +53,14 @@ func TestFindTraversalWraps(t *testing.T) {
 	m = typeText(t, m, "line")
 	m = press(t, m, "enter")
 
-	n := len(m.viewer.findState.matches)
+	n := len(m.dv1.findState.matches)
 	if n < 2 {
 		t.Fatalf(`fixture has %d match(es) for "line", want at least 2 to test traversal`, n)
 	}
-	start := m.viewer.findState.current
+	start := m.dv1.findState.current
 
 	m = press(t, m, "n")
-	if got := m.viewer.findState.current; got != (start+1)%n {
+	if got := m.dv1.findState.current; got != (start+1)%n {
 		t.Errorf("after one next, current = %d, want %d", got, (start+1)%n)
 	}
 
@@ -68,21 +68,21 @@ func TestFindTraversalWraps(t *testing.T) {
 	for i := 0; i < n-1; i++ {
 		m = press(t, m, "n")
 	}
-	if got := m.viewer.findState.current; got != start {
+	if got := m.dv1.findState.current; got != start {
 		t.Fatalf("after n-1 more nexts, current = %d, want back at %d", got, start)
 	}
 	m = press(t, m, "n")
-	if got := m.viewer.findState.current; got != (start+1)%n {
+	if got := m.dv1.findState.current; got != (start+1)%n {
 		t.Errorf("next past the last match did not wrap to the first: current = %d, want %d", got, (start+1)%n)
 	}
 
 	// And previous from there wraps back the other way.
 	m = press(t, m, "N")
-	if got := m.viewer.findState.current; got != start {
+	if got := m.dv1.findState.current; got != start {
 		t.Errorf("previous did not wrap back: current = %d, want %d", got, start)
 	}
 	m = press(t, m, "N")
-	if got := m.viewer.findState.current; got != n-1 {
+	if got := m.dv1.findState.current; got != n-1 {
 		t.Errorf("previous past the first match did not wrap to the last: current = %d, want %d", got, n-1)
 	}
 }
@@ -94,14 +94,14 @@ func TestFindIsSmartCase(t *testing.T) {
 
 	m = press(t, m, "/")
 	m = typeText(t, m, "final")
-	if n := len(m.viewer.findState.matches); n != 1 {
+	if n := len(m.dv1.findState.matches); n != 1 {
 		t.Fatalf(`lowercase "final" matched %d times, want 1`, n)
 	}
 
 	m = press(t, m, "esc")
 	m = press(t, m, "/")
 	m = typeText(t, m, "Final")
-	if n := len(m.viewer.findState.matches); n != 0 {
+	if n := len(m.dv1.findState.matches); n != 0 {
 		t.Errorf(`uppercase "Final" matched %d times against lowercase text, want 0`, n)
 	}
 }
@@ -112,19 +112,19 @@ func TestFindDismissalLeavesTheViewWhereItIs(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m = press(t, m, "/")
 	m = typeText(t, m, "final line of the fixture")
-	scrolledTo := m.viewer.offset()
+	scrolledTo := m.dv1.offset()
 	if scrolledTo == 0 {
 		t.Fatal("query did not scroll the viewport; nothing for this test to check")
 	}
 
 	m = press(t, m, "esc")
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Error("escape did not dismiss the find")
 	}
-	if m.viewer.hasFindMatches() {
+	if m.dv1.hasFindMatches() {
 		t.Error("escape left matches behind; a dismissed find should have none")
 	}
-	if got := m.viewer.offset(); got != scrolledTo {
+	if got := m.dv1.offset(); got != scrolledTo {
 		t.Errorf("dismissing the find moved the viewport: offset = %d, want %d (where the search left it)", got, scrolledTo)
 	}
 }
@@ -190,7 +190,7 @@ func TestFindMatchesLineAttributionSurvivesFoldWithinTheMatch(t *testing.T) {
 func TestFindingWithNoDocumentOpenReportsIt(t *testing.T) {
 	m := sized(t, newModel(), 80, 24)
 	m = press(t, m, "/")
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Error("find started with no document open")
 	}
 	if !strings.Contains(m.message, "no document open") {
@@ -208,14 +208,14 @@ func TestWindowResizeMidFindEditSurfacesMessage(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m = press(t, m, "/")
 	m = typeText(t, m, "final")
-	if !m.viewer.findEditing() {
+	if !m.dv1.findEditing() {
 		t.Fatal("test setup: find is not editing")
 	}
 
 	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
 	m = concrete(t, next)
 
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Fatal("test setup: resize did not actually invalidate the find (width unchanged?)")
 	}
 	if !strings.Contains(m.message, "resize") && !strings.Contains(m.message, "search") {
@@ -228,7 +228,7 @@ func TestWindowResizeMidFindEditSurfacesMessage(t *testing.T) {
 // no find in progress must not manufacture a message out of nothing.
 func TestWindowResizeWithNoFindInProgressLeavesMessageAlone(t *testing.T) {
 	m := openedFixture(t, 80, 24)
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Fatal("test setup: find should not be editing")
 	}
 
@@ -252,17 +252,17 @@ func TestWindowResizeAfterCommittedFindSurfacesMessage(t *testing.T) {
 	m = press(t, m, "/")
 	m = typeText(t, m, "final")
 	m = press(t, m, "enter")
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Fatal("test setup: enter did not commit the find")
 	}
-	if !m.viewer.hasFindMatches() {
+	if !m.dv1.hasFindMatches() {
 		t.Fatal("test setup: committed find has no matches to lose")
 	}
 
 	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 20})
 	m = concrete(t, next)
 
-	if m.viewer.hasFindMatches() {
+	if m.dv1.hasFindMatches() {
 		t.Fatal("test setup: resize did not actually invalidate the committed find (width unchanged?)")
 	}
 	if !strings.Contains(m.message, "resize") && !strings.Contains(m.message, "search") {
@@ -283,16 +283,16 @@ func TestNavigatorToggleAfterCommittedFindNamesTheToggleNotAResize(t *testing.T)
 	m = press(t, m, "/")
 	m = typeText(t, m, "final")
 	m = press(t, m, "enter")
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Fatal("test setup: enter did not commit the find")
 	}
-	if !m.viewer.hasFindMatches() {
+	if !m.dv1.hasFindMatches() {
 		t.Fatal("test setup: committed find has no matches to lose")
 	}
 
 	m = press(t, m, "ctrl+n")
 
-	if m.viewer.hasFindMatches() {
+	if m.dv1.hasFindMatches() {
 		t.Fatal("test setup: toggling the Navigator did not actually invalidate the committed find (width unchanged?)")
 	}
 	if strings.Contains(m.message, "resize") {
@@ -310,10 +310,10 @@ func TestFindQueryCapturesEveryKeyWhileEditing(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m = press(t, m, "/")
 	m = typeText(t, m, "q")
-	if !m.viewer.findEditing() {
+	if !m.dv1.findEditing() {
 		t.Fatal("typing q while editing a find query exited find mode")
 	}
-	if got := m.viewer.findState.input.Value(); got != "q" {
+	if got := m.dv1.findState.input.Value(); got != "q" {
 		t.Errorf("query = %q, want %q", got, "q")
 	}
 }

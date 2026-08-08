@@ -15,7 +15,7 @@ import (
 // move focus (the Help Modal is a layer over the frame, not a pane swap —
 // unlike activate()/activateRoot(), which do move focus).
 func TestHelpOpensOverAnyPaneWithoutMovingFocus(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		m := openedFixture(t, 80, 24)
 		m.focus = p
 		m = press(t, m, "?")
@@ -42,7 +42,7 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 	}{
 		{rootsPane, []string{"star", "up", "down"}, []string{"expand", "collapse", "next match"}},
 		{filesPane, []string{"expand", "collapse"}, []string{"star", "next match"}},
-		{viewerPane, []string{"page up", "next match", "prev match", "cancel"}, []string{"star", "expand"}},
+		{dv1Pane, []string{"page up", "next match", "prev match", "cancel"}, []string{"star", "expand"}},
 	}
 	for _, c := range cases {
 		box := helpBox(c.pane)
@@ -118,7 +118,7 @@ func plainLines(s string) []string {
 // the alwaysHints pair, the same guarantee the footer gives (S11) so the
 // modal's own affordance and the way out are never the thing missing.
 func TestHelpBindingsAlwaysIncludeHelpAndQuit(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		bindings := helpBindings(p)
 		if len(bindings) < 2 ||
 			bindings[len(bindings)-2].Help().Key != keys.Help.Help().Key ||
@@ -167,11 +167,11 @@ func TestHelpDismissesWithHelpKeyToo(t *testing.T) {
 // handleFindInput gives an in-progress search.
 func TestHelpModalOwnsTheKeyboardWhileOpen(t *testing.T) {
 	m := openedFixture(t, 80, 24)
-	before := m.viewer.offset()
+	before := m.dv1.offset()
 
 	m = press(t, m, "?")
 	m = press(t, m, "G") // Bottom: would scroll if it reached the viewer
-	if got := m.viewer.offset(); got != before {
+	if got := m.dv1.offset(); got != before {
 		t.Errorf("a scroll key reached the viewer while Help was open: offset = %d, want %d", got, before)
 	}
 	if !m.helpOpen {
@@ -208,7 +208,7 @@ func TestHelpModalSwallowsQuitToo(t *testing.T) {
 // frame at exactly width x height regardless.
 func TestHelpOverlayNeverExceedsTheTerminal(t *testing.T) {
 	m := openedFixture(t, 40, 10)
-	m.focus = viewerPane
+	m.focus = dv1Pane
 	m = press(t, m, "?")
 
 	view := m.View().Content
@@ -239,7 +239,7 @@ func TestHelpUnreachableWhileFindEditing(t *testing.T) {
 	if m.helpOpen {
 		t.Error("Help opened while a find query had the keyboard")
 	}
-	if got := m.viewer.findState.input.Value(); got != "?" {
+	if got := m.dv1.findState.input.Value(); got != "?" {
 		t.Errorf("query = %q, want %q (the ? typed into it)", got, "?")
 	}
 }
@@ -271,7 +271,7 @@ func TestHelpUnreachableWhilePickerOpen(t *testing.T) {
 // a narrow terminal, with no Help fallback).
 func TestHelpBindingsListPickersOwnBindingsFromEveryPane(t *testing.T) {
 	own := []key.Binding{keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope}
-	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		bindings := helpBindings(p)
 		for _, want := range own {
 			found := false
@@ -294,7 +294,7 @@ func TestHelpBindingsListPickersOwnBindingsFromEveryPane(t *testing.T) {
 // always-available-regardless-of-focus treatment Edit/Navigator already
 // get.
 func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		box := helpBox(p)
 		if !strings.Contains(box, "picker") {
 			t.Errorf("pane %v: help modal = %q, want it to name the picker", p, box)
@@ -311,7 +311,7 @@ func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
 // reachable from to document it (see helpBindings' own comment).
 func TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane(t *testing.T) {
 	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.Refresh, keys.ToggleHidden}
-	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		bindings := helpBindings(p)
 		for _, w := range want {
 			found := false
@@ -330,14 +330,14 @@ func TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane(t *testing.T) 
 
 // TestHelpBindingsListPeekOnlyForFilesPane checks S7's "Peek, in the Files
 // Nav only" against the Help Modal: filesPane's binding list names it, but
-// rootsPane's and viewerPane's do not, since Peek can never be triggered
+// rootsPane's and dv1Pane's do not, since Peek can never be triggered
 // from either.
 func TestHelpBindingsListPeekOnlyForFilesPane(t *testing.T) {
 	filesBox := helpBox(filesPane)
 	if !strings.Contains(filesBox, "peek") {
 		t.Errorf("filesPane help modal = %q, want it to name peek", filesBox)
 	}
-	for _, p := range []pane{rootsPane, viewerPane} {
+	for _, p := range []pane{rootsPane, dv1Pane} {
 		box := helpBox(p)
 		if strings.Contains(box, "peek") {
 			t.Errorf("pane %v: help modal = %q, unexpectedly names Peek (Files-Nav-only)", p, box)
@@ -348,7 +348,7 @@ func TestHelpBindingsListPeekOnlyForFilesPane(t *testing.T) {
 // TestNoHelpModalNamesCtrlP is the Help Modal's half of S9's literal "no
 // remaining reference to ctrl+p anywhere".
 func TestNoHelpModalNamesCtrlP(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, viewerPane} {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		if box := helpBox(p); strings.Contains(box, "ctrl+p") {
 			t.Errorf("pane %v: help modal = %q, unexpectedly still names ctrl+p", p, box)
 		}

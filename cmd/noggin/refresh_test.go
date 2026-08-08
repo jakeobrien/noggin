@@ -225,11 +225,11 @@ func TestRefreshShowsFilesystemChangesPreservingNavAndScrollPosition(t *testing.
 		t.Fatalf("loadDocument: %v", err)
 	}
 	m = m.openDocument(d)
-	if total := m.viewer.lineCount(); total <= m.viewer.height() {
-		t.Fatalf("doc.md renders %d lines into a %d-line viewport; nothing to preserve a scroll over", total, m.viewer.height())
+	if total := m.dv1.lineCount(); total <= m.dv1.height() {
+		t.Fatalf("doc.md renders %d lines into a %d-line viewport; nothing to preserve a scroll over", total, m.dv1.height())
 	}
-	m.viewer = m.viewer.withOffset(10)
-	wantOffset := m.viewer.offset()
+	m.dv1 = m.dv1.withOffset(10)
+	wantOffset := m.dv1.offset()
 
 	// Outside noggin: delete doomed.md, add new.md, append to doc.md.
 	if err := os.Remove(doomedPath); err != nil {
@@ -255,7 +255,7 @@ func TestRefreshShowsFilesystemChangesPreservingNavAndScrollPosition(t *testing.
 	if got := m.files.selectedNode(); got == nil || got.Name != "sub" {
 		t.Errorf("selection after refresh = %v, want sub (doomed.md's surviving parent)", got)
 	}
-	if got := m.viewer.offset(); got != wantOffset {
+	if got := m.dv1.offset(); got != wantOffset {
 		t.Errorf("viewer offset after refresh = %d, want %d (preserved)", got, wantOffset)
 	}
 }
@@ -278,7 +278,7 @@ func TestRefreshEmptiesTheViewerWhenTheActiveDocumentIsDeleted(t *testing.T) {
 	}
 	m := sized(t, newModel().openFolder(node), 80, 24)
 	m = m.openDocument(d)
-	if !m.viewer.doc.isOpen() {
+	if !m.dv1.doc.isOpen() {
 		t.Fatalf("setup: document not open")
 	}
 
@@ -287,11 +287,11 @@ func TestRefreshEmptiesTheViewerWhenTheActiveDocumentIsDeleted(t *testing.T) {
 	}
 	m = press(t, m, keys.Refresh.Keys()[0])
 
-	if m.viewer.doc.isOpen() {
+	if m.dv1.doc.isOpen() {
 		t.Errorf("viewer still reports a document open after its file was deleted")
 	}
-	if !strings.Contains(m.viewer.view(), emptyViewerText) {
-		t.Errorf("viewer view = %q, want the empty state", m.viewer.view())
+	if !strings.Contains(m.dv1.view(), emptyViewerText) {
+		t.Errorf("viewer view = %q, want the empty state", m.dv1.view())
 	}
 	if m.message == "" {
 		t.Error("message is empty after a refresh whose Active Document vanished, want a footer message")
@@ -346,15 +346,15 @@ func TestRefreshAfterCommittedFindSurfacesMessage(t *testing.T) {
 	m = press(t, m, "/")
 	m = typeText(t, m, "note")
 	m = press(t, m, "enter")
-	if m.viewer.findEditing() {
+	if m.dv1.findEditing() {
 		t.Fatal("test setup: enter did not commit the find")
 	}
-	if !m.viewer.hasFindMatches() {
+	if !m.dv1.hasFindMatches() {
 		t.Fatal("test setup: committed find has no matches to lose")
 	}
 
 	m = press(t, m, keys.Refresh.Keys()[0])
-	if m.viewer.hasFindMatches() {
+	if m.dv1.hasFindMatches() {
 		t.Fatal("test setup: refresh did not actually invalidate the committed find")
 	}
 	if !strings.Contains(m.message, "search") {
@@ -372,8 +372,8 @@ func TestRefreshWithNoActiveRootIsANoOp(t *testing.T) {
 	if m.files.root != nil {
 		t.Errorf("files root after refreshing with none = %v, want nil still", m.files.root)
 	}
-	if m.viewer.doc.isOpen() {
-		t.Errorf("viewer document after refreshing with none = %v, want none still", m.viewer.doc)
+	if m.dv1.doc.isOpen() {
+		t.Errorf("viewer document after refreshing with none = %v, want none still", m.dv1.doc)
 	}
 	if m.message != "" {
 		t.Errorf("refresh with nothing to refresh produced a message %q, want silence", m.message)
@@ -384,7 +384,7 @@ func TestRefreshWithNoActiveRootIsANoOp(t *testing.T) {
 // in model.Update's global switch, unconditional on m.focus (unlike
 // FocusRoots/FocusFiles' every-pane table in focus_test.go, there is no
 // existing test that drives Refresh specifically with focus on rootsPane —
-// only filesPane and viewerPane were exercised. This pins S2's "reachable
+// only filesPane and dv1Pane were exercised. This pins S2's "reachable
 // from any pane" for the one pane the existing suite skipped.
 func TestRefreshWorksWithFocusOnRootsPane(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
@@ -412,7 +412,7 @@ func TestRefreshWorksWithFocusOnRootsPane(t *testing.T) {
 
 // TestRefreshDoesNotTouchOtherRoots is TRIAGE T5: S2's negative clause
 // ("nothing else is refreshed") holds today only by construction —
-// model.refresh only ever assigns to m.files/m.viewer — but nothing
+// model.refresh only ever assigns to m.files/m.dv1 — but nothing
 // regression-proofs it. With two roots configured, deletes the inactive
 // root's directory (which would flip its Roots Nav broken mark if it were
 // ever recomputed) and adds a file under the Active Root, then refreshes:

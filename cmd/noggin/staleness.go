@@ -138,9 +138,11 @@ func (m model) scheduleStaleCheck() tea.Cmd {
 // from openFolder, openDocument and refresh: every place that (re)reads the
 // Active Root's tree or the Active Document from disk.
 func (m model) resetStaleBaseline() model {
+	// M1.1: hardwired to DV1 — DV2 does not exist yet; a later task (M5.2)
+	// extends this baseline to track DV2's Active Document too.
 	docPath := ""
-	if m.viewer.doc.isOpen() {
-		docPath = m.viewer.doc.path
+	if m.dv1.doc.isOpen() {
+		docPath = m.dv1.doc.path
 	}
 	m.staleBaseline = snapshotStaleness(m.files.root, docPath)
 	m.stale = false

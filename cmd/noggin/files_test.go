@@ -279,20 +279,20 @@ func TestActivateOpensSelectedFileAndMovesFocus(t *testing.T) {
 	}
 
 	m = press(t, m, keys.Activate.Keys()[0])
-	if m.focus != viewerPane {
-		t.Fatalf("focus after activating a file = %v, want viewerPane", m.focus)
+	if m.focus != dv1Pane {
+		t.Fatalf("focus after activating a file = %v, want dv1Pane", m.focus)
 	}
-	if !strings.Contains(m.viewer.view(), "Root Readme") {
-		t.Errorf("viewer content = %q, want it to show README.md's heading", m.viewer.view())
+	if !strings.Contains(m.dv1.view(), "Root Readme") {
+		t.Errorf("viewer content = %q, want it to show README.md's heading", m.dv1.view())
 	}
-	if !strings.Contains(m.viewer.label(), "README.md") {
-		t.Errorf("viewer label = %q, want it to name README.md", m.viewer.label())
+	if !strings.Contains(m.dv1.label(), "README.md") {
+		t.Errorf("viewer label = %q, want it to name README.md", m.dv1.label())
 	}
 
 	// Scroll keys now act on the viewer, not the Files Nav.
-	before := m.viewer.offset()
+	before := m.dv1.offset()
 	m = press(t, m, keys.LineDown.Keys()[1])
-	if m.viewer.offset() == before && !m.viewer.atBottom() {
+	if m.dv1.offset() == before && !m.dv1.atBottom() {
 		t.Errorf("scroll key after activate did not move the viewer (offset stayed %d)", before)
 	}
 }
@@ -309,8 +309,8 @@ func TestActivateOnAFolderIsANoOp(t *testing.T) {
 	if m.focus != filesPane {
 		t.Errorf("focus after activating a folder = %v, want filesPane unchanged", m.focus)
 	}
-	if m.viewer.label() != "" {
-		t.Errorf("viewer label = %q, want empty (no document opened)", m.viewer.label())
+	if m.dv1.label() != "" {
+		t.Errorf("viewer label = %q, want empty (no document opened)", m.dv1.label())
 	}
 }
 
@@ -330,8 +330,8 @@ func TestActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
 	if m.focus != filesPane {
 		t.Errorf("focus after a failed activate = %v, want filesPane unchanged", m.focus)
 	}
-	if m.viewer.label() != "" {
-		t.Errorf("viewer label = %q, want empty (nothing opened on error)", m.viewer.label())
+	if m.dv1.label() != "" {
+		t.Errorf("viewer label = %q, want empty (nothing opened on error)", m.dv1.label())
 	}
 	if m.message == "" {
 		t.Error("message is empty after a failed activate, want a footer message")

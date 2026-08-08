@@ -15,9 +15,7 @@ import (
 // binding so the footer (S11) and help modal (S12) can be generated from it
 // rather than duplicating the list.
 type keyMap struct {
-	NextPane key.Binding
-	PrevPane key.Binding
-	Quit     key.Binding
+	Quit key.Binding
 
 	// Roots Nav actions (S3): selection moves with the shared LineUp/LineDown
 	// bindings; Star toggles the selected root's starred mark, persisted via
@@ -157,14 +155,6 @@ type keyMap struct {
 
 // keys is the program's keymap.
 var keys = keyMap{
-	NextPane: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "next pane"),
-	),
-	PrevPane: key.NewBinding(
-		key.WithKeys("shift+tab"),
-		key.WithHelp("shift+tab", "prev pane"),
-	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "ctrl+c"),
 		key.WithHelp("q", "quit"),

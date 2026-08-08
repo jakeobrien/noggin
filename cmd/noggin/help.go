@@ -9,8 +9,8 @@ import (
 // helpBindings lists every binding relevant to a pane's context for the S12
 // Help Modal (M5.3) — the modal's own promise ("lists the bindings that
 // pane's keymap actually defines") is a wider contract than paneHints'
-// footer subset: PrevPane, and for the viewer Cancel/FindNext/FindPrevious,
-// are deliberately left out of paneHints (see its comment, "a hint for an
+// footer subset: for the viewer, Cancel/FindNext/FindPrevious are
+// deliberately left out of paneHints (see its comment, "a hint for an
 // inapplicable binding is worse than no hint") but belong here, since this
 // modal is the discoverability backstop that comment promises. The viewer's
 // scroll bindings are pulled from scrollActions (viewer.go) rather than
@@ -36,14 +36,17 @@ import (
 // added to every case for the same reason keys.Picker already is: all
 // three are global, reachable from any Focus. keys.Peek (S7) is added only
 // to filesPane, since it is Files-Nav-only by design — listing it for
-// rootsPane/viewerPane would document a binding that pane can never
+// rootsPane/dv1Pane/dv2Pane would document a binding that pane can never
 // actually trigger.
+//
+// M1.1: Tab/Shift+Tab pane-cycling (keys.NextPane/PrevPane) is gone (S5) — a
+// later task (M1.3) adds the direct dv1Pane/dv2Pane focus-jump keys.
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{
 			keys.Activate, keys.Star, keys.LineUp, keys.LineDown,
-			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
+			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.Refresh,
 			keys.Help, keys.Quit,
@@ -51,19 +54,19 @@ func helpBindings(p pane) []key.Binding {
 	case filesPane:
 		return []key.Binding{
 			keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown,
-			keys.NextPane, keys.PrevPane, keys.Edit, keys.Navigator, keys.Picker,
+			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.Refresh, keys.Peek,
 			keys.Help, keys.Quit,
 		}
-	default: // viewerPane
-		bindings := make([]key.Binding, 0, len(scrollActions)+19)
+	default: // dv1Pane, dv2Pane
+		bindings := make([]key.Binding, 0, len(scrollActions)+17)
 		for _, a := range scrollActions {
 			bindings = append(bindings, a.binding)
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
-			keys.Edit, keys.Navigator, keys.Picker, keys.NextPane, keys.PrevPane,
+			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.Refresh,
 			keys.Help, keys.Quit,
