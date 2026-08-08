@@ -17,37 +17,49 @@
 
 ## Cursor
 
-Current task: M1.3
+Current task: M1.4
 
 ## Handoff
 
-M1.2 done. `layout.go` gained `layout.splitViewer(dv2Exists bool) (dv1, dv2 rect)`: a pure
-50/50 split of `l.viewer`'s width (DV1 gets the extra column on an odd width, D54's "no
-minimum-width guard"), or DV1 = the full `l.viewer` / DV2 = the zero rect when `dv2Exists` is
-false. Both halves share `l.viewer`'s height unchanged. Key context for whoever picks up
-M1.3:
+M1.3 done. All four S5 focus-jump keys now exist: `r`/`f` (unchanged, C2a/M2.1) plus new
+`keys.FocusDV1` and `keys.FocusDV2`. Key context for whoever picks up M1.4:
 
-- `model.resize()`, `model.visible(dv2Pane)`/`visible(dv1Pane)` and `model.frame()` all call
-  `l.splitViewer(m.dv2 != nil)` now instead of reading `l.viewer` directly for the Document
-  Viewer region(s) — `l.viewer` itself is unchanged (still the combined, undivided region;
-  frame_test.go's existing assertions against it still hold) and is the thing `splitViewer`
-  divides, not a field that moved.
-- `frame()` renders DV1 at its half, then joins DV2's render (`renderPane(dv2Pane, ...)`) to
-  its right only when `m.dv2 != nil` — DV2 is still never reachable through any real key
-  binding (M1.3 adds the first one, the `shift+d` focus-jump), so this only exercises through
-  tests that call `m.withViewerFor(dv2Pane, newViewer())` directly.
-- `resize()` now sizes `*m.dv2` (when non-nil) from its own half's `.content()`, mirroring
-  DV1's `setSize` call — no find/message handling for DV2 yet (that's M1.6's per-viewer Find
-  independence; DV2 cannot hold an in-progress find before M1.4 gives it a way to open one).
-- New tests: `TestSplitViewerEqualHalvesWhenDV2Exists` / `TestSplitViewerDV1FullWidthWithoutDV2`
-  (pure `splitViewer` unit tests, both frameSizes) and `TestFrameRendersBothViewersWhenDV2Exists`
-  (model-level, creates dv2 via `withViewerFor`, checks the title row draws "Document" twice
-  and `visible(dv2Pane)` is true) in frame_test.go. Verified the last one is not vacuous by
-  temporarily reverting `frame()`'s split-when-exists behavior and confirming it fails.
-- `make check` and `make check-pty` both pass unchanged — DV2 still being unreachable in real
-  usage means no pty fixture needed updating.
-- Next step: start M1.3 (direct focus-jump keys `r`/`f`/`d`/`shift+d`; `shift+d` a no-op with
-  DV2 absent).
+- **Binding literals**: FocusDV1 is `"d"`; FocusDV2 is bound as the literal `"D"`, not
+  `"shift+d"`. Bubble Tea v2's `Key.String()` returns the produced `Text` for a printable key
+  before falling back to `Keystroke()`, so a real Shift+D reports `"D"` and `"shift+d"` would
+  never match — same convention `Bottom`/`"G"` and `FindPrevious`/`"N"` already use. **M1.4/
+  M1.5's `shift+enter` is the opposite case**: `enter` is non-printable (no Text), so there
+  the modifier spelling `"shift+enter"` is the right literal — and D53's `L` fallback exists
+  because many terminals don't report it at all.
+- `model.Update` short-circuits FocusDV2 on `m.dv2 == nil` *before* calling `focusPane`, so
+  it is a genuine no-op (S5) rather than a `resolveFocus`/focusOrder fallback to some other
+  pane. It never creates DV2 — creation is S3's job, i.e. M1.4/M1.5's targeting modifiers.
+- `focusPane` changed shape: its reveal-a-hidden-Navigator step is now gated to
+  `target == rootsPane || target == filesPane`. Previously unconditional, which would have
+  made `d`/`D` reveal the sidebar as an unrequested side effect (DV1/DV2 are never inside
+  the Navigator column). Existing FocusRoots/FocusFiles reveal behavior is unchanged.
+- Hints: `keys.FocusDV1` was added to every pane's `paneHints` (footer.go) and
+  `helpBindings` (help.go); `keys.FocusDV2` was added to `helpBindings` **only** — it is
+  usually a no-op (DV2 absent), so it gets the footer's existing "inapplicable binding is
+  worse than no hint" treatment (same as FindNext/FindPrevious/Cancel) with the Help Modal as
+  its discoverability backstop. Both are pinned by tests
+  (`TestPaneHintsOmitFocusDV2Everywhere`, and the extended `want` lists in
+  `TestPaneHintsNameFocusAndRefreshFromEveryPane` /
+  `TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane`).
+- New/changed tests in focus_test.go: `TestFocusJumpKeysMoveFocusFromEveryPane` (4x4 sweep,
+  DV2 pre-created — this absorbed and replaced the old, now-subset
+  `TestFocusBindingsMoveFocusFromEveryPane`), `TestFocusDV2InertWithoutDV2`,
+  `TestFocusDV1AndDV2DoNotRevealHiddenNavigator`, `TestFocusDV1AndDV2InertWhilePickerIsOpen`.
+  New bindings also added to `allBindings()` in frame_test.go (`TestEveryBindingIsCovered`
+  counts keyMap fields, so any new binding must go there).
+- Verification: `make check` + `make check-pty` pass; both the DV2 no-op guard and the
+  Navigator-reveal gate were mutation-tested (reverted, confirmed the tests fail, restored).
+  A dispatched code review found no correctness bugs; its actionable leftovers are TRIAGE
+  T1/T2 (both low).
+- Next step: start M1.4 (Files Nav `shift+enter`/`L` and `shift+p` targeting DV2, creating it
+  first if absent). Use the already-general `openDocumentInto(dv2Pane, d)` rather than
+  reinventing targeting; note `togglePeek` is currently hardwired to `m.dv1` and will need a
+  target parameter for `shift+p`.
 
 ## Status
 
@@ -55,7 +67,7 @@ M1.3:
 |------|--------|----------|-----------|------|
 | M1.1 | done   | -        | -         |      |
 | M1.2 | done   | -        | -         |      |
-| M1.3 | todo   | -        | -         |      |
+| M1.3 | done   | 2026-08-08 | -       |      |
 | M1.4 | todo   | -        | -         |      |
 | M1.5 | todo   | -        | -         |      |
 | M1.6 | todo   | -        | -         |      |

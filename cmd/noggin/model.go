@@ -59,10 +59,11 @@ type model struct {
 
 	// dv1 is the always-present Document Viewer (S1, C3). dv2 is the second,
 	// optional one beside it (S1) — nil when it does not exist, which is
-	// always, for now: M1.1 only introduces the pair and the focused-viewer
-	// accessors below (viewerFor/focusedViewer and their write halves); DV2's
-	// actual creation and Focus-reachability land in later tasks (M1.3's
-	// focus-jump key, M1.4's Files Nav targeting modifier). A pointer, unlike
+	// always, for now: M1.1 introduced the pair and the focused-viewer
+	// accessors below (viewerFor/focusedViewer and their write halves); M1.3
+	// added dv2's Focus-reachability (FocusDV2, a no-op while dv2 is nil, as
+	// it always is until M1.4's Files Nav targeting modifier gives it a way
+	// to actually create one). A pointer, unlike
 	// every other value-semantic field here (viewer.go's withOffset doc
 	// comment gives the same reasoning for viewer itself), is what lets
 	// "does not exist" be represented directly rather than through a second
@@ -414,16 +415,21 @@ func (m model) toggleNavigator() model {
 	return m.resize(m.width, m.height, resizeCauseNavigatorToggle)
 }
 
-// focusPane moves Focus straight to target (S6, M2.1: FocusRoots/FocusFiles),
-// revealing the Navigator first via the same resize path toggleNavigator
-// uses if the S9 toggle currently has it hidden — but only ever un-hiding,
-// never the reverse, which is what keeps this one-directional where
-// toggleNavigator is a flip. resolveFocus (not a bare assignment) is what
-// makes this a no-op rather than a focus jump to an invisible pane on a
-// terminal too narrow to carry the Navigator at all (computeLayout): target
-// only wins here when it is actually visible.
+// focusPane moves Focus straight to target (S5/S6, M2.1/C3-M1.3: FocusRoots/
+// FocusFiles/FocusDV1/FocusDV2), revealing the Navigator first via the same
+// resize path toggleNavigator uses if the S9 toggle currently has it hidden
+// and target lives inside that column (rootsPane/filesPane) — but only ever
+// un-hiding, never the reverse, which is what keeps this one-directional
+// where toggleNavigator is a flip. A viewer target (dv1Pane/dv2Pane) never
+// triggers this: the Document Viewer is never part of the Navigator column,
+// so jumping to it revealing an unrelated, unrequested sidebar would be a
+// surprising side effect FocusRoots/FocusFiles's own reveal has no analogue
+// for. resolveFocus (not a bare assignment) is what makes this a no-op
+// rather than a focus jump to an invisible pane on a terminal too narrow to
+// carry the Navigator at all (computeLayout): target only wins here when it
+// is actually visible.
 func (m model) focusPane(target pane) model {
-	if m.navigatorHidden {
+	if m.navigatorHidden && (target == rootsPane || target == filesPane) {
 		m.navigatorHidden = false
 		m = m.resize(m.width, m.height, resizeCauseNavigatorToggle)
 	}
@@ -707,6 +713,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.focusPane(rootsPane), nil
 		case key.Matches(msg, keys.FocusFiles):
 			return m.focusPane(filesPane), nil
+		case key.Matches(msg, keys.FocusDV1):
+			return m.focusPane(dv1Pane), nil
+		// FocusDV2 (C3/S5) is a genuine no-op with DV2 absent, not a fall back
+		// through focusOrder the way an ordinary invisible target would be
+		// (resolveFocus's fallback is for a target hidden by terminal width,
+		// not one that flatly does not exist) — short-circuited here, before
+		// focusPane/resolveFocus ever run, so Focus provably never moves.
+		case key.Matches(msg, keys.FocusDV2):
+			if m.dv2 == nil {
+				return m, nil
+			}
+			return m.focusPane(dv2Pane), nil
 		case key.Matches(msg, keys.Refresh):
 			return m.refresh(), nil
 		case key.Matches(msg, keys.Help):

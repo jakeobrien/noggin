@@ -308,9 +308,13 @@ func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
 // every pane's Help Modal must list them; ToggleHidden only does anything
 // once the Picker is open, but — like PickerUp/PickerDown/PickerMode/
 // PickerScope before it — these three panes are the only place Help is ever
-// reachable from to document it (see helpBindings' own comment).
+// reachable from to document it (see helpBindings' own comment). FocusDV1/
+// FocusDV2 (C3/M1.3) join this list too: unlike the footer's paneHints,
+// which omits FocusDV2 as usually inapplicable, this modal is exactly the
+// discoverability backstop that reasoning promises (helpBindings' own
+// comment), so both are listed unconditionally here.
 func TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane(t *testing.T) {
-	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.Refresh, keys.ToggleHidden}
+	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.Refresh, keys.ToggleHidden}
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		bindings := helpBindings(p)
 		for _, w := range want {

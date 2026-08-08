@@ -138,14 +138,32 @@ func TestFooterShowsPickerHintsWhileOpen(t *testing.T) {
 // S6's global bindings: FocusRoots ("r"), FocusFiles ("f") and Refresh ("R")
 // are reachable from every pane (S6), so every pane's footer hints must name
 // all three, the same always-there treatment Edit/Navigator/Picker already
-// get.
+// get. FocusDV1 ("dv1", C3/M1.3) joins them here — it is just as globally
+// applicable as FocusRoots/FocusFiles, unlike FocusDV2, which paneHints
+// deliberately omits everywhere (its own doc comment) since it is usually a
+// no-op with DV2 absent; TestPaneHintsOmitFocusDV2Everywhere checks that
+// half separately.
 func TestPaneHintsNameFocusAndRefreshFromEveryPane(t *testing.T) {
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
 		text := hintText(p, 200)
-		for _, want := range []string{"roots", "files", "refresh"} {
+		for _, want := range []string{"roots", "files", "dv1", "refresh"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("pane %v: hint text = %q, want it to contain %q", p, text, want)
 			}
+		}
+	}
+}
+
+// TestPaneHintsOmitFocusDV2Everywhere is the other half of C3/M1.3's own
+// addition: FocusDV2 ("D") never appears in the footer's terse hints, from
+// any pane — paneHints' doc comment gives the same "inapplicable binding is
+// worse than no hint" reasoning the viewer case already applies to
+// FindNext/FindPrevious/Cancel. S12's help modal is its discoverability
+// backstop instead (TestHelpBindingsNameFocusDV1AndDV2FromEveryPane).
+func TestPaneHintsOmitFocusDV2Everywhere(t *testing.T) {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
+		if text := hintText(p, 200); strings.Contains(text, "dv2") {
+			t.Errorf("pane %v: hint text = %q, want it to omit FocusDV2", p, text)
 		}
 	}
 }

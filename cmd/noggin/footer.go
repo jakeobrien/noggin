@@ -12,29 +12,32 @@ import (
 // hintText drops from the end of this list first when the footer must
 // truncate, so put what a newcomer needs most up front.
 //
-// FocusRoots/FocusFiles (S6) and Refresh (S2) (C2a/M9.1) are global — reachable
-// from every one of these three panes, the same way Edit/Navigator/Picker
-// already are — so all three panes list them, same as those. Peek (S7) is
+// FocusRoots/FocusFiles/FocusDV1 (S5/S6) and Refresh (S2) (C2a/M9.1) are
+// global — reachable from every one of these three panes, the same way
+// Edit/Navigator/Picker already are — so all three panes list them, same as
+// those. FocusDV2 (S5, C3/M1.3) is deliberately left out of all three: it is
+// a no-op whenever DV2 does not exist, which is every pane's common case
+// (DV2 is absent at launch, S1, and stays that way until something creates
+// it), so it gets the same "inapplicable binding" treatment as the viewer
+// case's FindNext/FindPrevious/Cancel below rather than FocusDV1's
+// unconditional one — S12's help modal is its discoverability backstop
+// instead (help.go's helpBindings does list it, always). Peek (S7) is
 // Files-Nav-only by design, so it appears only in filesPane's list, not the
 // other two — a hint for an inapplicable binding is worse than no hint, the
 // same reasoning the viewer case below already gives for omitting
 // FindNext/FindPrevious/Cancel.
-//
-// M1.1: Tab/Shift+Tab pane-cycling (keys.NextPane/PrevPane) is gone (S5) — a
-// later task (M1.3) adds the direct dv1Pane/dv2Pane focus-jump keys these
-// hint lists will need instead.
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
-		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.Refresh}
+		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.Refresh, keys.Peek}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek}
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is
 		// worse than no hint (S12's help modal, M5.3, lists the full keymap
 		// regardless — that is the discoverability backstop for these).
-		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.Refresh}
+		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
 	}
 }
 

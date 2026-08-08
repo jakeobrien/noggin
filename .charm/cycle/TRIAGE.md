@@ -25,3 +25,5 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T1 | review | low | `.gitignore:2` | Only root-level `/noggin` is ignored, not `cmd/noggin/noggin` — a stray `go build .` inside `cmd/noggin/` leaves an untracked 15MB binary that can be committed by accident (hit once during C3/M1.3). One-line fix, deliberately not taken mid-task. | open |
+| T2 | review | low | `cmd/noggin/model.go:718`, `cmd/noggin/layout.go:52` | Untested edge case, not a known defect: `splitViewer` has no minimum-width guard (D54), so at an extreme terminal width DV2's rect can be empty while `m.dv2 != nil`. FocusDV2 then falls through `resolveFocus`'s focusOrder (correct per S5, which only mandates a no-op when DV2 *does not exist*, not when it is merely invisible), but nothing pins that reading. Decide whether to test it or record the reading as a decision. | open |

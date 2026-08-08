@@ -80,6 +80,27 @@ type keyMap struct {
 	FocusRoots key.Binding
 	FocusFiles key.Binding
 
+	// FocusDV1 and FocusDV2 (S5, C3/M1.3) round out the four direct
+	// focus-jump keys FocusRoots/FocusFiles started: `d` moves Focus
+	// straight to DV1, always applicable since DV1 always exists (S1).
+	// `shift+d` (the literal binding is the physical chord's produced
+	// character, "D" — the same convention Bottom/"G" and
+	// FindPrevious/"N" already use for a shifted letter, not the modifier
+	// spelling "shift+d") moves Focus to DV2, but is a genuine no-op if DV2
+	// does not exist (C3/S5: "a bare focus request has no document to
+	// create") — unlike FocusRoots/FocusFiles falling back through
+	// focusOrder when their target is merely hidden by width, model.Update
+	// short-circuits this one before calling focusPane at all, so Focus
+	// never moves elsewhere as a side effect. Neither reveals a hidden
+	// Navigator the way FocusRoots/FocusFiles do: that behavior exists
+	// because those two panes live inside the Navigator column and would
+	// otherwise be unreachable while it's hidden, but DV1/DV2 are never in
+	// that column, so unhiding the sidebar on a viewer jump would be an
+	// unrelated, unrequested side effect (model.focusPane's own doc
+	// comment).
+	FocusDV1 key.Binding
+	FocusDV2 key.Binding
+
 	// Refresh re-reads the Active Root's file tree and the Active Document
 	// from disk on demand (S2, C2a/M5.1): global, like Edit/Find/Navigator,
 	// reachable from every pane. model.refresh preserves Files Nav
@@ -234,6 +255,14 @@ var keys = keyMap{
 	FocusFiles: key.NewBinding(
 		key.WithKeys("f"),
 		key.WithHelp("f", "files"),
+	),
+	FocusDV1: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "dv1"),
+	),
+	FocusDV2: key.NewBinding(
+		key.WithKeys("D"),
+		key.WithHelp("D", "dv2"),
 	),
 	Refresh: key.NewBinding(
 		key.WithKeys("R"),
