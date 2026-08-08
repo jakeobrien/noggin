@@ -690,3 +690,21 @@
 - Why: all three are genuinely low risk and low value relative to the cost of acting on them
   now; recorded so a fresh session doesn't re-raise them as new findings.
 
+
+## D53: shift+enter's terminal disambiguation is unverified — open, deferred to build
+
+- Status: open
+- Cycle: C3
+- Date: 2026-08-08
+- Context: C3/S3 uses `shift+enter` (Files Nav and Picker) to target-and-load into DV2,
+  distinct from plain `enter` targeting DV1. Whether a terminal reports `shift+enter`
+  differently from plain `enter` at all depends on its keyboard protocol (Kitty keyboard
+  protocol / CSI-u support); many common terminals send identical bytes for both. The
+  identical risk exists for `ctrl+enter` — switching modifiers doesn't change it, only
+  keeps the scheme consistent with `shift+p`/`shift+d` elsewhere in C3.
+- Decision: not resolved here — spec agreement does not depend on it. To be verified during
+  planning/build (e.g. against the pty harness's terminal emulation and/or real terminals in
+  use). If disambiguation doesn't hold up, a fallback binding for "load into DV2" is needed;
+  none chosen yet.
+- Why: this is a feasibility question, not a product one — resolving it doesn't change what
+  S3 promises, only how reliably one of its bindings can be implemented.

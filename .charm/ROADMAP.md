@@ -51,6 +51,8 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 - Audio input; encryption; git sync; wikipedia pane; agent chat pane (from C1)
 - Rename `go.mod`'s module path from the bare `noggin` to a resolvable path before
   `go install`/external import ever needs it (from C1, code review)
+- Per-viewer / per-source staleness signal granularity, instead of one combined signal (from
+  C3; C3 deliberately kept a single unspecific signal spanning tree + both viewers)
 - A shared exclusive-input-mode dispatch abstraction across modals (currently hand-duplicated
   per modal in model.go) — the Picker became the third modal in C2 and still didn't justify
   it (C2/D35: the three are less alike than the count suggests); only worth it if a fourth

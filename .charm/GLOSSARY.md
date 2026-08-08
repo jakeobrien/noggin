@@ -14,7 +14,10 @@
   edited. Its match and indication persist until dismissed or the viewport is forced to
   re-render (e.g. a terminal resize or a Navigator toggle).
 - **Document Viewer** — the pane that renders the Active Document as styled markdown. Read-only;
-  scrolls, has no cursor.
+  scrolls, has no cursor. A session has one always-present Document Viewer (DV1) and may have
+  a second, optional one (DV2) beside it; the two are fully independent — separate Active
+  Document, Peek, Find and scroll position each (C3). See Targeting modifier for how a Files
+  Nav or Picker action chooses which one to load into.
 - **Edit** — the handoff: release the terminal to `$EDITOR` on the Active Document, then resume
   and re-render. Not in-app editing.
 - **File Picker** — the Picker whose Results are files, matched fuzzily (C2).
@@ -23,7 +26,9 @@
   traversal wraps, case-insensitive unless the query has uppercase. See Committed Find.
   *Find is always within one document*; searching across files is a Picker.
 - **Focus** — which pane currently receives keyboard input. Exactly one pane at a time; most
-  keys route to the focused pane.
+  keys route to the focused pane. DV1 and DV2 are separately focusable panes (C3): once a
+  Document Viewer holds Focus, its local commands (Find, Edit, scrolling) act on that
+  viewer's Active Document only.
 - **Footer** — the persistent bottom bar: contextual key hints plus transient messages.
 - **Grep Picker** — the Picker whose Results are matching lines across files (C2).
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
@@ -31,9 +36,10 @@
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
   vim-oriented. Provisional, like all bindings.
 - **Navigator** — the left sidebar: Roots Nav above, Files Nav below. Hideable.
-- **Peek** — render the Files Nav's selected document in the Document Viewer *without* making
-  it the Active Document and without moving Focus. Transient and read-only: cannot be scrolled
-  or searched, marked by an inverted header, cleared by any selection change, Focus change,
+- **Peek** — render the Files Nav's selected document in the targeted Document Viewer
+  (DV1 by default, DV2 with the Targeting modifier) *without* making it that viewer's Active
+  Document and without moving Focus. Transient and read-only: cannot be scrolled or
+  searched, marked by an inverted header, cleared by any selection change, Focus change,
   Picker open or Refresh — restoring the Active Document at its previous scroll position.
   `<enter>` is the only promotion path. Distinct from the Picker's Preview pane (C2a).
 - **Picker** — the modal fuzzy-finding UI: a Prompt, a Results list, and a Preview pane.
@@ -44,9 +50,10 @@
 - **Prompt** — a Picker's input field; Results update as it is typed (C2).
 - **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
   `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
-- **Refresh** — the on-demand re-read of the Active Root's file tree and the Active Document
-  from disk, preserving tree expansion, selection and scroll position. Manual only; noggin never
-  watches the filesystem (C2a).
+- **Refresh** — the on-demand re-read of the Active Root's file tree and, as of C3, every open
+  Document Viewer's Active Document from disk in one action, preserving tree expansion,
+  selection and each viewer's scroll position. Manual only; noggin never watches the
+  filesystem (C2a).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
@@ -54,8 +61,12 @@
   exact path; may not nest inside another Root.
 - **Roots Nav** — the upper Navigator pane; the list of the session's Roots.
 - **Scope** — what a Picker searches: the Active Root, or All Roots (C2).
-- **Staleness indicator** — a passive UI signal that the Active Document or the Active Root's
-  tree changed on disk. Reports only that *something* changed, and never refreshes on its own
-  (C2a).
+- **Staleness indicator** — a passive UI signal that an open Document Viewer's Active Document
+  or the Active Root's tree changed on disk. Reports only that *something* changed across
+  those sources, and never refreshes on its own (C2a). Its own dedicated, highlighted row
+  above the Footer, shown only while stale (C3) — not a Footer suffix.
+- **Targeting modifier** — the `shift+` prefix on Files Nav's Activate/Peek and the Picker's
+  Activate that routes the action to DV2 instead of DV1, creating DV2 first if it doesn't
+  already exist. Unmodified keys always target DV1 (C3).
 - **Starred** — bookmarked and persisted across sessions. Applies to Roots in C1, to documents
   in C4.
