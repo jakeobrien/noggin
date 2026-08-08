@@ -17,19 +17,42 @@
 
 ## Cursor
 
-Current task: <key>
+Current task: M1.1
 
 ## Handoff
 
-<!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
-     state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
+Plan just written (PLAN.md, M1–M5, 15 tasks covering S1–S9). Nothing built yet — this is a
+fresh cycle start. Key context for whoever picks up M1.1:
 
-<current-state snapshot>
+- D53 (shift+enter vs. plain enter) is resolved: bind the load-into-DV2 actions to both
+  `shift+enter` and a fallback key `L`; no keyboard-enhancement enable call needed. See
+  DECISIONS.md D53's Resolution.
+- D54 records a deliberate no-guard decision for narrow-terminal 50/50 splits — don't
+  reinvent a collapse threshold for it.
+- Architecture note from planning research: `viewer` (viewer.go) is already a clean,
+  self-contained value type (own doc/Peek/Find/scroll) — duplicating it to `dv1`/`dv2` is
+  the easy part of M1.1. The real work is routing every `m.viewer`-touching call site
+  (model.go's Update, startEdit/togglePeek/startFind, handleFindInput, refresh()) through a
+  focused-viewer accessor instead. `paneOrder`/`shiftFocus`/Tab bindings are being deleted,
+  not extended, in the same task.
+- Test files that assume a single viewer and will need rewriting rather than extending:
+  `frame_test.go` (three-region geometry, Tab-cycling), `staleness_test.go`'s Footer-suffix
+  cluster (superseded by M5), peek/find test fixtures (single-viewer fixtures — good
+  templates for DV2 variants, not directly reusable).
+- Next step: start M1.1.
 
 ## Status
 
-| Key  | Status      | Reviewed | Validated | Note                              |
-|------|-------------|----------|-----------|------------------------------------|
-| M1.1 | done        | -        | -         |                                    |
-| M1.2 | in-progress | -        | -         |                                    |
-| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |
+| Key  | Status | Reviewed | Validated | Note |
+|------|--------|----------|-----------|------|
+| M1.1 | todo   | -        | -         |      |
+| M1.2 | todo   | -        | -         |      |
+| M1.3 | todo   | -        | -         |      |
+| M1.4 | todo   | -        | -         |      |
+| M1.5 | todo   | -        | -         |      |
+| M1.6 | todo   | -        | -         |      |
+| M2.1 | todo   | -        | -         |      |
+| M3.1 | todo   | -        | -         |      |
+| M4.1 | todo   | -        | -         |      |
+| M5.1 | todo   | -        | -         |      |
+| M5.2 | todo   | -        | -         |      |

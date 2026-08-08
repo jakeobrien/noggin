@@ -693,7 +693,7 @@
 
 ## D53: shift+enter's terminal disambiguation is unverified — open, deferred to build
 
-- Status: open
+- Status: decided
 - Cycle: C3
 - Date: 2026-08-08
 - Context: C3/S3 uses `shift+enter` (Files Nav and Picker) to target-and-load into DV2,
@@ -708,3 +708,50 @@
   none chosen yet.
 - Why: this is a feasibility question, not a product one — resolving it doesn't change what
   S3 promises, only how reliably one of its bindings can be implemented.
+- Resolution (at planning, C3): verified against `bubbletea/v2`'s source (`cursed_renderer.go`,
+  `ultraviolet`'s decoder) — basic key disambiguation (the flag that makes `shift+enter`
+  arrive as `KeyEnter, Mod: ModShift` rather than plain `KeyEnter`) is sent unconditionally by
+  the renderer with zero app-side enabling code needed, so `shift+enter` *is* delivered as a
+  distinct event on terminals implementing Kitty-protocol `CSI u` or xterm's
+  `modifyOtherKeys` (kitty, WezTerm, Ghostty, foot, xterm itself). On terminals/multiplexers
+  that don't (Alacritty, iTerm2, GNOME Terminal/VTE apps, Windows Terminal, Apple Terminal,
+  default tmux/screen configs), the terminal's own driver has no distinct byte sequence to
+  send — `shift+enter` arrives byte-identical to plain `enter`, not missing and not an error,
+  so noggin has no runtime signal to detect the degradation and drive a fallback UI. Given
+  that split, `shift+enter` cannot be the sole binding for load-into-DV2 (rules out accepting
+  the degradation as-is). Chosen fix: bind the action to both `shift+enter` and a plain,
+  unmodified fallback key, `L` (unused in `keymap.go` today; mnemonic "Load into DV2"),
+  applied identically wherever `shift+enter` targets DV2 (Files Nav's load, the Picker's
+  Activate) — `shift+p`'s Peek-into-DV2 and `shift+d`'s focus-jump need no such fallback,
+  since shift+letter is just the capital letter and every terminal sends it as a distinct
+  byte regardless of keyboard-protocol support; only shift+`enter` lacks a legacy
+  disambiguation path. No enabling code (`tea.View.KeyboardEnhancements`) is needed either
+  way — the base disambiguation is automatic. This is a binding choice, not a spec change
+  (D2: deliverables are their actions, not their bindings) — S3's contract ("a `shift+`
+  targeting modifier") is satisfied by `shift+enter` remaining the primary chord; `L` is a
+  same-action alias for terminals that can't carry it.
+
+## D54: no minimum-width guard for the DV1/DV2 50/50 split
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-08
+- Context: `layout.go`'s `computeLayout` already guards the Navigator-vs-viewer boundary
+  (`minViewerWidth`, collapsing the Navigator to 0 on narrow terminals) but has no equivalent
+  concept for splitting the viewer region itself in two. SPEC.md fixes the split at exactly
+  50/50 with no ratio adjustment, and neither SPEC.md's Out-of-scope list nor VISION.md's
+  boundaries say what should happen when a terminal is too narrow to carry two useful halves
+  — a genuine gap, not an oversight either doc owns.
+- Decision: no guard. Each half always renders at its exact 50/50 share of the viewer region
+  (rounding down, remainder to the left half), however small; there is no collapse-to-one-
+  viewer behavior analogous to the Navigator's. `minViewerWidth` continues to gate the
+  Navigator-vs-(combined)-viewer boundary only, unchanged and untouched by DV2.
+- Why: S1 already makes the split's fixed-ness a deliverable ("exactly two, exactly 50/50
+  left-right, fixed" is explicitly Out of scope to change); inventing a second collapse
+  threshold that silently drops DV2 on narrow terminals would contradict "DV2 exists once
+  created, session-only" (S8) with a rendering-driven exception SPEC.md never asked for, and
+  would need its own restore/re-split semantics on a subsequent resize — real design surface
+  for a case the spec doesn't flag as a concern. Rendering degrades gracefully already
+  (glamour/lipgloss wrap or clip narrow content; this is the existing single-viewer behavior
+  at small widths too, just applied to a narrower region) — acceptable at the very narrow
+  end, revisit only if it becomes a real reported complaint.
