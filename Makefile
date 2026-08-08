@@ -6,7 +6,7 @@
 unexport GOROOT
 
 # Install prefix for `make install`. bin/noggin ends up at $(PREFIX)/bin/noggin.
-PREFIX ?= /usr/local
+PREFIX ?= ~/.local
 
 .PHONY: build vet fmt check test run install
 
