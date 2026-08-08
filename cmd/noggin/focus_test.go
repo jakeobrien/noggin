@@ -45,7 +45,7 @@ func TestFocusJumpKeysMoveFocusFromEveryPane(t *testing.T) {
 	}
 }
 
-// TestFocusDV2InertWithoutDV2 pins S5's carve-out: FocusDV2 (shift+d) does
+// TestFocusDV2InertWithoutDV2 pins S5's carve-out: FocusDV2 (ctrl+o) does
 // nothing at all — Focus stays exactly where it was — when DV2 does not
 // exist, rather than falling back through focusOrder the way an ordinary
 // hidden-by-width target would (resolveFocus). "A bare focus request has

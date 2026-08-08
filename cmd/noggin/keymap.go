@@ -80,13 +80,10 @@ type keyMap struct {
 	FocusRoots key.Binding
 	FocusFiles key.Binding
 
-	// FocusDV1 and FocusDV2 (S5, C3/M1.3) round out the four direct
-	// focus-jump keys FocusRoots/FocusFiles started: `d` moves Focus
-	// straight to DV1, always applicable since DV1 always exists (S1).
-	// `shift+d` (the literal binding is the physical chord's produced
-	// character, "D" — the same convention Bottom/"G" and
-	// FindPrevious/"N" already use for a shifted letter, not the modifier
-	// spelling "shift+d") moves Focus to DV2, but is a genuine no-op if DV2
+	// FocusDV1 and FocusDV2 (S5, C3/M1.3, rebound C3/M1.3a per D55) round out
+	// the four direct focus-jump keys FocusRoots/FocusFiles started: `o`
+	// moves Focus straight to DV1, always applicable since DV1 always exists
+	// (S1). `ctrl+o` moves Focus to DV2, but is a genuine no-op if DV2
 	// does not exist (C3/S5: "a bare focus request has no document to
 	// create") — unlike FocusRoots/FocusFiles falling back through
 	// focusOrder when their target is merely hidden by width, model.Update
@@ -178,7 +175,7 @@ type keyMap struct {
 	// literal spellings: `shift+enter` uses the modifier form because enter
 	// is non-printable and carries no Text, whereas PeekDV2's shifted
 	// letter is spelled as the character it produces, "P" — the same
-	// convention Bottom/"G", FindPrevious/"N" and FocusDV2/"D" already use.
+	// convention Bottom/"G" and FindPrevious/"N" already use.
 	ActivateDV2 key.Binding
 	PeekDV2     key.Binding
 
@@ -278,12 +275,12 @@ var keys = keyMap{
 		key.WithHelp("f", "files"),
 	),
 	FocusDV1: key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", "dv1"),
+		key.WithKeys("o"),
+		key.WithHelp("o", "dv1"),
 	),
 	FocusDV2: key.NewBinding(
-		key.WithKeys("D"),
-		key.WithHelp("D", "dv2"),
+		key.WithKeys("ctrl+o"),
+		key.WithHelp("ctrl+o", "dv2"),
 	),
 	Refresh: key.NewBinding(
 		key.WithKeys("R"),

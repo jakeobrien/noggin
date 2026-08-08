@@ -155,7 +155,7 @@ func TestPaneHintsNameFocusAndRefreshFromEveryPane(t *testing.T) {
 }
 
 // TestPaneHintsOmitFocusDV2Everywhere is the other half of C3/M1.3's own
-// addition: FocusDV2 ("D") never appears in the footer's terse hints, from
+// addition: FocusDV2 ("ctrl+o") never appears in the footer's terse hints, from
 // any pane — paneHints' doc comment gives the same "inapplicable binding is
 // worse than no hint" reasoning the viewer case already applies to
 // FindNext/FindPrevious/Cancel. S12's help modal is its discoverability

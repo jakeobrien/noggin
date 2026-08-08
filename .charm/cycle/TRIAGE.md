@@ -25,6 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T4 | build | high | footer_test.go:202 (`TestNoFooterHintNamesCtrlP`) | M1.4a's D55 rebind (PeekDV2 → `ctrl+p`) will make filesPane's footer hints contain the literal string "ctrl+p" (`paneHints` already lists `keys.PeekDV2` there), which this pre-existing C2a/M2.2 invariant test ("no footer hint may ever name ctrl+p again", a retired unrelated binding) forbids outright — M1.4a's plan doesn't mention this test; it will fail unless scoped/adjusted. | open |
 
 <!-- T1 (review, .gitignore:2, low): fixed directly this session per the effort-scaling rule
      (one-line, low-risk) rather than routed through a plan task — /cmd/noggin/noggin added
