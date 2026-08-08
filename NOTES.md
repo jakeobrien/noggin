@@ -43,12 +43,12 @@ The UI tree:
 -------------------------------------------------------------------------|
 | Navigator | Documents                                                  |
 |-----------|------------------------------------------------------------|
-| Roots Nav | Document                           | Document        | ... |
+| Roots Nav | Document                           | Document              |
 |           |------------------------------------------------------------|
-|-----------| Document Viewer | Document Outline | Document Viewer | ... |
-| Files Nav |                 |                  |                 |     |
-|           |                 |                  |                 |     |
-|           |                 |                  |                 |     |
+|-----------| Document Viewer | Document Outline | Document Viewer       |
+| Files Nav |                 |                  |                       |
+|           |                 |                  |                       |
+|           |                 |                  |                       |
 |------------------------------------------------------------------------|
 | Footer                                                                 |
 --------------------------------------------------------------------------
@@ -138,7 +138,7 @@ and the following modes:
 
 ### Documents
 
-The main panel of the TUI. Displays one to three Document Viewer/Outline Viewer sets. 
+The main panel of the TUI. Displays one to two Document Viewer/Outline Viewer sets. 
 
 #### Document Viewer
 
@@ -222,7 +222,7 @@ Nav keys:
 - `X`: remove root (w/ confirm)
 - `o`: open root folder in finder
 - `t`: open tmux pane in root folder
-- `s`: toggle whether root is "saved" (persisted to data, will be auto-added on each new session)
+- `s`: toggle whether root is "starred" (persisted to data, will be auto-added on each new session)
 - `c`: copy root path
 
 ##### Files Nav
@@ -235,7 +235,7 @@ Files or folder selected:
 - `a`: add file (prompt for name and create new file (child if folder is selected, sibling if file is selected)
 File selected:
 - `<enter>`: set as the active document in the targeted Document Viewer and focus it
-- `<space>`: preview the document (Document Viewer will show the document until item is unselected)
+- `p`: peek the document (Document Viewer will show the document until item is unselected)
 - `m`: move file (show prompt with current path, after user edits, move file to new location) (error on collision)
 - `D`: duplicate file (create copy of file in same folder
 - `X`: delete file (w/ confirm)
@@ -303,24 +303,25 @@ Folder selected:
 
 ### Targetting
 
-Since we can have up to three Document Viewers, the following modifiers apply to determine which we are targeting:
+Since we can have two Document Viewers, the following modifiers apply to determine which we are targeting:
 - No mod: Document Viewer 1
-- `<shift>+`: Document Viewer 2
-- `<ctrl>+`: Document Viewer 3
+- `<ctrl>+`: Document Viewer 2
 
 These apply to:
+- Genera Nav:
+    - `d` - focus document viewer
 - Files Nav:
-    - `<enter>
-    - `<space>`
-    - `f`
+    - `<enter>` - load
+    - `p` - peek
+    - `f` - follow
 - Fuzzy Finder:
-    - `<enter>
+    - `<enter>` - load
 - Document Viewer:
     - `J` (if wiki-link)
 
 Ambiguity handling:
 - If Document Viewer does not exist, silent no-op (if we develop a need for quiet notifications, we can add this)
-    - Example: `<ctrl>+f` is entered when only 2 DVs are shown, no-op
+    - Example: `<ctrl>+p` is entered when only 2 DVs are shown, no-op
 - Only one Document Viewer can follow at a time, so if `f` toggle follow for DV1, `<shift>+f` will disable follow of DV1 and enable it for DV2. 
 
 ## Tech stack
