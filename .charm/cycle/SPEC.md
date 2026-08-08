@@ -18,8 +18,8 @@ Status: agreed 2026-08-08
 - **S2** — DV1 and DV2 are fully independent Document Viewers: each has its own Active
   Document, Peek state, Find/Committed-Find state and scroll position. An action taken in or
   targeted at one never affects the other's state.
-- **S3** — A `shift+` targeting modifier, applied consistently: `shift+enter` and `shift+p`
-  from the Files Nav, and `shift+enter` from the Picker, route that load/peek to DV2 instead
+- **S3** — A `ctrl+` targeting modifier, applied consistently: `ctrl+enter` and `ctrl+p`
+  from the Files Nav, and `ctrl+enter` from the Picker, route that load/peek to DV2 instead
   of DV1 — creating DV2 first if it does not already exist. The unmodified keys always target
   DV1. Loading into DV2 moves Focus to DV2 (mirroring DV1's existing Activate behavior);
   peeking into DV2 never moves Focus (mirroring DV1's existing Peek behavior exactly).
@@ -28,8 +28,10 @@ Status: agreed 2026-08-08
   does not exist. If DV2 held Focus, Focus moves to DV1 afterward; from any other Focus,
   Focus is unchanged.
 - **S5** — Four direct focus-jump keys, reachable from any non-modal Focus: `r` (Roots Nav),
-  `f` (Files Nav), `d` (DV1), `shift+d` (DV2 — no-op if DV2 does not exist, since a bare focus
-  request has no document to create). Tab/Shift+Tab pane-cycling is removed as redundant
+  `f` (Files Nav), `o` (DV1), `ctrl+o` (DV2 — no-op if DV2 does not exist, since a bare focus
+  request has no document to create). The `ctrl+` prefix mirrors S3's targeting modifier for
+  consistency, even though the two are different mechanisms — jumping Focus has no load/peek
+  side effect on either viewer's content. Tab/Shift+Tab pane-cycling is removed as redundant
   once these four cover every pane.
 - **S6** — Once a Document Viewer (DV1 or DV2) holds Focus, its own local commands (Find,
   Edit, scrolling) act on that viewer's Active Document only, never the other viewer's.
@@ -61,13 +63,13 @@ Status: agreed 2026-08-08
 ## Acceptance (cycle-level)
 
 - From a fresh single-viewer session, a user can load or peek a second document into a
-  fully independent DV2, side by side with DV1, using the `shift+` targeting modifier from
+  fully independent DV2, side by side with DV1, using the `ctrl+` targeting modifier from
   either the Files Nav or the Picker.
 - Once focused, each viewer's Find/Edit/scroll act only on that viewer's own Active Document.
 - DV2 closes with `ctrl+x` from any non-modal Focus; Focus lands on DV1 if DV2 was the one
   closed.
-- Every pane (Roots Nav, Files Nav, DV1, DV2) is reachable by a direct key (`r`/`f`/`d`/
-  `shift+d`) from anywhere non-modal; Tab no longer cycles panes.
+- Every pane (Roots Nav, Files Nav, DV1, DV2) is reachable by a direct key (`r`/`f`/`o`/
+  `ctrl+o`) from anywhere non-modal; Tab no longer cycles panes.
 - Refresh updates the tree and both open documents' content in one action.
 - The staleness signal is visibly legible (styled, never truncated away by hint text) at
   ordinary terminal widths, and reflects all three sources (tree, DV1, DV2).
@@ -75,7 +77,5 @@ Status: agreed 2026-08-08
 ## Open questions
 
 <!-- Unresolved items blocking or shaping the spec. Move to DECISIONS.md once material. -->
-- `shift+enter`'s reliance on terminal keyboard-protocol support to disambiguate from plain
-  `enter` (Kitty keyboard protocol / CSI-u) is unverified. If the target terminal(s) can't
-  distinguish them, what's the fallback binding for "load into DV2"? To be resolved during
-  planning/build, not blocking spec agreement.
+<!-- none currently — the shift+enter/ctrl+enter disambiguation question was resolved into
+     DECISIONS.md (D53, superseded by D55). -->

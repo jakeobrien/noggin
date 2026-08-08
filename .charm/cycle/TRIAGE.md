@@ -25,6 +25,11 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T1 | review | low | `.gitignore:2` | Only root-level `/noggin` is ignored, not `cmd/noggin/noggin` — a stray `go build .` inside `cmd/noggin/` leaves an untracked 15MB binary that can be committed by accident (hit once during C3/M1.3). One-line fix, deliberately not taken mid-task. | open |
-| T3 | build | high | `.charm/DECISIONS.md:722` (D53), `cmd/noggin/picker.go:746` | D53's `L` fallback for `shift+enter` cannot be applied in the Picker as D53 says it should: the Picker's Prompt is always-typing (S2/C2), so `handlePickerInput` matching a printable `L` would swallow it instead of typing it. M1.5 needs either shift+enter-only in the Picker (accepting no fallback there) or a non-printable Picker fallback (alt+enter, ctrl+l). Files Nav side (M1.4) is unaffected and shipped with both keys. | open |
-| T2 | review | low | `cmd/noggin/model.go:718`, `cmd/noggin/layout.go:52` | Untested edge case, not a known defect: `splitViewer` has no minimum-width guard (D54), so at an extreme terminal width DV2's rect can be empty while `m.dv2 != nil`. FocusDV2 then falls through `resolveFocus`'s focusOrder (correct per S5, which only mandates a no-op when DV2 *does not exist*, not when it is merely invisible), but nothing pins that reading. Decide whether to test it or record the reading as a decision. | open |
+
+<!-- T1 (review, .gitignore:2, low): fixed directly this session per the effort-scaling rule
+     (one-line, low-risk) rather than routed through a plan task — /cmd/noggin/noggin added
+     to .gitignore.
+     T3 (build, high, shift+enter/L Picker fallback): triaged → DECISIONS.md D55 (ctrl+enter +
+     ctrl+l, non-printable fallback closes it structurally) → PLAN.md M1.5 (updated).
+     T2 (review, low, FocusDV2/resolveFocus edge case): triaged → DECISIONS.md D56 (left
+     unpinned, same reasoning as D54). -->

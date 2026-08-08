@@ -31,17 +31,34 @@ Delivers: S1, S2, S3, S5, S6
   reachable from any non-modal Focus; `shift+d` is a no-op if DV2 doesn't exist — done when:
   a test drives each of the four keys from every other non-modal pane and lands Focus
   correctly, and confirms `shift+d` is inert with DV2 absent — effort: 2 (needs: M1.1)
+- **M1.3a** — Rebind S5's focus-jump keys per D55 (supersedes M1.3's chords, keeps the
+  behavior): FocusDV1 `d`→`o`, FocusDV2 `shift+d`/`D`→`ctrl+o` — update `keymap.go`'s
+  bindings and doc comments and every M1.3 test/hint reference (`focus_test.go`,
+  `frame_test.go`'s `allBindings()`, footer/help hint tests) to the new chords — done when:
+  `make check`/`make check-pty` pass with `o`/`ctrl+o` driving every existing M1.3 test
+  unchanged in behavior, and no stray reference to the old `d`/`shift+d`/`D` bindings remains
+  — effort: 2 (needs: M1.3)
 - **M1.4** — Files Nav's targeting modifier: `shift+enter` (bound together with the `L`
   fallback per D53) loads the selected file into DV2, creating it first if absent and moving
   Focus to DV2; `shift+p` peeks it into DV2, creating it first if absent, without moving
   Focus. Plain `enter`/`p` are unaffected and keep targeting DV1 — done when: a test from
   Files Nav confirms both modified chords create-and-target DV2 with the right Focus
   behavior, and plain `enter`/`p` still target DV1 unchanged — effort: 4 (needs: M1.2, M1.3)
-- **M1.5** — Picker's targeting modifier: `shift+enter` (+ `L` fallback) on Activate loads the
-  selected Result into DV2, creating it first if absent, and moves Focus to DV2; plain
-  `enter` is unaffected — done when: a test activates a Picker Result with the modified
-  chord and confirms DV2 is created/loaded/focused, while plain `enter` still targets DV1 —
-  effort: 3 (needs: M1.4)
+- **M1.4a** — Rebind S3's targeting modifier per D55 (supersedes M1.4's chords, keeps the
+  behavior): Files Nav's ActivateDV2 from `shift+enter`+`L` to `ctrl+enter`+`ctrl+l`, PeekDV2
+  from `shift+p`/`P` to `ctrl+p` — update `keymap.go` bindings/doc comments and the M1.4 test
+  suite (`target_test.go`, hint/help tests, `frame_test.go`'s `allBindings()`) to the new
+  chords — done when: `make check`/`make check-pty` pass with `ctrl+enter`/`ctrl+l`/`ctrl+p`
+  driving every existing M1.4 test unchanged in behavior, and no stray reference to
+  `shift+enter`/`L`/`shift+p`/`P` remains — effort: 2 (needs: M1.4)
+- **M1.5** — Picker's targeting modifier: `ctrl+enter` (+ `ctrl+l` fallback, per D55 — both
+  non-printable, so `handlePickerInput`'s always-typing Prompt never swallows either as query
+  text, closing TRIAGE T3 without a Picker-specific carve-out) on Activate loads the selected
+  Result into DV2, creating it first if absent, and moves Focus to DV2; plain `enter` is
+  unaffected — done when: a test activates a Picker Result with `ctrl+enter` and separately
+  with `ctrl+l`, confirms DV2 is created/loaded/focused for both, confirms plain `enter`
+  still targets DV1, and confirms typing a literal `l`/`L` into the Prompt still works —
+  effort: 3 (needs: M1.4, M1.4a)
 - **M1.6** — Verify/finish routing so each viewer's Find, Edit and scroll act only on its own
   Active Document once it holds Focus — full DV1/DV2 independence (S2, S6) — done when: a
   test loads distinct documents with distinct Find state into DV1 and DV2, drives Find/Edit/

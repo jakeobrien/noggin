@@ -65,8 +65,10 @@
   or the Active Root's tree changed on disk. Reports only that *something* changed across
   those sources, and never refreshes on its own (C2a). Its own dedicated, highlighted row
   above the Footer, shown only while stale (C3) — not a Footer suffix.
-- **Targeting modifier** — the `shift+` prefix on Files Nav's Activate/Peek and the Picker's
+- **Targeting modifier** — the `ctrl+` prefix on Files Nav's Activate/Peek and the Picker's
   Activate that routes the action to DV2 instead of DV1, creating DV2 first if it doesn't
-  already exist. Unmodified keys always target DV1 (C3).
+  already exist. Unmodified keys always target DV1. The same `ctrl+` prefix is also used by
+  S5's focus-jump keys (`ctrl+o` jumps Focus to DV2) for consistency, though that is a
+  distinct mechanism with no load/peek routing involved (C3; `shift+` before D55).
 - **Starred** — bookmarked and persisted across sessions. Applies to Roots in C1, to documents
   in C4.

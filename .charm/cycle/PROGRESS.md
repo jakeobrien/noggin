@@ -17,74 +17,63 @@
 
 ## Cursor
 
-Current task: M1.5
+Current task: M1.3a
 
 ## Handoff
 
-M1.4 done. The Files Nav's S3 targeting modifiers exist and DV2 is now creatable at runtime
-for the first time. Key context for whoever picks up M1.5 (the Picker's `shift+enter`):
+Replanned 2026-08-08 (TRIAGE T3 + DECISIONS D53 prompted it): the `shift+` modifier scheme
+for S3 (targeting) and S5 (focus-jump) is reverted to `ctrl+`, per new **D55**. This reopens
+M1.3 and M1.4 (both previously `done`) via suffixed rework tasks that now come *before* M1.5
+in build order; M1.5 itself is updated in place (it hadn't been built yet, so no suffix
+needed). Full rationale, and the rejected `ctrl+.` alternative, are in D55; D56 separately
+disposes of T2.
 
-- **Blocking-ish first**: TRIAGE **T3 (high)** — D53's `L` fallback cannot be reused in the
-  Picker. `handlePickerInput` (picker.go:715) matches bindings *before* falling through to
-  the always-typing Prompt, so binding a printable `L` there would swallow a literal "L"
-  from every query (S2/C2). M1.5 must decide: shift+enter-only in the Picker, or a
-  non-printable Picker-side fallback (`alt+enter`, `ctrl+l`). That is a decision, not an
-  implementation detail — take it before writing M1.5.
-- New bindings (`keymap.go`): `keys.ActivateDV2` = `"shift+enter"` + `"L"`, `keys.PeekDV2` =
-  `"P"`. Note the two literal conventions: `shift+enter` uses the modifier spelling (enter is
-  non-printable, no Text), `P` uses the produced character (same as `D`/`G`/`N`). Both are
-  matched in `Update`'s `filesPane` case beside the plain keys they modify — no global-switch
-  collisions (checked: nothing global binds L/P/shift+enter).
-- **The reusable half for M1.5**: `openDocumentInto(dv2Pane, d)` now does the DV2 creation
-  itself, via the new `model.ensureDV2()`. Creation *must* happen before `viewerFor(dv2Pane)`
-  is read (it falls back to DV1 while `dv2 == nil`, so the load would clone DV1's size/state).
-  So M1.5's Picker path is just `openDocumentInto(dv2Pane, d)` — nothing else to wire.
-- `ensureDV2` re-lays out via `resize(..., resizeCauseSecondViewer)` (new cause, "second
-  viewer opened"): without that the new viewer keeps `newViewer()`'s zero size and DV1 keeps
-  the full width it no longer owns. It also means creating DV2 can emit resize's existing
-  "…; search cleared" message when DV1 had a committed find — deliberate and honest (T43/T45
-  shape), not a bug.
-- Peek went per-target: `togglePeekInto(target)` (`togglePeek()` = the dv1Pane case),
-  `clearPeekIn(p)` for one viewer, and `clearPeek()` now clears **both** (setFocus/refresh are
-  viewer-agnostic triggers). Two peeks can coexist (DV1 + DV2) and toggle off independently.
-  Refusals (folder / empty pane / read error) are all checked *before* `ensureDV2`, so a
-  no-op never leaves an empty DV2 behind — pinned by test.
-- Hints: both new bindings added to `paneHints(filesPane)` (footer) and
-  `helpBindings(filesPane)` (help) only — Files-Nav-only, same treatment `keys.Peek` gets.
-  Also added to `allBindings()` in frame_test.go (field-count test).
-- Tests: new `cmd/noggin/target_test.go` (7 tests, reusing `peekFixture`). Verification:
-  `make check` + `make check-pty` pass; four mutations tried and all caught (drop ensureDV2 in
-  openDocumentInto → width assertions fail; clearPeek clearing only DV1; moving ensureDV2
-  before the refusal checks; activateInto ignoring its target).
+- **M1.3a** (`keymap.go` + `focus_test.go`/`frame_test.go`/hint tests): FocusDV1 `d`→`o`,
+  FocusDV2 `shift+d`/`D`→`ctrl+o`. Pure rebind — M1.3's behavior (no-op when DV2 absent, no
+  Navigator reveal, etc., described below) is unchanged; only the literal keys and every
+  place naming them (doc comments, `allBindings()`, hint/help `want` lists) move.
+- **M1.4a** (`keymap.go` + `target_test.go`/hint tests): ActivateDV2 `shift+enter`/`L`→
+  `ctrl+enter`/`ctrl+l`; PeekDV2 `shift+p`/`P`→`ctrl+p`. Also a pure rebind — the
+  `openDocumentInto`/`ensureDV2`/`togglePeekInto` mechanics from the original M1.4 build
+  (below) are untouched; only the chords change.
+- **M1.5**, once M1.3a/M1.4a land: bind `ctrl+enter` (+ `ctrl+l` fallback) into
+  `handlePickerInput`'s Activate-into-DV2 path, reusing `openDocumentInto(dv2Pane, d)` exactly
+  as M1.4 does (see below). **TRIAGE T3 is closed by construction now**: both `ctrl+enter`
+  and `ctrl+l` are non-printable control chords, so neither risks being typed into the Prompt
+  by `m.picker.input.Update` — no Picker-specific carve-out needed, just one
+  `case key.Matches(msg, keys.ActivateDV2):` alongside the existing `Activate` case in
+  `handlePickerInput` (picker.go).
+- TRIAGE cleared this session: **T1** (`.gitignore` gap) fixed directly —
+  `/cmd/noggin/noggin` added. **T2** (FocusDV2/`resolveFocus` edge case) left unpinned by
+  test per D56 (same reasoning as D54). **T3** closed per D55/M1.5 above.
+
+Still valid, unaffected by the rebind (from the original M1.4 build — `openDocumentInto`/
+`ensureDV2`/`togglePeekInto`, full detail in git history):
+
+- DV2 creation happens inside `openDocumentInto`, via `model.ensureDV2()`, *before*
+  `viewerFor(dv2Pane)` is read (it falls back to DV1 while `dv2 == nil`, so a later creation
+  would clone DV1's size/state).
+- `ensureDV2` re-lays out via `resize(..., resizeCauseSecondViewer)`; without that the new
+  viewer keeps `newViewer()`'s zero size and DV1 keeps width it no longer owns. Creating DV2
+  can emit resize's existing "…; search cleared" message when DV1 had a committed find —
+  deliberate (T43/T45 shape), not a bug.
+- Peek is per-target: `togglePeekInto(target)` (`togglePeek()` = the dv1Pane case),
+  `clearPeekIn(p)` for one viewer, `clearPeek()` clears **both**. Refusals (folder / empty
+  pane / read error) are checked *before* `ensureDV2`, so a no-op never leaves an empty DV2
+  behind — pinned by test.
 - Not done here, still M1.6's: DV1/DV2 Find/Edit/scroll independence.
 
----
-
-Earlier (M1.3) context, still current: all four S5 focus-jump keys exist — `r`/`f` (C2a/M2.1)
-plus `keys.FocusDV1` and `keys.FocusDV2`.
+Still valid, unaffected by the rebind (from the original M1.3 build):
 
 - `model.Update` short-circuits FocusDV2 on `m.dv2 == nil` *before* calling `focusPane`, so
   it is a genuine no-op (S5) rather than a `resolveFocus`/focusOrder fallback to some other
-  pane. It never creates DV2 — creation is S3's job, i.e. M1.4/M1.5's targeting modifiers.
-- `focusPane` changed shape: its reveal-a-hidden-Navigator step is now gated to
-  `target == rootsPane || target == filesPane`. Previously unconditional, which would have
-  made `d`/`D` reveal the sidebar as an unrequested side effect (DV1/DV2 are never inside
-  the Navigator column). Existing FocusRoots/FocusFiles reveal behavior is unchanged.
-- Hints: `keys.FocusDV1` was added to every pane's `paneHints` (footer.go) and
-  `helpBindings` (help.go); `keys.FocusDV2` was added to `helpBindings` **only** — it is
-  usually a no-op (DV2 absent), so it gets the footer's existing "inapplicable binding is
-  worse than no hint" treatment (same as FindNext/FindPrevious/Cancel) with the Help Modal as
-  its discoverability backstop. Both are pinned by tests
-  (`TestPaneHintsOmitFocusDV2Everywhere`, and the extended `want` lists in
-  `TestPaneHintsNameFocusAndRefreshFromEveryPane` /
-  `TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane`).
-- New/changed tests in focus_test.go: `TestFocusJumpKeysMoveFocusFromEveryPane` (4x4 sweep,
-  DV2 pre-created — this absorbed and replaced the old, now-subset
-  `TestFocusBindingsMoveFocusFromEveryPane`), `TestFocusDV2InertWithoutDV2`,
-  `TestFocusDV1AndDV2DoNotRevealHiddenNavigator`, `TestFocusDV1AndDV2InertWhilePickerIsOpen`.
-  New bindings also added to `allBindings()` in frame_test.go (`TestEveryBindingIsCovered`
-  counts keyMap fields, so any new binding must go there).
-- Its actionable leftovers are TRIAGE T1/T2 (both low).
+  pane. It never creates DV2 — creation is S3's job (M1.4/M1.5's targeting modifiers).
+- `focusPane`'s reveal-a-hidden-Navigator step is gated to `target == rootsPane ||
+  target == filesPane` — DV1/DV2 jumps never reveal a hidden Navigator as a side effect.
+- Hints: FocusDV1 is in every pane's `paneHints`/`helpBindings`; FocusDV2 is in
+  `helpBindings` only (usually a no-op, same footer treatment as FindNext/FindPrevious/
+  Cancel). Pinned by `TestPaneHintsOmitFocusDV2Everywhere` and related `want`-list tests —
+  M1.3a must update the literal keys these tests assert, not their shape.
 
 ## Status
 
@@ -93,8 +82,10 @@ plus `keys.FocusDV1` and `keys.FocusDV2`.
 | M1.1 | done   | -        | -         |      |
 | M1.2 | done   | -        | -         |      |
 | M1.3 | done   | 2026-08-08 | -       |      |
+| M1.3a| todo   | -        | -         | rebind d/shift+d→o/ctrl+o, D55 |
 | M1.4 | done   | -        | -         |      |
-| M1.5 | todo   | -        | -         |      |
+| M1.4a| todo   | -        | -         | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
+| M1.5 | todo   | -        | -         | needs M1.4a first |
 | M1.6 | todo   | -        | -         |      |
 | M2.1 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |

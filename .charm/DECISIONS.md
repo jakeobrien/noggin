@@ -755,3 +755,64 @@
   (glamour/lipgloss wrap or clip narrow content; this is the existing single-viewer behavior
   at small widths too, just applied to a narrower region) — acceptable at the very narrow
   end, revisit only if it becomes a real reported complaint.
+
+## D55: `shift+` reverted to `ctrl+` for S3/S5; T3 closed by making the fallback non-printable
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-08
+- Context: D53 chose `shift+enter` (+ `L` fallback) for S3's targeting modifier, and S5's
+  `shift+d`/`D` (FocusDV2) followed the same prefix for consistency, after an earlier `ctrl+`
+  pitch was dropped: a fully-`ctrl+`-prefixed scheme needs `ctrl+d` for "jump to DV2"
+  (mirroring `d` for DV1), which collides with the pre-existing `ctrl+d` (HalfPageDown).
+  Separately, TRIAGE T3 found D53's `L` fallback can't be reused in the Picker —
+  `handlePickerInput`'s Prompt is always-typing, so a printable fallback key risks being typed
+  into the query instead of triggering the action.
+- Decision: revert to `ctrl+` as the one consistent modifier across S3 (Files Nav's
+  `ctrl+enter`/`ctrl+p`; the Picker's `ctrl+enter`) and S5 (`ctrl+o`) — the DV1 focus key
+  itself moves from `d` to `o` (S5), freeing `ctrl+o` for FocusDV2 and avoiding the `ctrl+d`
+  collision that killed the original pitch. D53's `L` fallback for `ctrl+enter`'s terminal
+  ambiguity (identical risk to `shift+enter` — switching modifiers doesn't change it, D53
+  already noted this) is replaced with `ctrl+l`: a raw control byte, not a printable
+  character, so it can never be typed into the Prompt as query text. This closes T3 outright
+  — no Picker-specific carve-out (`alt+enter`, a second non-printable-only path, etc.) is
+  needed, `ActivateDV2` is one binding used identically in both Files Nav and the Picker.
+  `ctrl+o` (FocusDV2) needs no fallback of its own: unlike `ctrl+enter`, a plain Ctrl+letter
+  is a raw C0 control byte delivered identically by every terminal regardless of
+  Kitty/CSI-u/modifyOtherKeys support, so there is nothing to degrade.
+- A candidate considered and rejected: keep S5's focus-jump key as `d`/`shift+d` and give
+  FocusDV2 its own `ctrl+.`-style binding instead of renaming the base key. Ctrl+ on
+  non-letter punctuation has no legacy VT100/CSI encoding at all — Ctrl clears bit 6 of a
+  0x40–0x5F byte, and `.` is 0x2E, already below that range — confirmed against the vendored
+  `ultraviolet` decoder (`decoder.go`'s `parseControl`/`LegacyKeyEncoding`), which has no code
+  path producing `Mod: ModCtrl` for `.` outside Kitty/CSI-u/modifyOtherKeys. Its degradation is
+  worse than `ctrl+enter`'s (byte-identical to plain `enter` is at least a well-formed
+  keystroke): on GNOME Terminal/VTE, Alacritty and likely Windows Terminal/Terminal.app it
+  falls through to plain `.`; on a bare tty it can produce nothing; relayed through tmux/screen
+  from a Kitty-capable outer terminal it can be silently dropped. Renaming the base focus key
+  (`d`→`o`) avoids ever needing a Ctrl+punctuation binding.
+- Why: a binding choice, not a spec-deliverable change (D2) — S3's and S5's contracts
+  (which action, what it does) are unchanged, only which physical chords carry them. Recorded
+  as a decision, not silently reworked, because SPEC.md's S3/S5 text names specific keys
+  (unlike most deliverables, which describe actions only) and because it reopens two
+  milestones already marked `done` (C3/M1.3, C3/M1.4) — see PLAN.md's M1.3a/M1.4a. Supersedes
+  D53's chord choice; D53's fallback-is-necessary reasoning and its terminal-disambiguation
+  research (Kitty protocol/CSI-u/modifyOtherKeys) stand unchanged.
+
+## D56: TRIAGE T2 (FocusDV2's `resolveFocus` fallback when DV2 is invisible) left unpinned
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-08
+- Context: TRIAGE T2 (review) noted `splitViewer` has no minimum-width guard (D54), so at an
+  extreme terminal width DV2's rect can be empty while `m.dv2 != nil`; FocusDV2 then falls
+  through `resolveFocus`'s focusOrder rather than staying inert — correct per S5, which only
+  mandates a no-op when DV2 does not exist, not when it is merely invisible — but nothing
+  pins that reading with a test.
+- Decision: leave it unpinned; no dedicated test added.
+- Why: same reasoning as D54 — the fixed 50/50 split deliberately has no collapse behavior,
+  so an unusably narrow DV2 half is already an accepted, graceful-degradation edge case, not
+  a defect. The reading T2 describes is already correct per S5's own wording; a test would
+  pin a reading of an edge case D54 already decided not to special-case, for a scenario
+  (terminal too narrow for two useful viewer halves) nobody has reported hitting. Revisit only
+  if a real report surfaces.
