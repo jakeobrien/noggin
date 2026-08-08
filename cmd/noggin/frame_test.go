@@ -300,6 +300,7 @@ func allBindings() []key.Binding {
 		keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
 		keys.ToggleHidden,
 		keys.Peek,
+		keys.ActivateDV2, keys.PeekDV2,
 	}
 }
 

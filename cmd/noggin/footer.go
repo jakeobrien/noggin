@@ -21,8 +21,9 @@ import (
 // it), so it gets the same "inapplicable binding" treatment as the viewer
 // case's FindNext/FindPrevious/Cancel below rather than FocusDV1's
 // unconditional one — S12's help modal is its discoverability backstop
-// instead (help.go's helpBindings does list it, always). Peek (S7) is
-// Files-Nav-only by design, so it appears only in filesPane's list, not the
+// instead (help.go's helpBindings does list it, always). Peek (S7) and
+// C3/S3's two targeting modifiers, ActivateDV2/PeekDV2 (C3/M1.4), are
+// Files-Nav-only by design, so they appear only in filesPane's list, not the
 // other two — a hint for an inapplicable binding is worse than no hint, the
 // same reasoning the viewer case below already gives for omitting
 // FindNext/FindPrevious/Cancel.
@@ -31,7 +32,7 @@ func paneHints(p pane) []key.Binding {
 	case rootsPane:
 		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is

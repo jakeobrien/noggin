@@ -40,10 +40,11 @@ import (
 // FindNext/FindPrevious/Cancel usually are with no search active, but this
 // modal is exactly the discoverability backstop those bindings' own comment
 // (and this one) promises — so, like them, it is listed unconditionally
-// even though the terser footer omits it. keys.Peek (S7) is added only to
-// filesPane, since it is Files-Nav-only by design — listing it for
-// rootsPane/dv1Pane/dv2Pane would document a binding that pane can never
-// actually trigger.
+// even though the terser footer omits it. keys.Peek (S7) and C3/S3's two
+// targeting modifiers, keys.ActivateDV2/keys.PeekDV2 (C3/M1.4), are added
+// only to filesPane, since all three are Files-Nav-only by design — listing
+// them for rootsPane/dv1Pane/dv2Pane would document bindings those panes can
+// never actually trigger.
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
@@ -60,6 +61,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.Refresh, keys.Peek,
+			keys.ActivateDV2, keys.PeekDV2,
 			keys.Help, keys.Quit,
 		}
 	default: // dv1Pane, dv2Pane

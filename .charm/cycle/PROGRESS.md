@@ -17,20 +17,52 @@
 
 ## Cursor
 
-Current task: M1.4
+Current task: M1.5
 
 ## Handoff
 
-M1.3 done. All four S5 focus-jump keys now exist: `r`/`f` (unchanged, C2a/M2.1) plus new
-`keys.FocusDV1` and `keys.FocusDV2`. Key context for whoever picks up M1.4:
+M1.4 done. The Files Nav's S3 targeting modifiers exist and DV2 is now creatable at runtime
+for the first time. Key context for whoever picks up M1.5 (the Picker's `shift+enter`):
 
-- **Binding literals**: FocusDV1 is `"d"`; FocusDV2 is bound as the literal `"D"`, not
-  `"shift+d"`. Bubble Tea v2's `Key.String()` returns the produced `Text` for a printable key
-  before falling back to `Keystroke()`, so a real Shift+D reports `"D"` and `"shift+d"` would
-  never match — same convention `Bottom`/`"G"` and `FindPrevious`/`"N"` already use. **M1.4/
-  M1.5's `shift+enter` is the opposite case**: `enter` is non-printable (no Text), so there
-  the modifier spelling `"shift+enter"` is the right literal — and D53's `L` fallback exists
-  because many terminals don't report it at all.
+- **Blocking-ish first**: TRIAGE **T3 (high)** — D53's `L` fallback cannot be reused in the
+  Picker. `handlePickerInput` (picker.go:715) matches bindings *before* falling through to
+  the always-typing Prompt, so binding a printable `L` there would swallow a literal "L"
+  from every query (S2/C2). M1.5 must decide: shift+enter-only in the Picker, or a
+  non-printable Picker-side fallback (`alt+enter`, `ctrl+l`). That is a decision, not an
+  implementation detail — take it before writing M1.5.
+- New bindings (`keymap.go`): `keys.ActivateDV2` = `"shift+enter"` + `"L"`, `keys.PeekDV2` =
+  `"P"`. Note the two literal conventions: `shift+enter` uses the modifier spelling (enter is
+  non-printable, no Text), `P` uses the produced character (same as `D`/`G`/`N`). Both are
+  matched in `Update`'s `filesPane` case beside the plain keys they modify — no global-switch
+  collisions (checked: nothing global binds L/P/shift+enter).
+- **The reusable half for M1.5**: `openDocumentInto(dv2Pane, d)` now does the DV2 creation
+  itself, via the new `model.ensureDV2()`. Creation *must* happen before `viewerFor(dv2Pane)`
+  is read (it falls back to DV1 while `dv2 == nil`, so the load would clone DV1's size/state).
+  So M1.5's Picker path is just `openDocumentInto(dv2Pane, d)` — nothing else to wire.
+- `ensureDV2` re-lays out via `resize(..., resizeCauseSecondViewer)` (new cause, "second
+  viewer opened"): without that the new viewer keeps `newViewer()`'s zero size and DV1 keeps
+  the full width it no longer owns. It also means creating DV2 can emit resize's existing
+  "…; search cleared" message when DV1 had a committed find — deliberate and honest (T43/T45
+  shape), not a bug.
+- Peek went per-target: `togglePeekInto(target)` (`togglePeek()` = the dv1Pane case),
+  `clearPeekIn(p)` for one viewer, and `clearPeek()` now clears **both** (setFocus/refresh are
+  viewer-agnostic triggers). Two peeks can coexist (DV1 + DV2) and toggle off independently.
+  Refusals (folder / empty pane / read error) are all checked *before* `ensureDV2`, so a
+  no-op never leaves an empty DV2 behind — pinned by test.
+- Hints: both new bindings added to `paneHints(filesPane)` (footer) and
+  `helpBindings(filesPane)` (help) only — Files-Nav-only, same treatment `keys.Peek` gets.
+  Also added to `allBindings()` in frame_test.go (field-count test).
+- Tests: new `cmd/noggin/target_test.go` (7 tests, reusing `peekFixture`). Verification:
+  `make check` + `make check-pty` pass; four mutations tried and all caught (drop ensureDV2 in
+  openDocumentInto → width assertions fail; clearPeek clearing only DV1; moving ensureDV2
+  before the refusal checks; activateInto ignoring its target).
+- Not done here, still M1.6's: DV1/DV2 Find/Edit/scroll independence.
+
+---
+
+Earlier (M1.3) context, still current: all four S5 focus-jump keys exist — `r`/`f` (C2a/M2.1)
+plus `keys.FocusDV1` and `keys.FocusDV2`.
+
 - `model.Update` short-circuits FocusDV2 on `m.dv2 == nil` *before* calling `focusPane`, so
   it is a genuine no-op (S5) rather than a `resolveFocus`/focusOrder fallback to some other
   pane. It never creates DV2 — creation is S3's job, i.e. M1.4/M1.5's targeting modifiers.
@@ -52,14 +84,7 @@ M1.3 done. All four S5 focus-jump keys now exist: `r`/`f` (unchanged, C2a/M2.1) 
   `TestFocusDV1AndDV2DoNotRevealHiddenNavigator`, `TestFocusDV1AndDV2InertWhilePickerIsOpen`.
   New bindings also added to `allBindings()` in frame_test.go (`TestEveryBindingIsCovered`
   counts keyMap fields, so any new binding must go there).
-- Verification: `make check` + `make check-pty` pass; both the DV2 no-op guard and the
-  Navigator-reveal gate were mutation-tested (reverted, confirmed the tests fail, restored).
-  A dispatched code review found no correctness bugs; its actionable leftovers are TRIAGE
-  T1/T2 (both low).
-- Next step: start M1.4 (Files Nav `shift+enter`/`L` and `shift+p` targeting DV2, creating it
-  first if absent). Use the already-general `openDocumentInto(dv2Pane, d)` rather than
-  reinventing targeting; note `togglePeek` is currently hardwired to `m.dv1` and will need a
-  target parameter for `shift+p`.
+- Its actionable leftovers are TRIAGE T1/T2 (both low).
 
 ## Status
 
@@ -68,7 +93,7 @@ M1.3 done. All four S5 focus-jump keys now exist: `r`/`f` (unchanged, C2a/M2.1) 
 | M1.1 | done   | -        | -         |      |
 | M1.2 | done   | -        | -         |      |
 | M1.3 | done   | 2026-08-08 | -       |      |
-| M1.4 | todo   | -        | -         |      |
+| M1.4 | done   | -        | -         |      |
 | M1.5 | todo   | -        | -         |      |
 | M1.6 | todo   | -        | -         |      |
 | M2.1 | todo   | -        | -         |      |

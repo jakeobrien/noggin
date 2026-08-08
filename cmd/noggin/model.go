@@ -260,6 +260,15 @@ func (m model) openDocumentInto(p pane, d document) model {
 	if p != dv2Pane {
 		p = dv1Pane
 	}
+	// S3's "creating DV2 first if it does not already exist": every load
+	// targeting DV2 routes through here (Files Nav's ActivateDV2, M1.5's
+	// Picker, an edit resumed on DV2), so creation lives here once rather
+	// than at each call site. It must happen *before* the read below:
+	// viewerFor(dv2Pane) falls back to DV1 while dv2 is nil, which would
+	// open d into a copy of DV1 (its size, scroll and Find state included).
+	if p == dv2Pane {
+		m = m.ensureDV2()
+	}
 	m = m.withViewerFor(p, m.viewerFor(p).open(d))
 	m = m.setFocus(m.resolveFocus(p))
 	// S10/C2a/M10.1: this is a fresh read of the Active Document, so it is
@@ -267,6 +276,22 @@ func (m model) openDocumentInto(p pane, d document) model {
 	// against from here on.
 	m = m.resetStaleBaseline()
 	return m
+}
+
+// ensureDV2 creates DV2 if it does not exist yet (S1: on demand, never by an
+// explicit "open a second viewer" action) and re-lays out the frame, which is
+// what splits the viewer region 50/50 (M1.2) and sizes both halves — a viewer
+// created without that step would carry newViewer()'s zero size, and DV1 would
+// keep drawing at the full width it no longer owns. A no-op once DV2 exists,
+// so callers can ask unconditionally. The new viewer starts empty: whatever
+// asked for it (a load, a peek) fills it immediately afterward.
+func (m model) ensureDV2() model {
+	if m.dv2 != nil {
+		return m
+	}
+	v := newViewer()
+	m.dv2 = &v
+	return m.resize(m.width, m.height, resizeCauseSecondViewer)
 }
 
 // setFocus moves Focus to p, clearing Peek (S7, M7.1) whenever Focus
@@ -294,6 +319,16 @@ func (m model) setFocus(p pane) model {
 // silent no-op (T15), the same "silence is not an error" shape as
 // activateRoot's own refusal below and S1's launch-time version of the rule.
 func (m model) activate() model {
+	return m.activateInto(dv1Pane)
+}
+
+// activateInto is activate's targeted form (C3/S3, M1.4): the Files Nav's
+// selected file loaded into target rather than always DV1 — dv2Pane when the
+// ActivateDV2 modifier (shift+enter / L) was used, dv1Pane for the plain key.
+// Every refusal above (folder, empty pane, read error) applies identically
+// whichever viewer is targeted, and is checked before openDocumentInto runs,
+// so a refused load never leaves a newly created, empty DV2 behind.
+func (m model) activateInto(target pane) model {
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
 		return m
@@ -303,7 +338,7 @@ func (m model) activate() model {
 		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
 		return m
 	}
-	return m.openDocument(d)
+	return m.openDocumentInto(target, d)
 }
 
 // activateRoot makes the Roots Nav's selected entry the active root,
@@ -451,35 +486,78 @@ func (m model) focusPane(target pane) model {
 // message, the same "silence is not an error" shape activate()'s own read
 // failure already gives.
 func (m model) togglePeek() model {
-	// S3: the unmodified key always targets DV1 (a later task adds shift+p's
-	// DV2 targeting) — hardwired to m.dv1, not the focused-viewer accessor,
+	// S3: the unmodified key always targets DV1 (shift+p targets DV2, see
+	// togglePeekInto) — an explicit target, not the focused-viewer accessor,
 	// since Peek's target is never "whichever pane has Focus" (Peek is
 	// Files-Nav-only by design, so Focus is never on a viewer pane here
 	// anyway).
-	if m.dv1.peeking() {
-		return m.clearPeek()
+	return m.togglePeekInto(dv1Pane)
+}
+
+// togglePeekInto is togglePeek's targeted form (C3/S3, M1.4): Peek routed to
+// target — dv2Pane under the PeekDV2 modifier (shift+p), creating DV2 first
+// if absent, dv1Pane for the plain key. Every rule togglePeek's own comment
+// lists is per-target here: the second-press toggle-off applies to the peek
+// living in *that* viewer (each viewer has its own Peek state, S2, so a peek
+// in DV1 and one in DV2 can coexist and are cleared independently), and the
+// Active-Document carve-out compares against that viewer's own document. DV2
+// is created only after every refusal has been cleared and the document has
+// actually loaded — a no-op must not leave an empty DV2 behind — and Focus
+// never moves either way (S3), so a freshly created DV2 shows its peek while
+// Focus stays in the Files Nav.
+func (m model) togglePeekInto(target pane) model {
+	if target != dv2Pane {
+		target = dv1Pane
+	}
+	// viewerFor falls back to DV1 while dv2 is nil, so every read of the
+	// target viewer below is gated on it actually existing.
+	exists := target == dv1Pane || m.dv2 != nil
+	if exists && m.viewerFor(target).peeking() {
+		return m.clearPeekIn(target)
 	}
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
 		return m
 	}
-	if m.dv1.doc.isOpen() && n.Path == m.dv1.doc.path {
-		return m
+	if exists {
+		if v := m.viewerFor(target); v.doc.isOpen() && n.Path == v.doc.path {
+			return m
+		}
 	}
 	d, err := loadDocument(n.Path)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
 		return m
 	}
-	m.dv1 = m.dv1.startPeek(d)
-	return m
+	if target == dv2Pane {
+		m = m.ensureDV2()
+	}
+	return m.withViewerFor(target, m.viewerFor(target).startPeek(d))
 }
 
-// clearPeek ends Peek (S7, M7.1) if it is active; a no-op otherwise. The
-// one place every clearing trigger but the Focus-change rule (setFocus) and
-// the second-p toggle (togglePeek) routes through — currently just
-// refresh(), per S7's own list.
+// clearPeek ends Peek (S7, M7.1) in both viewers if either is active; a
+// no-op otherwise. The one place every clearing trigger but the second-press
+// toggle (togglePeekInto, which clears only the viewer it was aimed at)
+// routes through: the Focus-change rule (setFocus) and refresh(), per S7's
+// own list. Both are viewer-agnostic events — Peek only ever lives while
+// Focus sits on the Files Nav, so a Focus change or a refresh ends every
+// peek on screen, DV2's included (S2 keeps the two peeks independent, it
+// does not exempt one from a global clearing trigger).
 func (m model) clearPeek() model {
+	m = m.clearPeekIn(dv1Pane)
+	return m.clearPeekIn(dv2Pane)
+}
+
+// clearPeekIn ends Peek in one viewer only; a no-op if that viewer is not
+// peeking or (for dv2Pane) does not exist.
+func (m model) clearPeekIn(p pane) model {
+	if p == dv2Pane {
+		if m.dv2 != nil {
+			v := m.dv2.clearPeek()
+			m.dv2 = &v
+		}
+		return m
+	}
 	m.dv1 = m.dv1.clearPeek()
 	return m
 }
@@ -777,6 +855,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, keys.Peek) {
 				return m.togglePeek(), nil
 			}
+			// C3/S3's targeting modifiers (M1.4), matched here beside the
+			// unmodified keys they modify: same actions, aimed at DV2 and
+			// creating it if absent. Neither can be confused with its plain
+			// twin — key.Matches compares the whole keystroke string, so
+			// "shift+enter"/"L" never match Activate's "enter" and "P"
+			// never matches Peek's "p".
+			if key.Matches(msg, keys.ActivateDV2) {
+				return m.activateInto(dv2Pane), nil
+			}
+			if key.Matches(msg, keys.PeekDV2) {
+				return m.togglePeekInto(dv2Pane), nil
+			}
 			// A selection change is one of Peek's clearing triggers (S7);
 			// Expand/Collapse leave the selected node itself unchanged
 			// (only the rows around it), so only LineUp/LineDown count.
@@ -820,6 +910,12 @@ type resizeCause string
 const (
 	resizeCauseWindow          resizeCause = "window resized"
 	resizeCauseNavigatorToggle resizeCause = "sidebar toggled"
+	// resizeCauseSecondViewer is ensureDV2's (C3/M1.4): creating DV2 halves
+	// the region DV1 was drawing in, which re-renders it exactly as a real
+	// resize would — including silently dropping a committed find, the
+	// case resize's messages exist to explain. Naming it separately keeps
+	// that explanation honest about what actually happened (T45).
+	resizeCauseSecondViewer resizeCause = "second viewer opened"
 )
 
 // resize sets the terminal size and re-lays-out the frame: resolving focus

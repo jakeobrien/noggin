@@ -161,6 +161,27 @@ type keyMap struct {
 	// must not treat this as query text.
 	ToggleHidden key.Binding
 
+	// ActivateDV2 and PeekDV2 are C3/S3's `shift+` targeting modifier on
+	// the Files Nav (C3/M1.4): the same load/peek the unmodified
+	// Activate/Peek perform, routed to DV2 instead of DV1 and creating DV2
+	// first if it does not exist. Both are Files-Nav-only for now, matched
+	// in Update's filesPane case beside the keys they modify (M1.5 gives
+	// ActivateDV2 its second home, the Picker's Activate). Focus behavior
+	// mirrors each unmodified key exactly: a load moves Focus to the viewer
+	// it loaded into, a peek never moves Focus.
+	//
+	// ActivateDV2 carries two keys, not one (D53): `shift+enter` is the
+	// primary chord, but terminals without Kitty-protocol `CSI u` or
+	// xterm's modifyOtherKeys send it byte-identical to plain `enter`, with
+	// no runtime signal noggin could detect and degrade on, so `L` ("load
+	// into DV2") is bound as a plain, always-deliverable alias. Note the
+	// literal spellings: `shift+enter` uses the modifier form because enter
+	// is non-printable and carries no Text, whereas PeekDV2's shifted
+	// letter is spelled as the character it produces, "P" — the same
+	// convention Bottom/"G", FindPrevious/"N" and FocusDV2/"D" already use.
+	ActivateDV2 key.Binding
+	PeekDV2     key.Binding
+
 	// Peek (S7, M7.1) shows the Files Nav's selected document in the
 	// Document Viewer without making it the Active Document and without
 	// moving Focus off the Files Nav — Files-Nav-only, unlike every other
@@ -303,5 +324,13 @@ var keys = keyMap{
 	Peek: key.NewBinding(
 		key.WithKeys("p"),
 		key.WithHelp("p", "peek"),
+	),
+	ActivateDV2: key.NewBinding(
+		key.WithKeys("shift+enter", "L"),
+		key.WithHelp("shift+enter/L", "open in dv2"),
+	),
+	PeekDV2: key.NewBinding(
+		key.WithKeys("P"),
+		key.WithHelp("P", "peek in dv2"),
 	),
 }
