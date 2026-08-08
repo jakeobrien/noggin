@@ -43,6 +43,23 @@ type layout struct {
 // too narrow to carry one.
 func (l layout) navigatorWidth() int { return l.roots.width }
 
+// splitViewer divides l.viewer into DV1's and DV2's regions (C3/M1.2, S1):
+// a fixed 50/50 left-right split, DV1 first, when dv2Exists; DV1 alone at
+// the full region, DV2 the zero rect, otherwise. D54: no minimum-width
+// guard — each half always gets its exact share of the width, however
+// narrow, unlike the Navigator column's own minNavigatorWidth/
+// minViewerWidth floor. An odd viewer width rounds DV1's half up and DV2's
+// down, so the two always sum to l.viewer.width exactly rather than losing
+// a column to integer division; both share l.viewer's height unchanged.
+func (l layout) splitViewer(dv2Exists bool) (dv1, dv2 rect) {
+	if !dv2Exists {
+		return l.viewer, rect{}
+	}
+	dv1Width := (l.viewer.width + 1) / 2
+	dv2Width := l.viewer.width - dv1Width
+	return rect{width: dv1Width, height: l.viewer.height}, rect{width: dv2Width, height: l.viewer.height}
+}
+
 // content is the box a pane's contents get: its region less border and title.
 func (r rect) content() rect {
 	return rect{

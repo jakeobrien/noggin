@@ -161,6 +161,76 @@ func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 	}
 }
 
+// TestSplitViewerEqualHalvesWhenDV2Exists is C3/M1.2's own layout test:
+// splitViewer divides the viewer region into two regions summing to its
+// full width, equal or off by exactly one column (D54: no minimum-width
+// guard, so this holds at any size), and unchanged height.
+func TestSplitViewerEqualHalvesWhenDV2Exists(t *testing.T) {
+	for _, s := range frameSizes {
+		t.Run(s.name, func(t *testing.T) {
+			l := computeLayout(s.width, s.height, false)
+			dv1, dv2 := l.splitViewer(true)
+
+			if got := dv1.width + dv2.width; got != l.viewer.width {
+				t.Errorf("dv1 width %d + dv2 width %d = %d, want %d", dv1.width, dv2.width, got, l.viewer.width)
+			}
+			if diff := dv1.width - dv2.width; diff < 0 || diff > 1 {
+				t.Errorf("dv1 width %d, dv2 width %d: not equal or off by one", dv1.width, dv2.width)
+			}
+			if dv1.height != l.viewer.height || dv2.height != l.viewer.height {
+				t.Errorf("dv1/dv2 height = %d/%d, want both %d", dv1.height, dv2.height, l.viewer.height)
+			}
+		})
+	}
+}
+
+// TestSplitViewerDV1FullWidthWithoutDV2 confirms the other half of C3/M1.2:
+// DV1 takes the whole viewer region, and DV2's is the zero rect, when DV2
+// does not exist.
+func TestSplitViewerDV1FullWidthWithoutDV2(t *testing.T) {
+	for _, s := range frameSizes {
+		t.Run(s.name, func(t *testing.T) {
+			l := computeLayout(s.width, s.height, false)
+			dv1, dv2 := l.splitViewer(false)
+
+			if dv1 != l.viewer {
+				t.Errorf("dv1 = %+v, want the full viewer region %+v", dv1, l.viewer)
+			}
+			if !dv2.empty() {
+				t.Errorf("dv2 = %+v, want empty", dv2)
+			}
+		})
+	}
+}
+
+// TestFrameRendersBothViewersWhenDV2Exists drives the split through the
+// actual model/frame path (rather than the pure layout function above):
+// once DV2 exists, both panes render their own title in the body row,
+// and the frame's overall width/height are unaffected.
+func TestFrameRendersBothViewersWhenDV2Exists(t *testing.T) {
+	m := sized(t, newModel(), frameSizes[0].width, frameSizes[0].height)
+	m = m.withViewerFor(dv2Pane, newViewer())
+	m = sized(t, m, frameSizes[0].width, frameSizes[0].height) // re-lay-out now that dv2 exists
+
+	view := m.View().Content
+	if got := lipgloss.Height(view); got != frameSizes[0].height {
+		t.Errorf("view height = %d, want %d", got, frameSizes[0].height)
+	}
+	for i, line := range strings.Split(view, "\n") {
+		if got := lipgloss.Width(line); got != frameSizes[0].width {
+			t.Errorf("line %d width = %d, want %d", i, got, frameSizes[0].width)
+		}
+	}
+
+	titleRow := strings.Split(view, "\n")[1]
+	if got := strings.Count(titleRow, dv1Pane.title()); got != 2 {
+		t.Errorf("title row contains %q %d times, want 2 (DV1 and DV2 each draw one)", dv1Pane.title(), got)
+	}
+	if !m.visible(dv2Pane) {
+		t.Error("dv2Pane not visible once dv2 exists at this size")
+	}
+}
+
 func TestQuitBindings(t *testing.T) {
 	for _, k := range keys.Quit.Keys() {
 		m := sized(t, newModel(), 80, 24)

@@ -814,10 +814,9 @@ func (m model) resize(width, height int, cause resizeCause) model {
 	m.width, m.height = width, height
 	m = m.setFocus(m.resolveFocus(m.focus))
 	l := m.layout()
-	viewerContent := l.viewer.content()
-	// M1.1: DV2 does not exist yet, so only DV1 is sized/checked here — a
-	// later task (M1.2's layout split) extends this to DV2 too. A width
-	// change re-renders the viewer (setSize), and a re-render
+	dv1Rect, dv2Rect := l.splitViewer(m.dv2 != nil)
+	viewerContent := dv1Rect.content()
+	// A width change re-renders the viewer (setSize), and a re-render
 	// silently drops any find in progress (viewer.render's doc comment) --
 	// fine when nothing was actively being typed, but a query mid-edit
 	// vanishing with no explanation violates S1/S8's "confusion is not
@@ -847,6 +846,15 @@ func (m model) resize(width, height int, cause resizeCause) model {
 		m.message = fmt.Sprintf("%s; search dismissed", cause)
 	case findHadMatches && !m.dv1.hasFindMatches():
 		m.message = fmt.Sprintf("%s; search cleared", cause)
+	}
+	// M1.2: DV2, when it exists, is sized from its own half of the split —
+	// no find/message handling here yet (that lands with M1.3's focus-jump
+	// key and M1.6's per-viewer Find independence; DV2 cannot hold an
+	// in-progress find before either exists).
+	if m.dv2 != nil {
+		dv2Content := dv2Rect.content()
+		v := (*m.dv2).setSize(dv2Content.width, dv2Content.height)
+		m.dv2 = &v
 	}
 	filesContent := l.files.content()
 	m.files = m.files.setSize(filesContent.width, filesContent.height)
@@ -881,13 +889,17 @@ func (m model) visible(p pane) bool {
 	case filesPane:
 		return !l.files.empty()
 	case dv2Pane:
-		// M1.1: DV2 is never visible yet — it does not exist (m.dv2 is always
-		// nil until a later task creates it), which alone is enough to gate
-		// this regardless of l.viewer (M1.2's layout split has not happened
-		// either, so there is no dedicated DV2 rect yet to check).
-		return m.dv2 != nil && !l.viewer.empty()
+		// DV2 is visible once it exists (m.dv2 non-nil — still never true
+		// before a later task creates it) and its half of the split
+		// (splitViewer) is non-empty.
+		if m.dv2 == nil {
+			return false
+		}
+		_, dv2Rect := l.splitViewer(true)
+		return !dv2Rect.empty()
 	default: // dv1Pane
-		return !l.viewer.empty()
+		dv1Rect, _ := l.splitViewer(m.dv2 != nil)
+		return !dv1Rect.empty()
 	}
 }
 
@@ -958,10 +970,11 @@ func (m model) frame() string {
 	}
 	l := m.layout()
 
-	// M1.1: DV2 does not exist yet, so the viewer region renders DV1 alone
-	// — a later task (M1.2) splits l.viewer into a DV1/DV2 pair and renders
-	// both here.
-	body := m.renderPane(dv1Pane, l.viewer, m.dv1.view())
+	dv1Rect, dv2Rect := l.splitViewer(m.dv2 != nil)
+	body := m.renderPane(dv1Pane, dv1Rect, m.dv1.view())
+	if m.dv2 != nil {
+		body = lipgloss.JoinHorizontal(lipgloss.Top, body, m.renderPane(dv2Pane, dv2Rect, m.dv2.view()))
+	}
 	if l.navigatorWidth() > 0 {
 		navigator := lipgloss.JoinVertical(lipgloss.Left,
 			m.renderPane(rootsPane, l.roots, m.roots.view()),
