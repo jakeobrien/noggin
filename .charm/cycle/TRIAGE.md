@@ -1,4 +1,4 @@
-# Triage — C2a polish
+# Triage — C3 compare
 
 <!-- Per-cycle triage INBOX for actionable items surfaced out-of-band: code-review and
      validate findings, bugs / in-scope issues discovered during build that were not
@@ -25,25 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-<!-- All items triaged 2026-08-09. Routed to: PLAN.md M7.3 (T13/T14/T16), M8.2 (T18),
-     M11.1 (T1/T6/T15), M12.1 (T2/T4/T5/T7/T17); fixed directly (T8: D46 addendum; T10:
-     stray D58 citation dropped); DECISIONS.md wontfix/documented (D50: T12, plus T7's
-     coverage note; D52: T3/T9/T11). See PROGRESS.md Handoff for the full mapping. -->
-
-<!-- T19 triaged 2026-08-09 (replan): routed to PLAN.md M11.2, a one-line follow-on to
-     M11.1's already-established README-sync scope. Inbox empty. -->
-
-<!-- T20 triaged 2026-08-09 (replan): low risk x value (mechanical test-style nit, no
-     behavior change) — fixed directly rather than routed to a plan task, mirroring T8/T10's
-     precedent. peek_find_test.go's n/N presses normalized to keys.FindNext.Keys()[0]/
-     keys.FindPrevious.Keys()[0], matching picker_test.go's convention. find_test.go's own
-     raw "n"/"N" usage is untouched (out of scope: T20 only flagged peek_find_test.go, and
-     find_test.go predates this cycle) — the two-convention split there is now the accepted
-     state, not revisited. `go test` and `make check` verified green after the change. Inbox
-     empty; cycle can close. -->
-
-<!-- T1 triaged 2026-08-10 (replan): user report ("background monitoring... does not seem to
-     be working", S10/M10.1) investigated live via researcher + validator subagents rather
-     than added to the table then immediately cleared. High value, non-blocking, real bug
-     (footer-width rendering, not the detection engine) — accepted straight to PLAN.md M10.2;
-     see DECISIONS.md D53. Inbox empty. -->
+| T1 | review | high | `src/foo.ts:42` | <one-line description + concrete recommendation> | open |

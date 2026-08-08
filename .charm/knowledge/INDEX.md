@@ -39,3 +39,7 @@
   `Width(...).MaxWidth(...)` wraps before it truncates, and a partial styled run inside a
   reverse-video row needs its style fully specified or the row's reverse video gets cancelled
   mid-line; cited by `cmd/noggin/picker_view.go`. (as of C2)
+- `pty-harness-escape-sequences.md` — the pty harness's `Screen` emulator didn't handle bare
+  `ESC M`/`ESC D` (RI/IND), which any redraw repositioning the cursor by exactly one row (e.g.
+  two-line rows) provokes; symptom is indistinguishable from a real rendering bug. Reread
+  before adding pty coverage for such a redraw. (as of C2a)
