@@ -21,7 +21,10 @@ import (
 // it), so it gets the same "inapplicable binding" treatment as the viewer
 // case's FindNext/FindPrevious/Cancel below rather than FocusDV1's
 // unconditional one — S12's help modal is its discoverability backstop
-// instead (help.go's helpBindings does list it, always). Peek (S7) and
+// instead (help.go's helpBindings does list it, always). CloseDV2 (S4,
+// C3/M2.1) gets the identical omission for the identical reason: also a
+// no-op whenever DV2 does not exist, also backstopped by the help modal
+// instead. Peek (S7) and
 // C3/S3's two targeting modifiers, ActivateDV2/PeekDV2 (C3/M1.4), are
 // Files-Nav-only by design, so they appear only in filesPane's list, not the
 // other two — a hint for an inapplicable binding is worse than no hint, the

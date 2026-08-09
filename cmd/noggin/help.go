@@ -40,7 +40,10 @@ import (
 // FindNext/FindPrevious/Cancel usually are with no search active, but this
 // modal is exactly the discoverability backstop those bindings' own comment
 // (and this one) promises — so, like them, it is listed unconditionally
-// even though the terser footer omits it. keys.Peek (S7) and C3/S3's two
+// even though the terser footer omits it. keys.CloseDV2 (S4, C3/M2.1)
+// joins it for the identical reason: also usually a no-op with DV2 absent,
+// also listed unconditionally here as its own discoverability backstop.
+// keys.Peek (S7) and C3/S3's two
 // targeting modifiers, keys.ActivateDV2/keys.PeekDV2 (C3/M1.4), are added
 // only to filesPane, since all three are Files-Nav-only by design — listing
 // them for rootsPane/dv1Pane/dv2Pane would document bindings those panes can
@@ -52,7 +55,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Activate, keys.Star, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.Refresh,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,
 		}
 	case filesPane:
@@ -60,12 +63,12 @@ func helpBindings(p pane) []key.Binding {
 			keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.Refresh, keys.Peek,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.Peek,
 			keys.ActivateDV2, keys.PeekDV2,
 			keys.Help, keys.Quit,
 		}
 	default: // dv1Pane, dv2Pane
-		bindings := make([]key.Binding, 0, len(scrollActions)+19)
+		bindings := make([]key.Binding, 0, len(scrollActions)+20)
 		for _, a := range scrollActions {
 			bindings = append(bindings, a.binding)
 		}
@@ -73,7 +76,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
 			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.Refresh,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,
 		)
 	}

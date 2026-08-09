@@ -25,6 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T10 | build | med | test/pty/checks.py:1 | No pty coverage for `ctrl+x` (CloseDV2, S4/C3/M2.1) — M1.7 added pty coverage for the four C3 chords that existed at the time (ctrl+enter/ctrl+l/ctrl+p/ctrl+o) but CloseDV2 postdates it; unit coverage exists (close_dv2_test.go) but the real-binary pty path does not. | open |
 
 <!-- T1 (review, .gitignore:2, low): fixed directly this session per the effort-scaling rule
      (one-line, low-risk) rather than routed through a plan task — /cmd/noggin/noggin added

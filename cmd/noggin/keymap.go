@@ -98,6 +98,18 @@ type keyMap struct {
 	FocusDV1 key.Binding
 	FocusDV2 key.Binding
 
+	// CloseDV2 (S4, C3/M2.1) closes DV2: `ctrl+x`, global like FocusDV1/
+	// FocusDV2 — reachable from any pane's Focus, including DV1/DV2
+	// themselves — but, unlike them, never matched while a modal (Picker,
+	// Help Modal) owns the keyboard (S4's own carve-out; enforced the same
+	// way Navigator/Edit/Find already are, by living in model.Update's
+	// global switch, which those gates short-circuit before reaching). A
+	// genuine no-op if DV2 does not exist, the same shape FocusDV2 already
+	// has, for the same reason: nothing to close. When it does exist and
+	// closes, Focus moves to DV1 if DV2 held it, otherwise Focus is left
+	// exactly where it was (S4) — model.closeDV2's own doc comment.
+	CloseDV2 key.Binding
+
 	// Refresh re-reads the Active Root's file tree and the Active Document
 	// from disk on demand (S2, C2a/M5.1): global, like Edit/Find/Navigator,
 	// reachable from every pane. model.refresh preserves Files Nav
@@ -286,6 +298,10 @@ var keys = keyMap{
 	FocusDV2: key.NewBinding(
 		key.WithKeys("ctrl+o"),
 		key.WithHelp("ctrl+o", "dv2"),
+	),
+	CloseDV2: key.NewBinding(
+		key.WithKeys("ctrl+x"),
+		key.WithHelp("ctrl+x", "close dv2"),
 	),
 	Refresh: key.NewBinding(
 		key.WithKeys("R"),

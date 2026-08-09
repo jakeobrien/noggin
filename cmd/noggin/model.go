@@ -294,6 +294,29 @@ func (m model) ensureDV2() model {
 	return m.resize(m.width, m.height, resizeCauseSecondViewer)
 }
 
+// closeDV2 is S4/C3/M2.1's `ctrl+x` binding: closes DV2, a no-op if it does
+// not exist (mirroring FocusDV2's own "a bare request has no document to
+// create/close" shape). Focus is set to dv1Pane directly (not through
+// resolveFocus's generic focusOrder fallback) when it was on dv2Pane: DV2 no
+// longer being visible would otherwise make resolveFocus(dv2Pane) fall back
+// through rootsPane/filesPane/dv1Pane, landing wherever the Navigator
+// happens to be visible rather than S4's unconditional "Focus moves to DV1".
+// Any other Focus is left untouched, matching S4 exactly. Routing the actual
+// re-layout through resize() (the same path ensureDV2 drives, going the
+// other way) is what gives DV1 back the full viewer width and re-renders it
+// at that width — dropping (and reporting) any find in progress the same
+// way any other width change already does, rather than a special case here.
+func (m model) closeDV2() model {
+	if m.dv2 == nil {
+		return m
+	}
+	m.dv2 = nil
+	if m.focus == dv2Pane {
+		m = m.setFocus(dv1Pane)
+	}
+	return m.resize(m.width, m.height, resizeCauseViewerClosed)
+}
+
 // setFocus moves Focus to p, clearing Peek (S7, M7.1) whenever Focus
 // actually changes. Peek only ever lives while Focus sits on the Files Nav
 // (see togglePeek, the only place that starts it), so every one of the
@@ -804,6 +827,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m.focusPane(dv2Pane), nil
+		// CloseDV2 (S4, C3/M2.1) lives in this global switch, not a pane-
+		// specific case, so it is reachable from every one of Roots Nav/Files
+		// Nav/DV1/DV2 — and, like every other binding in this switch, already
+		// unreachable while a find is editing, the Help Modal is open or the
+		// Picker is open, per the three gates above that return before this
+		// switch ever runs.
+		case key.Matches(msg, keys.CloseDV2):
+			return m.closeDV2(), nil
 		case key.Matches(msg, keys.Refresh):
 			return m.refresh(), nil
 		case key.Matches(msg, keys.Help):
@@ -917,6 +948,11 @@ const (
 	// case resize's messages exist to explain. Naming it separately keeps
 	// that explanation honest about what actually happened (T45).
 	resizeCauseSecondViewer resizeCause = "second viewer opened"
+	// resizeCauseViewerClosed is closeDV2's (S4, C3/M2.1): the mirror image
+	// of resizeCauseSecondViewer — closing DV2 gives DV1 back the full
+	// viewer width, the same kind of width change that can silently drop a
+	// find in progress, so it is named separately for the same reason.
+	resizeCauseViewerClosed resizeCause = "second viewer closed"
 )
 
 // resize sets the terminal size and re-lays-out the frame: resolving focus
