@@ -123,8 +123,9 @@ type model struct {
 	// (C2a/M10.1, staleness.go): the "known good" snapshot the disk is
 	// compared against, the generation that invalidates a check dispatched
 	// against a since-superseded baseline, and whether the last check found
-	// a mismatch. Never mutated by anything but resetStaleBaseline and
-	// runStaleCheck/applyStaleResult — see their own doc comments.
+	// a mismatch. Never mutated by anything but resetStaleBaseline,
+	// runStaleCheck/applyStaleResult, and closeDV2's sanctioned withoutDoc
+	// prune (C3/M2.1b) — see their own doc comments.
 	staleBaseline staleBaseline
 	staleGen      int
 	stale         bool

@@ -20,7 +20,10 @@ const staleMessage = "something changed on disk; press R to refresh"
 // staleBaseline is the "known good" snapshot a periodic check compares the
 // disk against (S10, C2a/M10.1; S7/C3/M5.2 extends it to both viewers):
 // established fresh every time the Active Root's tree or a viewer's Active
-// Document is (re)loaded (openFolder, openDocumentInto, refresh), never
+// Document is (re)loaded (openFolder, openDocumentInto, refresh). The one
+// sanctioned exception is closeDV2 (C3/M2.1b), which mutates it directly via
+// withoutDoc to prune DV2's former document the instant it stops being
+// visible, rather than waiting for the next full reset — otherwise never
 // touched in between.
 //
 // dirModTimes is one os.Stat per directory the already-loaded tree knows
