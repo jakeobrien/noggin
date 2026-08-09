@@ -17,26 +17,29 @@
 
 ## Cursor
 
-Current task: M1.7
+Current task: M2.1
 
 ## Handoff
 
-M1.6a is done (this session): extended `resize()`'s find-dropped message to DV2
-symmetrically (TRIAGE T5). `model.go`'s `resize` now captures each viewer's own
-findWasEditing/findHadMatches before its `setSize` call, derives a `dv1Drop`/`dv2Drop`
-string per viewer ("", "search dismissed" or "search cleared"), then combines them into
-`m.message` per D59: DV1's wording stays exactly as it was (unprefixed) when DV2 drops
-nothing — every pre-existing resize-message test asserting the literal text still passes
-unchanged — DV2's drop is always named explicitly ("dv2 search cleared"/"dv2 search
-dismissed", lowercase per D57's hint-style precedent), and a same-resize double drop joins
-as `"<cause>; dv1 <drop>, dv2 <drop>"`. Added two tests to `find_test.go`:
-`TestWindowResizeDropsDV2FindOnlyNamesDV2` (DV2 alone drops, message names dv2 and not dv1)
-and `TestWindowResizeDroppingBothViewersFindsNamesBoth` (distinct committed finds in both
-viewers, one resize, message names both). `make check` and `make check-pty` both pass.
+M1.7 is done (this session, TRIAGE T6): added the four C3 chords to `test/pty/checks.py`'s
+`KEY` table — `ActivateDV2CtrlEnter` (`\x1b[13;5u`, the CSI u form; see
+`cycle/findings/pty-ctrl-enter-encoding.md` for why a raw byte can't stand in for
+`ctrl+enter` here), `ActivateDV2CtrlL` (`\x0c`), `PeekDV2` (`\x10`), `FocusDV2` (`\x0f`) —
+and a new "C3/M1.7" pty section exercising all four against a 3-file fixture
+(alpha/bravo/charlie.md): ctrl+enter creates+focuses DV2 with the Files Nav selection;
+ctrl+l (fallback) does the same, replacing DV2's content; ctrl+p Peeks into DV2 without
+moving Focus; ctrl+o moves Focus to DV2, which also clears the Peek per S7's own
+Focus-change rule (verified against the model layer's `peek_clear_test.go`) and is
+confirmed by a subsequent `G` scroll landing on DV2, not DV1. Since DV1 and DV2 share the
+same pane title ("Document"), the checks disambiguate by content/scroll behaviour instead
+of the footer's pane name. Verified the checks actually bite by regression injection: 
+temporarily dropping `ctrl+o` from `keys.FocusDV2` failed exactly the two checks built on
+it; temporarily dropping `ctrl+enter` from `keys.ActivateDV2`'s key list (leaving
+`ctrl+l`) failed exactly the two built on the CSI u KEY entry — both reverted clean.
+`make check` and `make check-pty` both pass.
 
-Next: **M1.7** — extend `test/pty/harness.py`'s `KEY` table and `checks.py` with entries for
-the four C3 chords (`ctrl+enter`, `ctrl+l`, `ctrl+p`, `ctrl+o`) and at least one pty check
-driving `ctrl+enter` to create-and-focus DV2 and `ctrl+o` to focus it.
+Next: **M2.1** — bind `ctrl+x` globally (any pane's Focus, not while Picker or Help Modal
+owns the keyboard) to close DV2.
 
 ## Status
 
@@ -51,7 +54,7 @@ driving `ctrl+enter` to create-and-focus DV2 and `ctrl+o` to focus it.
 | M1.5 | done   | 2026-08-09 | 2026-08-09 |      |
 | M1.6 | done   | 2026-08-09 | 2026-08-09 |      |
 | M1.6a| done   | -        | -         | TRIAGE T5, D59 |
-| M1.7 | todo   | -        | -         | TRIAGE T6 |
+| M1.7 | done   | -        | -         | TRIAGE T6 |
 | M2.1 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |
 | M4.1 | todo   | -        | -         |      |

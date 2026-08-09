@@ -51,6 +51,24 @@ KEY = {
     "PickerMode":   b"\t",      # keys.PickerMode: tab (still bound, Picker-only)
     "PickerScope":  b"\x1b[Z",  # keys.PickerScope: shift+tab (still bound, Picker-only)
     "ToggleHidden": b"\x1bh",   # keys.ToggleHidden: alt+h (ESC h on the wire)
+
+    # C3/M1.7 (TRIAGE T6): keys.ActivateDV2's two keys, keys.PeekDV2 and
+    # keys.FocusDV2 — none had pty coverage until now. ctrl+l/ctrl+p/ctrl+o
+    # are plain C0 control bytes (ctrl+<letter> = ord(letter) & 0x1f), the
+    # same encoding every other ctrl+ entry above already uses. ctrl+enter
+    # is different: without Kitty/CSI-u/modifyOtherKeys negotiated (this
+    # harness's handshake answers neither, see harness.py's REPLIES), a real
+    # terminal sends it byte-identical to plain enter (D53/D55's own keymap.go
+    # comment) — there is no C0 byte for it. What a terminal that *does*
+    # support the protocol sends, and what ultraviolet's EventDecoder.parseCsi
+    # decodes unconditionally (not gated on whatever the DECRQM/flags query
+    # answered), is the CSI u form: `\x1b[13;5u` — 13 is Enter's Kitty keycode,
+    # 5 is "ctrl" (1 + the ctrl bit, 4) — so this is the one chord in the table
+    # that is a multi-byte escape rather than a single control byte.
+    "ActivateDV2CtrlEnter": b"\x1b[13;5u",  # keys.ActivateDV2, primary: ctrl+enter (CSI u)
+    "ActivateDV2CtrlL":     b"\x0c",        # keys.ActivateDV2, fallback: ctrl+l
+    "PeekDV2":              b"\x10",        # keys.PeekDV2: ctrl+p
+    "FocusDV2":             b"\x0f",        # keys.FocusDV2: ctrl+o
 }
 
 
@@ -1406,5 +1424,84 @@ check("C2a/M10.2 pty: the stale indicator surfaces at 80 cols within one check i
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M10.2 pty: exits 0 after the realistic-width stale indicator check", code == 0, f"exit {code}")
+
+# --- C3/M1.7 (TRIAGE T6): the four C3 chords reach the real binding --------
+# target_test.go/picker_target_test.go/focus_test.go already cover
+# keys.ActivateDV2/PeekDV2/FocusDV2 exhaustively at the model layer; what was
+# missing (TRIAGE T6) is any check that the actual bytes these chords put on
+# the wire land on the right binding. DV1 and DV2 share the same pane title
+# ("Document"), so unlike every other pty focus check in this file, this one
+# distinguishes DV1 from DV2 by content and by scroll behaviour (G only
+# visibly moves the pane it targets) rather than by the footer's pane name.
+
+c3_root = tempfile.mkdtemp()
+c3_docs = {"alpha": "Alpha", "bravo": "Bravo", "charlie": "Charlie"}
+for name, label in c3_docs.items():
+    with open(os.path.join(c3_root, f"{name}.md"), "w") as f:
+        f.write("\n".join(f"- {label} {i:02d}" for i in range(1, 26)) + "\n")
+# Sorted by name: alpha.md, bravo.md, charlie.md — Files Nav opens on alpha.
+
+s = Session([BINARY, c3_root], 80, 24)
+s.pump(1.2)
+s.send(KEY["Activate"], 0.5)   # alpha.md -> DV1, focus -> dv1Pane
+s.send(KEY["FocusFiles"], 0.4)
+s.send(KEY["Down"], 0.4)       # select bravo.md
+
+s.send(KEY["ActivateDV2CtrlEnter"], 0.6)  # ctrl+enter: create+load DV2, focus -> dv2Pane
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M1.7 pty: ctrl+enter creates DV2 with the selected file",
+      "Bravo 01" in body, repr(body[:400]))
+check("C3/M1.7 pty: ctrl+enter leaves DV1's own Active Document alone",
+      "Alpha 01" in body, repr(body[:400]))
+
+s.send(KEY["Bottom"], 0.6)  # G only shows movement if focus actually landed on DV2
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M1.7 pty: ctrl+enter moves focus to DV2 (G scrolls DV2, not DV1)",
+      "Bravo 25" in body and "Alpha 01" in body, repr(body[:400]))
+
+s.send(KEY["FocusFiles"], 0.4)
+s.send(KEY["Down"], 0.4)  # select charlie.md
+
+s.send(KEY["ActivateDV2CtrlL"], 0.6)  # ctrl+l: the fallback, same effect as ctrl+enter
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M1.7 pty: ctrl+l (fallback) loads the selection into the existing DV2",
+      "Charlie 01" in body, repr(body[:400]))
+check("C3/M1.7 pty: ctrl+l leaves DV1's own Active Document alone",
+      "Alpha 01" in body, repr(body[:400]))
+
+s.send(KEY["Bottom"], 0.6)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M1.7 pty: ctrl+l also moves focus to DV2 (G scrolls DV2, not DV1)",
+      "Charlie 25" in body and "Alpha 01" in body, repr(body[:400]))
+
+s.send(KEY["FocusFiles"], 0.4)
+s.send(KEY["Up"], 0.4)  # back from charlie to bravo
+
+s.send(KEY["PeekDV2"], 0.6)  # ctrl+p: peek bravo into DV2, Focus stays on Files
+sc = screen_of(s.out, 80, 24)
+body = "\n".join(sc.raw_lines())
+footer = sc.lines()[-1]
+check("C3/M1.7 pty: ctrl+p peeks the selection into DV2 without moving focus",
+      footer.split(" ·")[0] == "Files", repr(footer))
+check("C3/M1.7 pty: ctrl+p's Peek shows the selected file's content in DV2",
+      "Bravo 01" in body, repr(body[:400]))
+check("C3/M1.7 pty: ctrl+p names the Peeked document in DV2's title",
+      "Peek: bravo.md" in body, repr(body[:400]))
+check("C3/M1.7 pty: ctrl+p leaves DV2's own Active Document (charlie) reachable underneath",
+      "Alpha 01" in body, repr(body[:400]))
+
+s.send(KEY["FocusDV2"], 0.6)  # ctrl+o: Focus -> dv2Pane; a Focus change clears Peek (S7)
+sc = screen_of(s.out, 80, 24)
+body = "\n".join(sc.raw_lines())
+check("C3/M1.7 pty: ctrl+o moves focus to DV2, clearing the Peek back to its Active Document",
+      "Document: charlie.md" in body and "Peek:" not in body, repr(body[:400]))
+
+s.send(KEY["Bottom"], 0.6)  # confirms Focus is really on DV2 now, not just Peek-cleared in place
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M1.7 pty: ctrl+o really lands focus on DV2 (G scrolls DV2, not DV1)",
+      "Charlie 25" in body and "Alpha 01" in body, repr(body[:400]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C3/M1.7 pty: exits 0 after exercising all four C3 chords", code == 0, f"exit {code}")
 
 done()
