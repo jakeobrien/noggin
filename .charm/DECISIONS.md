@@ -691,6 +691,43 @@
   now; recorded so a fresh session doesn't re-raise them as new findings.
 
 
+## D57: `dv1`/`dv2` in help/hint strings stay lowercase (TRIAGE T8)
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: review flagged that `FocusDV1`/`FocusDV2`/`ActivateDV2`/`PeekDV2`'s help strings
+  (`keymap.go`) use lowercase `dv1`/`dv2` ("open in dv2", "peek in dv2") — the only place these
+  terms surface user-facing — while GLOSSARY.md capitalizes them (`DV1`/`DV2`) as proper
+  nouns, and the panes are titled "Document" in the UI, so neither casing is directly
+  attested elsewhere.
+- Decision: keep lowercase, as-is. Footer hints and the Help Modal already use a uniform
+  lowercase terse style for every other binding ("roots", "files", "refresh", "edit",
+  "find") regardless of how a term is cased in prose (GLOSSARY, SPEC, PLAN); capitalizing
+  just `dv1`/`dv2` would make them the only capitalized hint in that list, a worse
+  inconsistency than diverging from GLOSSARY's prose casing.
+- Why: low risk and low value either way (cosmetic, four strings); the hint-style
+  consistency argument favors as-is over a change, and this is now recorded so review
+  doesn't re-raise it as a fresh finding.
+
+## D58: Degraded-terminal `ctrl+enter` fallback stays undocumented in README/Help (TRIAGE T9)
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: validate flagged that a terminal sending `ctrl+enter` byte-identical to plain
+  `enter` (D53/D55's known degradation on terminals without Kitty-protocol/CSI-u/
+  modifyOtherKeys support) silently targets DV1 instead of DV2, with no README or Help
+  Modal text explaining why or naming the `ctrl+l` fallback as the workaround.
+- Decision: not worth surfacing this cycle. `ctrl+l` is already named alongside
+  `ctrl+enter` everywhere the binding appears (footer hint, Help Modal, D55), so a user who
+  tries the compact hint's alternate chord is not left without a path — the gap is
+  explaining *why* `ctrl+enter` alone didn't work, which is a narrower, lower-value need
+  than discoverability of the fallback itself.
+- Why: low risk (no functional gap, both chords already work identically) and low value
+  relative to the cost of writing and maintaining terminal-capability caveats in
+  user-facing docs for an edge case; revisit if a real user reports confusion.
+
 ## D53: shift+enter's terminal disambiguation is unverified — open, deferred to build
 
 - Status: decided

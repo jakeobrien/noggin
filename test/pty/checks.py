@@ -988,7 +988,7 @@ check("M5.3 exits 0 after a help round-trip", code == 0, f"exit {code}")
 
 # Opens over the Document Viewer too, with the viewer's own context (search
 # keys, not Files/Roots-only ones), proving "any pane" rather than one.
-# Height 36, not 24 (TRIAGE T17): helpBindings(viewerPane)'s list renders a
+# Height 36, not 24 (TRIAGE T17): helpBindings(dv1Pane)'s list renders a
 # 31-row box (8 scrollActions + 19 explicit bindings + title/blank + border),
 # taller than the Files-pane block's own 25-row box above and taller than a
 # 24-row terminal fits. A 24-row session let this block pass only by luck —

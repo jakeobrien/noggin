@@ -65,6 +65,19 @@ Delivers: S1, S2, S3, S5, S6
   scroll against whichever holds Focus, and confirms the other viewer's document, Find state
   and scroll position are untouched, in both directions — effort: 3 (needs: M1.1, M1.4)
 
+- **M1.6a** — Extend `resize()`'s find-dropped message (`"…; search cleared"`/`"…; search
+  dismissed"`) to DV2 symmetrically, so a resize that drops DV2's committed or in-progress
+  Find is surfaced the same way DV1's already is, and decide how two simultaneous drops
+  combine into the single `m.message` slot — done when: a resize test with distinct Find
+  state in both DV1 and DV2 shows a message naming both viewers' drops (or a documented
+  combined wording), matching S2's independence guarantee at the messaging layer too —
+  effort: 2 (needs: M1.6) (TRIAGE T5)
+- **M1.7** — Extend `test/pty/harness.py`'s `KEY` table and `checks.py` with entries for the
+  four C3 chords (`ctrl+enter`, `ctrl+l`, `ctrl+p`, `ctrl+o`) and at least one pty check
+  driving `ctrl+enter` to create-and-focus DV2 and `ctrl+o` to focus it — done when:
+  `make check-pty` exercises all four chords and fails if either regresses — effort: 2
+  (needs: M1.3a, M1.4a, M1.5) (TRIAGE T6)
+
 ## M2 — Close DV2
 
 Delivers: S4

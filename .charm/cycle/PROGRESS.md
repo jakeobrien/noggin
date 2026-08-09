@@ -17,11 +17,20 @@
 
 ## Cursor
 
-Current task: M2.1
+Current task: M1.6a
 
 ## Handoff
 
-M1.6 is done (this session): verified DV1/DV2 Find/Edit/scroll routing already went through
+Replanned (this session): triaged the five open TRIAGE.md items. Accepted T5 (resize's
+find-dropped message is DV1-only, breaks S2 parity) as **M1.6a** and T6 (no pty coverage for
+any C3 chord) as **M1.7**, both inserted into M1 right after M1.6, both `todo` — cursor moved
+to M1.6a ahead of M2.1 since both close gaps in already-"done" M1 work before drift
+compounds; M2.1 is unaffected and unblocked, just deferred a couple of tasks. T7 (stale
+`viewerPane` identifier in a `checks.py` comment) fixed directly (low risk, effort-scaling
+rule). T8 (lowercase `dv1`/`dv2` in help strings) and T9 (undocumented degraded-terminal
+fallback) both closed wontfix — see DECISIONS.md D57/D58. TRIAGE.md is now empty.
+
+M1.6 is done (prior session): verified DV1/DV2 Find/Edit/scroll routing already went through
 `focusedViewer`/`withFocusedViewer`/`focusedViewerPane` end to end (Find's `startFind`/
 `handleFindInput`/`FindNext`/`FindPrevious`, Edit's `startEdit` capturing
 `focusedViewerPane()` into `editFinishedMsg.pane` for `finishEdit` to reopen into, and the
@@ -65,14 +74,16 @@ further action needed there.
 
 | Key  | Status | Reviewed | Validated | Note |
 |------|--------|----------|-----------|------|
-| M1.1 | done   | -        | -         |      |
-| M1.2 | done   | -        | -         |      |
-| M1.3 | done   | 2026-08-08 | -       |      |
-| M1.3a| done   | -        | -         | rebind d/shift+d→o/ctrl+o, D55 |
-| M1.4 | done   | -        | -         |      |
-| M1.4a| done   | -        | -         | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
-| M1.5 | done   | -        | -         |      |
-| M1.6 | done   | -        | -         |      |
+| M1.1 | done   | 2026-08-09 | 2026-08-09 |      |
+| M1.2 | done   | 2026-08-09 | 2026-08-09 |      |
+| M1.3 | done   | 2026-08-09 | 2026-08-09 |      |
+| M1.3a| done   | 2026-08-09 | 2026-08-09 | rebind d/shift+d→o/ctrl+o, D55 |
+| M1.4 | done   | 2026-08-09 | 2026-08-09 |      |
+| M1.4a| done   | 2026-08-09 | 2026-08-09 | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
+| M1.5 | done   | 2026-08-09 | 2026-08-09 |      |
+| M1.6 | done   | 2026-08-09 | 2026-08-09 |      |
+| M1.6a| todo   | -        | -         | TRIAGE T5 |
+| M1.7 | todo   | -        | -         | TRIAGE T6 |
 | M2.1 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |
 | M4.1 | todo   | -        | -         |      |

@@ -38,4 +38,14 @@
      the pre-C3 "no ctrl+p anywhere" invariant no longer holds now that D55 gives PeekDV2 that
      chord, so footer_test.go/help_test.go's TestNoFooterHintNamesCtrlP/TestNoHelpModalNamesCtrlP
      were replaced with TestCtrlPNamedOnlyByPeekDV2/TestCtrlPNamedOnlyInFilesPaneHelp, scoping
-     the invariant to "ctrl+p only where PeekDV2 lives" instead of "nowhere". -->
+     the invariant to "ctrl+p only where PeekDV2 lives" instead of "nowhere".
+     T5 (review, med, model.go:965): resize()'s find-dropped message is DV1-only, breaks S2
+     parity → PLAN.md M1.6a (new task, effort 2).
+     T6 (review, med, checks.py:1): no pty coverage for any C3 chord → PLAN.md M1.7 (new
+     task, effort 2).
+     T7 (review, low, checks.py:991): stale `viewerPane` identifier in a comment → fixed
+     directly this session per the effort-scaling rule (one-line, low-risk).
+     T8 (review, low, keymap.go:257): lowercase dv1/dv2 in help strings → DECISIONS.md D57
+     (wontfix, kept as-is — consistent with the uniform lowercase hint style).
+     T9 (validate, low, D55): degraded-terminal ctrl+enter fallback undocumented for users →
+     DECISIONS.md D58 (wontfix — ctrl+l is already named alongside it everywhere). -->
