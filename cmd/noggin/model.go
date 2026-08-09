@@ -953,23 +953,48 @@ func (m model) resize(width, height int, cause resizeCause) model {
 	// resize: toggleNavigator can in fact reach the committed-find branch
 	// (unlike the mid-edit one above, nothing gates it), so the message must
 	// name whichever of the two actually fired.
+	//
+	// C3/M1.6a: DV2 (once it exists, M1.2+) is exactly as vulnerable to a
+	// re-render dropping its find — S2's independence guarantee has to hold
+	// at this messaging layer too, not just the routing M1.6 already pinned.
+	// dv1Drop/dv2Drop capture each viewer's own dismissed/cleared verdict
+	// ("" if that viewer lost nothing) before they combine into the single
+	// m.message slot below; DV1's own wording is left exactly as it was
+	// (unprefixed) when DV2 drops nothing, so every pre-M1.6a test reading
+	// "search cleared"/"search dismissed" verbatim still passes — DV2's is
+	// named explicitly ("dv2 search …") since an unprefixed message would be
+	// ambiguous once two viewers exist, matching the lowercase dv1/dv2 style
+	// keymap.go's help text already uses (D57).
 	findWasEditing := m.dv1.findEditing()
 	findHadMatches := m.dv1.hasFindMatches()
 	m.dv1 = m.dv1.setSize(viewerContent.width, viewerContent.height)
+	var dv1Drop, dv2Drop string
 	switch {
 	case findWasEditing && !m.dv1.findEditing():
-		m.message = fmt.Sprintf("%s; search dismissed", cause)
+		dv1Drop = "search dismissed"
 	case findHadMatches && !m.dv1.hasFindMatches():
-		m.message = fmt.Sprintf("%s; search cleared", cause)
+		dv1Drop = "search cleared"
 	}
-	// M1.2: DV2, when it exists, is sized from its own half of the split —
-	// no find/message handling here yet (that lands with M1.3's focus-jump
-	// key and M1.6's per-viewer Find independence; DV2 cannot hold an
-	// in-progress find before either exists).
 	if m.dv2 != nil {
 		dv2Content := dv2Rect.content()
+		findWasEditing2 := m.dv2.findEditing()
+		findHadMatches2 := m.dv2.hasFindMatches()
 		v := (*m.dv2).setSize(dv2Content.width, dv2Content.height)
 		m.dv2 = &v
+		switch {
+		case findWasEditing2 && !m.dv2.findEditing():
+			dv2Drop = "search dismissed"
+		case findHadMatches2 && !m.dv2.hasFindMatches():
+			dv2Drop = "search cleared"
+		}
+	}
+	switch {
+	case dv1Drop != "" && dv2Drop != "":
+		m.message = fmt.Sprintf("%s; dv1 %s, dv2 %s", cause, dv1Drop, dv2Drop)
+	case dv1Drop != "":
+		m.message = fmt.Sprintf("%s; %s", cause, dv1Drop)
+	case dv2Drop != "":
+		m.message = fmt.Sprintf("%s; dv2 %s", cause, dv2Drop)
 	}
 	filesContent := l.files.content()
 	m.files = m.files.setSize(filesContent.width, filesContent.height)

@@ -303,6 +303,69 @@ func TestNavigatorToggleAfterCommittedFindNamesTheToggleNotAResize(t *testing.T)
 	}
 }
 
+// TestWindowResizeDropsDV2FindOnlyNamesDV2 is C3/M1.6a: resize's
+// find-dropped message must extend to DV2 symmetrically (S2 parity). With
+// DV1 unaffected (no find active there), a drop in DV2 alone must name dv2
+// explicitly rather than reusing DV1's unprefixed wording, which would
+// otherwise mislead about which viewer actually lost its search.
+func TestWindowResizeDropsDV2FindOnlyNamesDV2(t *testing.T) {
+	m, _, _ := crossViewerFixture(t) // focus on dv2Pane
+	m = press(t, m, "/")
+	m = typeText(t, m, "bravo-marker")
+	m = press(t, m, "enter")
+	if !m.dv2.hasFindMatches() {
+		t.Fatal("test setup: DV2's find did not commit")
+	}
+	if m.dv1.findEditing() || m.dv1.hasFindMatches() {
+		t.Fatal("test setup: DV1 unexpectedly has find state")
+	}
+
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 10})
+	m = concrete(t, next)
+
+	if m.dv2.hasFindMatches() {
+		t.Fatal("test setup: resize did not actually invalidate DV2's find (width unchanged?)")
+	}
+	if !strings.Contains(m.message, "dv2") {
+		t.Errorf("message = %q, want it to name dv2 as the viewer that lost its search", m.message)
+	}
+	if strings.Contains(m.message, "dv1") {
+		t.Errorf("message = %q, wrongly names dv1 (its find was never active)", m.message)
+	}
+}
+
+// TestWindowResizeDroppingBothViewersFindsNamesBoth is C3/M1.6a's headline
+// case: distinct committed finds in both DV1 and DV2, both lost to the same
+// resize, must combine into the single m.message slot naming both drops
+// rather than reporting only one or one overwriting the other.
+func TestWindowResizeDroppingBothViewersFindsNamesBoth(t *testing.T) {
+	m, _, _ := crossViewerFixture(t) // focus on dv2Pane
+	m = press(t, m, "/")
+	m = typeText(t, m, "bravo-marker")
+	m = press(t, m, "enter")
+	if !m.dv2.hasFindMatches() {
+		t.Fatal("test setup: DV2's find did not commit")
+	}
+
+	m = press(t, m, keys.FocusDV1.Keys()[0])
+	m = press(t, m, "/")
+	m = typeText(t, m, "alpha-marker")
+	m = press(t, m, "enter")
+	if !m.dv1.hasFindMatches() {
+		t.Fatal("test setup: DV1's find did not commit")
+	}
+
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 10})
+	m = concrete(t, next)
+
+	if m.dv1.hasFindMatches() || m.dv2.hasFindMatches() {
+		t.Fatal("test setup: resize did not actually invalidate both finds (width unchanged?)")
+	}
+	if !strings.Contains(m.message, "dv1") || !strings.Contains(m.message, "dv2") {
+		t.Errorf("message = %q, want it to name both dv1 and dv2 as having lost their search", m.message)
+	}
+}
+
 // TestFindQueryCapturesEveryKeyWhileEditing checks that a query character
 // which is also a binding elsewhere (q, the quit key) types into the query
 // instead of acting on its binding.

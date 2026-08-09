@@ -853,3 +853,23 @@
   pin a reading of an edge case D54 already decided not to special-case, for a scenario
   (terminal too narrow for two useful viewer halves) nobody has reported hitting. Revisit only
   if a real report surfaces.
+
+## D59: DV1's resize find-dropped wording stays unprefixed; DV2's is named, combined drops join with a comma (TRIAGE T5)
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: M1.6a extends `resize()`'s find-dropped message (`"…; search cleared"`/`"…; search
+  dismissed"`) to DV2, which the plan task left as an open call: "decide how two simultaneous
+  drops combine into the single `m.message` slot."
+- Decision: DV1's own wording is left exactly as it already was — unprefixed — when DV2 drops
+  nothing, so every pre-M1.6a test asserting the literal "search cleared"/"search dismissed"
+  text keeps passing unchanged. DV2's drop is always named explicitly ("dv2 search
+  cleared"/"dv2 search dismissed"), lowercase per D57's hint-style precedent, since an
+  unprefixed message would be ambiguous once two viewers exist. When both viewers drop in the
+  same resize, the two clauses join into one message: `"<cause>; dv1 <drop>, dv2 <drop>"`.
+- Why: medium risk×value (a messaging-only choice, but one that touches every existing
+  resize-message test's exact wording) — decided and logged rather than asked. Preserving
+  DV1's unprefixed wording is what makes the change backward-compatible for free; naming DV2
+  explicitly rather than leaving it equally unprefixed is the only option that stays
+  unambiguous once a message might need to describe either or both viewers at once.
