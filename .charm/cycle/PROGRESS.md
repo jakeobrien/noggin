@@ -17,36 +17,37 @@
 
 ## Cursor
 
-Current task: M1.5
+Current task: M1.6
 
 ## Handoff
 
-M1.4a is done (this session): `keymap.go`'s `ActivateDV2`/`PeekDV2` now bind
-`ctrl+enter`/`ctrl+l`/`ctrl+p` per D55 (was `shift+enter`/`L`/`shift+p`/`P`), plus their doc
-comments in `keymap.go`/`model.go`/`target_test.go`. No test hard-codes the old chords
-(`target_test.go`/`frame_test.go` go through `keys.ActivateDV2.Keys()`/`keys.PeekDV2.Keys()`),
-so only comment strings and the two footer/help invariant tests needed touching. Both
-`ctrl+enter` and `ctrl+l` round-trip through `keyPress` with no new `namedKeys` entry
-(`enter`/`l` were already covered).
+M1.5 is done (this session): the Picker's own home for S3's `ctrl+` targeting modifier.
+`picker.go` generalizes `activatePicker()`/`activateGrepPicker()` into targeted forms
+`activatePickerInto(target)`/`activateGrepPickerInto(target)` (the untargeted names now thin
+wrappers calling `...Into(dv1Pane)`), threading `target` through `openDocumentInto` (fileMode)
+and the pane-generic `viewerFor`/`withViewerFor` accessors in place of the old hardcoded
+`m.dv1` (grepMode's `commitQuery`/`applyCurrentMatch` wiring) — no behavior change for
+`dv1Pane`, DV2 support falls out for both Picker modes symmetrically. `handlePickerInput`
+matches `keys.ActivateDV2` (reused as-is, no new binding) ahead of `Activate` and routes to
+`activatePickerInto(dv2Pane)`; both its chords are raw control bytes so no Prompt carve-out
+was needed (TRIAGE T3 stayed closed, per the plan's own prediction). New coverage in
+`picker_target_test.go`: fileMode load-into-DV2 for both `ActivateDV2` keys, plain Activate
+still targets DV1, literal `l`/`L` still types, and a grepMode load-into-DV2 exercising the
+new `activateGrepPickerInto` find-state path (query committed and current match landed on
+DV2, not DV1) — this last one goes slightly beyond the plan's literal wording (which only
+names "a Picker Result" generically) but was cheap and closes a codepath the generalization
+itself introduced; also added `keys.ActivateDV2` to the existing `TestPickerNonTypingKeysDoNotType`
+non-typing set. `make check` and `make check-pty` both pass.
 
-**TRIAGE T4 resolved as part of this build** (per the plan's own done-when clause, not a
-separate replan decision): the pre-C3 invariant "no footer/help-modal hint may ever name
-ctrl+p" (`TestNoFooterHintNamesCtrlP`, `TestNoHelpModalNamesCtrlP`) is false by design now
-that D55 gives PeekDV2 that chord. Replaced both with `TestCtrlPNamedOnlyByPeekDV2`
-(footer_test.go) and `TestCtrlPNamedOnlyInFilesPaneHelp` (help_test.go): ctrl+p must still
-never appear for rootsPane/dv1Pane/dv2Pane or the Picker's own hints, but must appear for
-filesPane (where PeekDV2 lives). One gotcha: filesPane's full `paneHints` line is 227 cells
-wide, so the footer version of that assertion needs a generous width (260) to observe it
-untruncated — at the project's usual 200-col test width it was already being dropped as
-least-essential, unrelated to this rebind. `make check` and `make check-pty` both pass.
+Next: **M1.6** — verify/finish DV1/DV2 Find/Edit/scroll routing so each acts only on its own
+viewer's Active Document once it holds Focus (S2, S6). Much of the plumbing already exists
+(`focusedViewer`/`withFocusedViewer` accessors from M1.1; the dv1Pane/dv2Pane scroll case in
+`model.go`'s Update already routes through `focusedViewer()`) — this task is chiefly about
+confirming Find and Edit do too, and adding the cross-viewer-independence test the plan's
+done-when calls for (distinct Find state in each, drive one, assert the other untouched, both
+directions).
 
-Next: **M1.5** — bind `ctrl+enter`/`ctrl+l` into `handlePickerInput`'s Activate-into-DV2
-path via `openDocumentInto(dv2Pane, d)`, reusing `keys.ActivateDV2` (already both chords, per
-D55) rather than a new binding; both chords are non-printable so TRIAGE T3 (closed) needs no
-Picker-specific carve-out. Confirm typing a literal `l`/`L` into the Prompt still works
-(plain `l`/`L` are untouched — only the `ctrl+` forms are ActivateDV2).
-
-Still valid, unaffected by the M1.4/M1.4a rebind (from the original M1.4 build —
+Still valid, unaffected by the M1.4/M1.4a rebind or M1.5 (from the original M1.4 build —
 `openDocumentInto`/`ensureDV2`/`togglePeekInto`, full detail in git history):
 
 - DV2 creation happens inside `openDocumentInto`, via `model.ensureDV2()`, *before*
@@ -76,7 +77,7 @@ further action needed there.
 | M1.3a| done   | -        | -         | rebind d/shift+d→o/ctrl+o, D55 |
 | M1.4 | done   | -        | -         |      |
 | M1.4a| done   | -        | -         | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
-| M1.5 | todo   | -        | -         | needs M1.4a first |
+| M1.5 | done   | -        | -         |      |
 | M1.6 | todo   | -        | -         |      |
 | M2.1 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |

@@ -198,15 +198,15 @@ func TestPickerTypesEveryPrintableKeyIncludingBindingsElsewhere(t *testing.T) {
 }
 
 // TestPickerNonTypingKeysDoNotType is S2's other half: Cancel, Activate,
-// PickerUp/PickerDown, the Preview scroll keys and PickerMode/PickerScope
-// are all non-printable (D2's "always typing" only ever binds printable
-// keystrokes), so none of them should ever reach the Prompt — checked here
-// for every one but Cancel, which this task's earlier acceptance criterion
-// (M2.1's dismiss-on-Cancel) already covers by making the Picker close
-// instead.
+// ActivateDV2 (C3/M1.5), PickerUp/PickerDown, the Preview scroll keys and
+// PickerMode/PickerScope are all non-printable (D2's "always typing" only
+// ever binds printable keystrokes), so none of them should ever reach the
+// Prompt — checked here for every one but Cancel, which this task's earlier
+// acceptance criterion (M2.1's dismiss-on-Cancel) already covers by making
+// the Picker close instead.
 func TestPickerNonTypingKeysDoNotType(t *testing.T) {
 	nonTyping := []key.Binding{
-		keys.Activate, keys.PickerUp, keys.PickerDown,
+		keys.Activate, keys.ActivateDV2, keys.PickerUp, keys.PickerDown,
 		keys.PageUp, keys.PageDown, keys.HalfPageUp, keys.HalfPageDown,
 		keys.PickerMode, keys.PickerScope,
 	}

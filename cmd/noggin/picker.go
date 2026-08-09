@@ -562,8 +562,23 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 // activation additionally has to land the Document Viewer on the matched
 // line (D34), which fileMode's plain openDocument has no reason to do.
 func (m model) activatePicker() model {
+	return m.activatePickerInto(dv1Pane)
+}
+
+// activatePickerInto is activatePicker's targeted form (C3/S3, M1.5): the
+// Picker's own home for the `ctrl+` targeting modifier the Files Nav
+// already has (M1.4) — keys.ActivateDV2 (ctrl+enter, ctrl+l fallback, D55)
+// loads the previewed Result into DV2 instead of DV1, creating DV2 first if
+// absent, and moves Focus there (openDocumentInto's own behavior, S3);
+// plain Activate keeps targeting DV1 via the dv1Pane wrapper above. No
+// Picker-specific carve-out is needed for handlePickerInput's always-typing
+// Prompt (TRIAGE T3, closed structurally by D55): both of ActivateDV2's
+// chords are raw control bytes, matched in handlePickerInput before the
+// fallthrough to the Prompt, so a literal `l`/`L` keystroke there is
+// unaffected.
+func (m model) activatePickerInto(target pane) model {
 	if m.picker.mode == grepMode {
-		return m.activateGrepPicker()
+		return m.activateGrepPickerInto(target)
 	}
 	// Reuses pickerPreviewCandidate rather than a second selection lookup —
 	// "the Result the Preview is showing" and "the Result Activate would
@@ -584,7 +599,7 @@ func (m model) activatePicker() model {
 		m.message = fmt.Sprintf("cannot open %s: %v", f.path, err)
 		return m.dismissPicker()
 	}
-	m = m.openDocument(d)
+	m = m.openDocumentInto(target, d)
 	return m.dismissPicker()
 }
 
@@ -626,6 +641,17 @@ func (p picker) pickerGrepCandidate(hideDotfiles bool) (grepResult, bool) {
 // A read error surfaces as a footer message the same way activatePicker's
 // fileMode half does (T15) — the Picker is dismissed either way.
 func (m model) activateGrepPicker() model {
+	return m.activateGrepPickerInto(dv1Pane)
+}
+
+// activateGrepPickerInto is activateGrepPicker's targeted form (C3/S3,
+// M1.5), the grepMode half of activatePickerInto: the same DV2-vs-DV1
+// choice, threaded through the pane-generic viewerFor/withViewerFor
+// accessors (model.go) rather than m.dv1 directly — target is an explicit
+// argument here, never "whichever pane has Focus", so the focused-viewer
+// accessor (which answers that different question) still does not apply
+// either way.
+func (m model) activateGrepPickerInto(target pane) model {
 	g, ok := m.picker.pickerGrepCandidate(m.hideDotfiles)
 	if !ok {
 		return m
@@ -636,15 +662,13 @@ func (m model) activateGrepPicker() model {
 		m.message = fmt.Sprintf("cannot open %s: %v", g.file.path, err)
 		return m.dismissPicker()
 	}
-	// A plain Activate always targets DV1 (S3), so this reads/writes m.dv1
-	// directly — not the focused-viewer accessor, whose "whichever pane has
-	// Focus" question does not apply to an explicit-target action.
-	m = m.openDocument(d)
-	m.dv1 = m.dv1.commitQuery(query)
-	if ordinal, ok := resolveGrepLanding(d.src, m.dv1.vp.GetContent(), query, g.line); ok {
-		m.dv1.findState.current = ordinal
-		m.dv1 = m.dv1.applyCurrentMatch()
+	m = m.openDocumentInto(target, d)
+	v := m.viewerFor(target).commitQuery(query)
+	if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line); ok {
+		v.findState.current = ordinal
+		v = v.applyCurrentMatch()
 	}
+	m = m.withViewerFor(target, v)
 	return m.dismissPicker()
 }
 
@@ -709,9 +733,13 @@ func resolveGrepLanding(src []byte, rendered, query string, line int) (ordinal i
 // from the Document Viewer's own scroll bindings — they are already
 // non-printable, so nothing about "always typing" requires a second copy);
 // Activate opens the previewed Result and dismisses the Picker (M3.3,
-// activatePicker); PickerMode and PickerScope switch mode and Scope in
-// place (M5.1 switchPickerMode, M5.2 switchPickerScope). All are
-// recognised and handled here rather than falling through to the Prompt.
+// activatePicker); keys.ActivateDV2 (ctrl+enter, ctrl+l fallback) is
+// Activate's C3/S3/M1.5 targeting twin, routing the same open-and-dismiss
+// into DV2 (activatePickerInto) — both its chords are raw control bytes
+// (D55), so neither is ever mistaken for typed query text; PickerMode and
+// PickerScope switch mode and Scope in place (M5.1 switchPickerMode, M5.2
+// switchPickerScope). All are recognised and handled here rather than
+// falling through to the Prompt.
 func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
@@ -734,6 +762,8 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.HalfPageDown):
 		m.picker.preview.HalfPageDown()
 		return m, nil
+	case key.Matches(msg, keys.ActivateDV2):
+		return m.activatePickerInto(dv2Pane), nil
 	case key.Matches(msg, keys.Activate):
 		return m.activatePicker(), nil
 	case key.Matches(msg, keys.PickerMode):
