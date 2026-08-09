@@ -1,4 +1,4 @@
-# Progress — C3 compare
+# Progress — C4 recall
 
 <!-- Per-cycle. Cursor and statuses ONLY — no work summaries (git history carries those).
      The Handoff section is the single exception: overwrite it each session, never append.
@@ -17,41 +17,19 @@
 
 ## Cursor
 
-Current task: **M2.1c** built and validated — the last open plan task, now closed out.
-TRIAGE.md is empty; the cycle is ready for `/charm-close`.
+Current task: <key>
 
 ## Handoff
 
-Validated M2.1c this session (fresh-context check, not the building session): confirmed both
-`staleBaseline` mutation-contract doc comments (staleness.go:21-28, model.go:126-128) name
-`closeDV2`'s `withoutDoc` call (C3/M2.1b) as the sanctioned exception, and that this matches
-the actual code at model.go:322 (`withoutDoc` gated by `isOpen()`). Cross-checked
-`resetStaleBaseline`/`runStaleCheck`/`applyStaleResult`/`withoutDoc`'s own doc comments for
-consistency — no contradictions found anywhere. Re-ran `make check` with a cleared test cache
-(not the cached result) — build/vet/test all clean. No new findings; TRIAGE.md stays empty.
+<!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
+     state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Next: no plan tasks remain. Proceed to `/charm-close`.
+<current-state snapshot>
 
 ## Status
 
-| Key  | Status | Reviewed | Validated | Note |
-|------|--------|----------|-----------|------|
-| M1.1 | done   | 2026-08-09 | 2026-08-09 |      |
-| M1.2 | done   | 2026-08-09 | 2026-08-09 |      |
-| M1.3 | done   | 2026-08-09 | 2026-08-09 |      |
-| M1.3a| done   | 2026-08-09 | 2026-08-09 | rebind d/shift+d→o/ctrl+o, D55 |
-| M1.4 | done   | 2026-08-09 | 2026-08-09 |      |
-| M1.4a| done   | 2026-08-09 | 2026-08-09 | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
-| M1.5 | done   | 2026-08-09 | 2026-08-09 |      |
-| M1.6 | done   | 2026-08-09 | 2026-08-09 |      |
-| M1.6a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T5, D59 |
-| M1.7 | done   | 2026-08-09 | 2026-08-09 | TRIAGE T6 |
-| M2.1 | done   | 2026-08-09 | 2026-08-09 | see M2.1a (T10), M2.1b (T12) |
-| M3.1 | done   | 2026-08-09 | 2026-08-09 | PARTIAL — see M3.1a (fixes T11/T13), D61 |
-| M4.1 | done   | 2026-08-09 | 2026-08-09 |      |
-| M5.1 | done   | 2026-08-09 | 2026-08-09 |      |
-| M5.2 | done   | 2026-08-09 | 2026-08-09 |      |
-| M2.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T10, D62 |
-| M2.1b| done   | 2026-08-09 | 2026-08-09 | TRIAGE T12; T14→M2.1c/D63, T15→D64 |
-| M3.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T11, T13, D61 |
-| M2.1c| done   | -          | 2026-08-09 | TRIAGE T14, D63       |
+| Key  | Status      | Reviewed | Validated | Note                              |
+|------|-------------|----------|-----------|------------------------------------|
+| M1.1 | done        | -        | -         |                                    |
+| M1.2 | in-progress | -        | -         |                                    |
+| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |
