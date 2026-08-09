@@ -17,25 +17,20 @@
 
 ## Cursor
 
-Current task: **M2.1c** built, awaiting a validate touch — the last open plan task.
-TRIAGE.md is empty; once M2.1c is validated, the cycle is ready for `/charm-close`.
+Current task: **M2.1c** built and validated — the last open plan task, now closed out.
+TRIAGE.md is empty; the cycle is ready for `/charm-close`.
 
 ## Handoff
 
-Built M2.1c this session: reworded both `staleBaseline` mutation-contract doc comments — the
-type's own comment (staleness.go, was lines 21-23, now ~21-28) and `model.staleBaseline`'s
-field comment (model.go, was line 126, now ~126-127) — to explicitly name `closeDV2`'s
-`withoutDoc` call (C3/M2.1b) as the one sanctioned exception to the "never mutated except by
-resetStaleBaseline/runStaleCheck/applyStaleResult" invariant. Doc-comment-only change, no
-code behavior touched; verified with `make check` (build/vet/test all clean, `go test ./...`
-passes for both packages). Committed as d840f15.
+Validated M2.1c this session (fresh-context check, not the building session): confirmed both
+`staleBaseline` mutation-contract doc comments (staleness.go:21-28, model.go:126-128) name
+`closeDV2`'s `withoutDoc` call (C3/M2.1b) as the sanctioned exception, and that this matches
+the actual code at model.go:322 (`withoutDoc` gated by `isOpen()`). Cross-checked
+`resetStaleBaseline`/`runStaleCheck`/`applyStaleResult`/`withoutDoc`'s own doc comments for
+consistency — no contradictions found anywhere. Re-ran `make check` with a cleared test cache
+(not the cached result) — build/vet/test all clean. No new findings; TRIAGE.md stays empty.
 
-No spec/plan divergence found this session — proceeded straight from the prior handoff's
-D63 with no new judgment calls. TRIAGE.md remains empty.
-
-Next: a final validate pass scoped to M2.1c (confirm both comments now agree with each other
-and with `closeDV2`'s actual behavior, confirm `make check` stays clean), then
-`/charm-close` — no more plan tasks remain after M2.1c.
+Next: no plan tasks remain. Proceed to `/charm-close`.
 
 ## Status
 
@@ -59,4 +54,4 @@ and with `closeDV2`'s actual behavior, confirm `make check` stays clean), then
 | M2.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T10, D62 |
 | M2.1b| done   | 2026-08-09 | 2026-08-09 | TRIAGE T12; T14→M2.1c/D63, T15→D64 |
 | M3.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T11, T13, D61 |
-| M2.1c| done   | -          | -          | TRIAGE T14, D63       |
+| M2.1c| done   | -          | 2026-08-09 | TRIAGE T14, D63       |
