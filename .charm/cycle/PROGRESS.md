@@ -17,37 +17,32 @@
 
 ## Cursor
 
-Current task: M1.6
+Current task: M2.1
 
 ## Handoff
 
-M1.5 is done (this session): the Picker's own home for S3's `ctrl+` targeting modifier.
-`picker.go` generalizes `activatePicker()`/`activateGrepPicker()` into targeted forms
-`activatePickerInto(target)`/`activateGrepPickerInto(target)` (the untargeted names now thin
-wrappers calling `...Into(dv1Pane)`), threading `target` through `openDocumentInto` (fileMode)
-and the pane-generic `viewerFor`/`withViewerFor` accessors in place of the old hardcoded
-`m.dv1` (grepMode's `commitQuery`/`applyCurrentMatch` wiring) — no behavior change for
-`dv1Pane`, DV2 support falls out for both Picker modes symmetrically. `handlePickerInput`
-matches `keys.ActivateDV2` (reused as-is, no new binding) ahead of `Activate` and routes to
-`activatePickerInto(dv2Pane)`; both its chords are raw control bytes so no Prompt carve-out
-was needed (TRIAGE T3 stayed closed, per the plan's own prediction). New coverage in
-`picker_target_test.go`: fileMode load-into-DV2 for both `ActivateDV2` keys, plain Activate
-still targets DV1, literal `l`/`L` still types, and a grepMode load-into-DV2 exercising the
-new `activateGrepPickerInto` find-state path (query committed and current match landed on
-DV2, not DV1) — this last one goes slightly beyond the plan's literal wording (which only
-names "a Picker Result" generically) but was cheap and closes a codepath the generalization
-itself introduced; also added `keys.ActivateDV2` to the existing `TestPickerNonTypingKeysDoNotType`
-non-typing set. `make check` and `make check-pty` both pass.
+M1.6 is done (this session): verified DV1/DV2 Find/Edit/scroll routing already went through
+`focusedViewer`/`withFocusedViewer`/`focusedViewerPane` end to end (Find's `startFind`/
+`handleFindInput`/`FindNext`/`FindPrevious`, Edit's `startEdit` capturing
+`focusedViewerPane()` into `editFinishedMsg.pane` for `finishEdit` to reopen into, and the
+scroll case in `model.go`'s Update) — no code changes needed, this task was pure
+verification plus the plan's own done-when test. Added `dv_independence_test.go`'s
+`crossViewerFixture` (docA in DV1, docB in DV2, both scrollable, distinct markers) and four
+tests: `TestFindIsIndependentPerViewer` (committed find driven at DV2 then DV1, each
+leaves the other's query/matches alone, both directions), `TestFindEditingIsScopedToTheFocusedViewer`
+(in-progress query typed at DV2 doesn't mark DV1 findEditing), `TestScrollIsIndependentPerViewer`
+(scrolling one viewer's offset leaves the other's alone, both directions), and
+`TestFinishEditReopensOnlyItsOwnPane` (finishEdit's `pane` field routes the reload to DV2
+alone, DV1 untouched) — the write-side counterpart to `startEdit`'s already-read-only-covered
+`focusedViewerPane()` capture (tea.ExecProcess's callback isn't inspectable without actually
+running a subprocess, so this tests the routing directly rather than through a real edit
+handoff). `make check` and `make check-pty` both pass.
 
-Next: **M1.6** — verify/finish DV1/DV2 Find/Edit/scroll routing so each acts only on its own
-viewer's Active Document once it holds Focus (S2, S6). Much of the plumbing already exists
-(`focusedViewer`/`withFocusedViewer` accessors from M1.1; the dv1Pane/dv2Pane scroll case in
-`model.go`'s Update already routes through `focusedViewer()`) — this task is chiefly about
-confirming Find and Edit do too, and adding the cross-viewer-independence test the plan's
-done-when calls for (distinct Find state in each, drive one, assert the other untouched, both
-directions).
+Next: **M2.1** — bind `ctrl+x` globally (any pane's Focus, not while Picker or Help Modal owns
+the keyboard) to close DV2: no-op if DV2 doesn't exist, Focus moves to DV1 if DV2 held it,
+otherwise unchanged.
 
-Still valid, unaffected by the M1.4/M1.4a rebind or M1.5 (from the original M1.4 build —
+Still valid, unaffected by the M1.4/M1.4a rebind, M1.5 or M1.6 (from the original M1.4 build —
 `openDocumentInto`/`ensureDV2`/`togglePeekInto`, full detail in git history):
 
 - DV2 creation happens inside `openDocumentInto`, via `model.ensureDV2()`, *before*
@@ -61,7 +56,6 @@ Still valid, unaffected by the M1.4/M1.4a rebind or M1.5 (from the original M1.4
   `clearPeekIn(p)` for one viewer, `clearPeek()` clears **both**. Refusals (folder / empty
   pane / read error) are checked *before* `ensureDV2`, so a no-op never leaves an empty DV2
   behind — pinned by test.
-- Not done here, still M1.6's: DV1/DV2 Find/Edit/scroll independence.
 
 M1.3's own mechanics (FocusDV2's no-op on `dv2 == nil`, no Navigator reveal, hint
 placement) are unaffected by M1.3a's rebind and stay pinned by the existing tests — no
@@ -78,7 +72,7 @@ further action needed there.
 | M1.4 | done   | -        | -         |      |
 | M1.4a| done   | -        | -         | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
 | M1.5 | done   | -        | -         |      |
-| M1.6 | todo   | -        | -         |      |
+| M1.6 | done   | -        | -         |      |
 | M2.1 | todo   | -        | -         |      |
 | M3.1 | todo   | -        | -         |      |
 | M4.1 | todo   | -        | -         |      |
