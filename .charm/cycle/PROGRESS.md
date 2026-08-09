@@ -17,32 +17,31 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M5.1
 
 ## Handoff
 
-M3.1 is done (this session): `model.refresh()` now re-reads both DV1's and DV2's Active
-Documents (whichever exist) in the same single action, not just DV1 — factored the
-per-viewer read/refreshDoc/close/find-drop logic out of the old DV1-only inline block into a
-new `refreshViewer(p pane) (model, string)` helper (reused for both panes via `viewerFor`/
-`withViewerFor`, the same accessor pair M1.1 established), called once for `dv1Pane`
-unconditionally and once more for `dv2Pane` when `m.dv2 != nil`. The two read-failure/
-find-drop outcomes combine into `m.message` the same way `resize()`'s own `dv1Drop`/
-`dv2Drop` pair already do (mirrored the wording/priority verbatim: DV1 unprefixed when DV2
-drops nothing, `"dv1 …, dv2 …"` when both drop, `"dv2 …"` when only DV2 drops) — so S6's
-independence guarantee holds at refresh's messaging layer too, not just its routing. Root-
-walk failure still wins over both viewers' read failures; between the two viewers, DV1 wins
-(new call-order rule, undocumented before since DV2 didn't exist) — both pinned by new
-tests. Added three tests to `refresh_test.go`: the plan's own acceptance verbatim (both
-viewers open on distinct documents, both changed on disk, one Refresh grows both and
-preserves each viewer's own scroll offset), the two-viewer find-drop combination, and the
-DV1-wins-DV2 read-failure priority. Verified all three actually bite by regression injection
-(temporarily short-circuiting the DV2 branch in `refresh()` failed exactly those three,
-reverted clean). `make check` and `make check-pty` both pass (no new keys, so no pty
-additions needed).
+M4.1 is done (this session): confirmed structurally that DV2's existence, Active Document
+and Peek/Find state are never persisted or restored — `store.go`'s roots file (written only
+by `saveStore`/`toggleStore`) is the *only* on-disk write path anywhere in the package
+(grepped every `os.WriteFile` call in `cmd/noggin/*.go`, non-test, to confirm), so there was
+no persistence mechanism for viewer state to remove; the task was verification, not a code
+change. Added `TestDV2NeverPersistedAcrossRestart` in the new `dv2_persistence_test.go`: a
+fixture (`launchFixture`) reproduces main.go's real launch sequence
+(`loadStore`-as-`loadStarredRoots` → `newModel().withStorePath(...).applyResolution(resolveLaunch(...))`)
+against a real on-disk store file. First "process" stars a root via the real `toggleStar`
+action, opens DV1's Active Document, then creates DV2 with its own Active Document plus
+committed Find state; asserts the store file is byte-identical before and after DV2's whole
+lifetime; then relaunches a brand-new model against the same store and confirms `dv2 == nil`,
+DV1 carries no Find/Peek state, and the starred root (genuinely persisted state, gathered
+both before and after DV2 existed) survives the restart unaffected. Verified the test bites
+by regression injection (temporarily made `newModel()` construct a live `dv2` unconditionally
+— test failed with "DV2 exists in a freshly relaunched model — it was persisted"; reverted
+clean). `make check` and `make check-pty` both pass (no new keys, so no pty additions
+needed).
 
-Next: **M4.1** — confirm DV2's existence, Active Document and Peek/Find state are never
-persisted or restored at launch (effort 1, needs M1.1).
+Next: **M5.1** — relocate the staleness indicator from the Footer's appended hint suffix to
+its own dedicated row above the Footer (effort 3).
 
 ## Status
 
@@ -60,6 +59,6 @@ persisted or restored at launch (effort 1, needs M1.1).
 | M1.7 | done   | -        | -         | TRIAGE T6 |
 | M2.1 | done   | -        | -         |      |
 | M3.1 | done   | -        | -         |      |
-| M4.1 | todo   | -        | -         |      |
+| M4.1 | done   | -        | -         |      |
 | M5.1 | todo   | -        | -         |      |
 | M5.2 | todo   | -        | -         |      |
