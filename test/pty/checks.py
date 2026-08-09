@@ -69,6 +69,11 @@ KEY = {
     "ActivateDV2CtrlL":     b"\x0c",        # keys.ActivateDV2, fallback: ctrl+l
     "PeekDV2":              b"\x10",        # keys.PeekDV2: ctrl+p
     "FocusDV2":             b"\x0f",        # keys.FocusDV2: ctrl+o
+
+    # C3/M2.1a (TRIAGE T10): keys.CloseDV2 postdates M1.7's four-chord sweep
+    # above, so it had no pty coverage of its own until now. Plain C0 byte,
+    # same encoding as ctrl+l/ctrl+p/ctrl+o.
+    "CloseDV2": b"\x18",  # keys.CloseDV2: ctrl+x
 }
 
 
@@ -1508,5 +1513,35 @@ check("C3/M1.7 pty: ctrl+o really lands focus on DV2 (G scrolls DV2, not DV1)",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C3/M1.7 pty: exits 0 after exercising all four C3 chords", code == 0, f"exit {code}")
+
+# --- C3/M2.1a (TRIAGE T10): ctrl+x (CloseDV2) reaches the real binding ----
+# close_dv2_test.go already covers the focus-landing rule exhaustively at
+# the model layer (M2.1's own acceptance); M1.7's sweep above predates
+# CloseDV2 and never exercised it. Reuses c3_root's alpha/bravo fixtures.
+
+s = Session([BINARY, c3_root], 80, 24)
+s.pump(1.2)
+s.send(KEY["Activate"], 0.5)   # alpha.md -> DV1, focus -> dv1Pane
+s.send(KEY["FocusFiles"], 0.4)
+s.send(KEY["Down"], 0.4)       # select bravo.md
+s.send(KEY["ActivateDV2CtrlEnter"], 0.6)  # ctrl+enter: create+load DV2, focus -> dv2Pane
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M2.1a pty: setup opened DV2 with bravo.md, focus on DV2",
+      "Bravo 01" in body, repr(body[:400]))
+
+s.send(KEY["CloseDV2"], 0.6)  # ctrl+x: DV2 held focus, so it closes and focus -> DV1
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M2.1a pty: ctrl+x closes DV2",
+      "Bravo" not in body, repr(body[:400]))
+check("C3/M2.1a pty: ctrl+x leaves DV1's own Active Document alone",
+      "Alpha 01" in body, repr(body[:400]))
+
+s.send(KEY["Bottom"], 0.6)  # G only shows movement if focus actually landed on DV1
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("C3/M2.1a pty: ctrl+x moves focus to DV1 (G scrolls DV1)",
+      "Alpha 25" in body, repr(body[:400]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("C3/M2.1a pty: exits 0 after the ctrl+x close-DV2 check", code == 0, f"exit {code}")
 
 done()

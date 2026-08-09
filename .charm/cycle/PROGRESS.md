@@ -17,33 +17,27 @@
 
 ## Cursor
 
-Current task: M2.1a (TRIAGE T10, D62 — pty coverage for ctrl+x; M2.1b remains after it, any
-order)
+Current task: M2.1b (TRIAGE T12 — closeDV2 doesn't reset the stale baseline)
 
 ## Handoff
 
-Built M3.1a this session: extracted the identical refresh()/resize() message-combining
-switch into one shared helper, `combineDropMessages` (model.go), guarded with an
-`m.message != ""` check so an existing Root-walk or per-viewer read-failure message can
-never be overwritten by a find-drop notice — fixes TRIAGE T11 (refresh's switch previously
-had no such guard, unlike refreshViewer's own read-failure branch) and T13 (the duplicated
-switch) in the same change, per D61. Two regression tests added
-(refresh_test.go: TestRefreshReadFailureMessageWinsOverFindDroppedMessage, single-viewer;
-…WithDV2, dual-viewer racing a genuine DV2 find-drop against DV1's read failure) — both
-confirmed to fail against the pre-fix (unguarded) switch and pass with the fix. `resize()`
-now calls the same helper (behavior unchanged there — resize never set m.message before its
-own switch ran, confirmed by its existing test suite still passing unchanged).
+Built M2.1a this session: added `test/pty/checks.py` KEY table entry `CloseDV2` (`\x18`,
+ctrl+x, plain C0 byte) and a new check block reusing M1.7's c3_root alpha/bravo fixtures —
+opens DV2 via ctrl+enter (focus lands on DV2), presses ctrl+x, and confirms DV2's content is
+gone, DV1's own document is untouched, and Focus actually lands on DV1 (G scrolls DV1, not a
+stale DV2). Regression-proofed by temporarily wiring the KEY entry to the wrong byte (ctrl+w
+instead of ctrl+x) and confirming the two content/focus checks fail as expected, then
+restoring the correct byte and re-running clean.
 
-`make check` and `make check-pty` both pass in full, including the new tests and all
-pre-existing C3 pty coverage (M1.7's four chords). No spec change; SPEC.md and PLAN.md are
-untouched. TRIAGE.md stays empty (no new items surfaced).
+`make check` and `make check-pty` both pass in full (all pre-existing C3 pty coverage plus
+the new CloseDV2 block). No spec change; SPEC.md and PLAN.md untouched. TRIAGE.md stays
+empty.
 
-Next: build M2.1a (pty coverage for ctrl+x), then M2.1b (closeDV2 staleness-baseline prune),
-any order — both low effort, non-blocking. Once both are done and validated, TRIAGE.md is
-already empty, so C3 should be ready for `/charm-close` pending a final validate pass over
-just these two remaining new tasks (M3.1a's own fix should get a validate pass too, since
-it was validate that surfaced T11 in the first place — a fresh check that the fix actually
-holds is warranted before close).
+Next: build M2.1b (closeDV2 should prune DV2's entry from the staleness baseline
+immediately, not just on the next refresh — PLAN.md's own acceptance clause). Once done and
+validated, TRIAGE.md is already empty, so C3 should be ready for `/charm-close` pending a
+final validate pass over all three new tasks (M3.1a/M2.1a/M2.1b) — M3.1a especially, since
+it was validate that surfaced T11 in the first place.
 
 ## Status
 
@@ -64,6 +58,6 @@ holds is warranted before close).
 | M4.1 | done   | 2026-08-09 | 2026-08-09 |      |
 | M5.1 | done   | 2026-08-09 | 2026-08-09 |      |
 | M5.2 | done   | 2026-08-09 | 2026-08-09 |      |
-| M2.1a| todo   | -          | -          | TRIAGE T10, D62 |
+| M2.1a| done   | -          | -          | TRIAGE T10, D62 |
 | M2.1b| todo   | -          | -          | TRIAGE T12 |
 | M3.1a| done   | -          | -          | TRIAGE T11, T13, D61 |
