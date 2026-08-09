@@ -178,8 +178,8 @@ func TestOpenFolderAndOpenDocumentEstablishAndAdvanceTheBaseline(t *testing.T) {
 	if m.staleGen == genAfterFolder {
 		t.Error("staleGen unchanged after openDocument, want it advanced again")
 	}
-	if m.staleBaseline.docPath != docPath {
-		t.Errorf("baseline docPath = %q, want %q", m.staleBaseline.docPath, docPath)
+	if got := m.staleBaseline.trackedDocPaths(); len(got) != 1 || got[0] != docPath {
+		t.Errorf("baseline tracked doc paths = %v, want [%q]", got, docPath)
 	}
 }
 
@@ -313,6 +313,113 @@ func (m model) runStaleCheckSync(t *testing.T) model {
 	}
 	final, _ := next.applyStaleResult(msg)
 	return final
+}
+
+// --- S7/C3/M5.2: the baseline tracks both DV1's and DV2's Active Documents --
+
+// TestStaleCheckDetectsOnlyDV2DocumentEdited is M5.2's own done-when, DV2
+// half: editing only DV2's Active Document on disk (DV1's document and the
+// tree untouched) is caught by the periodic check, and the row that
+// surfaces it (M5.1) shows — confirming S7's "both DV1's and DV2's Active
+// Documents" reaches the same single combined signal S9 already renders,
+// not just m.stale in isolation.
+func TestStaleCheckDetectsOnlyDV2DocumentEdited(t *testing.T) {
+	m, _, pathB := crossViewerFixture(t)
+	if m.dv2 == nil {
+		t.Fatal("setup: DV2 is not open")
+	}
+	if m.stale {
+		t.Fatal("setup: already stale before any change")
+	}
+
+	bumpMtimeForward(t, pathB)
+	if err := os.WriteFile(pathB, []byte("bravo-marker\nedited out of process\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	m = m.runStaleCheckSync(t)
+	if !m.stale {
+		t.Error("stale = false after DV2's Active Document was edited on disk, want true")
+	}
+	if !strings.Contains(m.frame(), staleMessage) {
+		t.Error("the stale row does not show after DV2's document changed on disk")
+	}
+}
+
+// TestStaleCheckDetectsOnlyDV1DocumentEdited is M5.2's done-when, DV1 half:
+// the mirror case, with DV2 open on its own untouched document throughout —
+// pinning that extending the baseline to DV2 did not regress DV1's own
+// long-standing coverage (S10/C2a) now that DV2 exists alongside it.
+func TestStaleCheckDetectsOnlyDV1DocumentEdited(t *testing.T) {
+	m, pathA, _ := crossViewerFixture(t)
+	if m.dv2 == nil {
+		t.Fatal("setup: DV2 is not open")
+	}
+	if m.stale {
+		t.Fatal("setup: already stale before any change")
+	}
+
+	bumpMtimeForward(t, pathA)
+	if err := os.WriteFile(pathA, []byte("alpha-marker\nedited out of process\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	m = m.runStaleCheckSync(t)
+	if !m.stale {
+		t.Error("stale = false after DV1's Active Document was edited on disk, want true")
+	}
+	if !strings.Contains(m.frame(), staleMessage) {
+		t.Error("the stale row does not show after DV1's document changed on disk")
+	}
+}
+
+// TestResetStaleBaselineTracksBothViewersActiveDocuments is the wiring
+// claim underlying the two tests above: once DV2 exists and has its own
+// Active Document, resetStaleBaseline's snapshot names both paths, not just
+// DV1's — the same claim TestOpenFolderAndOpenDocumentEstablishAndAdvanceTheBaseline
+// already pins for the single-viewer case.
+func TestResetStaleBaselineTracksBothViewersActiveDocuments(t *testing.T) {
+	m, pathA, pathB := crossViewerFixture(t)
+
+	got := m.staleBaseline.trackedDocPaths()
+	if len(got) != 2 {
+		t.Fatalf("tracked doc paths = %v, want exactly 2 (DV1's and DV2's)", got)
+	}
+	for _, want := range []string{pathA, pathB} {
+		found := false
+		for _, p := range got {
+			if p == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("tracked doc paths = %v, want it to include %q", got, want)
+		}
+	}
+}
+
+// TestResetStaleBaselineDropsDV2WhenItCloses: CloseDV2 (S4/C3/M2.1) is a
+// fresh read of nothing new, but it does change which viewers exist — this
+// confirms the baseline stops tracking DV2's former document once it's gone
+// rather than continuing to compare a path that reflects a viewer no longer
+// on screen.
+func TestResetStaleBaselineDropsDV2WhenItCloses(t *testing.T) {
+	m, pathA, _ := crossViewerFixture(t)
+	if len(m.staleBaseline.trackedDocPaths()) != 2 {
+		t.Fatalf("setup: baseline does not track both viewers' documents yet")
+	}
+
+	m = press(t, m, keys.CloseDV2.Keys()[0])
+	if m.dv2 != nil {
+		t.Fatal("setup: CloseDV2 did not close DV2")
+	}
+	// CloseDV2 itself does not reset the baseline (it is not a fresh read of
+	// anything), so the next real reset — openFolder/openDocumentInto/
+	// refresh — is what this test drives to see the drop take effect.
+	m = m.refresh()
+	if got := m.staleBaseline.trackedDocPaths(); len(got) != 1 || got[0] != pathA {
+		t.Errorf("tracked doc paths after closing DV2 and refreshing = %v, want [%q]", got, pathA)
+	}
 }
 
 // --- Init / footer surfacing -----------------------------------------------
@@ -478,8 +585,8 @@ func TestSnapshotStalenessUntracksADocumentWhoseStatFails(t *testing.T) {
 	missing := filepath.Join(root, "gone.md") // never created
 
 	b := snapshotStaleness(walkFor(t, root), missing)
-	if b.docPath != "" {
-		t.Errorf("docPath = %q after snapshotting an unstattable document, want \"\" (untracked)", b.docPath)
+	if got := b.trackedDocPaths(); len(got) != 0 {
+		t.Errorf("tracked doc paths = %v after snapshotting an unstattable document, want none (untracked)", got)
 	}
 	if b.stale() {
 		t.Error("stale() = true for a baseline with no trackable document and an untouched tree, want false")

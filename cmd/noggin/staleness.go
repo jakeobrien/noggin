@@ -18,9 +18,10 @@ const staleCheckInterval = 6 * time.Second
 const staleMessage = "something changed on disk; press R to refresh"
 
 // staleBaseline is the "known good" snapshot a periodic check compares the
-// disk against (S10, C2a/M10.1): established fresh every time the Active
-// Root's tree or the Active Document is (re)loaded (openFolder, openDocument,
-// refresh), never touched in between.
+// disk against (S10, C2a/M10.1; S7/C3/M5.2 extends it to both viewers):
+// established fresh every time the Active Root's tree or a viewer's Active
+// Document is (re)loaded (openFolder, openDocumentInto, refresh), never
+// touched in between.
 //
 // dirModTimes is one os.Stat per directory the already-loaded tree knows
 // about (root plus every directory node under it) — a lookup by path, never
@@ -30,37 +31,54 @@ const staleMessage = "something changed on disk; press R to refresh"
 // fraction of its file count, so this stays cheap exactly where the spec
 // requires it. It is deliberately a heuristic, not exhaustive change
 // detection: an in-place edit of a *non-Active* file that touches neither
-// its own directory's entry list nor the Active Document goes unnoticed
-// until the next refresh — catching that would mean statting every file,
-// precisely the cost S10 forbids. The Active Document itself has no such
-// gap: docModTime/docSize are statted directly on every check, so any edit
-// to it (in place or not) is always caught.
+// its own directory's entry list nor either viewer's Active Document goes
+// unnoticed until the next refresh — catching that would mean statting
+// every file, precisely the cost S10 forbids. A viewer's Active Document
+// itself has no such gap: docs' own modTime/size are statted directly on
+// every check, so any edit to it (in place or not) is always caught.
+//
+// docs holds at most two entries (DV1's, then DV2's if it exists) — a slice
+// rather than a fixed DV1/DV2 pair so stale() can loop over "whichever
+// documents exist" (S7's own phrase) without a per-viewer branch, and so a
+// later increase in the number of viewers (out of scope this cycle, but not
+// this type's problem) would not need a new field.
 type staleBaseline struct {
 	dirModTimes map[string]time.Time
-	docPath     string
-	docModTime  time.Time
-	docSize     int64
+	docs        []docSnapshot
+}
+
+// docSnapshot is one tracked document's on-disk identity at snapshot time:
+// its path, mtime and size, the same trio staleBaseline tracked inline for
+// the single Active Document before S7/C3/M5.2 gave it a name of its own.
+type docSnapshot struct {
+	path    string
+	modTime time.Time
+	size    int64
 }
 
 // snapshotStaleness builds a fresh baseline from the tree already loaded in
-// memory (root, nil if no Root is open) and the Active Document's path
-// ("" if none open). Every Stat is against a path the caller already knows
-// about — nothing here discovers a new path via os.ReadDir.
-func snapshotStaleness(root *tree.Node, docPath string) staleBaseline {
+// memory (root, nil if no Root is open) and every non-empty docPath in docs
+// (S7: DV1's and DV2's Active Document paths, whichever viewers exist and
+// have one open — an absent DV2 or a viewer with nothing open contributes no
+// path at all, never a placeholder empty one). Every Stat is against a path
+// the caller already knows about — nothing here discovers a new path via
+// os.ReadDir.
+func snapshotStaleness(root *tree.Node, docPaths ...string) staleBaseline {
 	b := staleBaseline{dirModTimes: map[string]time.Time{}}
 	collectDirModTimes(root, b.dirModTimes)
-	if docPath != "" {
+	for _, docPath := range docPaths {
+		if docPath == "" {
+			continue
+		}
 		// A Stat failure right here (a narrow TOCTOU window right after the
 		// caller's own successful read) leaves the document untracked rather
-		// than tracked with a zero-value ModTime/Size, which would otherwise
+		// than tracked with a zero-value modTime/size, which would otherwise
 		// compare unequal to the real file on every future check and pin
 		// stale() permanently true until the next reset — the same "omit,
 		// don't half-track" rule collectDirModTimes already applies to a
 		// directory whose own Stat fails.
 		if info, err := os.Stat(docPath); err == nil {
-			b.docPath = docPath
-			b.docModTime = info.ModTime()
-			b.docSize = info.Size()
+			b.docs = append(b.docs, docSnapshot{path: docPath, modTime: info.ModTime(), size: info.Size()})
 		}
 	}
 	return b
@@ -82,11 +100,25 @@ func collectDirModTimes(n *tree.Node, out map[string]time.Time) {
 	}
 }
 
+// trackedDocPaths is the paths of every document b actually tracks (S7:
+// whichever of DV1's/DV2's Active Documents existed and stat'd successfully
+// at snapshot time) — a read-only view for tests to assert against rather
+// than reaching into the docs slice's shape directly.
+func (b staleBaseline) trackedDocPaths() []string {
+	paths := make([]string, len(b.docs))
+	for i, d := range b.docs {
+		paths[i] = d.path
+	}
+	return paths
+}
+
 // stale reports whether the disk still matches b: every known directory's
-// own mtime unchanged, and — if a document was open — its mtime and size
-// both unchanged. A path that no longer stats at all (removed) counts as
+// own mtime unchanged, and every tracked document's (S7: whichever of DV1's/
+// DV2's Active Documents were open at snapshot time) mtime and size both
+// unchanged. A path that no longer stats at all (removed) counts as
 // changed, matching S10's "something changed"; the indicator never says
-// which case applies, so this collapses both to one bool.
+// which case, or which document, applies — S9's "one combined, deliberately
+// unspecific signal" — so this collapses all of it to one bool.
 func (b staleBaseline) stale() bool {
 	for path, want := range b.dirModTimes {
 		info, err := os.Stat(path)
@@ -94,9 +126,9 @@ func (b staleBaseline) stale() bool {
 			return true
 		}
 	}
-	if b.docPath != "" {
-		info, err := os.Stat(b.docPath)
-		if err != nil || !info.ModTime().Equal(b.docModTime) || info.Size() != b.docSize {
+	for _, d := range b.docs {
+		info, err := os.Stat(d.path)
+		if err != nil || !info.ModTime().Equal(d.modTime) || info.Size() != d.size {
 			return true
 		}
 	}
@@ -138,13 +170,24 @@ func (m model) scheduleStaleCheck() tea.Cmd {
 // from openFolder, openDocument and refresh: every place that (re)reads the
 // Active Root's tree or the Active Document from disk.
 func (m model) resetStaleBaseline() model {
-	// M1.1: hardwired to DV1 — DV2 does not exist yet; a later task (M5.2)
-	// extends this baseline to track DV2's Active Document too.
-	docPath := ""
+	// S7/C3/M5.2: both viewers' Active Documents, whichever exist — DV1 is
+	// always present (an empty path if nothing is open there); DV2
+	// contributes nothing at all while m.dv2 is nil, not a placeholder empty
+	// path, matching snapshotStaleness's own "no path at all for an absent
+	// viewer" contract.
+	dv1Path := ""
 	if m.dv1.doc.isOpen() {
-		docPath = m.dv1.doc.path
+		dv1Path = m.dv1.doc.path
 	}
-	m.staleBaseline = snapshotStaleness(m.files.root, docPath)
+	if m.dv2 == nil {
+		m.staleBaseline = snapshotStaleness(m.files.root, dv1Path)
+	} else {
+		dv2Path := ""
+		if m.dv2.doc.isOpen() {
+			dv2Path = m.dv2.doc.path
+		}
+		m.staleBaseline = snapshotStaleness(m.files.root, dv1Path, dv2Path)
+	}
 	m.stale = false
 	m.staleGen++
 	return m

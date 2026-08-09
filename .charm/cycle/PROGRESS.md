@@ -17,41 +17,39 @@
 
 ## Cursor
 
-Current task: M5.2
+Current task: (none — all M1–M5 tasks done; cycle close/validation due)
 
 ## Handoff
 
-M5.1 is done (this session): the staleness indicator (S10/C2a) moved off the Footer's
-appended hint suffix into its own dedicated row above the Footer, per S9. `layout.go`:
-added `staleRowHeight` (1) and a `staleRow rect` field; `computeLayout` gained a `stale bool`
-parameter — it reserves the Footer's own height first, then gives the stale row whatever
-remains (dropped silently at a terminal too short for both, same precedence the frame's
-other regions already follow at extreme sizes; D60). `model.layout()` now passes `m.stale`
-through. `model.frame()` inserts `renderStaleRow(l.staleRow)` between the body and the
-Footer when non-empty. `renderFooter` no longer looks at `m.stale` at all — the old
-width-reservation-for-a-suffix logic and `appendStaleSuffix` are both gone; the row and a
-transient `m.message` now coexist (D60) since they no longer share one line. New
-`staleRowStyle` (style.go): `Foreground(214).Reverse(true)`, reusing the Help Modal border's
-own highlight color (D60) for S9's "highlight color, inverse text". `renderStaleRow`
-pre-truncates with `rightTruncate` before `Width`/`MaxWidth` (the v2 wrap-before-truncate
-gotcha, lipgloss-v2-row-rendering-gotchas.md) and fills the full row width as a highlight
-bar even when the message is shorter. Rewrote `staleness_test.go`'s old Footer-suffix tests
-(`TestFooterShowsStaleIndicator*`, `TestFooterMessageTakesPriorityOverStaleIndicator`,
-`TestAppendStaleSuffixOmitsWhenItWouldOverflow`) as row/layout tests
-(`TestStaleRowAbsentWhenNotStale`/`TestStaleRowPresentWhenStale` are the plan's own
-done-when, verbatim — driven at 80 cols, a width the old suffix design never rendered at all
-above ~200 cols per D53); `computeLayout` call sites across `frame_test.go`/`viewer_test.go`
-gained the new `stale` argument. Updated `test/pty/checks.py`'s M10.2 live-wallclock check
-to read the new row (`raw_lines()[-2]`) instead of the Footer line, plus a companion check
-that the message no longer appears on the Footer itself. Verified the new tests actually
-bite by regression injection (short-circuited `computeLayout`'s stale-height reservation —
-three tests failed with the expected messages; reverted clean). `make check` and
-`make check-pty` both pass. Logged D60 (color reuse, message coexistence, low-height
-precedence — the three things S9 left for this task to decide).
+M5.2 is done (this session), and with it every task in PLAN.md (M1–M5): extended the
+staleness baseline (S10/C2a) to track both DV1's and DV2's Active Documents, whichever
+exist, per S7. `staleness.go`: `staleBaseline.docPath/docModTime/docSize` (one document)
+became `docs []docSnapshot` (a new small struct: path/modTime/size); `snapshotStaleness`
+took a `docPath string` and is now variadic (`docPaths ...string`, backward-compatible with
+every existing single-path call site); `stale()` loops the slice instead of one inline
+check. `resetStaleBaseline` now gathers DV1's path unconditionally and DV2's only when
+`m.dv2 != nil` (an absent DV2 contributes no path at all, not a placeholder empty one,
+matching `snapshotStaleness`'s own "whichever exist" contract) — the M1.1-era comment
+flagging this as DV1-only pending M5.2 is gone. Added `trackedDocPaths()` (test-facing read
+of the tracked paths) since the fields are no longer directly comparable one-for-one.
+No change was needed anywhere else: `openFolder`/`openDocumentInto`/`refresh` already called
+`resetStaleBaseline` on every fresh read for both viewers (M1.1/M3.1's own plumbing), and
+M5.1's row/layout already render off `m.stale` alone, so the new detection reaches S9's
+row for free. Added the plan's own done-when verbatim
+(`TestStaleCheckDetectsOnlyDV2DocumentEdited`/`...DV1DocumentEdited` — edit one viewer's
+document only, tree and the other viewer untouched, confirm both `m.stale` and the rendered
+row) plus two wiring tests (`TestResetStaleBaselineTracksBothViewersActiveDocuments`,
+`TestResetStaleBaselineDropsDV2WhenItCloses`) and fixed two pre-existing tests that read the
+now-gone `docPath` field directly. Verified the four new tests actually bite by regression
+injection (temporarily reverted `resetStaleBaseline` to DV1-only — three of the four failed
+with the expected messages, the fourth (DV1-edited) correctly still passed since it never
+exercised the DV2 path; reverted clean). `make check` and `make check-pty` both pass.
 
-Next: **M5.2** — extend the staleness baseline/check to track DV1's and DV2's Active
-Documents (whichever exist) instead of one, still surfaced as the single combined signal
-(effort 2, needs M1.1, M5.1).
+Next: no task remains in PLAN.md — M1–M5 are all done. This milestone boundary (in fact the
+whole cycle) has validation due (see cycle-state) before C3 can close; none of C3's work has
+been through charm-validate yet (the Reviewed/Validated columns below are `-` for M1.6a
+onward). Recommend a full charm-validate pass against SPEC.md's cycle-level acceptance next,
+not further building.
 
 ## Status
 
@@ -71,4 +69,4 @@ Documents (whichever exist) instead of one, still surfaced as the single combine
 | M3.1 | done   | -        | -         |      |
 | M4.1 | done   | -        | -         |      |
 | M5.1 | done   | -        | -         |      |
-| M5.2 | todo   | -        | -         |      |
+| M5.2 | done   | -        | -         |      |
