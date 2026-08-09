@@ -97,6 +97,14 @@ Delivers: S4
   staleness signal while it is no longer visible — done when: a test edits DV2's former
   document on disk immediately after closing it (no intervening Refresh) and confirms
   `m.stale` stays false — effort: 1 (needs: M2.1, M5.2) (TRIAGE T12)
+- **M2.1c** — Reconcile `staleBaseline`'s two mutation-contract doc comments (the type's own
+  comment, staleness.go:21-23, and `model.staleBaseline`'s field comment, model.go:126 —
+  both currently say the baseline is only ever replaced wholesale by `resetStaleBaseline`/
+  touched by `runStaleCheck`/`applyStaleResult`) with M2.1b's `closeDV2` exception, which
+  mutates it directly via `withoutDoc` — done when: both comments explicitly name
+  `closeDV2`'s prune-in-place call as the one sanctioned exception (or are reworded so the
+  stated invariant is accurate as written), and no comment in either file contradicts actual
+  code behavior — effort: 1 (needs: M2.1b) (TRIAGE T14, D63)
 
 ## M3 — Refresh both viewers
 

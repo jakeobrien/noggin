@@ -944,3 +944,42 @@
 - Why: medium severity per the reporter, and the gap is real (pty is noggin's only check on
   what actually reaches a terminal, per `.charm/knowledge/pty-verification.md`) — logged
   per the accept-path's medium+ rule. Low effort (1), no design question involved.
+
+## D63: TRIAGE T14 (staleBaseline mutation-contract doc comments contradict closeDV2) routed to a new task, M2.1c
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: charm-validate's cycle-end review pass flagged that M2.1b's `closeDV2`
+  (model.go:317-319) mutates `m.staleBaseline` directly via `withoutDoc`, but two standing
+  doc comments it didn't update still say the baseline is only ever replaced wholesale by
+  `resetStaleBaseline` or touched by `runStaleCheck`/`applyStaleResult`: the `staleBaseline`
+  type's own comment ("established fresh every time … never touched in between",
+  staleness.go:21-23) and `model.staleBaseline`'s field comment ("Never mutated by anything
+  but resetStaleBaseline and runStaleCheck/applyStaleResult", model.go:126). Both are now
+  literally false statements about the code.
+- Decision: accept — new task **M2.1c** (PLAN.md): update both comments to name `closeDV2`'s
+  prune-in-place call as the sanctioned exception, so the documented contract matches actual
+  behavior again.
+- Why: medium severity per the reporter, and it's material in the sense that a doc comment
+  asserting an invariant the code no longer honors is exactly the kind of thing that misleads
+  the next person to touch this file — logged per the accept-path's medium+ rule. Effort is
+  trivial (1); this is a doc-only fix, not a design question, so no alternative was
+  considered besides which of the two comments states the exception (decided: both, since
+  both currently make the same false claim independently).
+
+## D64: TRIAGE T15 (redundant guard before `withoutDoc` in closeDV2) — wontfix, kept as belt-and-suspenders
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: `closeDV2`'s `if m.dv2.doc.isOpen()` guard before calling
+  `staleBaseline.withoutDoc(m.dv2.doc.path)` (model.go:317-319) is redundant — `withoutDoc`
+  already no-ops on an empty path per its own doc comment (staleness.go:103-104). Reporter
+  rated it low severity, suggesting either dropping the guard or explicitly noting it's
+  belt-and-suspenders.
+- Decision: wontfix — leave the guard in place, as-is. Not worth a task or a code change.
+- Why: low risk×value, purely stylistic, no functional difference either way (mirrors D57's
+  precedent of declining a cosmetic-only change that has an equally valid alternative
+  reading). The explicit guard also reads slightly clearer at the call site than relying on
+  a callee's no-op contract, which is a legitimate reason to keep it beyond pure inertia.

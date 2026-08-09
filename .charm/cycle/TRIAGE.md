@@ -25,8 +25,6 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T14 | review | med | cmd/noggin/staleness.go:21-23, cmd/noggin/model.go:126, cmd/noggin/model.go:311-319 | M2.1b's `closeDV2` mutates `m.staleBaseline` directly via `withoutDoc` (model.go:317-319), bypassing `resetStaleBaseline` — this contradicts two standing doc-comment contracts it didn't update: `staleBaseline`'s own type comment ("established fresh every time... never touched in between", staleness.go:21-23) and the field comment on `model.staleBaseline` ("Never mutated by anything but resetStaleBaseline and runStaleCheck/applyStaleResult", model.go:126). Either comment should be revised to acknowledge the new prune-in-place exception, or the two doc contracts reconciled with the new call site. | open |
-| T15 | review | low | cmd/noggin/model.go:317-319 | `closeDV2`'s `if m.dv2.doc.isOpen()` guard before calling `staleBaseline.withoutDoc` is redundant — `withoutDoc` already no-ops on an empty path per its own doc comment (staleness.go:103-104, "a no-op ... if path is empty or not tracked"). Minor: drop the guard and call `withoutDoc` unconditionally, or keep it but note it's belt-and-suspenders. | open |
 
 <!-- T1 (review, .gitignore:2, low): fixed directly this session per the effort-scaling rule
      (one-line, low-risk) rather than routed through a plan task — /cmd/noggin/noggin added
@@ -61,4 +59,9 @@
      PLAN.md M2.1b (new task, effort 1).
      T13 (review, low, model.go:651): duplicated message-combining logic between refresh()
      and resize() → folded into PLAN.md M3.1a alongside T11's fix (see D61) rather than a
-     standalone task, since both changes touch the same switch. -->
+     standalone task, since both changes touch the same switch.
+     T14 (review, med, staleness.go:21-23/model.go:126): closeDV2's direct staleBaseline
+     mutation contradicts two mutation-contract doc comments → PLAN.md M2.1c (new task,
+     effort 1) → DECISIONS.md D63.
+     T15 (review, low, model.go:317-319): redundant isOpen() guard before withoutDoc →
+     DECISIONS.md D64 (wontfix, kept as belt-and-suspenders). -->
