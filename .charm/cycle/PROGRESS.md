@@ -17,31 +17,27 @@
 
 ## Cursor
 
-Current task: (none — all M1–M5 tasks done; cycle close/validation due)
+Current task: M3.1a (fixes TRIAGE T11's cycle-close-blocking regression; highest priority of
+the three replan-added follow-ups)
 
 ## Handoff
 
-Fresh-context charm-validate pass run this session (cycle-end scope) via the validator
-subagent. `make check` and `make check-pty` both pass clean. M1.6a, M1.7, M2.1, M4.1, M5.1,
-M5.2 each independently verified against their PLAN.md done-when and stamped Validated below
-(2026-08-09). M1.1–M1.6/M1.3a/M1.4/M1.4a/M1.5 were already stamped Validated earlier today and
-not re-run (no code change since; relied on indirectly via tests that build on them).
+charm-replan ran this session, consuming all four TRIAGE.md items the prior charm-validate
+pass left open (inbox is now empty). Routed: T11 (high, refresh() message-priority
+regression) + T13 (low, duplicated combining logic) folded into one new task **M3.1a**
+(D61) since both touch the same switch; T10 (med, no pty coverage for ctrl+x) → new task
+**M2.1a** (D62); T12 (low, closeDV2 doesn't reset the stale baseline) → new task **M2.1b**
+(no log needed, low/non-material). All three are `todo`, not yet built. M3.1's Status stays
+`done` (content/scroll half is genuinely correct) but its Note now points at M3.1a instead
+of the resolved-and-removed triage ids.
 
-**M3.1 is only PARTIAL**, not a clean pass: TRIAGE T11 (already open, source `review`) was
-reproduced live — `refresh()`'s message-combining switch (cmd/noggin/model.go:651-658) has no
-`if m.message == ""` guard (unlike `refreshViewer`'s own guarded branch at model.go:685), so a
-read-failure message is silently overwritten by a find-dropped message whenever both occur
-together. Violates M3.1's own "message-priority behavior" clause and SPEC.md's cycle-level
-acceptance bullet 5. T11 already fully describes the fix (guard the switch like the
-pre-refactor code and `refreshViewer` do) — no new TRIAGE entry added — but its severity
-should read as cycle-close-blocking, not deferrable. Recommend charm-replan promote it to a
-fix task before C3 closes.
+No spec change involved — SPEC.md, PLAN.md's other tasks and PROGRESS.md's other statuses
+are untouched. DECISIONS.md open items (D9/D10/D33) predate C3 and are out of scope.
 
-Next: no task remains in PLAN.md. Cycle-level validation is otherwise clean (make check/
-check-pty pass, all other M-keys independently verified) — C3 can close once T11 is fixed
-(or explicitly wontfix'd, which would need a DECISIONS.md entry since it contradicts a stated
-SPEC acceptance bullet). TRIAGE.md still has T10/T12/T13 open too (all low/med, non-blocking
-by prior triage) — must be empty before close regardless.
+Next: build M3.1a first (it's what's blocking full cycle-level acceptance), then M2.1a/M2.1b
+(low effort, non-blocking, any order). Once all three are done and validated, TRIAGE.md is
+already empty, so C3 should be ready for `/charm-close` pending a final validate pass over
+just the three new tasks.
 
 ## Status
 
@@ -57,8 +53,11 @@ by prior triage) — must be empty before close regardless.
 | M1.6 | done   | 2026-08-09 | 2026-08-09 |      |
 | M1.6a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T5, D59 |
 | M1.7 | done   | 2026-08-09 | 2026-08-09 | TRIAGE T6 |
-| M2.1 | done   | 2026-08-09 | 2026-08-09 | TRIAGE T10, T12 |
-| M3.1 | done   | 2026-08-09 | 2026-08-09 | PARTIAL — TRIAGE T11 confirmed (message-priority regression), T13 |
+| M2.1 | done   | 2026-08-09 | 2026-08-09 | see M2.1a (T10), M2.1b (T12) |
+| M3.1 | done   | 2026-08-09 | 2026-08-09 | PARTIAL — see M3.1a (fixes T11/T13), D61 |
 | M4.1 | done   | 2026-08-09 | 2026-08-09 |      |
 | M5.1 | done   | 2026-08-09 | 2026-08-09 |      |
 | M5.2 | done   | 2026-08-09 | 2026-08-09 |      |
+| M2.1a| todo   | -          | -          | TRIAGE T10, D62 |
+| M2.1b| todo   | -          | -          | TRIAGE T12 |
+| M3.1a| todo   | -          | -          | TRIAGE T11, T13, D61 |

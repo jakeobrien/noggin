@@ -87,6 +87,16 @@ Delivers: S4
   otherwise Focus is unchanged — done when: a test closes DV2 from every non-modal Focus and
   confirms the Focus-landing rule, confirms it is a no-op with DV2 absent, and confirms it is
   inert while the Picker or Help Modal is open — effort: 2 (needs: M1.1, M1.3)
+- **M2.1a** — Extend `test/pty/checks.py`/`harness.py`'s KEY table with real-binary coverage
+  for `ctrl+x` (M1.7 covered the four targeting/focus chords that existed at the time but
+  postdates CloseDV2) — done when: `make check-pty` drives `ctrl+x` against the real binary,
+  confirms DV2 closes and Focus lands on DV1 when it held it, and fails if the binding
+  regresses — effort: 1 (needs: M2.1, M1.7) (TRIAGE T10)
+- **M2.1b** — `closeDV2` prunes DV2's entry from the staleness baseline immediately (not just
+  on the next refresh), so a closed DV2's former document can no longer flip the combined
+  staleness signal while it is no longer visible — done when: a test edits DV2's former
+  document on disk immediately after closing it (no intervening Refresh) and confirms
+  `m.stale` stays false — effort: 1 (needs: M2.1, M5.2) (TRIAGE T12)
 
 ## M3 — Refresh both viewers
 
@@ -98,6 +108,17 @@ Delivers: S7
   documents changed on disk, confirms one Refresh updates the tree and both viewers'
   content, preserving each viewer's scroll position and the message-priority behavior the
   single-viewer case already has — effort: 3 (needs: M1.1)
+- **M3.1a** — Fix `refresh()`'s message-combining switch (model.go:651-658) to guard against
+  overwriting an existing read-failure message, the same way `refreshViewer`'s own branch
+  and the pre-M3.1 single-viewer code already do (TRIAGE T11 — confirmed by charm-validate:
+  a document that fails to re-read while it had a committed Find currently loses its
+  read-failure message to the find-dropped message, contradicting both `refresh()`'s own
+  doc comment and M3.1's acceptance clause); extract the combining logic shared with
+  `resize()`'s near-identical switch into one helper both call (TRIAGE T13), so the two
+  call sites can't drift independently — done when: a regression test with a document that
+  fails to re-read on Refresh AND had a committed Find (single-viewer and dual-viewer cases)
+  confirms the read-failure message wins over the find-dropped message, and `refresh()`/
+  `resize()` both call the same combining helper — effort: 3 (needs: M1.6a, M3.1)
 
 ## M4 — DV2 is session-only
 

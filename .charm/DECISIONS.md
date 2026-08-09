@@ -903,3 +903,44 @@
 - Why: low-to-medium risk×value, all three are narrow implementation choices with an obvious
   "least surprising" answer and no real alternative reading of S9 — decided and logged rather
   than asked, per the effort-scaling rule.
+
+## D61: TRIAGE T11 (refresh() message-priority regression) and T13 (duplicated combining logic) folded into one fix task, M3.1a
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: charm-validate's cycle-end pass reproduced T11 live (already open, source
+  `review`): `refresh()`'s message-combining switch (model.go:651-658) has no
+  `if m.message == ""` guard, unlike `refreshViewer`'s own guarded branch — a document that
+  fails to re-read while it had a committed Find loses its read-failure message to the
+  find-dropped message. This contradicts `refresh()`'s own doc comment and M3.1's stated
+  acceptance clause ("preserving … the message-priority behavior the single-viewer case
+  already has"), and undermines SPEC.md's cycle-level acceptance bullet 5. T13 (low, review)
+  separately flagged that `refresh()`'s and `resize()`'s combining switches are structurally
+  identical and drift-prone.
+- Decision: accept both — a new task, **M3.1a**, guards the switch (fixing T11) and extracts
+  the shared combining logic into one helper used by both `refresh()` and `resize()` (fixing
+  T13 as a side effect of touching the same code), rather than two separate tasks or leaving
+  either for a later cycle. M3.1 itself stays `done` in PROGRESS.md (its content/scroll
+  half is genuinely correct and tested) but is annotated PARTIAL pending M3.1a.
+- Why: T11 is high severity and material — it reopens a milestone already marked `done`
+  (M3.1) and blocks the cycle-level acceptance criterion, so it is logged rather than silently
+  folded in, per the same reasoning D55 used for reopening `done` milestones. Fixing it in the
+  same task as T13's refactor is the cheaper path: both changes touch the identical switch,
+  and extracting the helper while adding the guard is one diff instead of two touching the
+  same lines twice. Not escalated to the user: this is an implementation-correctness fix
+  against SPEC.md as already agreed, not a change to what SPEC.md promises.
+
+## D62: TRIAGE T10 (no pty coverage for ctrl+x/CloseDV2) routed to a new task, M2.1a
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: M1.7 added real-binary pty coverage for the four targeting/focus chords that
+  existed at the time it was built; CloseDV2's `ctrl+x` (M2.1) postdates it and was never
+  added to `test/pty/checks.py`, even though unit coverage (`close_dv2_test.go`) exists.
+- Decision: accept — new task **M2.1a** (PLAN.md): extend `checks.py`/`harness.py`'s KEY
+  table with `ctrl+x` and a pty check driving CloseDV2 against the real binary.
+- Why: medium severity per the reporter, and the gap is real (pty is noggin's only check on
+  what actually reaches a terminal, per `.charm/knowledge/pty-verification.md`) — logged
+  per the accept-path's medium+ rule. Low effort (1), no design question involved.
