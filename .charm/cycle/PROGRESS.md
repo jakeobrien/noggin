@@ -17,29 +17,25 @@
 
 ## Cursor
 
-Current task: **M2.1c** (doc-comment-only, effort 1) — the last open plan task. TRIAGE.md is
-now empty; once M2.1c is built and validated, the cycle is ready for `/charm-close`.
+Current task: **M2.1c** built, awaiting a validate touch — the last open plan task.
+TRIAGE.md is empty; once M2.1c is validated, the cycle is ready for `/charm-close`.
 
 ## Handoff
 
-Replanned this session: triaged TRIAGE.md's two open items (T14, T15), both surfaced by the
-prior cycle-end validate pass against M2.1b. T14 (med, `closeDV2`'s direct `staleBaseline`
-mutation contradicts two standing "never mutated except by resetStaleBaseline/..." doc
-comments — staleness.go:21-23, model.go:126) accepted as new task **M2.1c**: reword both
-comments to name `closeDV2`'s `withoutDoc` call as the sanctioned exception. Logged as D63
-(medium severity, accept-path). T15 (low, redundant `isOpen()` guard before `withoutDoc` in
-`closeDV2`, model.go:317-319) decided wontfix — keep the guard, purely stylistic, mirrors
-D57's precedent — logged as D64. TRIAGE.md inbox is empty again.
+Built M2.1c this session: reworded both `staleBaseline` mutation-contract doc comments — the
+type's own comment (staleness.go, was lines 21-23, now ~21-28) and `model.staleBaseline`'s
+field comment (model.go, was line 126, now ~126-127) — to explicitly name `closeDV2`'s
+`withoutDoc` call (C3/M2.1b) as the one sanctioned exception to the "never mutated except by
+resetStaleBaseline/runStaleCheck/applyStaleResult" invariant. Doc-comment-only change, no
+code behavior touched; verified with `make check` (build/vet/test all clean, `go test ./...`
+passes for both packages). Committed as d840f15.
 
-No spec change; SPEC.md untouched. PLAN.md gained M2.1c (suffixed under M2.1, needs: M2.1b,
-effort 1). No other plan divergence found — all other `done` tasks' validation from the
-prior session stands (M2.1a/M2.1b/M3.1a all independently confirmed PASS with break/restore
-regression checks; `make check`/`make check-pty` both clean).
+No spec/plan divergence found this session — proceeded straight from the prior handoff's
+D63 with no new judgment calls. TRIAGE.md remains empty.
 
-Next: build M2.1c (small doc-comment edit in staleness.go and model.go, no code-behavior
-change, no new test needed since nothing testable changed — just `make check` to confirm
-fmt/vet/build stay clean), then a final validate touch on M2.1c specifically, then
-`/charm-close`.
+Next: a final validate pass scoped to M2.1c (confirm both comments now agree with each other
+and with `closeDV2`'s actual behavior, confirm `make check` stays clean), then
+`/charm-close` — no more plan tasks remain after M2.1c.
 
 ## Status
 
@@ -63,4 +59,4 @@ fmt/vet/build stay clean), then a final validate touch on M2.1c specifically, th
 | M2.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T10, D62 |
 | M2.1b| done   | 2026-08-09 | 2026-08-09 | TRIAGE T12; T14→M2.1c/D63, T15→D64 |
 | M3.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T11, T13, D61 |
-| M2.1c| todo   | -          | -          | TRIAGE T14, D63       |
+| M2.1c| done   | -          | -          | TRIAGE T14, D63       |
