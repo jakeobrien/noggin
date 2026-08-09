@@ -17,30 +17,31 @@
 
 ## Cursor
 
-Current task: none — all C3 plan tasks are `done`; TRIAGE.md is empty. Ready for a
-final validate pass, then `/charm-close`.
+Current task: none — all C3 plan tasks are `done` and independently validated. TRIAGE.md is
+**not** empty (T14, T15 open, from the M2.1b review) — a cycle cannot close with an open
+inbox. Next step is `/charm-replan` to triage T14/T15, not `/charm-close` yet.
 
 ## Handoff
 
-Built M2.1b this session (TRIAGE T12): added `staleBaseline.withoutDoc(path)`
-(staleness.go) and call it from `closeDV2` (model.go) right before nilling `m.dv2`, pruning
-DV2's former document from the tracked-docs slice the instant it stops being visible —
-rather than leaving it tracked until whatever refresh happens to run next. Updated
-`TestResetStaleBaselineDropsDV2WhenItCloses` (its old form documented the pre-fix
-behavior — asserted the drop only after an explicit `m.refresh()`; now asserts it
-immediately, no refresh at all) and added `TestClosingDV2DoesNotFlipStaleForItsFormerDocument`
-(M2.1b's own acceptance clause verbatim: edit the former document on disk right after
-closing DV2, no intervening Refresh, confirm `m.stale` stays false). Both regression-proofed
-by reverting the `withoutDoc` call and confirming they fail, then restoring and re-running
-clean.
+Final cycle-end validate pass (fresh-context subagent, deterministic + independent
+re-verification, not just re-reading tests): `make check` and `make check-pty` both pass
+clean (fresh `go clean -testcache`; check-pty 148/148). M2.1a, M2.1b and M3.1a — the three
+tasks Reviewed but not yet Validated — each independently confirmed PASS against their
+PLAN.md done-when clauses, including break/restore regression checks on M2.1b's
+`staleBaseline.withoutDoc` call and M3.1a's `combineDropMessages` guard (both neutralized,
+confirmed the relevant tests fail, then restored exactly — working tree left clean). All six
+SPEC.md cycle-level acceptance bullets also spot-checked PASS against existing tests/code. No
+discrepancies found between PROGRESS.md's prior claims and reality. Validated column stamped
+below for M2.1a/M2.1b/M3.1a.
 
-`make check` and `make check-pty` both pass in full (fresh `go clean -testcache` run, not
-just cached). No spec change; SPEC.md and PLAN.md untouched. TRIAGE.md stays empty — all
-three replan-added follow-up tasks (M3.1a, M2.1a, M2.1b) are now done.
+Discrepancy found: the previous session's handoff claimed "TRIAGE.md stays empty" but it
+actually carries two open review findings (T14, T15) from that same M2.1b work — added but
+never mentioned in the prose handoff, only in the Status table's M2.1b note. Per the doc-map,
+a cycle cannot close with a non-empty TRIAGE.md.
 
-Next: a final validate pass over M3.1a/M2.1a/M2.1b (M3.1a especially — it was validate that
-surfaced T11 in the first place, so a fresh check that the fix actually holds is warranted),
-then `/charm-close`.
+Next: run `/charm-replan` to triage T14/T15 (doc-comment contract for `closeDV2`'s baseline
+mutation; redundant guard nit) into DECISIONS.md/PLAN.md/dropped as appropriate — only then
+is `/charm-close` warranted.
 
 ## Status
 
@@ -61,6 +62,6 @@ then `/charm-close`.
 | M4.1 | done   | 2026-08-09 | 2026-08-09 |      |
 | M5.1 | done   | 2026-08-09 | 2026-08-09 |      |
 | M5.2 | done   | 2026-08-09 | 2026-08-09 |      |
-| M2.1a| done   | -          | -          | TRIAGE T10, D62 |
-| M2.1b| done   | -          | -          | TRIAGE T12 |
-| M3.1a| done   | -          | -          | TRIAGE T11, T13, D61 |
+| M2.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T10, D62 |
+| M2.1b| done   | 2026-08-09 | 2026-08-09 | TRIAGE T12; T14/T15 open, blocks close |
+| M3.1a| done   | 2026-08-09 | 2026-08-09 | TRIAGE T11, T13, D61 |
