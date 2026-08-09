@@ -17,27 +17,33 @@
 
 ## Cursor
 
-Current task: M3.1a (fixes TRIAGE T11's cycle-close-blocking regression; highest priority of
-the three replan-added follow-ups)
+Current task: M2.1a (TRIAGE T10, D62 — pty coverage for ctrl+x; M2.1b remains after it, any
+order)
 
 ## Handoff
 
-charm-replan ran this session, consuming all four TRIAGE.md items the prior charm-validate
-pass left open (inbox is now empty). Routed: T11 (high, refresh() message-priority
-regression) + T13 (low, duplicated combining logic) folded into one new task **M3.1a**
-(D61) since both touch the same switch; T10 (med, no pty coverage for ctrl+x) → new task
-**M2.1a** (D62); T12 (low, closeDV2 doesn't reset the stale baseline) → new task **M2.1b**
-(no log needed, low/non-material). All three are `todo`, not yet built. M3.1's Status stays
-`done` (content/scroll half is genuinely correct) but its Note now points at M3.1a instead
-of the resolved-and-removed triage ids.
+Built M3.1a this session: extracted the identical refresh()/resize() message-combining
+switch into one shared helper, `combineDropMessages` (model.go), guarded with an
+`m.message != ""` check so an existing Root-walk or per-viewer read-failure message can
+never be overwritten by a find-drop notice — fixes TRIAGE T11 (refresh's switch previously
+had no such guard, unlike refreshViewer's own read-failure branch) and T13 (the duplicated
+switch) in the same change, per D61. Two regression tests added
+(refresh_test.go: TestRefreshReadFailureMessageWinsOverFindDroppedMessage, single-viewer;
+…WithDV2, dual-viewer racing a genuine DV2 find-drop against DV1's read failure) — both
+confirmed to fail against the pre-fix (unguarded) switch and pass with the fix. `resize()`
+now calls the same helper (behavior unchanged there — resize never set m.message before its
+own switch ran, confirmed by its existing test suite still passing unchanged).
 
-No spec change involved — SPEC.md, PLAN.md's other tasks and PROGRESS.md's other statuses
-are untouched. DECISIONS.md open items (D9/D10/D33) predate C3 and are out of scope.
+`make check` and `make check-pty` both pass in full, including the new tests and all
+pre-existing C3 pty coverage (M1.7's four chords). No spec change; SPEC.md and PLAN.md are
+untouched. TRIAGE.md stays empty (no new items surfaced).
 
-Next: build M3.1a first (it's what's blocking full cycle-level acceptance), then M2.1a/M2.1b
-(low effort, non-blocking, any order). Once all three are done and validated, TRIAGE.md is
+Next: build M2.1a (pty coverage for ctrl+x), then M2.1b (closeDV2 staleness-baseline prune),
+any order — both low effort, non-blocking. Once both are done and validated, TRIAGE.md is
 already empty, so C3 should be ready for `/charm-close` pending a final validate pass over
-just the three new tasks.
+just these two remaining new tasks (M3.1a's own fix should get a validate pass too, since
+it was validate that surfaced T11 in the first place — a fresh check that the fix actually
+holds is warranted before close).
 
 ## Status
 
@@ -60,4 +66,4 @@ just the three new tasks.
 | M5.2 | done   | 2026-08-09 | 2026-08-09 |      |
 | M2.1a| todo   | -          | -          | TRIAGE T10, D62 |
 | M2.1b| todo   | -          | -          | TRIAGE T12 |
-| M3.1a| todo   | -          | -          | TRIAGE T11, T13, D61 |
+| M3.1a| done   | -          | -          | TRIAGE T11, T13, D61 |

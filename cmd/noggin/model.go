@@ -648,14 +648,7 @@ func (m model) refresh() model {
 	if m.dv2 != nil {
 		m, dv2Drop = m.refreshViewer(dv2Pane)
 	}
-	switch {
-	case dv1Drop != "" && dv2Drop != "":
-		m.message = fmt.Sprintf("refreshed; dv1 %s, dv2 %s", dv1Drop, dv2Drop)
-	case dv1Drop != "":
-		m.message = fmt.Sprintf("refreshed; %s", dv1Drop)
-	case dv2Drop != "":
-		m.message = fmt.Sprintf("refreshed; dv2 %s", dv2Drop)
-	}
+	m = m.combineDropMessages("refreshed", dv1Drop, dv2Drop)
 	// S10/C2a/M10.1: a refresh is the user acting on the indicator ("press
 	// R"), so it both clears it and re-baselines against whatever the model
 	// ends up showing above — including a read failure's fallback (an
@@ -694,6 +687,36 @@ func (m model) refreshViewer(p pane) (model, string) {
 		return m, "search cleared"
 	}
 	return m, ""
+}
+
+// combineDropMessages builds refresh's and resize's shared m.message shape
+// (TRIAGE T13 — the two call sites' combining switches were identical and
+// drift-prone) from each viewer's own find-drop verdict (dv1Drop/dv2Drop,
+// "" if that viewer lost nothing), prefixed by cause ("refreshed", or a
+// resizeCause's own wording): both drops name each viewer explicitly
+// ("dv1 …, dv2 …"), a single drop leaves DV1's own wording unprefixed and
+// names DV2's explicitly, matching every pre-C3/M1.6a test's wording.
+//
+// It never overwrites an existing m.message (TRIAGE T11, D61): a Root-walk
+// or per-viewer read failure set earlier in the same refresh/resize call is
+// strictly more consequential than a find silently dropping, the same
+// priority refreshViewer's own read-failure branch already gives itself —
+// before this guard, refresh's switch had none, so a document that failed
+// to re-read while it had a committed Find lost its read-failure message to
+// the find-dropped one, contradicting refresh's own doc comment.
+func (m model) combineDropMessages(cause string, dv1Drop, dv2Drop string) model {
+	if m.message != "" || (dv1Drop == "" && dv2Drop == "") {
+		return m
+	}
+	switch {
+	case dv1Drop != "" && dv2Drop != "":
+		m.message = fmt.Sprintf("%s; dv1 %s, dv2 %s", cause, dv1Drop, dv2Drop)
+	case dv1Drop != "":
+		m.message = fmt.Sprintf("%s; %s", cause, dv1Drop)
+	case dv2Drop != "":
+		m.message = fmt.Sprintf("%s; dv2 %s", cause, dv2Drop)
+	}
+	return m
 }
 
 // startFind begins an S8 search over the active document, moving focus to
@@ -1061,14 +1084,7 @@ func (m model) resize(width, height int, cause resizeCause) model {
 			dv2Drop = "search cleared"
 		}
 	}
-	switch {
-	case dv1Drop != "" && dv2Drop != "":
-		m.message = fmt.Sprintf("%s; dv1 %s, dv2 %s", cause, dv1Drop, dv2Drop)
-	case dv1Drop != "":
-		m.message = fmt.Sprintf("%s; %s", cause, dv1Drop)
-	case dv2Drop != "":
-		m.message = fmt.Sprintf("%s; dv2 %s", cause, dv2Drop)
-	}
+	m = m.combineDropMessages(string(cause), dv1Drop, dv2Drop)
 	filesContent := l.files.content()
 	m.files = m.files.setSize(filesContent.width, filesContent.height)
 	rootsContent := l.roots.content()

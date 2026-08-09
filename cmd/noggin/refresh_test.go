@@ -530,6 +530,115 @@ func TestRefreshDV1ReadFailureWinsOverDV2ReadFailure(t *testing.T) {
 	}
 }
 
+// TestRefreshReadFailureMessageWinsOverFindDroppedMessage is TRIAGE T11
+// (D61, C3/M3.1a): a document that fails to re-read while it had a
+// committed Find used to lose its read-failure message to the find-dropped
+// one, because refresh's message-combining switch had no "already set"
+// guard, unlike refreshViewer's own read-failure branch (which does) and
+// resize's near-identical switch (which never needed one, since resize
+// never sets m.message before it runs) — refresh's own doc comment already
+// promised the read failure wins; this pins that it actually does, in the
+// single-viewer case.
+func TestRefreshReadFailureMessageWinsOverFindDroppedMessage(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	docPath := writeFile(t, filepath.Join(root, "doc.md")) // "# note\n"
+
+	node, err := tree.Walk(root)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	d, err := loadDocument(docPath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m := sized(t, newModel().openFolder(node), 80, 24)
+	m = m.openDocument(d)
+
+	m = press(t, m, "/")
+	m = typeText(t, m, "note")
+	m = press(t, m, "enter")
+	if !m.dv1.hasFindMatches() {
+		t.Fatal("test setup: committed find has no matches to lose")
+	}
+
+	if err := os.Remove(docPath); err != nil {
+		t.Fatalf("remove doc.md: %v", err)
+	}
+	m = press(t, m, keys.Refresh.Keys()[0])
+
+	if m.dv1.doc.isOpen() {
+		t.Errorf("viewer still reports a document open after its file was deleted")
+	}
+	if !strings.Contains(m.message, "cannot open") || !strings.Contains(m.message, docPath) {
+		t.Errorf("message = %q, want the read-failure message naming %q", m.message, docPath)
+	}
+	if strings.Contains(m.message, "search") {
+		t.Errorf("message = %q, want the read failure to win outright, not share the slot with the dropped find", m.message)
+	}
+}
+
+// TestRefreshReadFailureMessageWinsOverFindDroppedMessageWithDV2 is the
+// dual-viewer extension of the test above: DV1's committed find is dropped
+// by refreshViewer's own v.close() at the exact same moment DV1's read
+// fails, while DV2 (untouched on disk) drops its own committed find via a
+// perfectly ordinary successful re-render — two genuine find-drops "racing"
+// one read failure. The read failure must still win the single m.message
+// slot over both.
+func TestRefreshReadFailureMessageWinsOverFindDroppedMessageWithDV2(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	docAPath := writeFile(t, filepath.Join(root, "a.md")) // "# note\n"
+	docBPath := writeFile(t, filepath.Join(root, "b.md"))
+
+	node, err := tree.Walk(root)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	docA, err := loadDocument(docAPath)
+	if err != nil {
+		t.Fatalf("loadDocument(a): %v", err)
+	}
+	docB, err := loadDocument(docBPath)
+	if err != nil {
+		t.Fatalf("loadDocument(b): %v", err)
+	}
+	m := sized(t, newModel().openFolder(node), 80, 24)
+	m = m.openDocument(docA)              // focus -> dv1Pane
+	m = m.openDocumentInto(dv2Pane, docB) // focus -> dv2Pane
+
+	m = press(t, m, keys.FocusDV1.Keys()[0])
+	m = press(t, m, "/")
+	m = typeText(t, m, "note")
+	m = press(t, m, "enter")
+	if !m.dv1.hasFindMatches() {
+		t.Fatal("test setup: DV1's find did not commit")
+	}
+	m = press(t, m, keys.FocusDV2.Keys()[0])
+	m = press(t, m, "/")
+	m = typeText(t, m, "note")
+	m = press(t, m, "enter")
+	if !m.dv2.hasFindMatches() {
+		t.Fatal("test setup: DV2's find did not commit")
+	}
+
+	if err := os.Remove(docAPath); err != nil {
+		t.Fatalf("remove a.md: %v", err)
+	}
+	m = press(t, m, keys.Refresh.Keys()[0])
+
+	if m.dv1.doc.isOpen() {
+		t.Errorf("DV1 still reports a document open after its file was deleted")
+	}
+	if m.dv1.hasFindMatches() || m.dv2.hasFindMatches() {
+		t.Fatal("test setup: refresh did not drop both viewers' committed finds")
+	}
+	if !strings.Contains(m.message, "cannot open") || !strings.Contains(m.message, docAPath) {
+		t.Errorf("message = %q, want the read-failure message naming %q", m.message, docAPath)
+	}
+	if strings.Contains(m.message, "search") {
+		t.Errorf("message = %q, want the read failure to win outright over both viewers' dropped finds", m.message)
+	}
+}
+
 // TestRefreshWithNoActiveRootIsANoOp checks the "nothing outside the Active
 // Root's tree and the Active Document is touched" clause at its emptiest: a
 // session with no root at all (no launch argument, no starred roots) has
