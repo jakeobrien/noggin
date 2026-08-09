@@ -873,3 +873,33 @@
   DV1's unprefixed wording is what makes the change backward-compatible for free; naming DV2
   explicitly rather than leaving it equally unprefixed is the only option that stays
   unambiguous once a message might need to describe either or both viewers at once.
+
+## D60: Stale row supersedes D49's Footer-suffix surface; color reuse, message coexistence, low-height precedence (C3/M5.1)
+
+- Status: decided
+- Cycle: C3
+- Date: 2026-08-09
+- Context: M5.1 relocates S10/C2a's staleness indicator off the Footer's hint line into its
+  own dedicated row (S9), superseding D49's "indicator surface: Footer" half (D49's detection
+  mechanism, staleBaseline/staleness.go, is untouched and still current). S9 pins wording,
+  "occupies no space otherwise" and styling ("highlight color, inverse text") but leaves three
+  things open that D49 previously had opinions on: which highlight color, how the row
+  interacts with a transient m.message (D22) now that they are different lines, and what
+  happens to the row/Footer split at a terminal too short to fit both.
+- Decision (color): reuse `lipgloss.Color("214")`, the Help Modal border's own color
+  (`modalStyle`, help.go) — noggin's one existing "this needs your attention" color — rather
+  than introduce a second, arbitrary highlight color. `staleRowStyle` (style.go) is
+  `Foreground(214).Reverse(true)`, matching S9's "highlight color, inverse text" by swapping
+  the specified foreground into the row's background via `Reverse`.
+- Decision (message coexistence): the row and a transient Footer message (D22) now show
+  simultaneously — they no longer share one line, so D49's "message wins, suffix dropped"
+  rule (which existed only because both competed for the same Footer line) has no successor.
+  `renderFooter` no longer looks at `m.stale` at all.
+- Decision (low-height precedence): `computeLayout` reserves the Footer's own height first,
+  then gives the stale row whatever remains — at a terminal shorter than 2 rows the row is
+  silently dropped rather than displacing the Footer, the same "never push a more essential
+  region out" precedence the frame's other regions (Navigator vs. viewer, `minViewerWidth`)
+  already follow at extreme sizes.
+- Why: low-to-medium risk×value, all three are narrow implementation choices with an obvious
+  "least surprising" answer and no real alternative reading of S9 — decided and logged rather
+  than asked, per the effort-scaling rule.

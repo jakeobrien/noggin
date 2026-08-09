@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/lipgloss/v2"
+
 	"noggin/internal/tree"
 )
 
@@ -356,78 +358,113 @@ func TestUpdateDispatchesStaleCheckAndResultMessages(t *testing.T) {
 	}
 }
 
-// TestFooterShowsStaleIndicatorAppendedToPaneHints is S10's UI surface (this
-// task's own design choice, see DECISIONS.md): the indicator's fixed
-// wording appears alongside the focused pane's normal hints, not in place
-// of them.
-func TestFooterShowsStaleIndicatorAppendedToPaneHints(t *testing.T) {
-	m := sized(t, newModel(), 400, 24)
-	m.stale = true
-
-	footer := m.renderFooter(rect{width: 400, height: 1})
-	if !strings.Contains(footer, staleMessage) {
-		t.Errorf("footer = %q, want it to contain %q", footer, staleMessage)
+// TestStaleRowAbsentWhenNotStale is S9/C3/M5.1's own done-when, negative
+// half: the row occupies zero height, and the frame contains no trace of
+// staleMessage at all, while nothing is stale.
+func TestStaleRowAbsentWhenNotStale(t *testing.T) {
+	l := computeLayout(80, 24, false, false)
+	if !l.staleRow.empty() {
+		t.Errorf("staleRow = %+v, want empty (zero height) when not stale", l.staleRow)
 	}
-	if !strings.Contains(footer, formatHint(keys.Refresh)) {
-		t.Errorf("footer = %q, want the pane's own hints (e.g. Refresh) still present", footer)
+
+	m := sized(t, newModel(), 80, 24)
+	if strings.Contains(m.frame(), staleMessage) {
+		t.Error("frame contains the stale message while nothing is stale")
 	}
 }
 
-// TestFooterMessageTakesPriorityOverStaleIndicator is D22's transient
-// message winning over S10's standing one — the indicator would otherwise
-// bury a just-produced, more specific notice.
-func TestFooterMessageTakesPriorityOverStaleIndicator(t *testing.T) {
-	m := sized(t, newModel(), 200, 24)
+// TestStaleRowPresentWhenStale is S9/C3/M5.1's own done-when, positive half:
+// the row claims its one line and shows staleMessage — driven at 80 cols, a
+// width the old Footer-suffix design (D49, appendStaleSuffix) never
+// rendered the indicator at all: it only ever fit above ~200-244 cols
+// (D53), since hintText's own greedy fill left it no room. A dedicated row
+// has no such competition.
+func TestStaleRowPresentWhenStale(t *testing.T) {
+	l := computeLayout(80, 24, false, true)
+	if l.staleRow.height != staleRowHeight {
+		t.Errorf("staleRow height = %d, want %d", l.staleRow.height, staleRowHeight)
+	}
+	if l.staleRow.width != 80 {
+		t.Errorf("staleRow width = %d, want 80 (full terminal width)", l.staleRow.width)
+	}
+
+	m := sized(t, newModel(), 80, 24)
+	m.stale = true
+	if !strings.Contains(m.frame(), staleMessage) {
+		t.Errorf("frame at 80 cols does not contain %q while stale", staleMessage)
+	}
+}
+
+// TestStaleRowClaimsSpaceFromTheBody pins the "occupies no space otherwise"
+// contract's other side: becoming stale shrinks the body region (viewer
+// height) by exactly staleRowHeight, the row's own height, at a fixed
+// terminal size — the row is not drawn over the body or the Footer, it is
+// budgeted alongside them.
+func TestStaleRowClaimsSpaceFromTheBody(t *testing.T) {
+	fresh := computeLayout(80, 24, false, false)
+	stale := computeLayout(80, 24, false, true)
+
+	if stale.viewer.height != fresh.viewer.height-staleRowHeight {
+		t.Errorf("viewer height while stale = %d, want %d (fresh %d minus the row's %d)",
+			stale.viewer.height, fresh.viewer.height-staleRowHeight, fresh.viewer.height, staleRowHeight)
+	}
+	if stale.footer != fresh.footer {
+		t.Errorf("footer rect changed by staleness: %+v vs %+v, want unchanged", stale.footer, fresh.footer)
+	}
+}
+
+// TestStaleRowDoesNotAffectFooterContent is the M5.1 corollary of moving
+// the indicator off the Footer entirely: renderFooter's own output for a
+// given (focus, message, width) is now identical whether or not m.stale is
+// set — there is no more width reservation or suffix append for it to do.
+func TestStaleRowDoesNotAffectFooterContent(t *testing.T) {
+	for _, width := range []int{80, 100, 120, 132, 400} {
+		fresh := sized(t, newModel(), width, 24)
+		stale := fresh
+		stale.stale = true
+
+		freshFooter := fresh.renderFooter(rect{width: width, height: 1})
+		staleFooter := stale.renderFooter(rect{width: width, height: 1})
+		if freshFooter != staleFooter {
+			t.Errorf("width %d: footer changed by staleness:\nfresh: %q\nstale: %q", width, freshFooter, staleFooter)
+		}
+	}
+}
+
+// TestStaleRowCoexistsWithATransientMessage: unlike the old Footer-suffix
+// design (where D22's transient message and S10's standing indicator shared
+// one line and the message had to win), the row is its own line now — a
+// transient message on the Footer and the stale row both show at once.
+func TestStaleRowCoexistsWithATransientMessage(t *testing.T) {
+	m := sized(t, newModel(), 80, 24)
 	m.stale = true
 	m.message = "cannot open x: boom"
 
-	footer := m.renderFooter(rect{width: 200, height: 1})
-	if strings.Contains(footer, staleMessage) {
-		t.Errorf("footer = %q, want the transient message alone, no stale suffix", footer)
+	frame := m.frame()
+	if !strings.Contains(frame, staleMessage) {
+		t.Error("frame does not contain the stale row's message while a transient message is also set")
 	}
-	if !strings.Contains(footer, m.message) {
-		t.Errorf("footer = %q, want the transient message %q", footer, m.message)
-	}
-}
-
-// TestFooterShowsStaleIndicatorAtARealisticWidth is M10.2's regression case
-// (DECISIONS.md D53): TestFooterShowsStaleIndicatorAppendedToPaneHints and
-// TestFooterShowsStaleIndicatorAlongsidePickerHints only ever exercised
-// 200/400 cols, wide enough that appendStaleSuffix always had slack left
-// over from hintText's greedy fill. Every width this project's own
-// test/pty fixtures actually use (80/100/120/132) is narrower than that,
-// and the indicator never rendered at any of them before renderFooter
-// started reserving room for the suffix ahead of hintText's fill.
-func TestFooterShowsStaleIndicatorAtARealisticWidth(t *testing.T) {
-	for _, width := range []int{80, 100, 120, 132} {
-		m := sized(t, newModel(), width, 24)
-		m.stale = true
-
-		footer := m.renderFooter(rect{width: width, height: 1})
-		if !strings.Contains(footer, staleMessage) {
-			t.Errorf("width %d: footer = %q, want it to contain %q", width, footer, staleMessage)
-		}
-		if !strings.Contains(footer, formatHint(keys.Quit)) {
-			t.Errorf("width %d: footer = %q, want alwaysHints (e.g. quit) still present", width, footer)
-		}
+	if !strings.Contains(frame, m.message) {
+		t.Errorf("frame does not contain the transient message %q", m.message)
 	}
 }
 
-// TestFooterShowsStaleIndicatorAlongsidePickerHints covers the other hint
-// source renderFooter can append the suffix to (D49: "pane hints or the
-// open Picker's") — TestFooterShowsStaleIndicatorAppendedToPaneHints only
-// exercises the pane-hints branch.
-func TestFooterShowsStaleIndicatorAlongsidePickerHints(t *testing.T) {
-	m := sized(t, newModel(), 400, 24)
-	m.picker.open = true
-	m.stale = true
-
-	footer := m.renderFooter(rect{width: 400, height: 1})
-	if !strings.Contains(footer, staleMessage) {
-		t.Errorf("footer = %q, want it to contain %q", footer, staleMessage)
+// TestRenderStaleRowTruncatesRatherThanWraps: at a width narrower than
+// staleMessage itself, the row truncates to one line (rightTruncate) rather
+// than word-wrapping into two — the lipgloss v2 Width-wraps-before-MaxWidth-
+// truncates gotcha (lipgloss-v2-row-rendering-gotchas.md) applied here.
+func TestRenderStaleRowTruncatesRatherThanWraps(t *testing.T) {
+	width := 20
+	if width >= lipgloss.Width(staleMessage) {
+		t.Fatalf("test width %d must be shorter than staleMessage (%d)", width, lipgloss.Width(staleMessage))
 	}
-	if !strings.Contains(footer, formatHint(keys.PickerMode)) {
-		t.Errorf("footer = %q, want the Picker's own hints (e.g. PickerMode) still present", footer)
+	m := newModel()
+	row := m.renderStaleRow(rect{width: width, height: 1})
+	if got := lipgloss.Height(row); got != 1 {
+		t.Errorf("renderStaleRow height = %d, want 1 (no wrap)", got)
+	}
+	if got := lipgloss.Width(row); got != width {
+		t.Errorf("renderStaleRow width = %d, want %d", got, width)
 	}
 }
 
@@ -449,18 +486,15 @@ func TestSnapshotStalenessUntracksADocumentWhoseStatFails(t *testing.T) {
 	}
 }
 
-// TestAppendStaleSuffixOmitsWhenItWouldOverflow is renderFooter's own
-// truncate-gracefully note: a terminal too narrow for hints plus the
-// indicator shows the hints alone rather than truncating either.
-func TestAppendStaleSuffixOmitsWhenItWouldOverflow(t *testing.T) {
-	text := "Files · enter open"
-	got := appendStaleSuffix(text, len(text)) // exactly fits text, no room for the suffix
-	if got != text {
-		t.Errorf("appendStaleSuffix at exact width = %q, want unchanged %q", got, text)
-	}
-
-	wide := appendStaleSuffix(text, len(text)+len(" · "+staleMessage))
-	if wide == text {
-		t.Errorf("appendStaleSuffix with room to spare left text unchanged, want the suffix appended")
+// TestRenderStaleRowFillsWidthEvenWhenTextIsShorter: the row is a highlight
+// bar (S9: "highlight color, inverse text"), so it must fill r.width even
+// when staleMessage itself is shorter — not just render the bare text and
+// leave the rest of the row unstyled.
+func TestRenderStaleRowFillsWidthEvenWhenTextIsShorter(t *testing.T) {
+	m := newModel()
+	width := lipgloss.Width(staleMessage) + 20
+	row := m.renderStaleRow(rect{width: width, height: 1})
+	if got := lipgloss.Width(row); got != width {
+		t.Errorf("renderStaleRow width = %d, want %d (filled, not just the bare text)", got, width)
 	}
 }

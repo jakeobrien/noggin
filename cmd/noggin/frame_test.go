@@ -22,7 +22,7 @@ var frameSizes = []struct {
 func TestComputeLayoutProportions(t *testing.T) {
 	for _, s := range frameSizes {
 		t.Run(s.name, func(t *testing.T) {
-			l := computeLayout(s.width, s.height, false)
+			l := computeLayout(s.width, s.height, false, false)
 
 			wantNav := clamp(s.width*navigatorPercent/100, minNavigatorWidth, maxNavigatorWidth)
 			if l.navigatorWidth() != wantNav {
@@ -68,7 +68,7 @@ func TestViewRendersThreeRegionsAtSize(t *testing.T) {
 				}
 			}
 
-			l := computeLayout(s.width, s.height, false)
+			l := computeLayout(s.width, s.height, false, false)
 			lines := strings.Split(view, "\n")
 
 			// Each Navigator pane occupies its own band of rows, so the two
@@ -139,7 +139,7 @@ func TestTabAndShiftTabAreUnbound(t *testing.T) {
 
 func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 	narrow := minNavigatorWidth + minViewerWidth - 1
-	l := computeLayout(narrow, 24, false)
+	l := computeLayout(narrow, 24, false, false)
 	if l.navigatorWidth() != 0 {
 		t.Fatalf("navigator width at %d columns = %d, want 0", narrow, l.navigatorWidth())
 	}
@@ -168,7 +168,7 @@ func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 func TestSplitViewerEqualHalvesWhenDV2Exists(t *testing.T) {
 	for _, s := range frameSizes {
 		t.Run(s.name, func(t *testing.T) {
-			l := computeLayout(s.width, s.height, false)
+			l := computeLayout(s.width, s.height, false, false)
 			dv1, dv2 := l.splitViewer(true)
 
 			if got := dv1.width + dv2.width; got != l.viewer.width {
@@ -190,7 +190,7 @@ func TestSplitViewerEqualHalvesWhenDV2Exists(t *testing.T) {
 func TestSplitViewerDV1FullWidthWithoutDV2(t *testing.T) {
 	for _, s := range frameSizes {
 		t.Run(s.name, func(t *testing.T) {
-			l := computeLayout(s.width, s.height, false)
+			l := computeLayout(s.width, s.height, false, false)
 			dv1, dv2 := l.splitViewer(false)
 
 			if dv1 != l.viewer {

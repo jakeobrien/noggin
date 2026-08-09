@@ -9,3 +9,10 @@ import "charm.land/lipgloss/v2"
 // files. A var, not a const: lipgloss.Color returns the color.Color
 // interface, which cannot be a constant expression.
 var dimColor = lipgloss.Color("245")
+
+// staleRowStyle is S9/C3/M5.1's dedicated staleness row: reverse video
+// (Reverse swaps the specified Foreground into the row's background) in the
+// same highlight color the Help Modal's border already uses (214,
+// modalStyle's own "a color no pane border uses" pick) — reused here rather
+// than adding a second, arbitrary "pay attention" color.
+var staleRowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Reverse(true)

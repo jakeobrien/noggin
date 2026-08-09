@@ -5,6 +5,10 @@ package main
 // Files Nav) beside the Document Viewer, with a Footer line beneath both.
 const (
 	footerHeight = 1
+	// staleRowHeight is S9's dedicated staleness row (C3/M5.1): one row,
+	// shown only while m.stale, occupying no space otherwise — computeLayout
+	// only reserves it when the stale argument is true.
+	staleRowHeight = 1
 
 	// A pane is a border box with a title on its first content row; both eat
 	// into the space its contents get.
@@ -33,10 +37,11 @@ func (r rect) empty() bool { return r.width <= 0 || r.height <= 0 }
 
 // layout is the frame's regions at a given terminal size.
 type layout struct {
-	roots  rect
-	files  rect
-	viewer rect
-	footer rect
+	roots    rect
+	files    rect
+	viewer   rect
+	staleRow rect
+	footer   rect
 }
 
 // navigatorWidth is the width of the Navigator column, 0 when the terminal is
@@ -71,17 +76,34 @@ func (r rect) content() rect {
 // computeLayout divides a terminal of width x height into the frame's regions.
 // A terminal too narrow for both columns drops the Navigator rather than
 // rendering two unusable slivers; hideNav drops it the same way regardless of
-// width, which is what the Navigator toggle (S9) hiding the sidebar means —
-// one width computation serves both the too-narrow case and the deliberate one.
-func computeLayout(width, height int, hideNav bool) layout {
+// width, which is what the Navigator toggle (S9, C2a) hiding the sidebar
+// means — one width computation serves both the too-narrow case and the
+// deliberate one.
+//
+// stale reserves staleRowHeight's one row for S9/C3/M5.1's dedicated
+// staleness row, above the Footer, whenever the caller says something is
+// stale — and nothing at all otherwise, matching S9's "occupies no space
+// while nothing is stale". The Footer always wins the last row(s) available
+// at a pathologically short terminal: its own height is reserved first, and
+// the stale row only takes what's left after that, the same "never push a
+// more essential row out" precedence the frame's other regions already
+// follow at extreme sizes.
+func computeLayout(width, height int, hideNav, stale bool) layout {
 	if width <= 0 || height <= 0 {
 		return layout{}
 	}
 
-	body := height - footerHeight
-	if body < 0 {
-		body = 0
+	remaining := height
+	footerH := min(footerHeight, remaining)
+	remaining -= footerH
+
+	staleH := 0
+	if stale {
+		staleH = min(staleRowHeight, remaining)
 	}
+	remaining -= staleH
+
+	body := max(remaining, 0)
 
 	navWidth := 0
 	if !hideNav {
@@ -97,10 +119,11 @@ func computeLayout(width, height int, hideNav bool) layout {
 	}
 
 	return layout{
-		roots:  rect{width: navWidth, height: rootsHeight},
-		files:  rect{width: navWidth, height: filesHeight},
-		viewer: rect{width: width - navWidth, height: body},
-		footer: rect{width: width, height: min(footerHeight, height)},
+		roots:    rect{width: navWidth, height: rootsHeight},
+		files:    rect{width: navWidth, height: filesHeight},
+		viewer:   rect{width: width - navWidth, height: body},
+		staleRow: rect{width: width, height: staleH},
+		footer:   rect{width: width, height: footerH},
 	}
 }
 

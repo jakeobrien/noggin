@@ -1087,7 +1087,7 @@ func (m model) resize(width, height int, cause resizeCause) model {
 // layout is the frame's regions at the model's current terminal size and
 // Navigator visibility (S9).
 func (m model) layout() layout {
-	return computeLayout(m.width, m.height, m.navigatorHidden)
+	return computeLayout(m.width, m.height, m.navigatorHidden, m.stale)
 }
 
 // visible reports whether a pane has a region to draw in at the current size.
@@ -1196,6 +1196,10 @@ func (m model) frame() string {
 		body = lipgloss.JoinHorizontal(lipgloss.Top, navigator, body)
 	}
 
+	if !l.staleRow.empty() {
+		body = lipgloss.JoinVertical(lipgloss.Left, body, m.renderStaleRow(l.staleRow))
+	}
+
 	if l.footer.empty() {
 		return body
 	}
@@ -1256,65 +1260,43 @@ func (m model) paneTitle(p pane) string {
 // muting its own styling would fight it rather than match the other two
 // cases, which are plain, unstyled text until footerStyle colours them.
 //
-// S10's indicator (C2a/M10.1, m.stale) is the one exception to "a message
-// displaces the hints": it is appended to whatever hint line would show —
-// pane or Picker — rather than replacing it, since it is not itself a
-// one-shot notice (D22's shape) but a standing condition that lasts until a
-// refresh, and hiding the keys that let someone act on other things in the
-// meantime would be a worse tradeoff than a slightly longer line. It still
-// loses to an in-progress find and to a transient m.message (D22): both
-// need the whole line, and S10 explicitly "never acts" on the user's behalf,
-// so it never competes for it. If appending would overflow the width, it is
-// dropped rather than pushing a hint out (S11's "truncate gracefully"
-// extended to this one extra element).
-//
-// M10.2: hintText/pickerHintText fill the width greedily on their own, so by
-// the time appendStaleSuffix runs there is usually no slack left for the
-// suffix at any ordinary terminal width (it only ever fit above ~200-244
-// cols — DECISIONS.md D53). When the suffix will actually be appended, the
-// hint set is built against width minus the suffix's own width instead,
-// so hintText/pickerHintText's own truncation (dropping least-essential
-// hints first, per paneHints' order) makes room for it ahead of time rather
-// than the suffix losing out to hints that already claimed the whole line.
+// S10's indicator (m.stale) no longer touches this line at all (C3/M5.1
+// moved it to its own dedicated row, renderStaleRow, per S9) — the Footer's
+// own priority order (find, then message, then hints) is unaffected by
+// staleness either way.
 func (m model) renderFooter(r rect) string {
 	if m.focusedViewer().findEditing() {
 		return lipgloss.NewStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
 			Render(m.focusedViewer().findView(r.width))
 	}
-	stale := m.stale && m.message == "" // m.message wins below; reserving room for a suffix that will never be appended would truncate hints for nothing
-	hintWidth := r.width
-	if stale {
-		hintWidth = r.width - lipgloss.Width(" · "+staleMessage)
-		if hintWidth < 0 {
-			hintWidth = 0
-		}
-	}
-	text := hintText(m.focus, hintWidth)
+	text := hintText(m.focus, r.width)
 	// The open Picker (S2, M2.3) owns the keyboard the same exclusive way a
 	// find-in-progress does, but unlike Find it does not take over the
 	// footer row itself (its own Prompt already renders inside the modal) --
 	// it only swaps which hints the footer shows, from the pane underneath's
 	// to the Picker's own.
 	if m.picker.open {
-		text = pickerHintText(hintWidth)
+		text = pickerHintText(r.width)
 	}
 	if m.message != "" {
 		text = m.message
-	} else if stale {
-		text = appendStaleSuffix(text, r.width)
 	}
 	return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
 }
 
-// appendStaleSuffix appends S10's indicator (staleMessage, staleness.go) to
-// text as one more " · "-joined segment — the same separator every other
-// footer join already uses (joinHints) — but only if the result still fits
-// width; otherwise text is returned unchanged, per renderFooter's own
-// truncate-gracefully note.
-func appendStaleSuffix(text string, width int) string {
-	suffixed := text + " · " + staleMessage
-	if lipgloss.Width(suffixed) <= width {
-		return suffixed
-	}
-	return text
+// renderStaleRow draws S9's dedicated staleness row (C3/M5.1): frame() only
+// calls this when computeLayout has already reserved a non-empty l.staleRow
+// (i.e. m.stale), so this always has something to draw once reached — it
+// does not re-check m.stale itself. Styled in reverse video against
+// staleRowStyle's highlight color (the Help Modal border's own 214, reused
+// rather than adding a second "pay attention" color) rather than plain text,
+// per S9. staleMessage already carries the "press R to refresh" resolution
+// (staleness.go) — this row only changes where that wording is drawn, not
+// the wording itself. rightTruncate (picker_view.go) pre-shrinks the text
+// before Width/MaxWidth ever sees it, since Width alone would word-wrap an
+// over-length string instead of truncating it (see
+// lipgloss-v2-row-rendering-gotchas.md).
+func (m model) renderStaleRow(r rect) string {
+	text := rightTruncate(staleMessage, r.width)
+	return staleRowStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
 }
