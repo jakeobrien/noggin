@@ -158,24 +158,29 @@ type keyMap struct {
 	// must not treat this as query text.
 	ToggleHidden key.Binding
 
-	// ActivateDV2 and PeekDV2 are C3/S3's `shift+` targeting modifier on
-	// the Files Nav (C3/M1.4): the same load/peek the unmodified
-	// Activate/Peek perform, routed to DV2 instead of DV1 and creating DV2
-	// first if it does not exist. Both are Files-Nav-only for now, matched
-	// in Update's filesPane case beside the keys they modify (M1.5 gives
-	// ActivateDV2 its second home, the Picker's Activate). Focus behavior
-	// mirrors each unmodified key exactly: a load moves Focus to the viewer
-	// it loaded into, a peek never moves Focus.
+	// ActivateDV2 and PeekDV2 are C3/S3's `ctrl+` targeting modifier on
+	// the Files Nav (C3/M1.4, rebound C3/M1.4a per D55): the same load/peek
+	// the unmodified Activate/Peek perform, routed to DV2 instead of DV1
+	// and creating DV2 first if it does not exist. Both are Files-Nav-only
+	// for now, matched in Update's filesPane case beside the keys they
+	// modify (M1.5 gives ActivateDV2 its second home, the Picker's
+	// Activate). Focus behavior mirrors each unmodified key exactly: a
+	// load moves Focus to the viewer it loaded into, a peek never moves
+	// Focus.
 	//
-	// ActivateDV2 carries two keys, not one (D53): `shift+enter` is the
-	// primary chord, but terminals without Kitty-protocol `CSI u` or
-	// xterm's modifyOtherKeys send it byte-identical to plain `enter`, with
-	// no runtime signal noggin could detect and degrade on, so `L` ("load
-	// into DV2") is bound as a plain, always-deliverable alias. Note the
-	// literal spellings: `shift+enter` uses the modifier form because enter
-	// is non-printable and carries no Text, whereas PeekDV2's shifted
-	// letter is spelled as the character it produces, "P" — the same
-	// convention Bottom/"G" and FindPrevious/"N" already use.
+	// ActivateDV2 carries two keys, not one (D53, rebound by D55):
+	// `ctrl+enter` is the primary chord, but terminals without
+	// Kitty-protocol `CSI u` or xterm's modifyOtherKeys send it
+	// byte-identical to plain `enter`, with no runtime signal noggin could
+	// detect and degrade on, so `ctrl+l` is bound as a fallback — D55
+	// chose a second control chord rather than D53's original printable
+	// `L`, since a raw control byte can never be typed into the Picker's
+	// always-typing Prompt as query text (TRIAGE T3, closed structurally by
+	// this without a Picker-specific carve-out — M1.5's own comment).
+	// PeekDV2 needs no fallback of its own: like `ctrl+o` (FocusDV2), a
+	// plain Ctrl+letter is a raw C0 control byte every terminal delivers
+	// identically regardless of Kitty/CSI-u/modifyOtherKeys support, so
+	// there is nothing to degrade (D55).
 	ActivateDV2 key.Binding
 	PeekDV2     key.Binding
 
@@ -323,11 +328,11 @@ var keys = keyMap{
 		key.WithHelp("p", "peek"),
 	),
 	ActivateDV2: key.NewBinding(
-		key.WithKeys("shift+enter", "L"),
-		key.WithHelp("shift+enter/L", "open in dv2"),
+		key.WithKeys("ctrl+enter", "ctrl+l"),
+		key.WithHelp("ctrl+enter/ctrl+l", "open in dv2"),
 	),
 	PeekDV2: key.NewBinding(
-		key.WithKeys("P"),
-		key.WithHelp("P", "peek in dv2"),
+		key.WithKeys("ctrl+p"),
+		key.WithHelp("ctrl+p", "peek in dv2"),
 	),
 }

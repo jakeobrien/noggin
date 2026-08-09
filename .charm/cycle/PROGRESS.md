@@ -17,32 +17,37 @@
 
 ## Cursor
 
-Current task: M1.4a
+Current task: M1.5
 
 ## Handoff
 
-M1.3a is done (this session): `keymap.go`'s `FocusDV1`/`FocusDV2` now bind `o`/`ctrl+o` per
-D55, including the stray `FocusDV2/"D"` doc-comment example that lived in the
-`ActivateDV2`/`PeekDV2` block. No test hard-codes the old chords (`focus_test.go`/
-`frame_test.go` go through `keys.FocusDV1.Keys()[0]` etc.), so only two comment strings
-needed touching. `ctrl+o` round-trips through `keyPress`/`allBindings` with no new
-`namedKeys` entry. `make check` and `make check-pty` both pass.
+M1.4a is done (this session): `keymap.go`'s `ActivateDV2`/`PeekDV2` now bind
+`ctrl+enter`/`ctrl+l`/`ctrl+p` per D55 (was `shift+enter`/`L`/`shift+p`/`P`), plus their doc
+comments in `keymap.go`/`model.go`/`target_test.go`. No test hard-codes the old chords
+(`target_test.go`/`frame_test.go` go through `keys.ActivateDV2.Keys()`/`keys.PeekDV2.Keys()`),
+so only comment strings and the two footer/help invariant tests needed touching. Both
+`ctrl+enter` and `ctrl+l` round-trip through `keyPress` with no new `namedKeys` entry
+(`enter`/`l` were already covered).
 
-Next: **M1.4a** — rebind ActivateDV2 `shift+enter`/`L`→`ctrl+enter`/`ctrl+l` and PeekDV2
-`shift+p`/`P`→`ctrl+p` (D55); pure rebind, `openDocumentInto`/`ensureDV2`/`togglePeekInto`
-mechanics (M1.4 build, still valid, git history) are untouched.
+**TRIAGE T4 resolved as part of this build** (per the plan's own done-when clause, not a
+separate replan decision): the pre-C3 invariant "no footer/help-modal hint may ever name
+ctrl+p" (`TestNoFooterHintNamesCtrlP`, `TestNoHelpModalNamesCtrlP`) is false by design now
+that D55 gives PeekDV2 that chord. Replaced both with `TestCtrlPNamedOnlyByPeekDV2`
+(footer_test.go) and `TestCtrlPNamedOnlyInFilesPaneHelp` (help_test.go): ctrl+p must still
+never appear for rootsPane/dv1Pane/dv2Pane or the Picker's own hints, but must appear for
+filesPane (where PeekDV2 lives). One gotcha: filesPane's full `paneHints` line is 227 cells
+wide, so the footer version of that assertion needs a generous width (260) to observe it
+untruncated — at the project's usual 200-col test width it was already being dropped as
+least-essential, unrelated to this rebind. `make check` and `make check-pty` both pass.
 
-**New discovery, TRIAGE T4**: `footer_test.go`'s `TestNoFooterHintNamesCtrlP` (a C2a/M2.2
-invariant, unrelated feature) will break once PeekDV2 becomes `ctrl+p` — filesPane's
-`paneHints` already lists `keys.PeekDV2`. M1.4a's build must resolve this (adjust/scope the
-test), not silently ignore a new failure.
+Next: **M1.5** — bind `ctrl+enter`/`ctrl+l` into `handlePickerInput`'s Activate-into-DV2
+path via `openDocumentInto(dv2Pane, d)`, reusing `keys.ActivateDV2` (already both chords, per
+D55) rather than a new binding; both chords are non-printable so TRIAGE T3 (closed) needs no
+Picker-specific carve-out. Confirm typing a literal `l`/`L` into the Prompt still works
+(plain `l`/`L` are untouched — only the `ctrl+` forms are ActivateDV2).
 
-After M1.4a: **M1.5** binds `ctrl+enter`/`ctrl+l` into `handlePickerInput`'s
-Activate-into-DV2 path via `openDocumentInto(dv2Pane, d)`; both chords are non-printable so
-TRIAGE T3 (closed) needs no Picker-specific carve-out.
-
-Still valid, unaffected by the rebind (from the original M1.4 build — `openDocumentInto`/
-`ensureDV2`/`togglePeekInto`, full detail in git history):
+Still valid, unaffected by the M1.4/M1.4a rebind (from the original M1.4 build —
+`openDocumentInto`/`ensureDV2`/`togglePeekInto`, full detail in git history):
 
 - DV2 creation happens inside `openDocumentInto`, via `model.ensureDV2()`, *before*
   `viewerFor(dv2Pane)` is read (it falls back to DV1 while `dv2 == nil`, so a later creation
@@ -70,7 +75,7 @@ further action needed there.
 | M1.3 | done   | 2026-08-08 | -       |      |
 | M1.3a| done   | -        | -         | rebind d/shift+d→o/ctrl+o, D55 |
 | M1.4 | done   | -        | -         |      |
-| M1.4a| todo   | -        | -         | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
+| M1.4a| done   | -        | -         | rebind shift+enter+L/shift+p→ctrl+enter+ctrl+l/ctrl+p, D55 |
 | M1.5 | todo   | -        | -         | needs M1.4a first |
 | M1.6 | todo   | -        | -         |      |
 | M2.1 | todo   | -        | -         |      |

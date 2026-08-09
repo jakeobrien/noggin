@@ -349,12 +349,17 @@ func TestHelpBindingsListPeekOnlyForFilesPane(t *testing.T) {
 	}
 }
 
-// TestNoHelpModalNamesCtrlP is the Help Modal's half of S9's literal "no
-// remaining reference to ctrl+p anywhere".
-func TestNoHelpModalNamesCtrlP(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
+// TestCtrlPNamedOnlyInFilesPaneHelp is the Help Modal's half of
+// TestCtrlPNamedOnlyByPeekDV2 (footer_test.go): C3/M1.4a's D55 rebind makes
+// ctrl+p a legitimate binding again (PeekDV2), but only reachable from
+// filesPane, the one helpBindings case PeekDV2 belongs to.
+func TestCtrlPNamedOnlyInFilesPaneHelp(t *testing.T) {
+	for _, p := range []pane{rootsPane, dv1Pane} {
 		if box := helpBox(p); strings.Contains(box, "ctrl+p") {
-			t.Errorf("pane %v: help modal = %q, unexpectedly still names ctrl+p", p, box)
+			t.Errorf("pane %v: help modal = %q, unexpectedly names ctrl+p", p, box)
 		}
+	}
+	if box := helpBox(filesPane); !strings.Contains(box, "ctrl+p") {
+		t.Errorf("filesPane help modal = %q, want it to name ctrl+p (PeekDV2, D55)", box)
 	}
 }

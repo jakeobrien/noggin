@@ -324,7 +324,8 @@ func (m model) activate() model {
 
 // activateInto is activate's targeted form (C3/S3, M1.4): the Files Nav's
 // selected file loaded into target rather than always DV1 — dv2Pane when the
-// ActivateDV2 modifier (shift+enter / L) was used, dv1Pane for the plain key.
+// ActivateDV2 modifier (ctrl+enter / ctrl+l, D55) was used, dv1Pane for the
+// plain key.
 // Every refusal above (folder, empty pane, read error) applies identically
 // whichever viewer is targeted, and is checked before openDocumentInto runs,
 // so a refused load never leaves a newly created, empty DV2 behind.
@@ -486,16 +487,16 @@ func (m model) focusPane(target pane) model {
 // message, the same "silence is not an error" shape activate()'s own read
 // failure already gives.
 func (m model) togglePeek() model {
-	// S3: the unmodified key always targets DV1 (shift+p targets DV2, see
-	// togglePeekInto) — an explicit target, not the focused-viewer accessor,
-	// since Peek's target is never "whichever pane has Focus" (Peek is
+	// S3: the unmodified key always targets DV1 (ctrl+p targets DV2, D55,
+	// see togglePeekInto) — an explicit target, not the focused-viewer
+	// accessor, since Peek's target is never "whichever pane has Focus" (Peek is
 	// Files-Nav-only by design, so Focus is never on a viewer pane here
 	// anyway).
 	return m.togglePeekInto(dv1Pane)
 }
 
 // togglePeekInto is togglePeek's targeted form (C3/S3, M1.4): Peek routed to
-// target — dv2Pane under the PeekDV2 modifier (shift+p), creating DV2 first
+// target — dv2Pane under the PeekDV2 modifier (ctrl+p, D55), creating DV2 first
 // if absent, dv1Pane for the plain key. Every rule togglePeek's own comment
 // lists is per-target here: the second-press toggle-off applies to the peek
 // living in *that* viewer (each viewer has its own Peek state, S2, so a peek
@@ -859,8 +860,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// unmodified keys they modify: same actions, aimed at DV2 and
 			// creating it if absent. Neither can be confused with its plain
 			// twin — key.Matches compares the whole keystroke string, so
-			// "shift+enter"/"L" never match Activate's "enter" and "P"
-			// never matches Peek's "p".
+			// "ctrl+enter"/"ctrl+l" never match Activate's "enter" and
+			// "ctrl+p" never matches Peek's "p" (D55).
 			if key.Matches(msg, keys.ActivateDV2) {
 				return m.activateInto(dv2Pane), nil
 			}

@@ -7,15 +7,16 @@ import (
 	"noggin/internal/tree"
 )
 
-// C3/M1.4: the Files Nav's `shift+` targeting modifiers (S3). The fixture is
-// peekFixture's — active.md open in DV1, peeked.md selected in the Files Nav,
-// Focus on the Files Nav — which is exactly the position both modifiers are
-// pressed from.
+// C3/M1.4: the Files Nav's `ctrl+` targeting modifiers (S3, rebound from
+// `shift+` to `ctrl+` in C3/M1.4a per D55 — mechanics unchanged). The
+// fixture is peekFixture's — active.md open in DV1, peeked.md selected in
+// the Files Nav, Focus on the Files Nav — which is exactly the position both
+// modifiers are pressed from.
 
 // TestActivateDV2LoadsSelectedFileIntoNewDV2AndMovesFocus is S3's load half:
 // the modified chord creates DV2, loads the selection into it and moves Focus
 // there, leaving DV1's own Active Document untouched. Driven once per bound
-// key, since D53's `L` fallback must do exactly what `shift+enter` does.
+// key, since D55's `ctrl+l` fallback must do exactly what `ctrl+enter` does.
 func TestActivateDV2LoadsSelectedFileIntoNewDV2AndMovesFocus(t *testing.T) {
 	for _, k := range keys.ActivateDV2.Keys() {
 		t.Run(k, func(t *testing.T) {

@@ -25,7 +25,6 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T4 | build | high | footer_test.go:202 (`TestNoFooterHintNamesCtrlP`) | M1.4a's D55 rebind (PeekDV2 → `ctrl+p`) will make filesPane's footer hints contain the literal string "ctrl+p" (`paneHints` already lists `keys.PeekDV2` there), which this pre-existing C2a/M2.2 invariant test ("no footer hint may ever name ctrl+p again", a retired unrelated binding) forbids outright — M1.4a's plan doesn't mention this test; it will fail unless scoped/adjusted. | open |
 
 <!-- T1 (review, .gitignore:2, low): fixed directly this session per the effort-scaling rule
      (one-line, low-risk) rather than routed through a plan task — /cmd/noggin/noggin added
@@ -33,4 +32,10 @@
      T3 (build, high, shift+enter/L Picker fallback): triaged → DECISIONS.md D55 (ctrl+enter +
      ctrl+l, non-printable fallback closes it structurally) → PLAN.md M1.5 (updated).
      T2 (review, low, FocusDV2/resolveFocus edge case): triaged → DECISIONS.md D56 (left
-     unpinned, same reasoning as D54). -->
+     unpinned, same reasoning as D54).
+     T4 (build, high, TestNoFooterHintNamesCtrlP collision): resolved directly in M1.4a's own
+     build, per the plan's own "update ... hint tests to the new chords" done-when clause —
+     the pre-C3 "no ctrl+p anywhere" invariant no longer holds now that D55 gives PeekDV2 that
+     chord, so footer_test.go/help_test.go's TestNoFooterHintNamesCtrlP/TestNoHelpModalNamesCtrlP
+     were replaced with TestCtrlPNamedOnlyByPeekDV2/TestCtrlPNamedOnlyInFilesPaneHelp, scoping
+     the invariant to "ctrl+p only where PeekDV2 lives" instead of "nowhere". -->

@@ -196,16 +196,26 @@ func TestPickerHintTextNamesToggleHidden(t *testing.T) {
 	}
 }
 
-// TestNoFooterHintNamesCtrlP is S9's own literal "no remaining reference to
-// ctrl+p anywhere": M2.2 retired it in favor of "space", so no pane's hints
-// (open or Picker) may still mention it.
-func TestNoFooterHintNamesCtrlP(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
+// TestCtrlPNamedOnlyByPeekDV2 supersedes the pre-C3 invariant "no footer hint
+// may ever name ctrl+p" (M2.2 retired it as the Picker's own open binding in
+// favor of "space"): C3/M1.4a's D55 rebind gives PeekDV2 the same chord, so
+// it is a legitimate hint again — but only in filesPane's list, the one
+// paneHints entry PeekDV2 actually belongs to. Every other pane's hints and
+// the Picker's own hint line must still never mention it.
+func TestCtrlPNamedOnlyByPeekDV2(t *testing.T) {
+	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
 		if text := hintText(p, 200); strings.Contains(text, "ctrl+p") {
-			t.Errorf("pane %v: hint text = %q, unexpectedly still names ctrl+p", p, text)
+			t.Errorf("pane %v: hint text = %q, unexpectedly names ctrl+p", p, text)
 		}
 	}
 	if text := pickerHintText(200); strings.Contains(text, "ctrl+p") {
-		t.Errorf("pickerHintText = %q, unexpectedly still names ctrl+p", text)
+		t.Errorf("pickerHintText = %q, unexpectedly names ctrl+p", text)
+	}
+	// filesPane's full hint list (paneHints) is wide enough that 200 cols
+	// already truncates ActivateDV2/PeekDV2 away (they sort last, least
+	// essential) regardless of this rebind, so this half needs a generous
+	// width to actually observe the untruncated line.
+	if text := hintText(filesPane, 260); !strings.Contains(text, "ctrl+p") {
+		t.Errorf("filesPane hint text = %q, want it to name ctrl+p (PeekDV2, D55)", text)
 	}
 }
