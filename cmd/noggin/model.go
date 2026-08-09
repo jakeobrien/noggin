@@ -605,10 +605,13 @@ func (m model) clearPeekIn(p pane) model {
 //
 // Either read failing is a footer message, the same "silence is not an
 // error" shape activate()/activateRoot()/finishEdit() already give their own
-// read failures — but a Root-walk failure wins if both happen at once
-// (rare: both the Root and the Active Document vanishing in the same
-// refresh), since a whole Root going missing is the more consequential of
-// the two.
+// read failures — but a Root-walk failure wins over both viewers' read
+// failures if more than one happens at once (rare: the Root and one or both
+// Active Documents vanishing in the same refresh), since a whole Root going
+// missing is the more consequential event. Between DV1 and DV2, DV1 wins
+// (C3/M3.1) — the same "DV1 first" precedence resize's own dv1Drop/dv2Drop
+// combination (below) already gives the two viewers, and simpler than
+// concatenating two unrelated read-failure sentences into one line.
 //
 // A successful document re-render can still silently drop a committed find
 // (T43's case in resize's own doc comment — hasFindMatches was true, now
@@ -617,9 +620,13 @@ func (m model) clearPeekIn(p pane) model {
 // An in-progress query (findEditing) can't reach this method at all —
 // handleFindInput owns every key but Cancel/Activate while typing, and
 // Refresh is no exception — so unlike resize's own two-case check, only the
-// committed-match case is live here; it still loses to a read-failure
-// message above, the same priority resize gives cause over its own
-// dismissed/cleared text.
+// committed-match case is live here per viewer. C3/M3.1 extends this to DV2
+// (whichever exists) using the same "dv1 …"/"dv2 …" combination resize's own
+// dv1Drop/dv2Drop already establish for two simultaneous drops — DV1's own
+// wording stays unprefixed when DV2 drops nothing, so every pre-M3.1 test
+// reading "search cleared"/"search dismissed" verbatim still passes. Either
+// drop message still loses to a read-failure message above, the same
+// priority resize gives cause over its own dismissed/cleared text.
 func (m model) refresh() model {
 	// S7/M7.1: a refresh is one of Peek's clearing triggers.
 	m = m.clearPeek()
@@ -630,25 +637,24 @@ func (m model) refresh() model {
 			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path))
 		}
 	}
-	// M1.1: hardwired to DV1, not the focused-viewer accessor — a refresh is
-	// not focus-scoped (S7 names "regardless of which pane holds Focus"), so
-	// this is not the same "whichever viewer has Focus" question Edit/Find/
-	// scroll ask. DV2 does not exist yet; a later task (M3.1) extends this to
-	// loop both DV1 and DV2 in the same pass.
-	if m.dv1.doc.isOpen() {
-		path := m.dv1.doc.path
-		findHadMatches := m.dv1.hasFindMatches()
-		if d, err := loadDocument(path); err != nil {
-			if m.message == "" {
-				m.message = fmt.Sprintf("cannot open %s: %v", path, err)
-			}
-			m.dv1 = m.dv1.close()
-		} else {
-			m.dv1 = m.dv1.refreshDoc(d)
-		}
-		if m.message == "" && findHadMatches && !m.dv1.hasFindMatches() {
-			m.message = "refreshed; search cleared"
-		}
+	// C3/M3.1: not focus-scoped — a refresh acts on both viewers whichever
+	// exist, "regardless of which pane holds Focus" (S7), unlike Edit/Find/
+	// scroll's "whichever viewer has Focus" routing. dv1Drop/dv2Drop mirror
+	// resize's own pair (this doc comment's third paragraph) so the two
+	// call sites combine two simultaneous find-drops into m.message the
+	// same way.
+	var dv1Drop, dv2Drop string
+	m, dv1Drop = m.refreshViewer(dv1Pane)
+	if m.dv2 != nil {
+		m, dv2Drop = m.refreshViewer(dv2Pane)
+	}
+	switch {
+	case dv1Drop != "" && dv2Drop != "":
+		m.message = fmt.Sprintf("refreshed; dv1 %s, dv2 %s", dv1Drop, dv2Drop)
+	case dv1Drop != "":
+		m.message = fmt.Sprintf("refreshed; %s", dv1Drop)
+	case dv2Drop != "":
+		m.message = fmt.Sprintf("refreshed; dv2 %s", dv2Drop)
 	}
 	// S10/C2a/M10.1: a refresh is the user acting on the indicator ("press
 	// R"), so it both clears it and re-baselines against whatever the model
@@ -657,6 +663,37 @@ func (m model) refresh() model {
 	// actually on screen, known-good by construction.
 	m = m.resetStaleBaseline()
 	return m
+}
+
+// refreshViewer is refresh's per-viewer step (C3/M3.1), applied to whichever
+// of dv1Pane/dv2Pane is passed: a no-op if that viewer has no document open,
+// otherwise a re-read from its own path — refreshDoc in place on a
+// successful read (preserving scroll, S2), close on failure. A read failure
+// becomes m.message unless one is already set (the Root-walk failure in
+// refresh above wins, per this method's own doc comment); it returns
+// "search cleared"/"search dismissed" when the re-render silently dropped
+// that viewer's committed find, "" otherwise, for refresh's caller to
+// combine with the other viewer's own verdict.
+func (m model) refreshViewer(p pane) (model, string) {
+	v := m.viewerFor(p)
+	if !v.doc.isOpen() {
+		return m, ""
+	}
+	path := v.doc.path
+	findHadMatches := v.hasFindMatches()
+	if d, err := loadDocument(path); err != nil {
+		if m.message == "" {
+			m.message = fmt.Sprintf("cannot open %s: %v", path, err)
+		}
+		v = v.close()
+	} else {
+		v = v.refreshDoc(d)
+	}
+	m = m.withViewerFor(p, v)
+	if findHadMatches && !v.hasFindMatches() {
+		return m, "search cleared"
+	}
+	return m, ""
 }
 
 // startFind begins an S8 search over the active document, moving focus to

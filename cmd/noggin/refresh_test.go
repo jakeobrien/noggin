@@ -362,6 +362,174 @@ func TestRefreshAfterCommittedFindSurfacesMessage(t *testing.T) {
 	}
 }
 
+// --- model.refresh with DV2 (C3/M3.1's own acceptance criterion) -----------
+
+// TestRefreshUpdatesBothViewersPreservingEachScrollPosition is M3.1's stated
+// acceptance verbatim: with both DV1 and DV2 open on distinct documents,
+// changing both on disk and pressing R updates the tree and both viewers'
+// content in the same single action, preserving each viewer's own scroll
+// position — the S6 independence guarantee M1.6 already gives Find/Edit/
+// scroll must hold for a refresh too.
+func TestRefreshUpdatesBothViewersPreservingEachScrollPosition(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	docAPath := writeFileContent(t, filepath.Join(root, "a.md"), listContent(60))
+	docBPath := writeFileContent(t, filepath.Join(root, "b.md"), listContent(60))
+
+	node, err := tree.Walk(root)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	m := sized(t, newModel().openFolder(node), 80, 10)
+
+	docA, err := loadDocument(docAPath)
+	if err != nil {
+		t.Fatalf("loadDocument(a): %v", err)
+	}
+	docB, err := loadDocument(docBPath)
+	if err != nil {
+		t.Fatalf("loadDocument(b): %v", err)
+	}
+	m = m.openDocument(docA)              // DV1
+	m = m.openDocumentInto(dv2Pane, docB) // DV2
+	if total := m.dv1.lineCount(); total <= m.dv1.height() {
+		t.Fatalf("a.md renders %d lines into a %d-line viewport; nothing to preserve a scroll over", total, m.dv1.height())
+	}
+	if total := m.dv2.lineCount(); total <= m.dv2.height() {
+		t.Fatalf("b.md renders %d lines into a %d-line viewport; nothing to preserve a scroll over", total, m.dv2.height())
+	}
+	m.dv1 = m.dv1.withOffset(10)
+	v := m.dv2.withOffset(20)
+	m.dv2 = &v
+	wantDV1Offset, wantDV2Offset := m.dv1.offset(), m.dv2.offset()
+	beforeDV1Lines, beforeDV2Lines := m.dv1.lineCount(), m.dv2.lineCount()
+
+	// Outside noggin: both documents grow (never shrinking past either
+	// offset), plus a new file appears in the tree.
+	appendToFile(t, docAPath, listContent(60))
+	appendToFile(t, docBPath, listContent(60))
+	writeFile(t, filepath.Join(root, "new.md"))
+
+	m = press(t, m, keys.Refresh.Keys()[0])
+
+	if m.message != "" {
+		t.Errorf("refresh produced a message %q, want silence (nothing here should fail)", m.message)
+	}
+	rows := rowNames(m.files)
+	if !strings.Contains(strings.Join(rows, ","), "new.md") {
+		t.Errorf("rows after refresh = %v, want new.md picked up from disk", rows)
+	}
+	if got := m.dv1.lineCount(); got <= beforeDV1Lines {
+		t.Errorf("DV1 line count after refresh = %d, want more than %d (grown content picked up)", got, beforeDV1Lines)
+	}
+	if got := m.dv2.lineCount(); got <= beforeDV2Lines {
+		t.Errorf("DV2 line count after refresh = %d, want more than %d (grown content picked up)", got, beforeDV2Lines)
+	}
+	if got := m.dv1.offset(); got != wantDV1Offset {
+		t.Errorf("DV1 offset after refresh = %d, want %d (preserved)", got, wantDV1Offset)
+	}
+	if got := m.dv2.offset(); got != wantDV2Offset {
+		t.Errorf("DV2 offset after refresh = %d, want %d (preserved)", got, wantDV2Offset)
+	}
+}
+
+// TestRefreshCombinesBothViewersDroppedFindIntoOneMessage is the two-viewer
+// extension of TestRefreshAfterCommittedFindSurfacesMessage: a refresh that
+// drops a committed find in *both* DV1 and DV2 at once must name both,
+// mirroring resize's own dv1Drop/dv2Drop combination (model.go's resize) —
+// S6's independence guarantee has to hold at this messaging layer too, not
+// only in routing.
+func TestRefreshCombinesBothViewersDroppedFindIntoOneMessage(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	docAPath := writeFile(t, filepath.Join(root, "a.md")) // "# note\n"
+	docBPath := writeFile(t, filepath.Join(root, "b.md"))
+
+	node, err := tree.Walk(root)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	m := sized(t, newModel().openFolder(node), 80, 24)
+	docA, err := loadDocument(docAPath)
+	if err != nil {
+		t.Fatalf("loadDocument(a): %v", err)
+	}
+	docB, err := loadDocument(docBPath)
+	if err != nil {
+		t.Fatalf("loadDocument(b): %v", err)
+	}
+	m = m.openDocument(docA)              // focus -> dv1Pane
+	m = m.openDocumentInto(dv2Pane, docB) // focus -> dv2Pane
+
+	m = press(t, m, keys.FocusDV1.Keys()[0])
+	m = press(t, m, "/")
+	m = typeText(t, m, "note")
+	m = press(t, m, "enter")
+	if !m.dv1.hasFindMatches() {
+		t.Fatal("test setup: DV1's find did not commit")
+	}
+	m = press(t, m, keys.FocusDV2.Keys()[0])
+	m = press(t, m, "/")
+	m = typeText(t, m, "note")
+	m = press(t, m, "enter")
+	if !m.dv2.hasFindMatches() {
+		t.Fatal("test setup: DV2's find did not commit")
+	}
+
+	m = press(t, m, keys.Refresh.Keys()[0])
+
+	if m.dv1.hasFindMatches() || m.dv2.hasFindMatches() {
+		t.Fatal("test setup: refresh did not invalidate both committed finds")
+	}
+	if !strings.Contains(m.message, "dv1 search cleared") || !strings.Contains(m.message, "dv2 search cleared") {
+		t.Errorf("message = %q, want both viewers' dropped search named", m.message)
+	}
+}
+
+// TestRefreshDV1ReadFailureWinsOverDV2ReadFailure pins refresh's own stated
+// priority (its doc comment) for the case both Active Documents vanish in
+// the same refresh: DV1's read failure is the one reported, not DV2's,
+// matching the "DV1 first" precedence resize's own dv1Drop/dv2Drop give the
+// two viewers.
+func TestRefreshDV1ReadFailureWinsOverDV2ReadFailure(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	docAPath := writeFile(t, filepath.Join(root, "a.md"))
+	docBPath := writeFile(t, filepath.Join(root, "b.md"))
+
+	node, err := tree.Walk(root)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	m := sized(t, newModel().openFolder(node), 80, 24)
+	docA, err := loadDocument(docAPath)
+	if err != nil {
+		t.Fatalf("loadDocument(a): %v", err)
+	}
+	docB, err := loadDocument(docBPath)
+	if err != nil {
+		t.Fatalf("loadDocument(b): %v", err)
+	}
+	m = m.openDocument(docA)
+	m = m.openDocumentInto(dv2Pane, docB)
+
+	if err := os.Remove(docAPath); err != nil {
+		t.Fatalf("remove a.md: %v", err)
+	}
+	if err := os.Remove(docBPath); err != nil {
+		t.Fatalf("remove b.md: %v", err)
+	}
+
+	m = press(t, m, keys.Refresh.Keys()[0])
+
+	if m.dv1.doc.isOpen() || m.dv2.doc.isOpen() {
+		t.Error("a viewer still reports a document open after its file was deleted")
+	}
+	if !strings.Contains(m.message, docAPath) {
+		t.Errorf("message = %q, want it naming DV1's path %q (DV1 wins the priority)", m.message, docAPath)
+	}
+	if strings.Contains(m.message, docBPath) {
+		t.Errorf("message = %q, want it not also naming DV2's path %q", m.message, docBPath)
+	}
+}
+
 // TestRefreshWithNoActiveRootIsANoOp checks the "nothing outside the Active
 // Root's tree and the Active Document is touched" clause at its emptiest: a
 // session with no root at all (no launch argument, no starred roots) has

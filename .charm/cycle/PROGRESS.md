@@ -17,31 +17,32 @@
 
 ## Cursor
 
-Current task: M3.1
+Current task: M4.1
 
 ## Handoff
 
-M2.1 is done (this session): added `keys.CloseDV2` (`ctrl+x`) and `model.closeDV2` —
-global, matched in Update's already-gated switch (unreachable while a find is editing, the
-Help Modal is open, or the Picker is open, the same three gates every other global binding
-shares), a no-op when `m.dv2 == nil`, otherwise clears `m.dv2`, moves Focus straight to
-`dv1Pane` (bypassing `resolveFocus`'s generic focusOrder fallback — that would land on
-whichever Navigator pane happens to be visible instead of S4's unconditional "Focus moves
-to DV1") only when Focus was on `dv2Pane`, then re-lays-out through `resize()` with a new
-`resizeCauseViewerClosed` cause, the mirror of `ensureDV2`'s `resizeCauseSecondViewer` —
-giving DV1 back the full viewer width and reusing resize's existing find-drop messaging for
-free. Followed FocusDV2's established precedent for the two hint surfaces: listed
-unconditionally in the Help Modal's `helpBindings` (discoverability backstop) but omitted
-from the footer's terse `paneHints` (usually a no-op with DV2 absent) — both sides pinned
-with dedicated tests. New `close_dv2_test.go` covers the full pane sweep (Focus-landing
-rule), the DV2-absent no-op, and inertness under both modals; verified the sweep test
-actually bites by regression injection (temporarily dropping the `keys.CloseDV2` case from
-Update failed exactly that test, reverted clean). `make check` and `make check-pty` both
-pass (no pty entries added for `ctrl+x` — logged as TRIAGE T10, since M1.7's own pty task
-predates this binding).
+M3.1 is done (this session): `model.refresh()` now re-reads both DV1's and DV2's Active
+Documents (whichever exist) in the same single action, not just DV1 — factored the
+per-viewer read/refreshDoc/close/find-drop logic out of the old DV1-only inline block into a
+new `refreshViewer(p pane) (model, string)` helper (reused for both panes via `viewerFor`/
+`withViewerFor`, the same accessor pair M1.1 established), called once for `dv1Pane`
+unconditionally and once more for `dv2Pane` when `m.dv2 != nil`. The two read-failure/
+find-drop outcomes combine into `m.message` the same way `resize()`'s own `dv1Drop`/
+`dv2Drop` pair already do (mirrored the wording/priority verbatim: DV1 unprefixed when DV2
+drops nothing, `"dv1 …, dv2 …"` when both drop, `"dv2 …"` when only DV2 drops) — so S6's
+independence guarantee holds at refresh's messaging layer too, not just its routing. Root-
+walk failure still wins over both viewers' read failures; between the two viewers, DV1 wins
+(new call-order rule, undocumented before since DV2 didn't exist) — both pinned by new
+tests. Added three tests to `refresh_test.go`: the plan's own acceptance verbatim (both
+viewers open on distinct documents, both changed on disk, one Refresh grows both and
+preserves each viewer's own scroll offset), the two-viewer find-drop combination, and the
+DV1-wins-DV2 read-failure priority. Verified all three actually bite by regression injection
+(temporarily short-circuiting the DV2 branch in `refresh()` failed exactly those three,
+reverted clean). `make check` and `make check-pty` both pass (no new keys, so no pty
+additions needed).
 
-Next: **M3.1** — extend `refresh()` to re-read both DV1's and DV2's Active Documents
-(whichever exist), not just one, in the same single action.
+Next: **M4.1** — confirm DV2's existence, Active Document and Peek/Find state are never
+persisted or restored at launch (effort 1, needs M1.1).
 
 ## Status
 
@@ -58,7 +59,7 @@ Next: **M3.1** — extend `refresh()` to re-read both DV1's and DV2's Active Doc
 | M1.6a| done   | -        | -         | TRIAGE T5, D59 |
 | M1.7 | done   | -        | -         | TRIAGE T6 |
 | M2.1 | done   | -        | -         |      |
-| M3.1 | todo   | -        | -         |      |
+| M3.1 | done   | -        | -         |      |
 | M4.1 | todo   | -        | -         |      |
 | M5.1 | todo   | -        | -         |      |
 | M5.2 | todo   | -        | -         |      |
