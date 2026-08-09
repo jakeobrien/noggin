@@ -100,6 +100,27 @@ func collectDirModTimes(n *tree.Node, out map[string]time.Time) {
 	}
 }
 
+// withoutDoc returns a copy of b with path's tracked docSnapshot removed (a
+// no-op, returning b unchanged, if path is empty or not tracked) — every
+// other tracked doc and dirModTimes are left exactly as they were. Used by
+// closeDV2 (C3/M2.1b, TRIAGE T12) to prune a viewer's former document from
+// the baseline the instant it stops being visible, rather than waiting for
+// the next resetStaleBaseline (openFolder/openDocumentInto/refresh) to
+// happen to do it as a side effect of rebuilding the whole snapshot.
+func (b staleBaseline) withoutDoc(path string) staleBaseline {
+	if path == "" {
+		return b
+	}
+	docs := make([]docSnapshot, 0, len(b.docs))
+	for _, d := range b.docs {
+		if d.path != path {
+			docs = append(docs, d)
+		}
+	}
+	b.docs = docs
+	return b
+}
+
 // trackedDocPaths is the paths of every document b actually tracks (S7:
 // whichever of DV1's/DV2's Active Documents existed and stat'd successfully
 // at snapshot time) — a read-only view for tests to assert against rather

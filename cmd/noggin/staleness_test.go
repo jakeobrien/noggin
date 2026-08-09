@@ -398,11 +398,11 @@ func TestResetStaleBaselineTracksBothViewersActiveDocuments(t *testing.T) {
 	}
 }
 
-// TestResetStaleBaselineDropsDV2WhenItCloses: CloseDV2 (S4/C3/M2.1) is a
-// fresh read of nothing new, but it does change which viewers exist — this
-// confirms the baseline stops tracking DV2's former document once it's gone
-// rather than continuing to compare a path that reflects a viewer no longer
-// on screen.
+// TestResetStaleBaselineDropsDV2WhenItCloses: CloseDV2 (S4/C3/M2.1) prunes
+// DV2's former document from the baseline immediately (C3/M2.1b, TRIAGE
+// T12), not just as a side effect of whatever refresh happens to run next
+// — this confirms the baseline stops tracking DV2's former document the
+// instant it's gone, with no intervening refresh at all.
 func TestResetStaleBaselineDropsDV2WhenItCloses(t *testing.T) {
 	m, pathA, _ := crossViewerFixture(t)
 	if len(m.staleBaseline.trackedDocPaths()) != 2 {
@@ -413,12 +413,35 @@ func TestResetStaleBaselineDropsDV2WhenItCloses(t *testing.T) {
 	if m.dv2 != nil {
 		t.Fatal("setup: CloseDV2 did not close DV2")
 	}
-	// CloseDV2 itself does not reset the baseline (it is not a fresh read of
-	// anything), so the next real reset — openFolder/openDocumentInto/
-	// refresh — is what this test drives to see the drop take effect.
-	m = m.refresh()
 	if got := m.staleBaseline.trackedDocPaths(); len(got) != 1 || got[0] != pathA {
-		t.Errorf("tracked doc paths after closing DV2 and refreshing = %v, want [%q]", got, pathA)
+		t.Errorf("tracked doc paths immediately after closing DV2 (no refresh) = %v, want [%q]", got, pathA)
+	}
+}
+
+// TestClosingDV2DoesNotFlipStaleForItsFormerDocument is M2.1b's own
+// acceptance clause verbatim: editing DV2's former document on disk right
+// after closing it, with no intervening Refresh, must not flip the combined
+// m.stale signal — the pruned path can no longer compare against anything,
+// so a periodic check has nothing left to catch there.
+func TestClosingDV2DoesNotFlipStaleForItsFormerDocument(t *testing.T) {
+	m, _, pathB := crossViewerFixture(t)
+	if m.stale {
+		t.Fatal("setup: already stale before any change")
+	}
+
+	m = press(t, m, keys.CloseDV2.Keys()[0])
+	if m.dv2 != nil {
+		t.Fatal("setup: CloseDV2 did not close DV2")
+	}
+
+	bumpMtimeForward(t, pathB)
+	if err := os.WriteFile(pathB, []byte("bravo-marker\nedited out of process\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	m = m.runStaleCheckSync(t)
+	if m.stale {
+		t.Error("stale = true after editing DV2's former document post-close, want false (it is no longer tracked)")
 	}
 }
 

@@ -306,9 +306,20 @@ func (m model) ensureDV2() model {
 // other way) is what gives DV1 back the full viewer width and re-renders it
 // at that width — dropping (and reporting) any find in progress the same
 // way any other width change already does, rather than a special case here.
+//
+// C3/M2.1b (TRIAGE T12): closing DV2 is not itself a fresh read of anything
+// (unlike resetStaleBaseline's callers), but it does make DV2's former
+// document invisible, so staleBaseline.withoutDoc prunes that one path
+// right here rather than leaving it tracked until whatever refresh happens
+// next — otherwise a change to that now-invisible document between now and
+// then could still flip the combined m.stale signal for something no
+// longer on screen anywhere.
 func (m model) closeDV2() model {
 	if m.dv2 == nil {
 		return m
+	}
+	if m.dv2.doc.isOpen() {
+		m.staleBaseline = m.staleBaseline.withoutDoc(m.dv2.doc.path)
 	}
 	m.dv2 = nil
 	if m.focus == dv2Pane {

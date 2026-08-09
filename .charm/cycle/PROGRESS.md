@@ -17,27 +17,30 @@
 
 ## Cursor
 
-Current task: M2.1b (TRIAGE T12 — closeDV2 doesn't reset the stale baseline)
+Current task: none — all C3 plan tasks are `done`; TRIAGE.md is empty. Ready for a
+final validate pass, then `/charm-close`.
 
 ## Handoff
 
-Built M2.1a this session: added `test/pty/checks.py` KEY table entry `CloseDV2` (`\x18`,
-ctrl+x, plain C0 byte) and a new check block reusing M1.7's c3_root alpha/bravo fixtures —
-opens DV2 via ctrl+enter (focus lands on DV2), presses ctrl+x, and confirms DV2's content is
-gone, DV1's own document is untouched, and Focus actually lands on DV1 (G scrolls DV1, not a
-stale DV2). Regression-proofed by temporarily wiring the KEY entry to the wrong byte (ctrl+w
-instead of ctrl+x) and confirming the two content/focus checks fail as expected, then
-restoring the correct byte and re-running clean.
+Built M2.1b this session (TRIAGE T12): added `staleBaseline.withoutDoc(path)`
+(staleness.go) and call it from `closeDV2` (model.go) right before nilling `m.dv2`, pruning
+DV2's former document from the tracked-docs slice the instant it stops being visible —
+rather than leaving it tracked until whatever refresh happens to run next. Updated
+`TestResetStaleBaselineDropsDV2WhenItCloses` (its old form documented the pre-fix
+behavior — asserted the drop only after an explicit `m.refresh()`; now asserts it
+immediately, no refresh at all) and added `TestClosingDV2DoesNotFlipStaleForItsFormerDocument`
+(M2.1b's own acceptance clause verbatim: edit the former document on disk right after
+closing DV2, no intervening Refresh, confirm `m.stale` stays false). Both regression-proofed
+by reverting the `withoutDoc` call and confirming they fail, then restoring and re-running
+clean.
 
-`make check` and `make check-pty` both pass in full (all pre-existing C3 pty coverage plus
-the new CloseDV2 block). No spec change; SPEC.md and PLAN.md untouched. TRIAGE.md stays
-empty.
+`make check` and `make check-pty` both pass in full (fresh `go clean -testcache` run, not
+just cached). No spec change; SPEC.md and PLAN.md untouched. TRIAGE.md stays empty — all
+three replan-added follow-up tasks (M3.1a, M2.1a, M2.1b) are now done.
 
-Next: build M2.1b (closeDV2 should prune DV2's entry from the staleness baseline
-immediately, not just on the next refresh — PLAN.md's own acceptance clause). Once done and
-validated, TRIAGE.md is already empty, so C3 should be ready for `/charm-close` pending a
-final validate pass over all three new tasks (M3.1a/M2.1a/M2.1b) — M3.1a especially, since
-it was validate that surfaced T11 in the first place.
+Next: a final validate pass over M3.1a/M2.1a/M2.1b (M3.1a especially — it was validate that
+surfaced T11 in the first place, so a fresh check that the fix actually holds is warranted),
+then `/charm-close`.
 
 ## Status
 
@@ -59,5 +62,5 @@ it was validate that surfaced T11 in the first place.
 | M5.1 | done   | 2026-08-09 | 2026-08-09 |      |
 | M5.2 | done   | 2026-08-09 | 2026-08-09 |      |
 | M2.1a| done   | -          | -          | TRIAGE T10, D62 |
-| M2.1b| todo   | -          | -          | TRIAGE T12 |
+| M2.1b| done   | -          | -          | TRIAGE T12 |
 | M3.1a| done   | -          | -          | TRIAGE T11, T13, D61 |
