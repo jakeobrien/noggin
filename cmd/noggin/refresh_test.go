@@ -311,7 +311,7 @@ func TestRefreshRecomputesGitStatusMarkers(t *testing.T) {
 		t.Fatalf("tree.Walk: %v", err)
 	}
 	m := sized(t, newModel().openFolder(node), 80, 24)
-	if strings.Contains(lineContaining(strings.Split(m.files.view(), "\n"), "clean.txt"), "M clean.txt") {
+	if strings.Contains(lineContaining(strings.Split(m.files.view(), "\n"), "clean.txt"), "M   clean.txt") {
 		t.Fatalf("setup: clean.txt already marked before it was dirtied")
 	}
 
@@ -319,7 +319,10 @@ func TestRefreshRecomputesGitStatusMarkers(t *testing.T) {
 	m = press(t, m, keys.Refresh.Keys()[0])
 
 	view := m.files.view()
-	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "clean.txt"), "M clean.txt") {
+	// Three spaces, not one, between M and the name: the status column's
+	// own trailing space plus C4/M2.3's star marker column between it and
+	// the name.
+	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "clean.txt"), "M   clean.txt") {
 		t.Errorf("Files Nav view after refresh = %q, want clean.txt marked M", view)
 	}
 }

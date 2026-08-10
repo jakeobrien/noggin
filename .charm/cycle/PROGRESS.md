@@ -17,35 +17,39 @@
 
 ## Cursor
 
-Current task: M2.3
+Current task: M2.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.2 done — star/un-star from a focused Document Viewer, acting on that viewer's own Active
-Document. `model.toggleActiveDocStar()` (model.go) reads `m.focusedViewer()` — already DV1 vs
-DV2 by Focus, so no extra targeting was needed for independence — and flips
-`docRecord(v.doc.path).Starred` through `withDocRecord`, same as M2.1's `toggleDocStar`. Two
-refusals mirror `startEdit`/`startFind`'s existing shape exactly: silent no-op while Peeking
-(S7/M7.1 — the Peeked document is never the Active Document, so acting on "the Active Document"
-while something else is on screen would be the same disturb-what's-not-displayed surprise those
-two already guard against), and a footer message with no document open. Wired on the same
-shared `keys.Star` chord, matched in `Update`'s `case dv1Pane, dv2Pane:` after the scroll check
-fails (scroll owns no `s` binding, so no collision). `TestEveryBindingIsCovered` again needed no
-update — still the same existing binding, now matched in a third pane case.
-Evidence (new `viewer_star_test.go`): `TestToggleActiveDocStarIsIndependentPerViewer` (M2.2's
-acceptance clause verbatim — stars from DV2, then DV1, then un-stars from DV2, checking the
-other viewer's record is untouched at every step, plus a restart round-trip),
-`TestToggleActiveDocStarNoOpWithNoDocumentOpen`, `TestToggleActiveDocStarNoOpWhilePeeking`.
-`make check` green.
-Next: M2.3, a star marker on Files Nav rows in every browse mode except `Starred` (needs M2.1,
-done; the marker-in-Starred clause itself needs M4.3, not yet built — M2.3 only has to cover
-Tree for now, per its own plan wording "absent from every row of a Starred list" being trivially
-true while `Starred` mode doesn't exist yet). Likely touches `filesNav.renderRow` (files.go) to
-consult `model.docRecord` — note renderRow currently takes no model/docs argument, so it may
-need one threaded through, or the marker decided before rendering and passed in per row.
+M2.3 done — star marker on Files Nav rows. Gave `filesNav` a `starred map[string]bool` field
+(files.go) alongside the existing `status` (S8 git markers) field — same shape, same
+"caller-recomputed snapshot, not a live lookup" contract — plus a `withStarred` setter and a
+third 2-char row column (`"★ "`/`"  "`, files only, same glyph the Roots Nav's own renderRow
+already uses). `model.filesStarredMarks()` derives the set fresh from `m.docs` (just the
+`Starred` paths); called at `openFolder` and `refresh` (alongside `withStatus`) *and* inside
+`toggleDocStar` itself — unlike git status, this store can change from a Files Nav keypress, so
+the marker must update on the very next render, not just after a reload.
+Gotcha: inserting the new column shifted three existing git-status render tests' expected
+substrings (`gitstatus_test.go`, `refresh_test.go`) from e.g. `"M README.md"` to
+`"M   README.md"` (status's own trailing space + the new unstarred `"  "` column) — fixed and
+commented inline; this is the kind of row-layout ripple to expect from M2.4 (viewer title row)
+and M7.1 (focus badges) too, both touching shared rendered rows/titles.
+Evidence: `TestFilesNavRendersStarMarkers` (M2.3's acceptance clause — starred file marked,
+unstarred file and a directory not, `Starred`-mode clause vacuous until M4.3 exists),
+`TestToggleDocStarUpdatesTheRowMarkerImmediately` (both in new `files_star_render_test.go`).
+`make check` green. `make check-pty`: confirmed pre-existing, unrelated M3.3/M3.4 failures
+(TRIAGE T4 — the pty harness's `config_env` still targets the pre-M1.1 config-dir Roots-store
+path); identical failure set on the commit before M2.1 too, nothing this session touched or
+should fix.
+Next: M2.4, a star indicator to the left of the document title in each Document Viewer's title
+row (needs M1.4, done), legible with the Navigator hidden. Title-row rendering lives wherever
+`paneTitle`/the viewer's title bar is built (not yet located this session) — check `layout.go`/
+`model.go`'s `paneTitle` and how `renderPane` draws a pane's title line before assuming a single
+edit site; likely reads `m.docRecord(v.doc.path).Starred` the same way `toggleActiveDocStar`
+already reads `v.doc.path`.
 
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
@@ -67,7 +71,7 @@ Gotchas surfaced while planning:
 | M1.4 | done   | 2026-08-10 | 2026-08-10 |                                       |
 | M2.1 | done   | -        | -         |                                          |
 | M2.2 | done   | -        | -         |                                          |
-| M2.3 | todo   | -        | -         |                                          |
+| M2.3 | done   | -        | -         |                                          |
 | M2.4 | todo   | -        | -         |                                          |
 | M2.5 | todo   | -        | -         | pre-agreed cut 1                         |
 | M2.6 | todo   | -        | -         |                                          |

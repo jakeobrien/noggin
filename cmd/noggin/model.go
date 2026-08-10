@@ -294,7 +294,7 @@ func (m model) applyResolution(res resolution) model {
 // every Root switch (activateRoot) count as a "load" for S8's purposes, so
 // neither is worth special-casing separately from the other.
 func (m model) openFolder(root *tree.Node) model {
-	m.files = m.files.setRoot(root).withStatus(gitStatus(root.Path))
+	m.files = m.files.setRoot(root).withStatus(gitStatus(root.Path)).withStarred(m.filesStarredMarks())
 	m = m.setFocus(m.resolveFocus(filesPane))
 	// S10/C2a/M10.1: this is a fresh read of the Active Root's tree, so it
 	// is also the new "known good" the periodic staleness check compares
@@ -507,7 +507,34 @@ func (m model) toggleDocStar() model {
 	}
 	rec := m.docRecord(n.Path)
 	rec.Starred = !rec.Starred
-	return m.withDocRecord(n.Path, rec)
+	m = m.withDocRecord(n.Path, rec)
+	// S3: the marker updates immediately, not only after the pane's next
+	// openFolder/refresh — unlike S8's git status, this store can change
+	// from a Files Nav action itself. A declined write (m.docsPath == "" or
+	// a save error, both m.message-only refusals withDocRecord already
+	// makes) leaves m.docs untouched, so recomputing here is harmless either
+	// way — it reflects whatever the store's write half decided actually
+	// stuck.
+	m.files = m.files.withStarred(m.filesStarredMarks())
+	return m
+}
+
+// filesStarredMarks derives the Files Nav's S3 star-marker set from the S1
+// document store: just the Starred paths, membership only (renderRow reads
+// this map with a plain `f.starred[path]` lookup, so an absent key already
+// reads as "not starred" — no need to store the false ones). Recomputed by
+// every caller that could have changed either the store or the pane's
+// current root (openFolder, refresh, toggleDocStar) rather than kept live
+// against m.docs, the same "snapshot the caller refreshes" shape S8's
+// gitStatus/withStatus already gives the pane's other per-file marker.
+func (m model) filesStarredMarks() map[string]bool {
+	marks := make(map[string]bool, len(m.docs))
+	for path, rec := range m.docs {
+		if rec.Starred {
+			marks[path] = true
+		}
+	}
+	return marks
 }
 
 // toggleActiveDocStar flips the S1 document store's star mark for the
@@ -756,7 +783,7 @@ func (m model) refresh() model {
 		if node, err := tree.Walk(m.files.root.Path); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", m.files.root.Path, err)
 		} else {
-			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path))
+			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path)).withStarred(m.filesStarredMarks())
 		}
 	}
 	// C3/M3.1: not focus-scoped — a refresh acts on both viewers whichever

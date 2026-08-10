@@ -208,10 +208,13 @@ func TestFilesNavRendersGitStatusMarkers(t *testing.T) {
 	notesLine := lineContaining(lines, "notes.txt")
 	docsLine := lineContaining(lines, "docs")
 
-	if !strings.Contains(readmeLine, "M README.md") {
+	// Three spaces, not one, between the marker letter and the name: the
+	// status column's own trailing space ("M "/"A ") plus C4/M2.3's star
+	// marker column ("  " unstarred) sitting between it and the name.
+	if !strings.Contains(readmeLine, "M   README.md") {
 		t.Errorf("README.md row = %q, want an M marker before the name", readmeLine)
 	}
-	if !strings.Contains(notesLine, "A notes.txt") {
+	if !strings.Contains(notesLine, "A   notes.txt") {
 		t.Errorf("notes.txt row = %q, want an A marker before the name", notesLine)
 	}
 	if strings.Contains(docsLine, "M ") {
@@ -244,7 +247,7 @@ func TestActivateRootShowsGitStatusMarkersAtLaunchAndOnSwitch(t *testing.T) {
 
 	m = m.activateRoot() // selection starts on row 0 (repo)
 	view := m.files.view()
-	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "tracked.txt"), "M tracked.txt") {
+	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "tracked.txt"), "M   tracked.txt") {
 		t.Errorf("repo Files Nav view = %q, want an M marker on tracked.txt", view)
 	}
 

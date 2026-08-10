@@ -49,6 +49,15 @@ type filesNav struct {
 	// (the zero value) renders identically to an empty map: no markers.
 	status map[string]gitFileStatus
 
+	// starred holds the S1 document store's currently-Starred Paths (S2/S3),
+	// membership only — a file's own row needs nothing more than "is it in
+	// this set". Unlike status, this can change from *inside* the pane
+	// itself (M2.1's toggleDocStar, a Files Nav action), so the model
+	// refreshes it there too, not just at openFolder/refresh — see
+	// model.filesStarredMarks' callers. Nil renders identically to an empty
+	// map: no markers, the same degrade status already gives.
+	starred map[string]bool
+
 	// width and height are the content box the pane draws into, borders and
 	// title already deducted (see computeLayout / rect.content).
 	width  int
@@ -191,6 +200,14 @@ func (f filesNav) nearestSurvivingIndex(path string) int {
 // itself would know how to produce or restore from memory.
 func (f filesNav) withStatus(status map[string]gitFileStatus) filesNav {
 	f.status = status
+	return f
+}
+
+// withStarred installs S3's star-marker set (see the starred field's own
+// comment) — the same "separate setter, caller recomputes it" shape
+// withStatus already gives S8's markers.
+func (f filesNav) withStarred(starred map[string]bool) filesNav {
+	f.starred = starred
 	return f
 }
 
@@ -347,7 +364,15 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 			status = "A "
 		}
 	}
-	line := strings.Repeat("  ", r.depth) + marker + status + r.node.Name
+	// Star marker (S3), files only — a folder cannot itself be Starred (the
+	// S1 store holds document records, not folders) — same "★ "/"  " pair the
+	// Roots Nav's own renderRow already uses for row.root.starred, so the two
+	// panes read the same mark for the same concept.
+	star := "  "
+	if !r.node.IsDir && f.starred[r.node.Path] {
+		star = "★ "
+	}
+	line := strings.Repeat("  ", r.depth) + marker + status + star + r.node.Name
 
 	style := lipgloss.NewStyle()
 	if selected {
