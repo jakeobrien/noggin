@@ -66,6 +66,23 @@ Delivers: S2, S3
   its documents' stars and timestamps intact — done when: a test un-stars a Root holding
   starred and recently-viewed documents and confirms every document record is byte-identical
   afterwards — effort: 1 (needs: M2.1, M3.1)
+- **M2.7** — Keep the Files Nav's starred marker in sync when a document is starred/un-starred
+  from a focused Document Viewer or the Picker, not only from the Files Nav itself (`m.docs`
+  mutators other than `toggleDocStar` currently leave `m.files.starred` stale) — done when: a
+  test stars the Active Document from DV1 while the same file is a Files Nav row and confirms
+  the row's marker updates without a manual refresh, and likewise for a Picker star toggle
+  — effort: 2 (needs: M2.1, M2.2, M2.5) — from TRIAGE T7 (D70).
+- **M2.8** — Add `keys.Star` and `keys.PickerStar` to the Footer/Help Modal hint lists for the
+  panes and Picker where each applies, so both star actions are discoverable outside the Roots
+  Nav — done when: `keys.Star` appears in the Files Nav's and each Document Viewer's
+  `paneHints`/Help Modal listing, `keys.PickerStar` appears in the Picker's, and
+  `TestHelpModalListsThePaneOwnBindings`'s existing pins still pass (reworded if needed)
+  — effort: 2 (needs: M2.1, M2.2, M2.5) — from TRIAGE T5, T6.
+- **M2.9** — Naming cleanup: rename `TestLoadStarredRootsNoConfigDir` →
+  `TestLoadStarredRootsNoDataDir`, `evictDocStore`'s `cap` parameter → `limit`, and
+  `toggleStarPicker` → `togglePickerStar`, for consistency with each area's own conventions
+  — done when: `make check` is green with the new names and no reference to the old names
+  remains — effort: 1 (needs: M1.1, M1.3, M2.5) — from TRIAGE T1, T2, T9.
 
 ## M3 — Recency is recorded
 

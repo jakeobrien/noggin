@@ -51,6 +51,16 @@ edit handoff only, not "Root activation"). Tests need to confirm a Peek (includi
 peek into DV2, `togglePeekInto`) leaves the record untouched — Peek's own read path
 (`loadDocument` in `togglePeekInto`) must stay separate from whatever wraps Activate's.
 
+Replan (2026-08-10): triaged TRIAGE.md's nine open items — added four new tasks (M1.1a pty
+harness fix, M2.7 stale Files-Nav-marker fix, M2.8 star-binding discoverability, M2.9 naming
+cleanup) logged as D70/D71 for the material ones; deferred T3 (shared store save/load helper)
+to ROADMAP.md Unscheduled; opened D72 for T8's Picker-star-marker wording question — needs a
+user call on whether to add a visible marker to Picker rows or amend S2/M2.5's wording, since
+S3 never lists the Picker as a marker surface. TRIAGE.md is now empty. None of these four new
+tasks block M3.1; cursor stays there, but they're cheap (effort 1-2) and touch files M3+ will
+also touch, so consider slotting them in opportunistically rather than saving them for a
+dedicated pass at the end.
+
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
   per-line format). M1.2's document store needs a two-field record — give it its own file and
@@ -75,6 +85,10 @@ Gotchas surfaced while planning:
 | M2.4 | done   | 2026-08-10 | -         |                                          |
 | M2.5 | done   | 2026-08-10 | -         | pre-agreed cut 1                         |
 | M2.6 | done   | 2026-08-10 | -         |                                          |
+| M1.1a | todo  | -        | -         | replan: pty harness fix, TRIAGE T4 (D71) |
+| M2.7 | todo   | -        | -         | replan: stale marker fix, TRIAGE T7 (D70) |
+| M2.8 | todo   | -        | -         | replan: star-binding discoverability, TRIAGE T5/T6 |
+| M2.9 | todo   | -        | -         | replan: naming cleanup, TRIAGE T1/T2/T9  |
 | M3.1 | todo   | -        | -         |                                          |
 | M3.2 | todo   | -        | -         |                                          |
 | M4.1 | todo   | -        | -         |                                          |

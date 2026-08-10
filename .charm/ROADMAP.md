@@ -60,3 +60,6 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
   per modal in model.go) — the Picker became the third modal in C2 and still didn't justify
   it (C2/D35: the three are less alike than the count suggests); only worth it if a fourth
   modal is ever added, none planned yet (from C1 code review T31, reaffirmed C2/D35)
+- A shared save/load helper for the Roots and document stores (`store.go`/`docstore.go` both
+  hand-roll `os.MkdirAll`-then-`os.WriteFile`) — only worth it if a third store format shows up
+  (from C4 code review, TRIAGE T3)

@@ -933,3 +933,60 @@
   distinct binding is cheaper than teaching the Prompt's typing-vs-action dispatch a
   per-context exception for one key, and follows the codebase's own established precedent
   (`PickerUp`/`PickerDown`'s doc comment) for exactly this situation.
+
+## D70: A stale Files Nav star marker (TRIAGE T7) is accepted work, not a design change — M2.7
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: code review found that `toggleActiveDocStar` (DV1/DV2, M2.2) and `toggleStarPicker`
+  (Picker, M2.5) both mutate `m.docs` directly but never refresh `m.files.starred` the way
+  `toggleDocStar` (Files Nav, M2.1) does — so a document already listed in the Files Nav shows
+  a stale S3 marker until the next unrelated refresh. This contradicts S3's "star is visible"
+  guarantee for two of its three star-mutating surfaces.
+- Decision: accepted as a new task, M2.7 — refresh (or stop caching and derive live)
+  `m.files.starred` from every mutator of the star field, not only the Files-Nav-sourced one.
+  Not a Pre-agreed cut candidate; it directly undermines a delivered surface (S3), not an
+  optional extra.
+- Why: high severity (correctness bug in a delivered deliverable) but non-blocking (M3+ does
+  not depend on it) — per the escalation matrix, accept and log rather than break flow, since
+  the fix is small (effort 2) and well-scoped.
+
+## D71: The pty harness's stale config-dir store path (TRIAGE T4) is accepted work — M1.1a
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: `make check-pty`'s M3.3/M3.4 checks (Roots pane listing/marking/persistence, from
+  C3) fail because `test/pty/checks.py`'s `config_env` still builds the starred-Roots store
+  path under `$XDG_CONFIG_HOME/noggin/roots` — the path M1.1's clean break moved off of, onto
+  `dataDir()`/`storePath()`. The harness was never updated to match, so every M3.3/M3.4 process
+  starts with an empty store and can't find the file it expects to persist. `make check` (the
+  actual gate) is unaffected and green; this is `make check-pty` only.
+- Decision: accepted as a new task, M1.1a — update `config_env` to resolve the store path the
+  same way the shipped code does.
+- Why: medium severity, non-blocking (the pty layer is a separate, already-known-partial gate
+  per PROGRESS's gotchas), but caused by this cycle's own M1.1 change and cheap to fix
+  (effort 2) — accept and log rather than leave a known-broken check sitting unfixed.
+
+## D72: Does the Picker get a visible star marker, or does S2/M2.5's wording get amended? (TRIAGE T8)
+
+- Status: open
+- Cycle: C4
+- Date: 2026-08-10
+- Context: S2 says un-starring from the Picker "leaves the Result in place with its star
+  marker cleared", and M2.5's own acceptance criterion talks about confirming "the marker is
+  gone" — but the Picker's Results list renders no star marker at all today
+  (`pickerFileRow`/`pickerGrepRow` take no starred/docs input); `TestPickerStarTogglesSelected-
+  FileResult` only checks internal `docRecord`/`picker.results` state. S3, which is the
+  deliverable that actually enumerates marker *surfaces*, never lists the Picker among them —
+  only Files Nav rows and the Document Viewer title. So the S2/M2.5 wording may be a carry-over
+  from an earlier draft rather than a deliberate requirement.
+- Open question: either (a) add a visible star marker to Picker rows (a small UI addition,
+  Files-list and Grep-list rows both), or (b) amend S2/M2.5's wording to describe the internal
+  star state only, matching what S3 actually promises. Not decided here because it is a
+  product-surface call (does the user want to *see* stars while picking?), not an
+  implementation detail — surfaced to the user rather than assumed.
+- Why: high severity (spec/build mismatch on a delivered surface) but non-blocking, and it is
+  a judgment question about product intent rather than deferrable work — per the escalation
+  matrix, logged open rather than silently resolved either way.
