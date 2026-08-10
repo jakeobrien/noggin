@@ -24,39 +24,32 @@ Current task: M3.1
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.5 done — star/un-star the Picker's selected Result (pre-agreed cut 1, not needed after
-all). `picker.go`'s new `toggleStarPicker`/`pickerSelectedPath` toggle the S1 document store
-(`docRecord`/`withDocRecord`, the same pair every other star surface uses) for whichever mode is
-open — `pickerPreviewCandidate` (fileMode) or `pickerGrepCandidate` (grepMode), both already
-gated on `resultsCurrent` so a stale search generation can't be starred any more than it can be
-previewed or activated. Deliberately touches nothing on `m.picker` itself, which is what makes
-S2's "leaves the Result in place with its marker cleared" true for free — nothing here could
-move the row or the cursor.
-Gotcha, real design conflict: `keys.Star` is a bare `"s"`, unusable in the Picker's
-always-typing Prompt (`handlePickerInput`) — every `s` typed into a query would have toggled the
-star instead of typing. Added a new binding, `PickerStar` (`alt+s`, mirroring `ToggleHidden`'s
-own `alt+` prefix), rather than reusing `keys.Star` — logged as **D69**. Wired into
-`pickerHints()` (Footer) but *not* `helpBindings()`'s per-pane lists — its Help description
-("star") collides with `TestHelpModalListsThePaneOwnBindings`, which already pins plain
-`keys.Star` absent from the Files Nav's/viewer's own Help Modal; reworking that pinned wording
-for one binding wasn't worth it. Filed as **TRIAGE T6** (plus **T5**, a pre-existing M2.1/M2.2
-gap noticed along the way: the Files Nav's and Document Viewer's own `keys.Star` are likewise
-missing from their panes' Footer/Help hints). Also updated
-`TestPickerHintTextNamesPickerActionsNotThePane` (footer_test.go): "star" moved from its
-not-wanted list to its wanted one now that the Picker has a real star action.
-Evidence: `TestPickerStarTogglesSelectedFileResult` (M2.5's acceptance clause verbatim — star,
-then un-star, `picker.results`/`picker.selected` byte-identical throughout, restart
-round-trips), `TestPickerStarTogglesSelectedGrepResult` (S2 doesn't restrict the action to File
-mode, only M5.1's Starred *scope* is cut), `TestPickerStarNoOpWithNothingSelected` — all in new
-`picker_star_test.go`. `make check` green.
-Next: M2.6 (needs: M2.1 done, M3.1 not yet) is skipped for now — its acceptance criterion needs
-`lastViewed` records to exist before it can check they survive a Root un-starring, and M3.1
-doesn't exist yet. Cursor moves to **M3.1** instead: record `lastViewed` when a document is
-Activated in DV1/DV2 or opened via the `$EDITOR` handoff, never on a Peek. `toggleActiveDocStar`/
-`toggleDocStar`'s `docRecord`/`withDocRecord` pattern applies again; the new call sites are
-`model.activate`/`activateInto` (Files Nav), `model.activateRoot`'s document-opening path if any,
-and `finishEdit` (the `$EDITOR` handoff) — not yet located precisely this session. Return to M2.6
-once M3.1 lands.
+M2.6 done — confirmed the Root lifecycle never touches document state, without needing M3.1
+first. `model.toggleStar` (the Roots star toggle) only ever touches `m.roots` and the Roots
+store (`toggleStore`) — by construction, it has no code path that reaches `m.docs`/
+`withDocRecord` at all (D61's "not attached to Roots" already holds structurally, not just by
+convention), so M2.6 turned out to be a verification-only task rather than needing any
+production change.
+Un-blocked ahead of M3.1: rather than waiting for M3.1's automatic `lastViewed` recording, the
+test seeds a "recently-viewed" record directly via `saveDocStore`/`withDocs` (the same fixture
+shape `TestWithDocRecordEvicts` already uses for a timestamp-bearing record) — M2.6's claim is
+about the Root lifecycle, not about how a timestamp got there, so a hand-seeded one proves the
+same thing M3.1's real recording would. Comparison is `reflect.DeepEqual` against the store
+re-read through `loadDocStore` (not the raw seed struct) to sidestep `time.Time`'s monotonic-
+reading footgun, plus a raw on-disk byte comparison for the literal "byte-identical" wording.
+Evidence: `TestUnstarringRootLeavesDocumentStoreUntouched` (new `root_lifecycle_docs_test.go`)
+stars then un-stars a Root holding one starred and one recently-viewed (unstarred) document,
+confirms `model.docs` and the on-disk store file are both unchanged throughout. `make check`
+green.
+Next: **M3.1** — record `lastViewed` when a document is Activated in DV1 or DV2, or opened via
+the `$EDITOR` handoff; Peek never records. `toggleActiveDocStar`/`toggleDocStar`'s
+`docRecord`/`withDocRecord` pattern applies again, called alongside (not instead of) each
+action's existing effect. Likely call sites, not yet confirmed this session: `model.activate`/
+`model.activateInto` (Files Nav Activate into DV1/DV2), and `model.finishEdit` (the `$EDITOR`
+handoff) — `model.activateRoot` itself should NOT record (S4 names Activate-in-a-viewer and the
+edit handoff only, not "Root activation"). Tests need to confirm a Peek (including a `ctrl+`
+peek into DV2, `togglePeekInto`) leaves the record untouched — Peek's own read path
+(`loadDocument` in `togglePeekInto`) must stay separate from whatever wraps Activate's.
 
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
@@ -81,7 +74,7 @@ Gotchas surfaced while planning:
 | M2.3 | done   | -        | -         |                                          |
 | M2.4 | done   | -        | -         |                                          |
 | M2.5 | done   | -        | -         | pre-agreed cut 1                         |
-| M2.6 | todo   | -        | -         |                                          |
+| M2.6 | done   | -        | -         |                                          |
 | M3.1 | todo   | -        | -         |                                          |
 | M3.2 | todo   | -        | -         |                                          |
 | M4.1 | todo   | -        | -         |                                          |
