@@ -16,9 +16,9 @@ import (
 // confirms a fresh model relaunched against that same store — the real
 // main.go sequence (loadStarredRoots -> newModel().withStorePath(...).
 // applyResolution(resolveLaunch(...))), with loadStore standing in for
-// loadStarredRoots since os.UserConfigDir() is not under test control — comes
-// up with no DV2 at all, while the starred root gathered across DV2's whole
-// lifetime survives exactly as a real restart would replay it.
+// loadStarredRoots since dataDir() (M1.1/S1) is not under test control —
+// comes up with no DV2 at all, while the starred root gathered across DV2's
+// whole lifetime survives exactly as a real restart would replay it.
 
 // launchFixture is one simulated process: reads storePath the way main.go
 // does, resolves the launch argument (root, always) and applies it.

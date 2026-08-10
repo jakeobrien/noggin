@@ -184,10 +184,10 @@ func (m model) focusedViewerPane() pane {
 	return dv1Pane
 }
 
-// withStorePath sets the resolved starred-roots config path (M3.2's
-// storePath()) that a Roots Nav star toggle persists through. main.go
-// resolves it once at startup so a keypress never re-derives
-// os.UserConfigDir() itself.
+// withStorePath sets the resolved starred-roots data path (M3.2's
+// storePath(), M1.1's dataDir()) that a Roots Nav star toggle persists
+// through. main.go resolves it once at startup so a keypress never
+// re-derives dataDir() itself.
 func (m model) withStorePath(path string) model {
 	m.roots.storePath = path
 	return m
@@ -404,7 +404,7 @@ func (m model) activateRoot() model {
 
 // toggleStar flips the Roots Nav selection's starred mark and persists it via
 // the S2 store (M3.2's toggleStore), using the storePath resolved once at
-// startup (withStorePath). A config directory that could not be resolved
+// startup (withStorePath). A data directory that could not be resolved
 // (m.roots.storePath == "", the same rare case loadStarredRoots degrades on)
 // declines the toggle with a message instead (T18), the same as the
 // explicit-write-error branch below — a star that cannot be persisted must
@@ -416,7 +416,7 @@ func (m model) toggleStar() model {
 		return m
 	}
 	if m.roots.storePath == "" {
-		m.message = "cannot save starred roots: no resolvable config directory"
+		m.message = "cannot save starred roots: no resolvable data directory"
 		return m
 	}
 	if _, err := toggleStore(m.roots.storePath, row.root.path); err != nil {

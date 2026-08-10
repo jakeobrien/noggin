@@ -18,14 +18,16 @@ func main() {
 	// rejection message and a session that still starts, not a process exit (T7);
 	// walking the active root and opening any active document happen inside
 	// applyResolution, which downgrades their failures to messages too.
-	// loadStarredRoots reads the S2 store (D7's os.UserConfigDir()); a fresh
-	// install with no store yet, same as a garbage one, is a first run.
+	// loadStarredRoots reads the S1 store (M1.1's dataDir(), a clean break
+	// from C1/D7's config-directory location — the old config-dir file is
+	// never read or migrated); a fresh install with no store yet, same as a
+	// garbage one, is a first run.
 	cwd, cwdErr := resolveCwd()
 	res := resolveLaunch(os.Args[1:], loadStarredRoots(), cwd, cwdErr)
 	// storePath is resolved once here and threaded into the model so a Roots
-	// Nav star toggle (M3.3) persists without re-deriving os.UserConfigDir()
-	// on every keypress; an unresolvable config directory (storePath's own
-	// error) becomes "", the same degrade loadStarredRoots already applies.
+	// Nav star toggle (M3.3) persists without re-deriving dataDir() on every
+	// keypress; an unresolvable data directory (storePath's own error)
+	// becomes "", the same degrade loadStarredRoots already applies.
 	path, _ := storePath()
 	// detectRipgrep is a PATH lookup, independent of the launch argument
 	// above; resolving it once here keeps the Picker's later startup-time

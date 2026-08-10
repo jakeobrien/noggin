@@ -127,14 +127,98 @@ func TestToggleStoreUnstars(t *testing.T) {
 }
 
 // TestLoadStarredRootsNoConfigDir checks the main.go entry point degrades to
-// "no starred roots" rather than panicking when the config directory cannot
-// be resolved. os.UserConfigDir() consults $HOME/$XDG_CONFIG_HOME on unix;
-// clearing both forces its error path.
+// "no starred roots" rather than panicking when the data directory cannot be
+// resolved. dataDir() consults $HOME/$XDG_DATA_HOME on unix; clearing both
+// forces its error path.
 func TestLoadStarredRootsNoConfigDir(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("XDG_DATA_HOME", "")
 	t.Setenv("HOME", "")
 	got := loadStarredRoots()
 	if len(got) != 0 {
-		t.Errorf("loadStarredRoots() = %v, want empty when config dir is unresolvable", got)
+		t.Errorf("loadStarredRoots() = %v, want empty when data dir is unresolvable", got)
+	}
+}
+
+// TestDataDirUsesXDGDataHome pins dataDir()'s Unix resolution: an explicit
+// $XDG_DATA_HOME wins over $HOME/.local/share.
+func TestDataDirUsesXDGDataHome(t *testing.T) {
+	want := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", want)
+	got, err := dataDir()
+	if err != nil {
+		t.Fatalf("dataDir: %v", err)
+	}
+	if got != want {
+		t.Errorf("dataDir() = %q, want %q", got, want)
+	}
+}
+
+// TestDataDirFallsBackToHome pins dataDir()'s fallback when $XDG_DATA_HOME is
+// unset: $HOME/.local/share.
+func TestDataDirFallsBackToHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", "")
+	t.Setenv("HOME", home)
+	got, err := dataDir()
+	if err != nil {
+		t.Fatalf("dataDir: %v", err)
+	}
+	want := filepath.Join(home, ".local", "share")
+	if got != want {
+		t.Errorf("dataDir() = %q, want %q", got, want)
+	}
+}
+
+// TestStoreIgnoresConfigDirCleanBreak is M1.1's acceptance criterion: a
+// populated config-directory store (the pre-C4/D7 location) is never read,
+// and starring through the current data-dir-resolved storePath round-trips
+// across a fresh load exactly as a new process would see it.
+func TestStoreIgnoresConfigDirCleanBreak(t *testing.T) {
+	configHome := t.TempDir()
+	dataHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+	t.Setenv("XDG_DATA_HOME", dataHome)
+
+	// Populate the old config-dir store directly — simulating a pre-existing
+	// install — without going through any of this package's data-dir-based
+	// helpers.
+	configStore := filepath.Join(configHome, storeSubdir, storeName)
+	if err := os.MkdirAll(filepath.Dir(configStore), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stale := filepath.Join(configHome, "stale-root")
+	if err := os.WriteFile(configStore, []byte(stale+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The data-dir store is empty (never written). loadStarredRoots must see
+	// zero starred roots, not the config-dir file's contents.
+	if got := loadStarredRoots(); len(got) != 0 {
+		t.Fatalf("loadStarredRoots() = %v, want empty (config-dir store must be ignored)", got)
+	}
+
+	// Star/un-star round-trips through the data-dir path.
+	path, err := storePath()
+	if err != nil {
+		t.Fatalf("storePath: %v", err)
+	}
+	want := filepath.Join(dataHome, storeSubdir, storeName)
+	if path != want {
+		t.Fatalf("storePath() = %q, want %q", path, want)
+	}
+
+	root := filepath.Join(dataHome, "a-root")
+	if _, err := toggleStore(path, root); err != nil {
+		t.Fatalf("toggleStore(star): %v", err)
+	}
+	if got := loadStarredRoots(); !reflect.DeepEqual(got, []string{root}) {
+		t.Fatalf("loadStarredRoots() after star = %v, want [%s]", got, root)
+	}
+
+	if _, err := toggleStore(path, root); err != nil {
+		t.Fatalf("toggleStore(unstar): %v", err)
+	}
+	if got := loadStarredRoots(); len(got) != 0 {
+		t.Fatalf("loadStarredRoots() after unstar = %v, want empty", got)
 	}
 }

@@ -17,17 +17,22 @@
 
 ## Cursor
 
-Current task: M1.1
+Current task: M1.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Cycle just planned; no implementation started. PLAN.md decomposes S1–S10 into M1–M7.
-Start at M1.1: add data-location resolution alongside the existing `os.UserConfigDir()`
-helper in `cmd/noggin/store.go` and move the starred-Roots store there as a clean break
-(the config-dir `roots` file is ignored, never migrated — S1).
+M1.1 done: added `dataDir()` in `cmd/noggin/store.go` (hand-rolled, mirrors
+`os.UserCacheDir()`'s own Unix/Darwin/Windows/Plan9 split — D66) and rewired `storePath()`
+through it instead of `os.UserConfigDir()`. Starred-Roots store is now a clean break: old
+config-dir `roots` file is never read/migrated (`TestStoreIgnoresConfigDirCleanBreak`).
+Updated doc comments in rootsnav.go/model.go/main.go/dv2_persistence_test.go that referenced
+the old `os.UserConfigDir()` mechanism; the "no resolvable config directory" user message is
+now "no resolvable data directory" (message_test.go only checks substring, unaffected).
+`make check` green. Next: M1.2, the path-keyed document store — per the planning gotcha, give
+it its own file/names rather than overloading store.go's Roots-specific plain format.
 
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
@@ -43,7 +48,7 @@ Gotchas surfaced while planning:
 
 | Key  | Status | Reviewed | Validated | Note                                     |
 |------|--------|----------|-----------|------------------------------------------|
-| M1.1 | todo   | -        | -         |                                          |
+| M1.1 | done   | -        | -         |                                          |
 | M1.2 | todo   | -        | -         |                                          |
 | M1.3 | todo   | -        | -         |                                          |
 | M1.4 | todo   | -        | -         |                                          |

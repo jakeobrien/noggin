@@ -32,11 +32,11 @@ type rootRow struct {
 // resolved once at startup (main.go's storePath(), threaded through
 // model.withStorePath, not this type's constructor — a fresh pane never
 // starts with one, so newRootsNav takes no argument) so a star toggle can
-// persist without re-deriving os.UserConfigDir() on every keypress; empty
-// means the config directory could not be resolved, in which case a toggle
-// still updates the pane's own display but has nothing to write through.
-// That is an uncommon case — no $HOME or $XDG_CONFIG_HOME — matching
-// loadStarredRoots' own degrade-to-empty behavior for the same failure.
+// persist without re-deriving dataDir() on every keypress; empty means the
+// data directory could not be resolved, in which case a toggle still
+// updates the pane's own display but has nothing to write through. That is
+// an uncommon case — no $HOME or $XDG_DATA_HOME — matching loadStarredRoots'
+// own degrade-to-empty behavior for the same failure.
 type rootsNav struct {
 	rows     []rootRow
 	active   int // index into rows of the active root, or -1

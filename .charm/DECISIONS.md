@@ -852,3 +852,20 @@
   (no focus-key hints in the Footer) is unchanged.
 - Why: a spec miscount with an identical end state is not worth a brainstorm amend cycle; the
   discrepancy is recorded here so a validator does not read three removals as incomplete work.
+
+## D66: dataDir() hand-rolls the data-location split rather than a dependency (C4/M1.1)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: S1 requires a data location distinct from `os.UserConfigDir()`; the standard library
+  has no `UserDataDir()`. Options were a small XDG dependency (e.g. `adrg/xdg`) or a hand-rolled
+  function.
+- Decision: hand-roll `dataDir()` in `cmd/noggin/store.go`, mirroring the exact structure and
+  style of the stdlib's own `os.UserCacheDir()`/`os.UserConfigDir()` (same `runtime.GOOS` switch,
+  same env vars and fallbacks): `$XDG_DATA_HOME` or `$HOME/.local/share` on Unix,
+  `~/Library/Application Support` on Darwin, `%LocalAppData%` on Windows, `$home/lib` on Plan9.
+- Why: D1 (go with the grain of the libraries) favors the stdlib's own idiom over a new
+  dependency for four lines of well-specified, rarely-changing logic; consistency with
+  `os.UserConfigDir()`'s existing style (already read by every contributor) keeps the two
+  functions easy to compare and trust. Medium and reversible — logged, not asked.
