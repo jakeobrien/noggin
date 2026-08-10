@@ -510,6 +510,33 @@ func (m model) toggleDocStar() model {
 	return m.withDocRecord(n.Path, rec)
 }
 
+// toggleActiveDocStar flips the S1 document store's star mark for the
+// focused Document Viewer's Active Document (S2: "acting on that viewer's
+// Active Document, so DV1 and DV2 star different documents") — unlike
+// toggleDocStar's Files Nav selection, this one is inherently per-viewer:
+// focusedViewer already resolves to DV1 or DV2 by Focus (viewerFor), so
+// starring from each acts on that viewer's own v.doc.path independently,
+// with no extra targeting needed. Silent no-op while Peeking, the same
+// shape startEdit/startFind already give (S7/M7.1): the Peeked document is
+// never the Active Document, so acting on "the Active Document" here while
+// something else is on screen would be exactly the same disturb-what's-not-
+// displayed surprise those two guards exist to prevent. With no document
+// open, a footer message explains it, the same shape startEdit/startFind
+// give their own "nothing to act on" case.
+func (m model) toggleActiveDocStar() model {
+	v := m.focusedViewer()
+	if v.peeking() {
+		return m
+	}
+	if !v.doc.isOpen() {
+		m.message = "no document open to star"
+		return m
+	}
+	rec := m.docRecord(v.doc.path)
+	rec.Starred = !rec.Starred
+	return m.withDocRecord(v.doc.path, rec)
+}
+
 // editFinishedMsg reports that $EDITOR has exited (S10, D3). path is the
 // document that was handed off, carried on the message rather than re-read
 // from the viewer at delivery time, since focus and the open document could in
@@ -1031,6 +1058,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if next, scrolled := m.focusedViewer().scroll(msg); scrolled {
 				m = m.withFocusedViewer(next)
 				return m, nil
+			}
+			// M2.2: star/un-star acts on this viewer's own Active Document, so
+			// DV1 and DV2 star independently — the same shared keys.Star chord
+			// the Roots Nav and Files Nav cases each bind to their own action.
+			if key.Matches(msg, keys.Star) {
+				return m.toggleActiveDocStar(), nil
 			}
 		case filesPane:
 			if key.Matches(msg, keys.Activate) {
