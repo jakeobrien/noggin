@@ -1412,6 +1412,15 @@ func (m model) renderPane(p pane, r rect, content string) string {
 // Viewer's title names the Peeked document instead of the Active one —
 // renderPane is what styles that differently (inverted, not bold) so the
 // two are never visually confusable.
+//
+// S3/M2.4: a starred Active Document gets the same "★ " glyph the Files Nav
+// and Roots Nav rows already use, immediately to the left of the label, so
+// a star reads the same way in every pane that shows one. It only applies
+// to the Active Document's own title — Peek names a different, non-Active
+// document (S7's own concept), which S2/S3 never speak to, so the Peek
+// branch above returns before this ever runs. docRecord tolerates any path,
+// including one under no session Root, so this needs no isOpen-style guard
+// beyond the label check already gating it.
 func (m model) paneTitle(p pane) string {
 	if p == dv1Pane || p == dv2Pane {
 		v := m.viewerFor(p)
@@ -1419,7 +1428,11 @@ func (m model) paneTitle(p pane) string {
 			return "Peek: " + v.peekLabel()
 		}
 		if label := v.label(); label != "" {
-			return p.title() + ": " + label
+			star := ""
+			if m.docRecord(v.doc.path).Starred {
+				star = "★ "
+			}
+			return p.title() + ": " + star + label
 		}
 	}
 	return p.title()
