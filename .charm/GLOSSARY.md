@@ -9,10 +9,21 @@
 - **Ad-hoc Root** — a Root supplied by the command line for this session only, not persisted.
   Listed first because it was named deliberately. At most one per session (C1).
 - **Broken Root** — a Root whose path no longer exists on disk. Still listed and its starred
-  state kept, but marked and cannot be activated.
+  state kept, but marked and cannot be activated. A **broken starred document** gets the same
+  treatment in a Starred list (C4).
+- **Browse Mode** — how the Files Nav lists documents: `Tree`, `Recent` or `Starred`. Cycled
+  by key from the Files Nav, remembered per Root for the session (C4).
+- **Browse Scope** — what a Browse Mode is drawn from. `Tree` has none; `Recent` is Active Root
+  or All Roots; `Starred` is Active Root, All Starred or Orphans. Remembered per (Root, Mode)
+  for the session (C4). Distinct from a Picker's Scope.
 - **Committed Find** — a Find query locked in with Activate, as distinct from one still being
   edited. Its match and indication persist until dismissed or the viewport is forced to
   re-render (e.g. a terminal resize or a Navigator toggle).
+- **Document History** — a Document Viewer's own back/forward stack of the documents opened in
+  it. Per viewer, session-only, browser semantics, never changes the Active Root (C4).
+- **Document Store** — the persisted, path-keyed record of every document noggin knows about:
+  whether it is Starred and when it was last viewed. Not attached to Roots; per-Root Starred and
+  Recent lists are derived by path (C4).
 - **Document Viewer** — the pane that renders the Active Document as styled markdown. Read-only;
   scrolls, has no cursor. A session has one always-present Document Viewer (DV1) and may have
   a second, optional one (DV2) beside it; the two are fully independent — separate Active
@@ -33,6 +44,8 @@
 - **Grep Picker** — the Picker whose Results are matching lines across files (C2).
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
   footer's help affordance and dismissible with one key.
+- **Focus Badge** — the key that focuses a pane, shown right-aligned on that pane's title row
+  (`[f]`, `[^o]`). Dropped when the pane is too narrow (C4).
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
   vim-oriented. Provisional, like all bindings.
 - **Navigator** — the left sidebar: Roots Nav above, Files Nav below. Hideable.
@@ -54,6 +67,10 @@
   Document Viewer's Active Document from disk in one action, preserving tree expansion,
   selection and each viewer's scroll position. Manual only; noggin never watches the
   filesystem (C2a).
+- **Orphan** (orphaned star) — a Starred document that lies under no Root in the current
+  session. Reachable from the Picker's `Starred` scope and the Files Nav's `Orphans` scope (C4).
+- **Recent** — documents ordered by when they were last viewed. Viewing means Activate or the
+  `$EDITOR` handoff; Peek does not count. Recency only, never frecency (C4).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
@@ -70,5 +87,6 @@
   already exist. Unmodified keys always target DV1. The same `ctrl+` prefix is also used by
   S5's focus-jump keys (`ctrl+o` jumps Focus to DV2) for consistency, though that is a
   distinct mechanism with no load/peek routing involved (C3; `shift+` before D55).
-- **Starred** — bookmarked and persisted across sessions. Applies to Roots in C1, to documents
-  in C4.
+- **Starred** — bookmarked and persisted across sessions. Applies to Roots (C1) and to
+  documents (C4). Document stars are a single global collection of paths, independent of the
+  Root lifecycle: un-starring a Root never touches them.

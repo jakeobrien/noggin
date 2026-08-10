@@ -758,3 +758,66 @@
   "least surprising" answer and no real alternative reading of S9 — decided and logged rather
   than asked, per the effort-scaling rule.
 
+
+## D61: Document memory is one global, path-keyed store — shadow Roots rejected
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: C4 brainstorming. Starring documents per Root produced a chain of bad cases (star in
+  an ad-hoc Root, then open a parent folder as a Root next session; star the Root; un-star it).
+  A "shadow Root" concept was proposed to hold recency for ad-hoc and un-starred Roots: a
+  retained-but-unstarred Root class with a TTL, a quantity cap, and a carve-out letting shadow
+  Roots nest.
+- Decision: one persisted store (S1) keyed by absolute path, holding `{starred, lastViewed}`,
+  **not attached to Roots**; per-Root Starred and Recent lists are derived by path prefix. No
+  Root lifecycle event destroys document state. Shadow Roots are rejected outright — not
+  deferred, since nothing remains to build. The per-Root cap of 100 becomes a *view* cap; the
+  store's own bound is separate housekeeping needing no Root attribution. The starred-Roots
+  store moves from config (C1/D7) to the same data location, closing that Unscheduled item, as
+  a clean break with no migration.
+- Why: derivation is unambiguous because Roots may not nest (D6) — the same rule shadow Roots
+  would have had to violate, reintroducing exactly the "which Root is this document in"
+  ambiguity D6 exists to prevent. Shadow Roots would have added a durable concept with a full
+  lifecycle and time-based expiry (in an app whose refresh philosophy, C2a, is "manual only,
+  never watches anything") for **zero visible surface** — while a global store delivers the same
+  outcome by deleting a rule rather than adding a concept. Reverses the earlier intent that
+  ad-hoc Roots' recency be session-only: it is now persisted like everything else, which is the
+  trade that makes this work. Also rejected: a confirm dialog offering to purge document stars
+  when a Root is un-starred — the signal is weak (un-star means "stop auto-adding at launch",
+  not "done with these documents"), it is irreversible, it would take out stars created before
+  the Root was ever starred, and it would need modal-dialog machinery noggin does not have
+  (cf. D26's cost). Bulk un-starring is done one document at a time from the Picker's Starred
+  scope, which is also what keeps orphaned stars reachable.
+
+## D62: Wiki-links leave C4; the document cursor is bought once, for everything that needs it
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: The roadmap's C4 line named wiki-links alongside history, starring and recency.
+  Following a link needs a notion of "which link is current" — precisely the Document Viewer
+  cursor D4 refused, in ANSI-styled rendered output where
+  `knowledge/viewport-search-ansi-offsets.md` records offsets drifting.
+- Decision: wiki-links and URL following are cut from C4 and moved to ROADMAP Unscheduled,
+  bundled with Select mode + copy (also from C1) as one cursor-dependent group. A link Picker
+  (a modal list of the document's links, needing no cursor) was floated as a cursor-free
+  alternative and deliberately not taken this cycle.
+- Why: C4 is already the largest scope bet since C1 without it, and the honest cost of
+  wiki-links is not the parsing — it is the cursor. Whatever eventually justifies that cursor
+  should pay for every feature that needs it at once, rather than one feature smuggling in
+  half of it.
+
+## D63: C4's pre-agreed cut list
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: C4 grew during brainstorming (new store, three star surfaces, three browse modes
+  with per-mode scopes, per-viewer history, a new Picker scope, pane badges). C1 pre-agreed its
+  cuts (D8) and needed none of them; the exercise was still worth it.
+- Decision: if the cycle spills, cut in this order without re-litigation: (1) starring from the
+  Picker, (2) per-document scroll memory in history, (3) the `Orphans` browse scope, (4)
+  `Starred` scope on the Grep Picker. Recorded in SPEC.md's Pre-agreed cuts section.
+- Why: each is a refinement of a deliverable that still stands without it — none removes a
+  cycle-acceptance outcome outright. Ordered by how little is lost.

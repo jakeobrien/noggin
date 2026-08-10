@@ -25,7 +25,7 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 | C2  | find               | done    | Fuzzy filename find and literal grep with preview, scoped to Active Root or All Roots, ripgrep-backed | `archive/C2-2026-08-find/` |
 | C2a | polish             | done    | Install target, manual refresh, per-Root tree memory, dotfile Picker toggle, two-line Roots Nav, new bindings (r/f/R/p/space), Peek, per-file git markers, and a footer-width staleness-indicator fix | `archive/C2a-2026-08-polish/` |
 | C3  | compare            | done    | Second Document Viewer (DV2), ctrl+ targeting from Files Nav/Picker, four-way direct focus keys replacing Tab-cycling, ctrl+x close, dual-viewer refresh/staleness, session-only DV2 state | `archive/C3-2026-08-compare/` |
-| C4  | recall             | planned | The session remembers: document history, starred documents, recent, wiki-links | - |
+| C4  | recall             | planned | noggin remembers: starred documents, recency, Files Nav browse modes, per-viewer document history (wiki-links carved out to Unscheduled) | - |
 | C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
 
 ## Unscheduled
@@ -44,7 +44,10 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
   (from C2, D31)
 - File Picker matching against path components, not just the file name (from C2, D31)
 - Picker memory: last mode, last Scope, last query (from C2, D31; see repeat-last-search below)
-- Select mode + copy in the Document Viewer (from C1)
+- Select mode + copy in the Document Viewer (from C1); **wiki-link and URL following** (from
+  C4) — carved out of C4 because both need a notion of "which link is current", i.e. the
+  document cursor C1/D4 refused. Revisit as one piece: whatever earns the cursor should pay for
+  all of them at once.
 - "Follow" mode: auto-preview on selection change (from C1); any targeting for it is also
   unscheduled (C3)
 - Search over documents opened this session; repeat-last-search (from C1)
