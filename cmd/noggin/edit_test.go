@@ -67,7 +67,12 @@ func TestFinishEditReloadsDocumentFromDisk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loading %s: %v", path, err)
 	}
-	m := sized(t, newModel(), 80, 24)
+	// M3.1: finishEdit now records recency, which routes through
+	// withDocRecord like every other document-store write — a resolvable
+	// docsPath is required or that write declines with a message, which
+	// would otherwise leak into this test's own "cleared" assertion below.
+	storePath := filepath.Join(t.TempDir(), "documents")
+	m := sized(t, newModel().withDocs(storePath, loadDocStore(storePath)), 80, 24)
 	m = m.openDocument(d)
 	m.message = "stale message"
 

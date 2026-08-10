@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -255,6 +256,20 @@ func (m model) withDocRecord(path string, rec docRecord) model {
 	return m
 }
 
+// recordViewed stamps path's document record with the current time (S4,
+// M3.1's "recency is recorded") and persists it via withDocRecord, the same
+// generic write half toggleDocStar/toggleActiveDocStar already use for the
+// Starred field — this is that pair's LastViewed analogue. It tolerates a
+// path with no existing record the same way docRecord always has (S4's
+// "regardless of whether its Root is starred, ad-hoc, or no longer in the
+// session", M1.2's "no attachment to Roots"), and only ever touches
+// LastViewed, leaving Starred exactly as docRecord already reads it.
+func (m model) recordViewed(path string) model {
+	rec := m.docRecord(path)
+	rec.LastViewed = time.Now()
+	return m.withDocRecord(path, rec)
+}
+
 // withRipgrep installs the S14 ripgrep detection result (detectRipgrep())
 // that main.go resolves once at startup, the same one-shot-then-carry
 // pattern as withStorePath.
@@ -436,6 +451,10 @@ func (m model) activateInto(target pane) model {
 		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
 		return m
 	}
+	// S4/M3.1: Activate records recency regardless of which viewer it
+	// targets — unlike activateRoot, which never records (S4 names
+	// Activate-in-a-viewer, not Root activation).
+	m = m.recordViewed(n.Path)
 	return m.openDocumentInto(target, d)
 }
 
@@ -962,6 +981,8 @@ func (m model) finishEdit(msg editFinishedMsg) model {
 		return m
 	}
 	m.message = ""
+	// S4/M3.1: the $EDITOR handoff records recency the same as an Activate.
+	m = m.recordViewed(msg.path)
 	return m.openDocumentInto(msg.pane, d)
 }
 

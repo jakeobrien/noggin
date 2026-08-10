@@ -17,39 +17,38 @@
 
 ## Cursor
 
-Current task: M3.1
+Current task: M3.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.6 done — confirmed the Root lifecycle never touches document state, without needing M3.1
-first. `model.toggleStar` (the Roots star toggle) only ever touches `m.roots` and the Roots
-store (`toggleStore`) — by construction, it has no code path that reaches `m.docs`/
-`withDocRecord` at all (D61's "not attached to Roots" already holds structurally, not just by
-convention), so M2.6 turned out to be a verification-only task rather than needing any
-production change.
-Un-blocked ahead of M3.1: rather than waiting for M3.1's automatic `lastViewed` recording, the
-test seeds a "recently-viewed" record directly via `saveDocStore`/`withDocs` (the same fixture
-shape `TestWithDocRecordEvicts` already uses for a timestamp-bearing record) — M2.6's claim is
-about the Root lifecycle, not about how a timestamp got there, so a hand-seeded one proves the
-same thing M3.1's real recording would. Comparison is `reflect.DeepEqual` against the store
-re-read through `loadDocStore` (not the raw seed struct) to sidestep `time.Time`'s monotonic-
-reading footgun, plus a raw on-disk byte comparison for the literal "byte-identical" wording.
-Evidence: `TestUnstarringRootLeavesDocumentStoreUntouched` (new `root_lifecycle_docs_test.go`)
-stars then un-stars a Root holding one starred and one recently-viewed (unstarred) document,
-confirms `model.docs` and the on-disk store file are both unchanged throughout. `make check`
-green.
-Next: **M3.1** — record `lastViewed` when a document is Activated in DV1 or DV2, or opened via
-the `$EDITOR` handoff; Peek never records. `toggleActiveDocStar`/`toggleDocStar`'s
-`docRecord`/`withDocRecord` pattern applies again, called alongside (not instead of) each
-action's existing effect. Likely call sites, not yet confirmed this session: `model.activate`/
-`model.activateInto` (Files Nav Activate into DV1/DV2), and `model.finishEdit` (the `$EDITOR`
-handoff) — `model.activateRoot` itself should NOT record (S4 names Activate-in-a-viewer and the
-edit handoff only, not "Root activation"). Tests need to confirm a Peek (including a `ctrl+`
-peek into DV2, `togglePeekInto`) leaves the record untouched — Peek's own read path
-(`loadDocument` in `togglePeekInto`) must stay separate from whatever wraps Activate's.
+M3.1 done — `lastViewed` is now recorded at exactly the two call sites S4 names:
+`model.activateInto` (Files Nav Activate into DV1 or, via the `ctrl+` modifier, DV2) and
+`model.finishEdit` (the `$EDITOR` handoff), both via a new `model.recordViewed` helper that
+wraps `docRecord`/`withDocRecord` the same way `toggleDocStar`/`toggleActiveDocStar` already do
+for `Starred`. `model.activateRoot` and `togglePeekInto` were left untouched, so Root activation
+and Peek (plain and `ctrl+` into DV2) never record, per S4's own trigger list.
+D73 logs a scope call: launch-time document opens (`applyResolution`, which shares
+`openDocumentInto` with the two recording call sites) do **not** record — S4/M3.1's wording
+names Activate and the edit handoff only, not launch.
+Since `withDocRecord` declines with a footer message when `docsPath == ""` (M1.4's contract,
+now also inherited by recording), one pre-existing test
+(`TestFinishEditReloadsDocumentFromDisk`) needed a resolvable `docsPath` via `withDocs` added
+to keep its own "message cleared" assertion honest — the only pre-existing test this change
+touched; `go test ./...` found no other collateral failures.
+Evidence: new `recency_test.go` — `TestActivateRecordsLastViewed` and
+`TestActivateDV2RecordsLastViewed` confirm a timestamp at/after a captured `before` for each
+viewer (the DV1 case also round-trips through a simulated restart), `TestFinishEditRecordsLast-
+Viewed` covers the edit handoff, and `TestPeekDoesNotRecordLastViewed` (subtests `Peek`/
+`PeekDV2`) confirm the record stays zero. `make check` green.
+Next: **M3.2** — record regardless of Root provenance (ad-hoc, un-starred, or absent Roots):
+since `recordViewed`/`docRecord`/`withDocRecord` already have no Root-awareness at all (M1.2's
+"no attachment to Roots", inherited structurally the same way M2.6 found for the star field),
+this is likely another verification-only task — write a test that Activates a document from an
+ad-hoc Root and one whose Root is not in the session at all, and confirm both records persist,
+before assuming any production change is needed.
 
 Replan (2026-08-10): triaged TRIAGE.md's nine open items — added four new tasks (M1.1a pty
 harness fix, M2.7 stale Files-Nav-marker fix, M2.8 star-binding discoverability, M2.9 naming
@@ -89,7 +88,7 @@ Gotchas surfaced while planning:
 | M2.7 | todo   | -        | -         | replan: stale marker fix, TRIAGE T7 (D70) |
 | M2.8 | todo   | -        | -         | replan: star-binding discoverability, TRIAGE T5/T6 |
 | M2.9 | todo   | -        | -         | replan: naming cleanup, TRIAGE T1/T2/T9  |
-| M3.1 | todo   | -        | -         |                                          |
+| M3.1 | done   | -        | -         |                                          |
 | M3.2 | todo   | -        | -         |                                          |
 | M4.1 | todo   | -        | -         |                                          |
 | M4.2 | todo   | -        | -         |                                          |

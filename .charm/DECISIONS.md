@@ -990,3 +990,23 @@
 - Why: high severity (spec/build mismatch on a delivered surface) but non-blocking, and it is
   a judgment question about product intent rather than deferrable work — per the escalation
   matrix, logged open rather than silently resolved either way.
+
+## D73: M3.1's recording does not cover launch-time document opens
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: S4 names two recording triggers verbatim — "Activated (in DV1 or DV2)" and "opened
+  via the `$EDITOR` handoff" — and M3.1's own acceptance criterion only asks for tests
+  covering Activate (both viewers) and the edit handoff, plus Peek's exclusion. `applyResolution`
+  (S1's launch-time `openDocument`/`openDocumentInto` call for a document named on the command
+  line) shares `openDocumentInto` with `activateInto`/`finishEdit`, so recording could have been
+  centralized there and picked up launch opens "for free" — but neither S4 nor M3.1/M3.2 ever
+  say a launch open counts, and M3.2's own wording ("a test Activates a document from an
+  ad-hoc Root...") reuses "Activates", not "opens", reinforcing the narrower reading.
+- Decision: `recordViewed` is called explicitly at the two named call sites
+  (`activateInto`, `finishEdit`) rather than inside the shared `openDocumentInto`/`openDocument`
+  — a launch-time document open does not stamp `LastViewed`.
+- Why: low risk, straightforward reading of the spec's own enumerated trigger list; the
+  alternative (recording on launch too) is a small, easily-reversible extension if the user
+  wants it, not a foreclosed path — noted here rather than silently assumed either way.
