@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -129,6 +130,17 @@ type model struct {
 	staleBaseline staleBaseline
 	staleGen      int
 	stale         bool
+
+	// docsPath and docs are the S1 document store (M1.1's dataDir(), M1.2's
+	// path-keyed record, M1.3's eviction): docsPath is resolved once at
+	// startup the same way roots.storePath is (withStorePath), and docs is
+	// loaded once at the same time (withDocs, main.go's loadDocuments()) and
+	// kept in memory from then on. docRecord/withDocRecord are the *only*
+	// accessor pair anything — Files Nav, DV1/DV2, Picker — uses to read or
+	// write a document's starred/lastViewed state; nothing outside this file
+	// touches docs, docsPath or docstore.go's load/save/evict directly.
+	docsPath string
+	docs     map[string]docRecord
 }
 
 func newModel() model {
@@ -190,6 +202,56 @@ func (m model) focusedViewerPane() pane {
 // re-derives dataDir() itself.
 func (m model) withStorePath(path string) model {
 	m.roots.storePath = path
+	return m
+}
+
+// withDocs installs the S1 document store's resolved path and its startup
+// contents (main.go's docStorePath() and loadDocuments()) — the one-shot-
+// then-carry pattern withStorePath gives the Roots store, done once here
+// rather than re-read on every access. Every subsequent read or write goes
+// through docRecord/withDocRecord instead.
+func (m model) withDocs(path string, docs map[string]docRecord) model {
+	m.docsPath = path
+	m.docs = docs
+	return m
+}
+
+// docRecord is the document store's read half (M1.4): the persisted state
+// for path, or the zero value (unstarred, never viewed) if path has no
+// record — which includes a path under no session Root at all (M1.2's "no
+// attachment to Roots"), so every caller can look a path up unconditionally
+// with no existence check of its own.
+func (m model) docRecord(path string) docRecord {
+	return m.docs[filepath.Clean(path)]
+}
+
+// withDocRecord is docRecord's write half: sets path's record to rec, bounds
+// the store (evictDocStore, M1.3) and persists immediately — S2's "starring
+// is persisted and survives restart", generalized to every field this store
+// carries. A data directory that could not be resolved at startup
+// (m.docsPath == "", the rare case loadDocuments already degrades on) or a
+// write error declines the whole update, in-memory state included, with a
+// message instead — the same "must not appear to have taken effect, or a
+// restart would silently revert it" contract toggleStar already gives the
+// Roots store, centralized here once so every future caller (star toggles,
+// recency recording) inherits it for free rather than re-deriving it.
+func (m model) withDocRecord(path string, rec docRecord) model {
+	if m.docsPath == "" {
+		m.message = "cannot save document store: no resolvable data directory"
+		return m
+	}
+	path = filepath.Clean(path)
+	docs := make(map[string]docRecord, len(m.docs)+1)
+	for p, r := range m.docs {
+		docs[p] = r
+	}
+	docs[path] = rec
+	docs = evictDocStore(docs, docStoreCap)
+	if err := saveDocStore(m.docsPath, docs); err != nil {
+		m.message = fmt.Sprintf("cannot save document store: %v", err)
+		return m
+	}
+	m.docs = docs
 	return m
 }
 

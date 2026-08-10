@@ -46,6 +46,19 @@ func docStorePath() (string, error) {
 	return filepath.Join(dir, storeSubdir, docStoreName), nil
 }
 
+// loadDocuments resolves the document store path via docStorePath and loads
+// it, folding a non-resolvable data directory into the same "no persisted
+// documents" outcome as a missing or garbage file — mirroring
+// loadStarredRoots for the S1 store. main.go's sole entry point for the
+// model's startup load (model.withDocs, M1.4); nothing else calls it.
+func loadDocuments() map[string]docRecord {
+	path, err := docStorePath()
+	if err != nil {
+		return map[string]docRecord{}
+	}
+	return loadDocStore(path)
+}
+
 // loadDocStore reads the document store at path: one record per non-blank,
 // non-`#`-comment line, tab-separated as `<starred>\t<lastViewed>\t<path>`,
 // where <starred> is `1` or `0` and <lastViewed> is RFC3339Nano or `-` for

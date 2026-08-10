@@ -29,10 +29,16 @@ func main() {
 	// keypress; an unresolvable data directory (storePath's own error)
 	// becomes "", the same degrade loadStarredRoots already applies.
 	path, _ := storePath()
+	// docsPath/loadDocuments load the S1 document store (M1.2's path-keyed
+	// record, M1.4's model wiring) once here, the same one-shot-then-carry
+	// pattern as the Roots store just above; every later read or write goes
+	// through model.docRecord/withDocRecord, never touching docstore.go or
+	// the file directly.
+	docsPath, _ := docStorePath()
 	// detectRipgrep is a PATH lookup, independent of the launch argument
 	// above; resolving it once here keeps the Picker's later startup-time
 	// query (M2.5) from re-shelling-out on every reach for it (S14).
-	m := newModel().withStorePath(path).withRipgrep(detectRipgrep()).applyResolution(res)
+	m := newModel().withStorePath(path).withDocs(docsPath, loadDocuments()).withRipgrep(detectRipgrep()).applyResolution(res)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "noggin:", err)

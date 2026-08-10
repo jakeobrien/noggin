@@ -17,29 +17,32 @@
 
 ## Cursor
 
-Current task: M1.4
+Current task: M2.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.3 done: `evictDocStore(records, cap)` in `cmd/noggin/docstore.go`, `docStoreCap = 1000`
-(D68 — no cap number existed anywhere before this task; picked and logged it). Walks records
-oldest-`LastViewed`-first once over cap: deletes unstarred candidates, clears (never removes)
-a starred candidate's timestamp, stops as soon as back within cap — so a starred record
-reached only after the cap is already satisfied is left fully untouched, and if unstarred
-records run out before reaching cap the store is deliberately left over cap rather than ever
-removing a star. Pure function, not yet wired into load/save — M1.4 owns wiring the store into
-the model lifecycle (single accessor pair calling load -> mutate -> evict -> save).
-`TestEvictDocStoreBoundsAndProtectsStars` covers all three M1.3 done-when clauses in one
-scenario; `make check` green.
-Next: M1.4 — wire the doc store into model.go the way store.go's Roots store already is
-(main.go loads once via a new loadDocStore-based entry point, threads a path through
-withStorePath-style, model exposes a read/write accessor pair; every future consumer —
-Files Nav M2.1, DV1/DV2 M2.2, Picker M2.5, recency M3.1/M3.2 — goes through that pair, never
-touching docstore.go's load/save/evict directly). Watch for the cap: M1.4's write path should
-run eviction before every save (docs won't self-evict on their own).
+M1.4 done — M1 (the document store) is now fully built. Wired the S1 store into model.go:
+`docsPath`/`docs` fields, `withDocs(path, docs)` for one-shot startup loading (main.go now
+calls `docStorePath()` + the new `loadDocuments()` wrapper alongside the existing Roots-store
+wiring), and the single accessor pair everything else must use — `docRecord(path) docRecord`
+(read, zero value for an unknown path, no Root attachment) and `withDocRecord(path, rec) model`
+(write: clones the map, applies `evictDocStore` (M1.3), persists via `saveDocStore`, updates
+`m.docs` only on success). `withDocRecord` declines the *whole* update — in-memory included —
+with an `m.message`, both when `docsPath == ""` (unresolvable data dir) and on a save error,
+mirroring `toggleStar`'s existing "must not appear to have taken effect" contract for the Roots
+store. Nothing in files.go/viewer.go/picker.go calls this yet — that starts at M2.1; M1.4 only
+had to expose the accessor pair, not consume it.
+Evidence: `TestWithDocRecordPersistsImmediately` (restart test — M1.4's acceptance clause),
+`TestDocRecordDefaultsToZeroValue`, `TestWithDocRecordDeclinesOnUnresolvableDataDir`,
+`TestWithDocRecordEvicts` (confirms the write path bounds the store both in memory and on
+disk). `make check` green; `TestEveryBindingIsCovered` untouched (M1.4 adds no bindings).
+Next: M2.1, star/un-star the Files Nav's selected file. Model for the action:
+`m = m.withDocRecord(path, rec)` where `rec := m.docRecord(path)` with `Starred` flipped —
+mirrors the `toggleDocStar`-shape sketched in M1.4's own doc comments but not yet written
+anywhere; M2.1 is the first real caller of the accessor pair.
 
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
@@ -58,7 +61,7 @@ Gotchas surfaced while planning:
 | M1.1 | done   | -        | -         |                                          |
 | M1.2 | done   | -        | -         |                                          |
 | M1.3 | done   | -        | -         |                                          |
-| M1.4 | todo   | -        | -         |                                          |
+| M1.4 | done   | -        | -         |                                          |
 | M2.1 | todo   | -        | -         |                                          |
 | M2.2 | todo   | -        | -         |                                          |
 | M2.3 | todo   | -        | -         |                                          |
