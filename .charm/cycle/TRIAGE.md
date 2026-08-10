@@ -25,3 +25,6 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T1 | review | low | cmd/noggin/store_test.go:133 | `TestLoadStarredRootsNoConfigDir`'s name still says "NoConfigDir" though M1.1's clean break renamed the concept to data dir everywhere else (its own doc comment and body already say "data directory"/`XDG_DATA_HOME`); rename to `TestLoadStarredRootsNoDataDir` for consistency. | open |
+| T2 | review | low | cmd/noggin/docstore.go:123 | `evictDocStore(records map[string]docRecord, cap int)` names its parameter `cap`, shadowing Go's predeclared `cap()` builtin inside the function body; rename to e.g. `limit` or `maxRecords`. | open |
+| T3 | review | low | cmd/noggin/docstore.go:166 (cf. cmd/noggin/store.go:110) | `saveDocStore` duplicates `saveStore`'s `os.MkdirAll`-then-`os.WriteFile` shape near-verbatim; low priority now with only two stores, but worth a shared helper if a third store format is ever added. | open |
