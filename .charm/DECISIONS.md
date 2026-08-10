@@ -887,3 +887,20 @@
   delimiter — no JSON/encoding dependency needed (D1), and the format stays greppable/inspectable
   even though S1 does not require it to be hand-edited the way the Roots store is. Medium and
   reversible (no consumers outside this file yet) — logged, not asked.
+
+## D68: Document store bound fixed at 1000 records (C4/M1.3)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: S4 says the store as a whole is bounded and the bound is fixed, not configurable
+  (S1's Out-of-scope list), but no cap number appears anywhere in SPEC.md, VISION.md or
+  DECISIONS.md — it was left for M1.3 to pin.
+- Decision: `docStoreCap = 1000` (`cmd/noggin/docstore.go`). `evictDocStore` walks records
+  oldest-`LastViewed`-first once the map exceeds this, deleting unstarred candidates and
+  clearing (not removing) a starred candidate's timestamp, stopping as soon as the map is back
+  within cap.
+- Why: 10x the per-Root `Recent` view cap (100, S6) — generous for a store spanning every Root
+  a session has ever touched, while keeping the on-disk tab-separated file (well under 100KB at
+  this row size) and any future in-memory scan trivially cheap. Medium and reversible (a
+  constant with one call site, no persisted format dependency on its value) — logged, not asked.

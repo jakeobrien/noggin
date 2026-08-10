@@ -3,9 +3,18 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
+
+// docStoreCap bounds the total number of records the document store may
+// hold (S4). Fixed, not configurable (S1's Out-of-scope list). 1000 is
+// 10x the per-Root `Recent` view cap (S6's 100), generous for a store that
+// spans every Root a session has ever touched while keeping the on-disk
+// file (well under 100KB at this row size) and any future in-memory scan of
+// it trivially cheap (D68).
+const docStoreCap = 1000
 
 // docStoreName is the document store's file name, alongside the starred-
 // Roots store under the same data directory (dataDir, M1.1) but a distinct
@@ -83,6 +92,56 @@ func loadDocStore(path string) map[string]docRecord {
 			lastViewed = t
 		}
 		records[filepath.Clean(docPath)] = docRecord{Starred: starred, LastViewed: lastViewed}
+	}
+	return records
+}
+
+// evictDocStore bounds records to at most docStoreCap entries (S4),
+// mutating the given map in place and returning it for chaining. Candidates
+// are walked oldest-`LastViewed`-first (a zero LastViewed sorts as oldest);
+// an unstarred candidate is deleted outright, while a starred candidate is
+// never removed — eviction instead clears its LastViewed, leaving the star
+// — and does not count toward shrinking the map below the cap. Walking
+// stops as soon as the map is within cap, so a starred record encountered
+// only after the cap is already satisfied is left completely untouched
+// (star and timestamp both). If there are not enough unstarred records to
+// reach the cap, the map is left larger than docStoreCap rather than ever
+// removing a starred record — the star guarantee outranks the bound.
+func evictDocStore(records map[string]docRecord, cap int) map[string]docRecord {
+	if len(records) <= cap {
+		return records
+	}
+
+	type entry struct {
+		path string
+		rec  docRecord
+	}
+	entries := make([]entry, 0, len(records))
+	for p, r := range records {
+		entries = append(entries, entry{p, r})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if !entries[i].rec.LastViewed.Equal(entries[j].rec.LastViewed) {
+			return entries[i].rec.LastViewed.Before(entries[j].rec.LastViewed)
+		}
+		return entries[i].path < entries[j].path // deterministic tie-break
+	})
+
+	remaining := len(records)
+	for _, e := range entries {
+		if remaining <= cap {
+			break
+		}
+		if e.rec.Starred {
+			if !e.rec.LastViewed.IsZero() {
+				cleared := e.rec
+				cleared.LastViewed = time.Time{}
+				records[e.path] = cleared
+			}
+			continue
+		}
+		delete(records, e.path)
+		remaining--
 	}
 	return records
 }

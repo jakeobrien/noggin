@@ -17,26 +17,29 @@
 
 ## Cursor
 
-Current task: M1.3
+Current task: M1.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.2 done: new `cmd/noggin/docstore.go` — `docRecord{Starred, LastViewed}` keyed by absolute
-path, its own file (`documents`, `docStoreName`) alongside the Roots store under `dataDir()`
-(M1.1), own tab-separated two-field format (D67) — no attachment to Roots, no interaction with
-store.go's plain-list Roots format at all. `loadDocStore`/`saveDocStore` tolerate
-missing/malformed the way `loadStore` does (bad line dropped, load continues). Tests cover
-round-trip (starred+viewed, starred+unviewed, unstarred+viewed), absent-file, garbage-line,
-and a record for a path under no session Root loading exactly like any other path
-(`TestDocStoreNoAttachmentToRoots`). Nothing wired into main.go/model.go yet — that's M1.4.
-`make check` green. Next: M1.3, bound the store (evict oldest `lastViewed` first, never evict a
-starred record, eviction clears the timestamp but leaves the star) — needs an eviction
-function operating on the `map[string]docRecord` this task introduced; no cap number is fixed
-yet in SPEC/DECISIONS, so pick one and log it (D-series) unless PLAN.md's M1.3 entry already
-pins one — recheck it first.
+M1.3 done: `evictDocStore(records, cap)` in `cmd/noggin/docstore.go`, `docStoreCap = 1000`
+(D68 — no cap number existed anywhere before this task; picked and logged it). Walks records
+oldest-`LastViewed`-first once over cap: deletes unstarred candidates, clears (never removes)
+a starred candidate's timestamp, stops as soon as back within cap — so a starred record
+reached only after the cap is already satisfied is left fully untouched, and if unstarred
+records run out before reaching cap the store is deliberately left over cap rather than ever
+removing a star. Pure function, not yet wired into load/save — M1.4 owns wiring the store into
+the model lifecycle (single accessor pair calling load -> mutate -> evict -> save).
+`TestEvictDocStoreBoundsAndProtectsStars` covers all three M1.3 done-when clauses in one
+scenario; `make check` green.
+Next: M1.4 — wire the doc store into model.go the way store.go's Roots store already is
+(main.go loads once via a new loadDocStore-based entry point, threads a path through
+withStorePath-style, model exposes a read/write accessor pair; every future consumer —
+Files Nav M2.1, DV1/DV2 M2.2, Picker M2.5, recency M3.1/M3.2 — goes through that pair, never
+touching docstore.go's load/save/evict directly). Watch for the cap: M1.4's write path should
+run eviction before every save (docs won't self-evict on their own).
 
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
@@ -54,7 +57,7 @@ Gotchas surfaced while planning:
 |------|--------|----------|-----------|------------------------------------------|
 | M1.1 | done   | -        | -         |                                          |
 | M1.2 | done   | -        | -         |                                          |
-| M1.3 | todo   | -        | -         |                                          |
+| M1.3 | done   | -        | -         |                                          |
 | M1.4 | todo   | -        | -         |                                          |
 | M2.1 | todo   | -        | -         |                                          |
 | M2.2 | todo   | -        | -         |                                          |

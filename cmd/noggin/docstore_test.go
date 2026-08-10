@@ -139,6 +139,84 @@ func TestDocStoreNoAttachmentToRoots(t *testing.T) {
 	}
 }
 
+// TestEvictDocStoreBoundsAndProtectsStars is M1.3's acceptance criterion in
+// one scenario: with cap 3 and 5 records ordered oldest-to-newest
+// starred(s1), unstarred(u1), unstarred(u2), starred(s2), unstarred(u3),
+// eviction must (a) drop the oldest *unstarred* records first (u1, u2),
+// (b) never remove a starred record (s1 and s2 both survive), and (c) clear
+// the timestamp of a starred record that was old enough to be an eviction
+// candidate (s1) while leaving a starred record reached only after the cap
+// was already satisfied (s2) completely untouched.
+func TestEvictDocStoreBoundsAndProtectsStars(t *testing.T) {
+	base := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	records := map[string]docRecord{
+		"/s1": {Starred: true, LastViewed: base},
+		"/u1": {Starred: false, LastViewed: base.Add(1 * time.Minute)},
+		"/u2": {Starred: false, LastViewed: base.Add(2 * time.Minute)},
+		"/s2": {Starred: true, LastViewed: base.Add(3 * time.Minute)},
+		"/u3": {Starred: false, LastViewed: base.Add(4 * time.Minute)},
+	}
+
+	got := evictDocStore(records, 3)
+
+	if len(got) != 3 {
+		t.Fatalf("evictDocStore left %d records, want 3: %+v", len(got), got)
+	}
+	if _, ok := got["/u1"]; ok {
+		t.Errorf("/u1 (oldest unstarred) should have been evicted")
+	}
+	if _, ok := got["/u2"]; ok {
+		t.Errorf("/u2 (2nd-oldest unstarred) should have been evicted")
+	}
+	s1, ok := got["/s1"]
+	if !ok {
+		t.Fatalf("/s1 (starred) must survive eviction")
+	}
+	if !s1.Starred {
+		t.Errorf("/s1 lost its star")
+	}
+	if !s1.LastViewed.IsZero() {
+		t.Errorf("/s1 (evicted-from-recency starred record) should have its timestamp cleared, got %v", s1.LastViewed)
+	}
+	s2, ok := got["/s2"]
+	if !ok {
+		t.Fatalf("/s2 (starred) must survive eviction")
+	}
+	if !s2.Starred || !s2.LastViewed.Equal(base.Add(3*time.Minute)) {
+		t.Errorf("/s2 (reached only once cap already satisfied) should be untouched, got %+v", s2)
+	}
+	u3, ok := got["/u3"]
+	if !ok || u3.Starred || !u3.LastViewed.Equal(base.Add(4*time.Minute)) {
+		t.Errorf("/u3 (newest) should be untouched, got %+v, ok=%v", u3, ok)
+	}
+}
+
+// TestEvictDocStoreNoopUnderCap: a store already within cap is returned
+// unchanged.
+func TestEvictDocStoreNoopUnderCap(t *testing.T) {
+	records := map[string]docRecord{
+		"/a": {Starred: false, LastViewed: time.Now()},
+	}
+	got := evictDocStore(records, 5)
+	if !reflect.DeepEqual(got, records) {
+		t.Errorf("evictDocStore under cap = %+v, want unchanged %+v", got, records)
+	}
+}
+
+// TestEvictDocStoreAllStarredExceedsCap: when every record is starred and
+// count already exceeds cap, eviction leaves the store over cap rather than
+// ever removing a starred record.
+func TestEvictDocStoreAllStarredExceedsCap(t *testing.T) {
+	records := map[string]docRecord{
+		"/a": {Starred: true, LastViewed: time.Now()},
+		"/b": {Starred: true, LastViewed: time.Now().Add(-time.Hour)},
+	}
+	got := evictDocStore(records, 1)
+	if len(got) != 2 {
+		t.Errorf("evictDocStore(all starred) = %d records, want 2 (cap exceeded, no star removed)", len(got))
+	}
+}
+
 // TestDocStorePath pins docStorePath's resolution through dataDir (M1.1),
 // under its own file name distinct from the starred-Roots store.
 func TestDocStorePath(t *testing.T) {
