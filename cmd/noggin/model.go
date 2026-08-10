@@ -489,6 +489,27 @@ func (m model) toggleStar() model {
 	return m
 }
 
+// toggleDocStar flips the Files Nav selection's starred mark in the S1
+// document store and persists it immediately via withDocRecord, the same
+// generic accessor pair M1.4 exposed for every future caller of this store
+// — toggleStar (above) is its Roots-store analogue, but this one is not a
+// wrapper around it: the two stores are deliberately separate (M1.2's "no
+// attachment to Roots"), so a document can be starred whether or not its
+// Root is even part of the session. A folder or an empty pane is a no-op,
+// the same shape activate() already gives those selections — folders carry
+// no document record to flip. withDocRecord itself already declines (with
+// a footer message) when the data directory can't be resolved or the write
+// fails, so no separate guard is needed here.
+func (m model) toggleDocStar() model {
+	n := m.files.selectedNode()
+	if n == nil || n.IsDir {
+		return m
+	}
+	rec := m.docRecord(n.Path)
+	rec.Starred = !rec.Starred
+	return m.withDocRecord(n.Path, rec)
+}
+
 // editFinishedMsg reports that $EDITOR has exited (S10, D3). path is the
 // document that was handed off, carried on the message rather than re-read
 // from the viewer at delivery time, since focus and the open document could in
@@ -1032,6 +1053,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if key.Matches(msg, keys.PeekDV2) {
 				return m.togglePeekInto(dv2Pane), nil
+			}
+			// M2.1: star/un-star the Files Nav's selected file, the same
+			// physical key (keys.Star) the Roots Nav's own case below already
+			// binds — the two are matched independently per pane, not shared
+			// logic, since they act on two entirely separate stores.
+			if key.Matches(msg, keys.Star) {
+				return m.toggleDocStar(), nil
 			}
 			// A selection change is one of Peek's clearing triggers (S7);
 			// Expand/Collapse leave the selected node itself unchanged

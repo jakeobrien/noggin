@@ -17,32 +17,30 @@
 
 ## Cursor
 
-Current task: M2.1
+Current task: M2.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.4 done — M1 (the document store) is now fully built. Wired the S1 store into model.go:
-`docsPath`/`docs` fields, `withDocs(path, docs)` for one-shot startup loading (main.go now
-calls `docStorePath()` + the new `loadDocuments()` wrapper alongside the existing Roots-store
-wiring), and the single accessor pair everything else must use — `docRecord(path) docRecord`
-(read, zero value for an unknown path, no Root attachment) and `withDocRecord(path, rec) model`
-(write: clones the map, applies `evictDocStore` (M1.3), persists via `saveDocStore`, updates
-`m.docs` only on success). `withDocRecord` declines the *whole* update — in-memory included —
-with an `m.message`, both when `docsPath == ""` (unresolvable data dir) and on a save error,
-mirroring `toggleStar`'s existing "must not appear to have taken effect" contract for the Roots
-store. Nothing in files.go/viewer.go/picker.go calls this yet — that starts at M2.1; M1.4 only
-had to expose the accessor pair, not consume it.
-Evidence: `TestWithDocRecordPersistsImmediately` (restart test — M1.4's acceptance clause),
-`TestDocRecordDefaultsToZeroValue`, `TestWithDocRecordDeclinesOnUnresolvableDataDir`,
-`TestWithDocRecordEvicts` (confirms the write path bounds the store both in memory and on
-disk). `make check` green; `TestEveryBindingIsCovered` untouched (M1.4 adds no bindings).
-Next: M2.1, star/un-star the Files Nav's selected file. Model for the action:
-`m = m.withDocRecord(path, rec)` where `rec := m.docRecord(path)` with `Starred` flipped —
-mirrors the `toggleDocStar`-shape sketched in M1.4's own doc comments but not yet written
-anywhere; M2.1 is the first real caller of the accessor pair.
+M2.1 done — Files Nav star/un-star, the accessor pair's first real caller. `model.toggleDocStar()`
+(model.go) reads `m.files.selectedNode()`, no-ops on a nil/dir selection (mirrors `activate()`'s
+own selection guard), else flips `docRecord(path).Starred` and writes it back through
+`withDocRecord` — no new logic of its own, `withDocRecord` already owns eviction, persistence
+and the decline-with-message contract. Wired on the *existing* `keys.Star` chord (`s`), matched
+in `Update`'s `filesPane` case beside `Peek`/`ActivateDV2`/`PeekDV2` — reused rather than a new
+binding since M2.1 didn't call for a distinct key and the Roots Nav's own `s` is already free
+(Roots Nav and Files Nav are never focused at once). `TestEveryBindingIsCovered` needed no
+update: `keyMap`'s field count didn't change.
+Evidence: `TestToggleDocStarPersistsAndUpdatesDisplay` (restart round-trip + un-star, M2.1's
+acceptance clause), `TestFilesNavStarKeyTogglesDocStar` (the actual keypress through `Update`,
+not just the method), `TestToggleDocStarOnFolderIsNoOp`, `TestToggleDocStarWithNoDataDirDeclinesAndMessages`
+(all in the new `files_star_test.go`). `make check` green.
+Next: M2.2, star/un-star from a focused Document Viewer acting on *that* viewer's Active
+Document (DV1 vs DV2 independently) — likely a `toggleDocStarForViewer(pane)` alongside
+`toggleDocStar`, matched in `Update`'s `dv1Pane`/`dv2Pane` case rather than a global switch
+entry, since DV1/DV2 have independent Active Documents.
 
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
@@ -62,7 +60,7 @@ Gotchas surfaced while planning:
 | M1.2 | done   | 2026-08-10 | 2026-08-10 |                                       |
 | M1.3 | done   | 2026-08-10 | 2026-08-10 |                                       |
 | M1.4 | done   | 2026-08-10 | 2026-08-10 |                                       |
-| M2.1 | todo   | -        | -         |                                          |
+| M2.1 | done   | -        | -         |                                          |
 | M2.2 | todo   | -        | -         |                                          |
 | M2.3 | todo   | -        | -         |                                          |
 | M2.4 | todo   | -        | -         |                                          |
