@@ -869,3 +869,21 @@
   dependency for four lines of well-specified, rarely-changing logic; consistency with
   `os.UserConfigDir()`'s existing style (already read by every contributor) keeps the two
   functions easy to compare and trust. Medium and reversible — logged, not asked.
+
+## D67: Document store uses a tab-separated two-field line format (C4/M1.2)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: M1.2's document store needs a per-line encoding for `{starred, lastViewed}` keyed by
+  an absolute path that may itself contain spaces. The Roots store's plain one-path-per-line
+  format (D7) doesn't extend to a second field without a delimiter choice.
+- Decision: `<starred:0|1>\t<lastViewed:RFC3339Nano|-> \t<absolute path>`, one record per line,
+  tab-separated, in its own file (`documents`, `docStoreName`) alongside the Roots store under
+  the same data directory (M1.1). Parsing drops any line that fails to parse (wrong field
+  count, bad flag, bad timestamp, non-absolute path) rather than failing the whole load, same
+  tolerance as `loadStore`. A duplicate path across lines has the later line win.
+- Why: tabs are already excluded from valid file paths, so they're an unambiguous, zero-escaping
+  delimiter — no JSON/encoding dependency needed (D1), and the format stays greppable/inspectable
+  even though S1 does not require it to be hand-edited the way the Roots store is. Medium and
+  reversible (no consumers outside this file yet) — logged, not asked.

@@ -17,22 +17,26 @@
 
 ## Cursor
 
-Current task: M1.2
+Current task: M1.3
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1 done: added `dataDir()` in `cmd/noggin/store.go` (hand-rolled, mirrors
-`os.UserCacheDir()`'s own Unix/Darwin/Windows/Plan9 split — D66) and rewired `storePath()`
-through it instead of `os.UserConfigDir()`. Starred-Roots store is now a clean break: old
-config-dir `roots` file is never read/migrated (`TestStoreIgnoresConfigDirCleanBreak`).
-Updated doc comments in rootsnav.go/model.go/main.go/dv2_persistence_test.go that referenced
-the old `os.UserConfigDir()` mechanism; the "no resolvable config directory" user message is
-now "no resolvable data directory" (message_test.go only checks substring, unaffected).
-`make check` green. Next: M1.2, the path-keyed document store — per the planning gotcha, give
-it its own file/names rather than overloading store.go's Roots-specific plain format.
+M1.2 done: new `cmd/noggin/docstore.go` — `docRecord{Starred, LastViewed}` keyed by absolute
+path, its own file (`documents`, `docStoreName`) alongside the Roots store under `dataDir()`
+(M1.1), own tab-separated two-field format (D67) — no attachment to Roots, no interaction with
+store.go's plain-list Roots format at all. `loadDocStore`/`saveDocStore` tolerate
+missing/malformed the way `loadStore` does (bad line dropped, load continues). Tests cover
+round-trip (starred+viewed, starred+unviewed, unstarred+viewed), absent-file, garbage-line,
+and a record for a path under no session Root loading exactly like any other path
+(`TestDocStoreNoAttachmentToRoots`). Nothing wired into main.go/model.go yet — that's M1.4.
+`make check` green. Next: M1.3, bound the store (evict oldest `lastViewed` first, never evict a
+starred record, eviction clears the timestamp but leaves the star) — needs an eviction
+function operating on the `map[string]docRecord` this task introduced; no cap number is fixed
+yet in SPEC/DECISIONS, so pick one and log it (D-series) unless PLAN.md's M1.3 entry already
+pins one — recheck it first.
 
 Gotchas surfaced while planning:
 - `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
@@ -49,7 +53,7 @@ Gotchas surfaced while planning:
 | Key  | Status | Reviewed | Validated | Note                                     |
 |------|--------|----------|-----------|------------------------------------------|
 | M1.1 | done   | -        | -         |                                          |
-| M1.2 | todo   | -        | -         |                                          |
+| M1.2 | done   | -        | -         |                                          |
 | M1.3 | todo   | -        | -         |                                          |
 | M1.4 | todo   | -        | -         |                                          |
 | M2.1 | todo   | -        | -         |                                          |
