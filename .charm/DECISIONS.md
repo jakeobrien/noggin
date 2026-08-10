@@ -821,3 +821,34 @@
   `Starred` scope on the Grep Picker. Recorded in SPEC.md's Pre-agreed cuts section.
 - Why: each is a refinement of a deliverable that still stands without it — none removes a
   cycle-acceptance outcome outright. Ordered by how little is lost.
+
+## D64: The Picker's Scope axis becomes file-set-based, not Root-set-based (C4/M5.1)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: Planning M5.1 (S8). `liveRootsInScope` (`cmd/noggin/scope.go:26`) resolves a Scope to
+  a set of live Roots, and both `listFiles` and `grepFiles` search from those Roots outward
+  (`cmd/noggin/files_search.go:57,375`). `Starred` scope has no Root set at all — it is a set of
+  paths from the document store, including orphans under no Root.
+- Decision: refactor Scope resolution to yield a *file set*, with `Active Root` / `All Roots`
+  expressed in those terms, rather than special-casing `Starred` as a branch beside the Root
+  path. Both Pickers get the third value in the same change (S8), keeping the mode-switch
+  invariant.
+- Why: a `Starred` branch bolted beside a Root-shaped abstraction would leave two search paths
+  to keep in agreement — exactly the drift D34-era work already paid for once. One resolution
+  shape for all three values is cheaper than a carve-out.
+
+## D65: S10's "four" Footer focus hints are three in the code
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: S10 says the four focus-key hints (`r`/`f`/`o`/`ctrl+o`) are removed from the Footer.
+  Only `FocusRoots`/`FocusFiles`/`FocusDV1` are actually listed there
+  (`cmd/noggin/footer.go:36,38,44`); `FocusDV2` was deliberately never in the Footer (C3, see
+  `footer.go:18`).
+- Decision: M7.2 removes the three that exist. No spec amendment — the outcome S10 describes
+  (no focus-key hints in the Footer) is unchanged.
+- Why: a spec miscount with an identical end state is not worth a brainstorm amend cycle; the
+  discrepancy is recorded here so a validator does not read three removals as incomplete work.

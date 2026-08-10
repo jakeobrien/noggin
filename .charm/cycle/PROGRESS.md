@@ -17,19 +17,52 @@
 
 ## Cursor
 
-Current task: <key>
+Current task: M1.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-<current-state snapshot>
+Cycle just planned; no implementation started. PLAN.md decomposes S1–S10 into M1–M7.
+Start at M1.1: add data-location resolution alongside the existing `os.UserConfigDir()`
+helper in `cmd/noggin/store.go` and move the starred-Roots store there as a clean break
+(the config-dir `roots` file is ignored, never migrated — S1).
+
+Gotchas surfaced while planning:
+- `store.go` today is Roots-specific (`loadStore`/`saveStore`/`toggleStore`, plain one-path-
+  per-line format). M1.2's document store needs a two-field record — give it its own file and
+  names rather than overloading these.
+- `frame_test.go`'s `TestEveryBindingIsCovered` will fail on any new binding (M4.1's two cycle
+  keys, M6.1's two history keys) until the coverage list is updated.
+- M5.1 changes the meaning of Picker scope: `liveRootsInScope` (`scope.go:26`) is Root-set-
+  based, but `Starred` is a file set. Expect to refactor rather than add a branch.
+- Gate is `make check`; `make check-pty` is the separate pty layer.
 
 ## Status
 
-| Key  | Status      | Reviewed | Validated | Note                              |
-|------|-------------|----------|-----------|------------------------------------|
-| M1.1 | done        | -        | -         |                                    |
-| M1.2 | in-progress | -        | -         |                                    |
-| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |
+| Key  | Status | Reviewed | Validated | Note                                     |
+|------|--------|----------|-----------|------------------------------------------|
+| M1.1 | todo   | -        | -         |                                          |
+| M1.2 | todo   | -        | -         |                                          |
+| M1.3 | todo   | -        | -         |                                          |
+| M1.4 | todo   | -        | -         |                                          |
+| M2.1 | todo   | -        | -         |                                          |
+| M2.2 | todo   | -        | -         |                                          |
+| M2.3 | todo   | -        | -         |                                          |
+| M2.4 | todo   | -        | -         |                                          |
+| M2.5 | todo   | -        | -         | pre-agreed cut 1                         |
+| M2.6 | todo   | -        | -         |                                          |
+| M3.1 | todo   | -        | -         |                                          |
+| M3.2 | todo   | -        | -         |                                          |
+| M4.1 | todo   | -        | -         |                                          |
+| M4.2 | todo   | -        | -         |                                          |
+| M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |
+| M4.4 | todo   | -        | -         |                                          |
+| M4.5 | todo   | -        | -         |                                          |
+| M4.6 | todo   | -        | -         |                                          |
+| M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
+| M6.1 | todo   | -        | -         |                                          |
+| M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
+| M7.1 | todo   | -        | -         |                                          |
+| M7.2 | todo   | -        | -         |                                          |
