@@ -32,6 +32,16 @@ import (
 // once the Picker is open, and these three panes are the only place Help
 // can ever show it.
 //
+// keys.PickerStar (S2/M2.5, keymap.go's own comment on it) is deliberately
+// left off every case's list here, unlike the Picker-only bindings above:
+// its Help() description ("star") collides with keys.Star's own, which
+// TestHelpModalListsThePaneOwnBindings already pins as absent from
+// filesPane's and the viewer's own Help Modal (neither binds plain keys.Star
+// itself). The Footer's own pickerHintText (footer.go) is PickerStar's one
+// discoverability surface for now — real, but weaker than the other
+// Picker-only actions' backstop here; a TRIAGE item records the gap rather
+// than reworking that pinned test's wording to make room for it.
+//
 // keys.FocusRoots/FocusFiles/FocusDV1 (S5/S6) and keys.Refresh (S2)
 // (C2a/M9.1) are added to every case for the same reason keys.Picker
 // already is: all are global, reachable from any Focus. keys.FocusDV2

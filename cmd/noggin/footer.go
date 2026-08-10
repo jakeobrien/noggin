@@ -54,14 +54,16 @@ func paneHints(p pane) []key.Binding {
 // dismisses it — so it is never the inapplicable hint that comment warns
 // against. ToggleHidden (S4/M6.2, C2a/M9.1) is included for the same
 // reason PickerMode/PickerScope are: it always does something while the
-// Picker is open, regardless of mode or Scope.
+// Picker is open, regardless of mode or Scope. PickerStar (S2/M2.5) joins
+// them for the identical reason — star/un-star always acts on whatever
+// Result is currently selected.
 func pickerHints() []key.Binding {
 	return []key.Binding{
 		keys.Activate, keys.Cancel,
 		keys.PickerUp, keys.PickerDown,
 		keys.PageUp, keys.PageDown,
 		keys.PickerMode, keys.PickerScope,
-		keys.ToggleHidden,
+		keys.ToggleHidden, keys.PickerStar,
 	}
 }
 

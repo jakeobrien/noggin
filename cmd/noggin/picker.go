@@ -603,6 +603,51 @@ func (m model) activatePickerInto(target pane) model {
 	return m.dismissPicker()
 }
 
+// toggleStarPicker flips the S1 document store's star mark for the
+// Picker's currently selected Result (S2's third starring surface,
+// M2.5) — whichever mode is open, fileMode's pickerPreviewCandidate or
+// grepMode's pickerGrepCandidate, both already gated on resultsCurrent so
+// a stale generation's row can no more be starred than it may be previewed
+// or activated. Unlike the Files Nav's Starred-list row (M4.3, un-starring
+// removes it immediately), S2 is explicit that un-starring from the Picker
+// "leaves the Result in place with its marker cleared": this touches only
+// the S1 document store via docRecord/withDocRecord, never m.picker itself,
+// so the Results list, the selection cursor and the Preview are all left
+// exactly where they were — there is nothing here that could move them.
+// A no-op with nothing selected (empty Results, no search run yet, or a
+// stale generation) is silent, the same shape activatePickerInto's own
+// "not ok" case already gives.
+func (m model) toggleStarPicker() model {
+	path, ok := m.pickerSelectedPath()
+	if !ok {
+		return m
+	}
+	rec := m.docRecord(path)
+	rec.Starred = !rec.Starred
+	return m.withDocRecord(path, rec)
+}
+
+// pickerSelectedPath is the path named by the Picker's currently selected
+// Result, in whichever mode is open — the one piece toggleStarPicker needs
+// that pickerPreviewCandidate (fileMode) and pickerGrepCandidate (grepMode)
+// do not already share directly, since Star (unlike Activate) does not
+// otherwise care which mode produced the Result or need D34's extra
+// ordinal-resolution data pickerGrepCandidate's grepResult also carries.
+func (m model) pickerSelectedPath() (string, bool) {
+	if m.picker.mode == grepMode {
+		g, ok := m.picker.pickerGrepCandidate(m.hideDotfiles)
+		if !ok {
+			return "", false
+		}
+		return g.file.path, true
+	}
+	f, ok := m.picker.pickerPreviewCandidate(m.hideDotfiles)
+	if !ok {
+		return "", false
+	}
+	return f.path, true
+}
+
 // pickerGrepCandidate is the Grep Result Activate would open (M4.3): the
 // selected row, gated the same way pickerPreviewCandidate gates fileMode's
 // candidate — resultsCurrent (a stale generation's rows must not activate
@@ -772,6 +817,8 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.switchPickerScope()
 	case key.Matches(msg, keys.ToggleHidden):
 		return m.toggleHiddenFiles()
+	case key.Matches(msg, keys.PickerStar):
+		return m.toggleStarPicker(), nil
 	}
 	before := m.picker.input.Value()
 	next, cmd := m.picker.input.Update(msg)

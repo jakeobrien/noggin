@@ -904,3 +904,32 @@
   a session has ever touched, while keeping the on-disk tab-separated file (well under 100KB at
   this row size) and any future in-memory scan trivially cheap. Medium and reversible (a
   constant with one call site, no persisted format dependency on its value) — logged, not asked.
+
+## D69: The Picker's star action is a new `PickerStar` binding (alt+s), not a reuse of `keys.Star`
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: M2.5/S2 adds a third star surface, the Picker's selected Result. The Roots Nav,
+  Files Nav and a focused Document Viewer all bind the same `keys.Star` (`s`, a bare printable
+  letter) since none of them is a typing surface. The Picker's Prompt is "always-typing"
+  (`handlePickerInput`'s own doc comment, S2's own contract): every key not in a fixed
+  non-typing set falls through to the Prompt as query text, which is exactly why `PickerUp`/
+  `PickerDown` avoid `j`/`k`, `PickerMode`/`PickerScope` use Tab/Shift+Tab instead of a letter,
+  and `ToggleHidden` uses `alt+h` — reusing bare `keys.Star` here would make every `s` typed
+  into a query toggle the selected Result's star instead of being typed.
+- Decision: a new `keyMap` field, `PickerStar`, bound to `alt+s` (mirroring `ToggleHidden`'s
+  own `alt+` prefix for the identical reason), wired only in `handlePickerInput` and added to
+  `pickerHints()` (Footer). It is deliberately **not** added to `helpBindings`'s per-pane lists
+  the way `PickerUp`/`PickerDown`/`PickerMode`/`PickerScope`/`ToggleHidden` are: its `Help()`
+  description ("star") collides with plain `keys.Star`'s own, which
+  `TestHelpModalListsThePaneOwnBindings` already pins as *absent* from the Files Nav's and the
+  Document Viewer's own Help Modal (neither pane binds plain `keys.Star` itself, only Roots Nav
+  does). Reworking that pinned wording to make room was judged not worth it for one binding;
+  the Footer's own live hint line is `PickerStar`'s discoverability surface for now — logged as
+  a real, smaller gap in TRIAGE rather than silently accepted.
+- Why: medium and reversible (an internal keymap choice, no spec surface — S2 says "acting on
+  the selected Result", not which physical key), decided and logged rather than asked. A
+  distinct binding is cheaper than teaching the Prompt's typing-vs-action dispatch a
+  per-context exception for one key, and follows the codebase's own established precedent
+  (`PickerUp`/`PickerDown`'s doc comment) for exactly this situation.

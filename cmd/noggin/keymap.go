@@ -170,6 +170,17 @@ type keyMap struct {
 	// must not treat this as query text.
 	ToggleHidden key.Binding
 
+	// PickerStar is S2/M2.5's Picker-only star toggle: acts on the Picker's
+	// currently selected Result (either mode), the same conceptual action
+	// keys.Star already gives the Roots Nav, Files Nav and a focused Document
+	// Viewer, but under its own binding rather than reusing keys.Star's plain
+	// "s" — for the identical reason PickerUp/PickerDown avoid "j"/"k" and
+	// ToggleHidden avoids a bare letter: S2's "every printable keystroke goes
+	// to the Prompt" means the Picker cannot treat "s" as anything but query
+	// text. alt+s, matching ToggleHidden's own alt+ prefix for a Picker-only
+	// toggle.
+	PickerStar key.Binding
+
 	// ActivateDV2 and PeekDV2 are C3/S3's `ctrl+` targeting modifier on
 	// the Files Nav (C3/M1.4, rebound C3/M1.4a per D55): the same load/peek
 	// the unmodified Activate/Peek perform, routed to DV2 instead of DV1
@@ -338,6 +349,10 @@ var keys = keyMap{
 	ToggleHidden: key.NewBinding(
 		key.WithKeys("alt+h"),
 		key.WithHelp("alt+h", "hidden files"),
+	),
+	PickerStar: key.NewBinding(
+		key.WithKeys("alt+s"),
+		key.WithHelp("alt+s", "star"),
 	),
 	Peek: key.NewBinding(
 		key.WithKeys("p"),

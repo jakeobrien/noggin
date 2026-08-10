@@ -92,17 +92,21 @@ func TestPaneHintsNameThePickerFromEveryPane(t *testing.T) {
 
 // TestPickerHintTextNamesPickerActionsNotThePane is S2's "the Footer shows
 // the Picker's actions": pickerHintText names the Picker's own non-typing
-// bindings (here, cancel and up/down selection movement) rather than the
-// pane-specific hints hintText would give for, say, the Files pane
-// ("expand"/"collapse", absent here).
+// bindings (here, cancel and up/down selection movement, and M2.5's own
+// star toggle) rather than the pane-specific hints hintText would give for,
+// say, the Files pane ("expand"/"collapse", absent here). "star" moved from
+// the not-wanted list to the wanted one in M2.5: it is no longer a leaked
+// pane hint once the Picker has its own star action (keys.PickerStar,
+// distinct from the Roots Nav/Files Nav/viewer's own keys.Star — see
+// keymap.go's own comment on PickerStar for why).
 func TestPickerHintTextNamesPickerActionsNotThePane(t *testing.T) {
 	text := pickerHintText(200)
-	for _, want := range []string{"Picker", "cancel", "up", "down"} {
+	for _, want := range []string{"Picker", "cancel", "up", "down", "star"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("pickerHintText = %q, want it to contain %q", text, want)
 		}
 	}
-	for _, notWant := range []string{"expand", "collapse", "star"} {
+	for _, notWant := range []string{"expand", "collapse"} {
 		if strings.Contains(text, notWant) {
 			t.Errorf("pickerHintText = %q, unexpectedly contains pane-specific hint %q", text, notWant)
 		}
