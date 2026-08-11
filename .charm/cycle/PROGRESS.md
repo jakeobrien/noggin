@@ -17,30 +17,28 @@
 
 ## Cursor
 
-Current task: M4.10
+Current task: M4.11
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.9 (2026-08-12): fixed TRIAGE T22 — Tree mode's empty state previously shared
-`emptyFilesText` ("No folder open.") across two different causes: no Root open at all, and a
-Root open with `visibleRows()` empty (an empty folder, or one whose every top-level entry the
-tree walk excluded via `.gitignore`/dotfile policy). Added `emptyTreeText` (files.go) and
-branched `rowsView`'s Tree case on `f.root != nil` to pick between the two. Updated M4.4's own
-render test (`browse_empty_test.go`), whose Tree combo fixture actually opens a Root with an
-empty folder — it was asserting the bug (`emptyFilesText` wanted) as correct; now wants
-`emptyTreeText`. Added `TestTreeEmptyMessageDiffersFromNoRootOpen`, the acceptance criterion's
-own check, and verified it (and the updated M4.4 test) fail against the pre-fix code before
-confirming they pass with it. Fixed a stale `flatEmptyText` doc comment in browse.go that still
-claimed Tree's one empty case was covered by `emptyFilesText` alone. `make check` and
-`make check-pty` both green (no pty coverage needed — this is plain-text content, not a
-rendering ambiguity pty checks exist for).
+M4.10 (2026-08-12): closed the four review-flagged test-coverage gaps D83 bundled
+(TRIAGE T25/T26/T29/T31) — no bug in any of the four, pure test additions.
+`TestRecencyAndStarredNameTiesBreakByPath` (browse_list_test.go, two subtests) covers
+`sortByRecency`'s and `starredRows`' own path tie-break for entries sharing an exact
+timestamp/name (T26). `TestRecentRowsCapsOrphanBucketAtOneHundred` confirms `recentRows`'
+per-bucket cap applies to the "" (orphan) bucket the same as any Root-keyed one, past 100
+orphan documents (T29). `TestFilesNavViewHeightOneOmitsRowList` (browse_test.go) covers
+`filesNav.view()`'s own height==1 short-circuit, the one branch every sibling already had a
+test for (T25). `TestFilesNavRecentModeShowsStarMarker` asserts the star marker itself on a
+starred Recent-mode row (present) and an unstarred one (absent), mirroring Starred mode's own
+absence assertion (T31). All four exist and pass; `make check` green. No pty coverage needed —
+plain-text assertions, no new rendering ambiguity.
 
-Next: M4.10 — close four review-flagged test-coverage gaps (D83, TRIAGE T25/T26/T29/T31):
-sortByRecency/starredRows tie-break, orphan-bucket >100 cap, view() height==1, Recent-mode star
-marker assertion. Independent of M4.11; any order is fine.
+Next: M4.11 — fix broken `\u2014` comment literals and the wrong "scope.go" citation (should
+read browse.go) across `browse_list.go` and its test (TRIAGE T27/T28). Small, mechanical.
 
 ## Status
 
@@ -78,7 +76,7 @@ marker assertion. Independent of M4.11; any order is fine.
 | M4.7 | done   | -        | -         | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled |
 | M4.8 | done   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
 | M4.9 | done   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
-| M4.10 | todo  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
+| M4.10 | done  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
 | M4.11 | todo  | -        | -         | replan: comment-literal and citation fixes, TRIAGE T27/T28 |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |

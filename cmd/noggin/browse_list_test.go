@@ -85,6 +85,98 @@ func TestRecentRowsCapsAtOneHundredPerRoot(t *testing.T) {
 	}
 }
 
+// TestRecencyAndStarredNameTiesBreakByPath is TRIAGE T26's own gap (D83):
+// no test exercised either sortByRecency's or starredRows' own path
+// tie-break for two records sharing an exact timestamp/name —
+// sortByRecency's doc comment already claims the tie-break (mirroring
+// evictDocStore's oldest-first analogue) and starredRows' own name-sort
+// does too, but nothing confirmed the ordering when the primary key
+// actually ties.
+func TestRecencyAndStarredNameTiesBreakByPath(t *testing.T) {
+	t.Run("sortByRecency", func(t *testing.T) {
+		ts := time.Now()
+		entries := []docTimestamp{
+			{path: "/docs/zebra.md", ts: ts},
+			{path: "/docs/apple.md", ts: ts},
+			{path: "/docs/mango.md", ts: ts},
+		}
+		sortByRecency(entries)
+		want := []string{"/docs/apple.md", "/docs/mango.md", "/docs/zebra.md"}
+		for i, w := range want {
+			if entries[i].path != w {
+				t.Errorf("entry %d = %q, want %q (tied timestamps break by path)", i, entries[i].path, w)
+			}
+		}
+	})
+
+	t.Run("starredRows", func(t *testing.T) {
+		dir := t.TempDir()
+		dirA := mkdir(t, filepath.Join(dir, "a"))
+		dirB := mkdir(t, filepath.Join(dir, "b"))
+		// Same base name in two different Roots — starredRows' own name sort
+		// (filepath.Base) ties, so the tie-break must fall through to the
+		// full path, which sorts dirA's copy first ("a" < "b").
+		docA := starredFixtureFile(t, dirA, "same.md")
+		docB := starredFixtureFile(t, dirB, "same.md")
+		docs := map[string]docRecord{
+			docA: {Starred: true},
+			docB: {Starred: true},
+		}
+		roots := []root{{path: dirA}, {path: dirB}}
+
+		rows := starredRows(docs, roots, dirA, allStarredBrowseScope)
+		want := []string{docA, docB}
+		if len(rows) != len(want) {
+			t.Fatalf("starredRows returned %d rows, want %d", len(rows), len(want))
+		}
+		for i, w := range want {
+			if rows[i].path != w {
+				t.Errorf("row %d = %q, want %q (tied names break by path)", i, rows[i].path, w)
+			}
+		}
+	})
+}
+
+// TestRecentRowsCapsOrphanBucketAtOneHundred is TRIAGE T29's own gap
+// (D83): recentRows buckets an orphan document (no session Root covers it)
+// under the "" key exactly like any Root's own bucket, and the per-bucket
+// cap loop (recentRows' own comment: "Each bucket is ordered newest-first
+// and capped at recentPerRootCap ... independently") applies to every key
+// including "" — but nothing confirmed that past the ordinary Root-keyed
+// case TestRecentRowsCapsAtOneHundredPerRoot already covers.
+func TestRecentRowsCapsOrphanBucketAtOneHundred(t *testing.T) {
+	dir := t.TempDir()
+
+	const total = recentPerRootCap + 10
+	docs := make(map[string]docRecord, total)
+	now := time.Now()
+	var newestPaths []string
+	for i := 0; i < total; i++ {
+		p := recentFixtureFile(t, dir, fmt.Sprintf("orphan-%03d.md", i))
+		docs[p] = docRecord{LastViewed: now.Add(time.Duration(i) * time.Minute)}
+		if i >= total-recentPerRootCap {
+			newestPaths = append(newestPaths, p)
+		}
+	}
+	// No roots at all: every document above lands in the "" (orphan) bucket.
+	rows := recentRows(docs, nil, "", allRootsBrowseScope)
+	if len(rows) != recentPerRootCap {
+		t.Fatalf("recentRows returned %d orphan rows, want the cap %d", len(rows), recentPerRootCap)
+	}
+	got := map[string]bool{}
+	for _, r := range rows {
+		if !r.orphan {
+			t.Errorf("row %+v is not marked orphan", r)
+		}
+		got[r.path] = true
+	}
+	for _, p := range newestPaths {
+		if !got[p] {
+			t.Errorf("newest orphan document %q missing from the capped list; want only the oldest dropped", p)
+		}
+	}
+}
+
 // TestRecentRowsAllRootsMergesByTimestampAcrossRootsAndOrphans is M4.2's
 // merged-ordering clause: All Roots interleaves two Roots' own per-Root
 // lists, plus an orphan document under no session Root, into one
@@ -277,5 +369,44 @@ func TestFilesNavRecentModeEmptyShowsAMessage(t *testing.T) {
 	want := flatEmptyText(recentBrowse, activeRootBrowseScope)
 	if !strings.Contains(view, want) {
 		t.Errorf("empty Recent view = %q, want it to contain %q", view, want)
+	}
+}
+
+// TestFilesNavRecentModeShowsStarMarker is TRIAGE T31's own gap (D83):
+// renderFlatRow's own doc comment says Recent rows "get the same star
+// marker prefix Tree rows carry (Recent is not Starred, so membership alone
+// does not already say it)", but no render test asserted the marker itself
+// on a starred Recent row, unlike Starred mode's own
+// TestFilesNavStarredModeRendersFlatRowsWithoutStarMarker (which asserts the
+// marker's absence).
+func TestFilesNavRecentModeShowsStarMarker(t *testing.T) {
+	dir := t.TempDir()
+	rootDir := mkdir(t, filepath.Join(dir, "project"))
+	starred := recentFixtureFile(t, rootDir, "starred.md")
+	unstarred := recentFixtureFile(t, rootDir, "unstarred.md")
+
+	node, err := tree.Walk(rootDir)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	now := time.Now()
+	docs := map[string]docRecord{
+		starred:   {LastViewed: now, Starred: true},
+		unstarred: {LastViewed: now.Add(-time.Minute)},
+	}
+	m := sized(t, newModel().withDocs("", docs), 80, 24)
+	m.roots = m.roots.setRoots([]root{{path: rootDir}}, 0)
+	m = m.openFolder(node)
+
+	m = press(t, m, keys.FilesMode.Keys()[0]) // Tree -> Recent
+
+	lines := strings.Split(m.files.view(), "\n")
+	starredLine := lineContaining(lines, "starred.md")
+	unstarredLine := lineContaining(lines, "unstarred.md")
+	if !strings.Contains(starredLine, "\u2605") {
+		t.Errorf("starred.md row = %q, want the star marker", starredLine)
+	}
+	if strings.Contains(unstarredLine, "\u2605") {
+		t.Errorf("unstarred.md row = %q, want no star marker", unstarredLine)
 	}
 }

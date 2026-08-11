@@ -137,6 +137,24 @@ func TestFilesModeScopeRowCostsOneRowOfHeight(t *testing.T) {
 	}
 }
 
+// TestFilesNavViewHeightOneOmitsRowList is TRIAGE T25's own gap (D83):
+// view()'s own doc comment describes a height-1 short-circuit ("No room
+// left for the list past the mode/scope row itself") that every sibling
+// branch of rowsView/flatRowsView already has a dedicated test for, but
+// this one branch of view() itself did not — a height of exactly 1 must
+// render only the mode/scope row, with no trailing newline appended for an
+// empty row list underneath it.
+func TestFilesNavViewHeightOneOmitsRowList(t *testing.T) {
+	f := newFiles(fixtureTree()).setSize(30, 1)
+	view := f.view()
+	if strings.Contains(view, "\n") {
+		t.Errorf("view at height 1 = %q, want a single line with no newline", view)
+	}
+	if view != f.modeScopeRow() {
+		t.Errorf("view at height 1 = %q, want exactly the mode/scope row %q", view, f.modeScopeRow())
+	}
+}
+
 // TestFilesModeScopeKeysActOnlyFromFilesNavFocus is the model-level half of
 // M4.1's acceptance criterion: the two cycle keys do nothing from any Focus
 // other than the Files Nav.
