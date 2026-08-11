@@ -25,4 +25,5 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T44 | review | low | test/pty/checks.py:1028 | M6.3's widened-height comment says the dv1Pane Help Modal box is "8 scrollActions + 22 explicit bindings"; the actual explicit-binding count is 23 (verified: `len(helpBindings(dv1Pane))-len(scrollActions)` = 23 in a scratch test), so 8+23+title/blank(2)+border(2) = 35 matches the stated total, but the cited breakdown itself is off by one. Harmless (no test depends on the literal count) but misleading to a future maintainer re-deriving the row math. Fix: correct "22" to "23". | open |
 

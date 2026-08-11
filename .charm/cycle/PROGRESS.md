@@ -142,9 +142,9 @@ pending validation. No open TRIAGE items.
 | M5.1 | done   | 2026-08-11 | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5); review found grepFiles dead code, TRIAGE T42 |
 | M6.1 | done   | 2026-08-11 | -         |                                          |
 | M6.2 | done   | 2026-08-11 | -         | pre-agreed cut 2, not actually cut (D91); review found untested re-Activate scroll-preserve behavior, TRIAGE T43 |
-| M4.15 | done  | -        | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
-| M5.2 | done   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
-| M6.3 | done   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41; check-pty M5.3 viewer-block height widened 36→38 |
-| M6.4 | done   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43; confirmed no bug, coverage gap only |
+| M4.15 | done  | 2026-08-11 | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
+| M5.2 | done   | 2026-08-11 | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
+| M6.3 | done   | 2026-08-11 | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41; check-pty M5.3 viewer-block height widened 36→38; review: T44 |
+| M6.4 | done   | 2026-08-11 | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43; confirmed no bug, coverage gap only |
 | M7.1 | done   | 2026-08-11 | -         |                                        |
 | M7.2 | done   | 2026-08-11 | -         |                                        |
