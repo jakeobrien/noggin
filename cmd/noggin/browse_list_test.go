@@ -12,7 +12,7 @@ import (
 
 // recentFixtureFile creates a real file at dir/name so pathMissing (S6's
 // "a record whose file no longer exists is silently omitted") reads it as
-// present \u2014 recentRows must never be exercised against fixture paths that
+// present — recentRows must never be exercised against fixture paths that
 // merely look plausible, unlike fixtureTree's Tree-mode fixtures, since it
 // stats the disk directly.
 func recentFixtureFile(t *testing.T, dir, name string) string {
@@ -180,7 +180,7 @@ func TestRecentRowsCapsOrphanBucketAtOneHundred(t *testing.T) {
 // TestRecentRowsAllRootsMergesByTimestampAcrossRootsAndOrphans is M4.2's
 // merged-ordering clause: All Roots interleaves two Roots' own per-Root
 // lists, plus an orphan document under no session Root, into one
-// timestamp-ordered list \u2014 also the case that exercises Recent's two
+// timestamp-ordered list — also the case that exercises Recent's two
 // right-hand label forms (S6), since Recent's scope set (S5) has no
 // dedicated Orphans value the way Starred's does.
 func TestRecentRowsAllRootsMergesByTimestampAcrossRootsAndOrphans(t *testing.T) {
@@ -257,7 +257,7 @@ func TestRecentRowsActiveRootScopeOnlyShowsThatRoot(t *testing.T) {
 // TestRecentRowsOmitsDeletedFile is M4.2's own acceptance wording, last
 // clause: a record whose file no longer exists on disk is silently dropped,
 // never left in the Recent list as e.g. a broken entry (S6, unlike a broken
-// star \u2014 M4.3's own concern).
+// star — M4.3's own concern).
 func TestRecentRowsOmitsDeletedFile(t *testing.T) {
 	dir := t.TempDir()
 	rootDir := mkdir(t, filepath.Join(dir, "root"))

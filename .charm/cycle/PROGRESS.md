@@ -17,28 +17,26 @@
 
 ## Cursor
 
-Current task: M4.11
+Current task: M5.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.10 (2026-08-12): closed the four review-flagged test-coverage gaps D83 bundled
-(TRIAGE T25/T26/T29/T31) — no bug in any of the four, pure test additions.
-`TestRecencyAndStarredNameTiesBreakByPath` (browse_list_test.go, two subtests) covers
-`sortByRecency`'s and `starredRows`' own path tie-break for entries sharing an exact
-timestamp/name (T26). `TestRecentRowsCapsOrphanBucketAtOneHundred` confirms `recentRows`'
-per-bucket cap applies to the "" (orphan) bucket the same as any Root-keyed one, past 100
-orphan documents (T29). `TestFilesNavViewHeightOneOmitsRowList` (browse_test.go) covers
-`filesNav.view()`'s own height==1 short-circuit, the one branch every sibling already had a
-test for (T25). `TestFilesNavRecentModeShowsStarMarker` asserts the star marker itself on a
-starred Recent-mode row (present) and an unstarred one (absent), mirroring Starred mode's own
-absence assertion (T31). All four exist and pass; `make check` green. No pty coverage needed —
-plain-text assertions, no new rendering ambiguity.
+M4.11 (2026-08-12): fixed TRIAGE T27/T28, purely mechanical, no behavior change. Seven
+literal `\u2014` (real backslash-u-2014 text, not a processed em dash) inside `//` comments
+in browse_list.go, plus three more in browse_list_test.go, replaced with an actual em dash
+— left every quoted-string-literal reference alone (e.g. picker_view.go's `"\u2605 "`,
+files.go's `" \u00b7 "`), since those describe a real code literal rather than being a
+broken comment glyph themselves. Also fixed the wrong "scope.go's modeScopes" citation
+(modeScopes is defined in browse.go) in both places it appeared: browse_list.go:163 and
+browse_starred_test.go:78 (the acceptance wording's "both citations", not one in
+browse_list_test.go as the task's own phrasing loosely implied — grep found none there).
+`make check` green (go test -count=1, not just cached).
 
-Next: M4.11 — fix broken `\u2014` comment literals and the wrong "scope.go" citation (should
-read browse.go) across `browse_list.go` and its test (TRIAGE T27/T28). Small, mechanical.
+Next: M5.1 — add `Starred` as a third Picker scope value (File and Grep Picker), resolving to
+the whole document store rather than a set of Roots. Grep-side Starred is pre-agreed cut 4.
 
 ## Status
 
@@ -77,7 +75,7 @@ read browse.go) across `browse_list.go` and its test (TRIAGE T27/T28). Small, me
 | M4.8 | done   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
 | M4.9 | done   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
 | M4.10 | done  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
-| M4.11 | todo  | -        | -         | replan: comment-literal and citation fixes, TRIAGE T27/T28 |
+| M4.11 | done  | -        | -         | replan: comment-literal and citation fixes, TRIAGE T27/T28 |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |

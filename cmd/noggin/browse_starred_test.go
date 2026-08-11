@@ -75,7 +75,7 @@ func TestStarredRowsAllStarredIncludesOrphansAndOtherRoots(t *testing.T) {
 
 // TestStarredRowsOrphansScopeOnlyShowsOrphans confirms Orphans' own
 // membership (S5, PLAN.md's pre-agreed cut 3, still carried by the model
-// regardless — scope.go's modeScopes): only the no-Root bucket, never a
+// regardless — browse.go's modeScopes): only the no-Root bucket, never a
 // Root-covered starred document.
 func TestStarredRowsOrphansScopeOnlyShowsOrphans(t *testing.T) {
 	dir := t.TempDir()

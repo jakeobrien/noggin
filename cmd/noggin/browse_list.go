@@ -8,13 +8,13 @@ import (
 
 // recentPerRootCap bounds how many documents Recent's own per-Root list
 // carries (S6's 100) before All Roots ever merges it with any other Root's
-// own list \u2014 the cap docstore.go's docStoreCap doc comment already sizes
+// own list — the cap docstore.go's docStoreCap doc comment already sizes
 // itself against ("10x the per-Root Recent view cap").
 const recentPerRootCap = 100
 
 // browseRow is one rendered row in a Files Nav flat list (Recent, M4.2;
 // Starred, M4.3): a document's own path, its display name, and its
-// right-hand label per S6 \u2014 either the base name of the session Root that
+// right-hand label per S6 — either the base name of the session Root that
 // covers it, or, when no session Root does (an "orphan" document, S1's "not
 // attached to Roots"), that document's own parent directory, left-truncated
 // at render time the same way the Roots Nav already disambiguates two
@@ -57,7 +57,7 @@ func buildBrowseRow(path string, roots []root) browseRow {
 }
 
 // docTimestamp pairs a document's path with the timestamp it is being
-// ordered by \u2014 recentRows' own working type, never exposed past this file.
+// ordered by — recentRows' own working type, never exposed past this file.
 type docTimestamp struct {
 	path string
 	ts   time.Time
@@ -84,18 +84,18 @@ func sortByRecency(entries []docTimestamp) {
 // A record with a zero LastViewed has never been (Activate/$EDITOR-)viewed
 // (S4), so it never appears regardless of scope; a record whose file no
 // longer exists is silently omitted (S6, unlike a broken star, which is
-// still shown \u2014 M4.3's own concern). Every other record is bucketed by
+// still shown — M4.3's own concern). Every other record is bucketed by
 // which session Root covers its path via rootForPath, with a "" key for the
-// no-Root ("orphan") bucket \u2014 a document last viewed while covered by a
+// no-Root ("orphan") bucket — a document last viewed while covered by a
 // Root no longer in the session, or never covered by one at all. Each
 // bucket is ordered newest-first and capped at recentPerRootCap (S6's own
 // per-Root cap) independently, before scope is applied:
 //
 //   - Active Root scope reads only the bucket keyed by activeRootPath (nil
-//     when activeRootPath is "", i.e. no root is active \u2014 there is no
+//     when activeRootPath is "", i.e. no root is active — there is no
 //     bucket for "no active root" to fall back to).
 //   - All Roots scope merges every bucket's own (already-capped) list,
-//     orphans included, sorted by timestamp with no further cap (S6) \u2014
+//     orphans included, sorted by timestamp with no further cap (S6) —
 //     this is where Recent's own two right-hand label forms (S6) both
 //     appear, since Recent's scope set (S5) has no dedicated Orphans value
 //     the way Starred's does.
@@ -160,7 +160,7 @@ func recentRows(docs map[string]docRecord, roots []root, activeRootPath string, 
 // bucketing, just never capped. Active Root reads only its own bucket
 // (activeRootPath == "" short-circuits to none, same as recentRows); All
 // Starred merges every bucket, orphans included; Orphans (the pre-agreed cut
-// 3 in PLAN.md/M4.3, carried regardless — see scope.go's modeScopes) reads
+// 3 in PLAN.md/M4.3, carried regardless — see browse.go's modeScopes) reads
 // just the "" bucket on its own.
 func starredRows(docs map[string]docRecord, roots []root, activeRootPath string, scope browseScope) []browseRow {
 	buckets := map[string][]string{}
