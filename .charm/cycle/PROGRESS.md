@@ -17,21 +17,28 @@
 
 ## Cursor
 
-Current task: M3.5
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Build (2026-08-11): completed M2.13. Added
-`TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode` (cmd/noggin/picker_star_test.go),
-mirroring the existing File Picker `TestPickerStarTogglingUpdatesTheRenderedMarkerLive`: drives
-a real `m.View()` render through a `PickerStar` toggle against a Grep Result row and confirms
-the `\u2605` marker appears/clears in the same frame, no separate refresh. `make check` green.
+Build (2026-08-11): completed M3.5. Added
+`TestPickerActivateStoreWriteFailureSurfacesMessage` (new file,
+cmd/noggin/recency_picker_store_write_failure_test.go), mirroring M3.4's
+`TestActivateStoreWriteFailureSurfacesMessage` for the Picker's two `recordViewed` call
+sites: a "file Result" subtest (activatePickerInto) and a "grep Result" subtest
+(activateGrepPickerInto), both forcing the store write to fail via the existing
+`storeWriteFailurePath` helper and asserting the resulting message reflects the store
+failure verbatim while the document still opens. `make check` green; both subtests pass
+individually verified.
 
-Next: cursor moved to **M3.5** (Picker-path store-write-failure regression tests, TRIAGE
-T18/D77) — ready (needs M3.3, M3.4, both done). M2 milestone's tracked tasks are now all done.
+Next: cursor moved to **M4.1** (mode/scope model + Files Nav mode/scope row) — ready (needs
+M1.4, done). M2 and M3's tracked tasks are now all done; M2.10/M2.12/M2.13 (and earlier M2/M3
+rows) still need Reviewed/Validated coverage before building further on top of them per the
+cycle-state rule (milestone all done, Reviewed/Validated blank) — flagged, not blocking M4.1
+since M4 doesn't build on the specific rows still missing coverage.
 
 ## Status
 
@@ -55,7 +62,7 @@ T18/D77) — ready (needs M3.3, M3.4, both done). M2 milestone's tracked tasks a
 | M3.2 | done   | 2026-08-10 | 2026-08-10 |                                          |
 | M3.3 | done   | 2026-08-10 | 2026-08-10 | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
 | M3.4 | done   | 2026-08-10 | 2026-08-10 | replan: recordViewed failure message clobber, TRIAGE T13; no bug found, test coverage added; review found coverage gap re: Picker call sites, resolved as M3.5 (D77) |
-| M3.5 | todo   | -        | -          | replan: Picker-path store-write-failure regression tests, TRIAGE T18 (D77) |
+| M3.5 | done   | -        | -          | replan: Picker-path store-write-failure regression tests, TRIAGE T18 (D77) |
 | M2.10 | done  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
 | M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, resolved as M2.12 (D76); validate found Grep-mode live-toggle coverage gap, resolved as M2.13 (D78) |
 | M2.12 | done  | -        | -         | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
