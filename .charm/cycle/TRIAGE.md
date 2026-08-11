@@ -25,3 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T11 | build | medium | test/pty/checks.py:582,584 | M2.3's star-marker column (files.go:367-369) inserted a two-char field between the git-status marker and the file name, so the C2a/M4.1 pty checks' single-space literals (`"M tracked.md"`, `"A new.md"`) no longer match the rendered row (now e.g. `"M   tracked.md"`); both fail under `make check-pty` while `make check` is unaffected. Surfaced by M1.1a's build, unrelated to its own config_env fix. | open |

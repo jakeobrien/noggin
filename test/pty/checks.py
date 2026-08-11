@@ -79,16 +79,19 @@ KEY = {
 
 def config_env(home_dir):
     """Env vars and the resulting starred-roots store path that make Go's
-    os.UserConfigDir() resolve under home_dir, mirroring the per-OS logic in
-    os/file.go: darwin ignores $XDG_CONFIG_HOME and uses $HOME/Library/
-    Application Support; other unix honours $XDG_CONFIG_HOME. Setting both
-    env vars works on either OS the harness might run under.
+    dataDir() (cmd/noggin/store.go, M1.1) resolve under home_dir, mirroring
+    that function's own per-OS logic: darwin ignores $XDG_DATA_HOME and uses
+    $HOME/Library/Application Support; other unix honours $XDG_DATA_HOME.
+    M1.1 moved the store off of os.UserConfigDir() as a clean break, so this
+    no longer tracks that function's env vars ($XDG_CONFIG_HOME) — setting
+    $XDG_DATA_HOME (plus $HOME, which both functions consult) works on
+    either OS the harness might run under.
     """
     if sys.platform == "darwin":
-        cfg_dir = os.path.join(home_dir, "Library", "Application Support")
+        data_dir = os.path.join(home_dir, "Library", "Application Support")
     else:
-        cfg_dir = os.path.join(home_dir, ".config")
-    return {"HOME": home_dir, "XDG_CONFIG_HOME": cfg_dir}, os.path.join(cfg_dir, "noggin", "roots")
+        data_dir = os.path.join(home_dir, ".local", "share")
+    return {"HOME": home_dir, "XDG_DATA_HOME": data_dir}, os.path.join(data_dir, "noggin", "roots")
 
 # --- M1.1: starts, quits, restores the terminal ---------------------------
 
