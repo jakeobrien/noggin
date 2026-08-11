@@ -30,18 +30,26 @@ import (
 // other two — a hint for an inapplicable binding is worse than no hint, the
 // same reasoning the viewer case below already gives for omitting
 // FindNext/FindPrevious/Cancel.
+//
+// keys.Star (S2/M2.1/M2.2) now appears in every case below (M2.8, TRIAGE
+// T5/T6): before this, only the Roots Nav's own star action had a footer
+// hint, even though the Files Nav (toggleDocStar) and a focused Document
+// Viewer (toggleActiveDocStar) can star just as well — a real action with no
+// hint anywhere outside the Roots Nav. Placed right after each pane's own
+// open/expand action, mirroring the Roots Nav's existing Activate-then-Star
+// order.
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is
 		// worse than no hint (S12's help modal, M5.3, lists the full keymap
 		// regardless — that is the discoverability backstop for these).
-		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
+		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Star, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
 	}
 }
 

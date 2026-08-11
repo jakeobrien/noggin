@@ -961,15 +961,17 @@ check("M5.2 exits 0 after the selection-intact check", code == 0, f"exit {code}"
 # --- M5.3: help modal --------------------------------------------------------
 
 # Reachable from the footer affordance (S12), and it lists the focused pane's
-# own keys: opened from Files, it must name Files' bindings (expand/collapse)
-# and not another pane's (star is Roots-only).
-# Height 30, not 24 (C2a/M9.1 grew filesPane's helpBindings list to 21
-# entries — a 25-row box — past what a 24-row terminal fits without
-# clamping; see the go-test-only TestHelpOverlayNeverExceedsTheTerminal for
-# the clamped case, which this check is not exercising).
-s = Session([BINARY, TREE], 80, 30)
+# own keys: opened from Files, it must name Files' own bindings (expand/
+# collapse, and M2.8's star — no longer Roots-only, since the Files Nav can
+# star too) and not an inapplicable one (next match is viewer-only).
+# Height 32, not 24 (C2a/M9.1 grew filesPane's helpBindings list past what a
+# 24-row terminal fits without clamping, and M2.8 grew it by one more row
+# (star) past the previous 30-row session; see the go-test-only
+# TestHelpOverlayNeverExceedsTheTerminal for the clamped case, which this
+# check is not exercising).
+s = Session([BINARY, TREE], 80, 32)
 s.pump(1.2)
-before = screen_of(s.out, 80, 30)
+before = screen_of(s.out, 80, 32)
 before_lines = before.raw_lines()
 top_edge_before = before_lines[0]
 footer_before = before_lines[-1]
@@ -977,14 +979,16 @@ check("M5.3 focus starts on Files",
       footer_before.startswith("Files"), repr(footer_before))
 
 s.send(KEY["Help"], 0.5)
-opened = screen_of(s.out, 80, 30)
+opened = screen_of(s.out, 80, 32)
 opened_body = "\n".join(opened.raw_lines())
 check("M5.3 the modal names the focused pane's own context",
       "Help: Files" in opened_body, repr(opened_body[:200]))
 check("M5.3 the modal lists a Files-only binding (expand)",
       "expand" in opened_body, repr(opened_body[:200]))
-check("M5.3 the modal does not list a Roots-only binding (star)",
-      "star" not in opened_body, repr(opened_body[:200]))
+check("M5.3 the modal lists Files' own star binding (M2.8)",
+      "star" in opened_body, repr(opened_body[:200]))
+check("M5.3 the modal does not list a viewer-only binding (next match)",
+      "next match" not in opened_body, repr(opened_body[:200]))
 
 # It opens over the pane, not instead of it: the frame's own top border and
 # footer, outside the centered modal box, are still exactly what they were.
@@ -998,14 +1002,14 @@ check("M5.3 the footer is unchanged outside the modal",
 s.send(KEY["Down"], 0.3)
 s.send(KEY["Down"], 0.3)
 s.send(KEY["Cancel"], 0.5)
-restored = "\n".join(screen_of(s.out, 80, 30).raw_lines())
+restored = "\n".join(screen_of(s.out, 80, 32).raw_lines())
 check("M5.3 esc dismisses the modal, restoring the exact previous screen",
       restored == "\n".join(before_lines), repr(restored[:80]))
 
 # The Help key itself dismisses it too (pressing the affordance again).
 s.send(KEY["Help"], 0.5)
 s.send(KEY["Help"], 0.5)
-restored_again = "\n".join(screen_of(s.out, 80, 30).raw_lines())
+restored_again = "\n".join(screen_of(s.out, 80, 32).raw_lines())
 check("M5.3 pressing Help again also dismisses the modal",
       restored_again == "\n".join(before_lines), repr(restored_again[:80]))
 
@@ -1013,16 +1017,17 @@ code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M5.3 exits 0 after a help round-trip", code == 0, f"exit {code}")
 
 # Opens over the Document Viewer too, with the viewer's own context (search
-# keys, not Files/Roots-only ones), proving "any pane" rather than one.
+# keys plus M2.8's star, not Files/Roots-only ones like expand), proving
+# "any pane" rather than one.
 # Height 36, not 24 (TRIAGE T17): helpBindings(dv1Pane)'s list renders a
-# 31-row box (8 scrollActions + 19 explicit bindings + title/blank + border),
-# taller than the Files-pane block's own 25-row box above and taller than a
-# 24-row terminal fits. A 24-row session let this block pass only by luck —
-# Find/FindNext/FindPrevious sit near the top of the list and expand/star
-# were never in it at all — silently exercising a clamped modal
-# (overlayHelp's MaxHeight) rather than the real one; a future binding added
-# ahead of those three could push an assertion past the clamp with no
-# failure to signal it. Widened the same way the Files-pane block already
+# 33-row box (8 scrollActions + 20 explicit bindings, incl. M2.8's star +
+# title/blank + border), taller than the Files-pane block's own 29-row box
+# above and taller than a 24-row terminal fits. A 24-row session let this
+# block pass only by luck — Find/FindNext/FindPrevious sit near the top of
+# the list and expand was never in it at all — silently exercising a
+# clamped modal (overlayHelp's MaxHeight) rather than the real one; a future
+# binding added ahead of those three could push an assertion past the clamp
+# with no failure to signal it. Widened the same way the Files-pane block already
 # was, plus the same top/footer-unchanged assertions that block already has.
 s = Session([BINARY, FIXTURE], 80, 36)
 s.pump(1.2)
@@ -1038,8 +1043,11 @@ check("M5.3 opened from the viewer, the modal names the Document context",
 check("M5.3 opened from the viewer, next/prev match are listed",
       "next match" in viewer_help and "prev match" in viewer_help,
       repr(viewer_help[:200]))
-check("M5.3 opened from the viewer, a Files/Roots-only binding is not listed",
-      "expand" not in viewer_help and "star" not in viewer_help,
+check("M5.3 opened from the viewer, a Files-only binding is not listed",
+      "expand" not in viewer_help,
+      repr(viewer_help[:200]))
+check("M5.3 opened from the viewer, the viewer's own star binding is listed (M2.8)",
+      "star" in viewer_help,
       repr(viewer_help[:200]))
 check("M5.3 opened from the viewer, the top border is unchanged outside the modal",
       viewer_opened.raw_lines()[0] == viewer_top_before, repr(viewer_opened.raw_lines()[0]))

@@ -34,13 +34,18 @@ import (
 //
 // keys.PickerStar (S2/M2.5, keymap.go's own comment on it) is deliberately
 // left off every case's list here, unlike the Picker-only bindings above:
-// its Help() description ("star") collides with keys.Star's own, which
-// TestHelpModalListsThePaneOwnBindings already pins as absent from
-// filesPane's and the viewer's own Help Modal (neither binds plain keys.Star
-// itself). The Footer's own pickerHintText (footer.go) is PickerStar's one
+// its Help() description ("star") collides with keys.Star's own. The
+// Footer's own pickerHintText (footer.go) is PickerStar's one
 // discoverability surface for now — real, but weaker than the other
-// Picker-only actions' backstop here; a TRIAGE item records the gap rather
-// than reworking that pinned test's wording to make room for it.
+// Picker-only actions' backstop here.
+//
+// keys.Star (S2/M2.1/M2.2) itself now joins filesPane's and the viewer's
+// list here (M2.8, TRIAGE T5/T6), not only rootsPane's: the Files Nav
+// (toggleDocStar) and a focused Document Viewer (toggleActiveDocStar) can
+// star just as well as the Roots Nav, so the discoverability backstop this
+// modal gives every other binding was missing for those two actions.
+// TestHelpModalListsThePaneOwnBindings's filesPane/dv1Pane cases were
+// reworded from pinning keys.Star's absence to pinning its presence.
 //
 // keys.FocusRoots/FocusFiles/FocusDV1 (S5/S6) and keys.Refresh (S2)
 // (C2a/M9.1) are added to every case for the same reason keys.Picker
@@ -70,7 +75,7 @@ func helpBindings(p pane) []key.Binding {
 		}
 	case filesPane:
 		return []key.Binding{
-			keys.Activate, keys.Expand, keys.Collapse, keys.LineUp, keys.LineDown,
+			keys.Activate, keys.Expand, keys.Collapse, keys.Star, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.Peek,
@@ -84,7 +89,7 @@ func helpBindings(p pane) []key.Binding {
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
-			keys.Edit, keys.Navigator, keys.Picker,
+			keys.Star, keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,

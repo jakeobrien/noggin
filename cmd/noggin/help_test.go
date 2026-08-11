@@ -41,8 +41,8 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 		wantNot []string
 	}{
 		{rootsPane, []string{"star", "up", "down"}, []string{"expand", "collapse", "next match"}},
-		{filesPane, []string{"expand", "collapse"}, []string{"star", "next match"}},
-		{dv1Pane, []string{"page up", "next match", "prev match", "cancel"}, []string{"star", "expand"}},
+		{filesPane, []string{"expand", "collapse", "star"}, []string{"next match"}},
+		{dv1Pane, []string{"page up", "next match", "prev match", "cancel", "star"}, []string{"expand"}},
 	}
 	for _, c := range cases {
 		box := helpBox(c.pane)
@@ -72,11 +72,11 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 // without changing what a terminal actually displays, so a byte-exact
 // comparison would fail on formatting, not content.
 func TestHelpOverlayLeavesTheFrameVisibleAroundIt(t *testing.T) {
-	// Height 30, not 24 (C2a/M9.1 grew filesPane's helpBindings list past
-	// what a 24-row terminal fits without clamping — see
-	// TestHelpOverlayNeverExceedsTheTerminal for that clamped case, which
-	// this test is not exercising).
-	m := sized(t, newModel().openFolder(fixtureTree()), 80, 30)
+	// Height 32, not 24 (C2a/M9.1 grew filesPane's helpBindings list past
+	// what a 24-row terminal fits without clamping, and M2.8 grew it by one
+	// more row (keys.Star) — see TestHelpOverlayNeverExceedsTheTerminal for
+	// that clamped case, which this test is not exercising).
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 32)
 	beforeLines := plainLines(m.View().Content)
 
 	m = press(t, m, "?")
