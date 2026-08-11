@@ -276,11 +276,12 @@ func pickerFileRow(f pickerFile, query string, width int, selected bool, starred
 	return styleRow(highlightMatches(full, shifted, selected), width, selected)
 }
 
-// starMarker returns the two-column starred-state field shared by every
-// star-marking surface (files.go, rootsnav.go, model.go's Document Viewer
-// title, and now Picker rows, S3/D72): "\u2605 " when starred, two blank
-// columns otherwise, so every row in a column stays aligned regardless of
-// mixed starred state.
+// starMarker returns the two-column starred-state field used by Picker rows
+// (S3/D72): "\u2605 " when starred, two blank columns otherwise, so every row
+// in a column stays aligned regardless of mixed starred state. files.go,
+// rootsnav.go and model.go's Document Viewer title render the identical
+// "\u2605 "/"  " literal independently rather than calling this helper
+// (TRIAGE T17/D76) — keep the two in sync by hand if either changes.
 func starMarker(starred bool) string {
 	if starred {
 		return "\u2605 "

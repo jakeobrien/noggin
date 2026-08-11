@@ -17,25 +17,22 @@
 
 ## Cursor
 
-Current task: M2.12
+Current task: M2.13
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Build (2026-08-11): completed M2.10. `test/pty/checks.py`'s C2a/M4.1 git-status-marker
-checks assumed the pre-M2.3 row layout (status marker directly adjacent to the file name,
-e.g. `"M tracked.md"`); M2.3 inserted a two-column star-marker field between status and name,
-so the same unstarred-modified row now reads `"M   tracked.md"` (one status column + one
-blank star column). Updated the four affected checks (`tracked.md`, `new.md`, the `clean.md`
-absence pair, and the non-repo-Root `note.md` absence pair) to the new exact strings rather
-than loosening them. `make check` and `make check-pty` both green (all pty checks pass,
-including the updated C2a/M4.1 group).
+Build (2026-08-11): completed M2.12. `starMarker()`'s doc comment (picker_view.go) claimed
+its two-column field was already shared by files.go, rootsnav.go and model.go's Document
+Viewer title, but only Picker rows call the helper — the other three independently render an
+identical `"\u2605 "`/`"  "` literal. Reworded the comment to state that accurately and note
+the hand-sync obligation, rather than refactoring the other three call sites (would reopen
+their already-Reviewed/Validated status). `make check` green.
 
-Next: cursor moved to **M2.12** (correct `starMarker()`'s doc comment, TRIAGE T17/D76) —
-small, ready (needs M2.11, which is done). M2.13 and M3.5 are also ready and unblocked;
-pick up in any order.
+Next: cursor moved to **M2.13** (Grep Picker same-frame star-toggle render test, TRIAGE
+T19/D78) — ready (needs M2.11, done). M3.5 is also ready and unblocked.
 
 ## Status
 
@@ -62,7 +59,7 @@ pick up in any order.
 | M3.5 | todo   | -        | -          | replan: Picker-path store-write-failure regression tests, TRIAGE T18 (D77) |
 | M2.10 | done  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
 | M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, resolved as M2.12 (D76); validate found Grep-mode live-toggle coverage gap, resolved as M2.13 (D78) |
-| M2.12 | todo  | -        | -         | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
+| M2.12 | done  | -        | -         | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
 | M2.13 | todo  | -        | -         | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
 | M4.1 | todo   | -        | -         |                                          |
 | M4.2 | todo   | -        | -         |                                          |
