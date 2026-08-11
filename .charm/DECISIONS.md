@@ -1262,3 +1262,81 @@
   to `-` for zero functional gain, the same reopening-cost reasoning D76 already applied to a
   comparable cosmetic finding. Revisit only if a future task needs to touch this branch for a
   real reason.
+
+## D85: `clampSelected`'s double-scan on mode/scope/root transitions stays as is (TRIAGE T35)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review (TRIAGE T35, low) noted `clampSelected` recomputes `rowCount()`/
+  `flatRows()` on every mode/scope/root transition, and the following render recomputes the
+  same thing again — compounding the codebase's existing "always recompute, never cache"
+  design (D79) with an extra full doc-map scan per transition.
+- Decision: wontfix for this cycle. No PLAN task; the double-scan stands as implemented.
+- Why: low severity, speculative — the reviewer's own note frames it as low-risk, bounded by
+  the 100-per-Root cap, with no observed cost. Identical shape to D75 (`m.files.starred`'s
+  full recompute on every write): a bound already keeps the scan cheap regardless of trigger
+  frequency. Revisit only if a real cost is observed, not preemptively.
+
+## D86: M4.8's undertested Help Modal / footer hint additions get dedicated tests (TRIAGE T32, T33) — M4.12
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review found two coverage gaps in M4.8's discoverability work. T32 (medium):
+  `TestHelpModalListsThePaneOwnBindings`'s `filesPane` case only substring-checks for
+  `"mode"`/`"scope"` text, which `keys.PickerMode`/`keys.PickerScope` (already listed
+  unconditionally for `filesPane`) render identically — the test cannot actually catch a
+  regression that drops `keys.FilesMode`/`keys.FilesScope` from `filesPane`'s `helpBindings`.
+  T33 (medium): no footer test asserts `keys.FilesMode`/`keys.FilesScope` actually appear in
+  `filesPane`'s hint text at all — M4.8's footer touches only bumped a truncation width to
+  keep unrelated strings fitting, a genuinely untested addition.
+- Decision: accepted as a single new task, M4.12, covering both — same shape as D83's
+  bundling of independent, low-shared-risk test additions into one plan task.
+- Why: medium severity (a real hole in regression coverage for a delivered discoverability
+  feature, M2.8/M4.8's precedent), cheap (effort 2), and the codebase already has an
+  identity-based assertion pattern (`TestHelpBindingsListPickersOwnBindingsFromEveryPane`) and
+  a footer-hint-isolation pattern (`TestPaneHintsNamePeekOnlyInFilesPane`) to mirror — no
+  design judgment left, just applying existing precedent. Accept and log rather than leave a
+  known regression-coverage gap unfixed.
+
+## D87: `flatEmptyText`'s stale default-branch/comment mismatch and a tie-break test's ambiguous comment are fixed together (TRIAGE T34, T36) — M4.13
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: two low-severity review findings, both small doc/behavior clarity fixes with no
+  shared implementation risk. T34: `flatEmptyText`'s doc comment (post-M4.9) calls its
+  `default` case an unreachable defensive fallback, but that fallback still returns
+  `emptyFilesText` ("no Root open") rather than `emptyTreeText` ("open but empty", the message
+  M4.9 introduced and a Tree-mode caller would actually want there) — stale given M4.9's split.
+  T36: `TestRecencyAndStarredNameTiesBreakByPath`'s tie-break assertion is only correct because
+  subdirectory literals `"a"`/`"b"` sort lexicographically, not because of any documented
+  guarantee — ambiguous for a future reader.
+- Decision: accepted as a single new task, M4.13, covering both — correct `flatEmptyText`'s
+  returned value or its comment (whichever stays true to M4.9's actual split) and add the
+  one-line clarifying comment to the tie-break test.
+- Why: unlike D76's comment-only precedent, both findings sit inside code from the same
+  session's own work (M4.9, M4.10) rather than reopening a separately-`done`,
+  already-Reviewed-and-Validated milestone — the reopening-cost reasoning that made D76 a
+  comment-only fix and D84 a full wontfix doesn't apply here at the same weight. Cheap
+  (effort 1) and closes a real (if low-severity) latent-bug risk in T34's case. Accept and log.
+
+## D88: M4.7's acceptance wording gets its two missing regression cases (TRIAGE T37) — M4.14
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review found M4.7's acceptance criterion names four re-clamp call sites
+  needing coverage (`cycleMode`, `cycleScope`, `setRoot`'s flat-mode memory restore, and
+  un-starring the selected row out of Starred), but only two have dedicated regression tests
+  in `flat_selection_clamp_test.go` (`cycleMode` and the un-star path). `cycleScope` shrinking
+  the row set and `setRoot`'s memory-restore branch have no direct assertion on `f.selected`
+  after the shrink. All four funnel through the same `clampSelected()` (D82), so a real bug is
+  unlikely, but this is a literal gap against the task's own "done when" enumeration.
+- Decision: accepted as a new task, M4.14 — add the two missing cases, mirroring the existing
+  ones' shape.
+- Why: low severity per the reviewer (shared implementation, low bug risk) but the task's own
+  stated acceptance criterion is not literally met without them, and the fix is cheap
+  (effort 2) — accept and log rather than leave a named acceptance-criterion clause
+  unactually-tested.

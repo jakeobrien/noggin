@@ -202,6 +202,32 @@ Delivers: S5, S6, S7 (and S2's Starred-list removal clause)
   `browse_list.go` and its test — done when: no comment contains a literal `\uXXXX` escape,
   both citations read `browse.go`, and `make check` is green — effort: 1 — from TRIAGE T27, T28.
 
+- **M4.12** — Close M4.8's undertested additions: strengthen
+  `TestHelpModalListsThePaneOwnBindings`'s `filesPane` case with an identity-based assertion
+  (matching `b.Help().Key`/`.Desc`, as `TestHelpBindingsListPickersOwnBindingsFromEveryPane`
+  already does) so it can catch a regression dropping `keys.FilesMode`/`keys.FilesScope` from
+  `filesPane`'s `helpBindings` — currently indistinguishable from `keys.PickerMode`/
+  `keys.PickerScope`'s identical "mode"/"scope" text, which are already listed unconditionally
+  for `filesPane` — and add a new footer hint test (`TestPaneHintsNameFilesModeAndScopeOnly-
+  InFilesPane`, mirroring `TestPaneHintsNamePeekOnlyInFilesPane`'s shape) asserting
+  `keys.FilesMode`/`keys.FilesScope` actually appear in `filesPane`'s hint text — done when:
+  both the strengthened Help Modal assertion and the new footer test exist and pass — effort:
+  2 (needs: M4.8) — from TRIAGE T32, T33 (D86).
+- **M4.13** — Fix `flatEmptyText`'s `default` branch, whose own doc comment (post-M4.9) now
+  calls it an unreachable defensive fallback while it still returns `emptyFilesText` ("no Root
+  open") rather than `emptyTreeText` ("open but empty"), the message a Tree-mode caller would
+  actually want if the branch were ever hit; correct the returned value or reframe the comment
+  accurately, whichever stays true. Also add a one-line comment to
+  `TestRecencyAndStarredNameTiesBreakByPath` noting its tie-break assertion holds because of
+  the literal subdirectory names `"a"`/`"b"`, not `t.TempDir()` ordering — done when:
+  `flatEmptyText`'s default case and its comment agree, the tie-break test's comment is added,
+  and `make check` is green — effort: 1 (needs: M4.9) — from TRIAGE T34, T36 (D87).
+- **M4.14** — Close M4.7's acceptance-criterion literal gap: add regression tests exercising
+  `cycleScope` shrinking the flat row set and `setRoot`'s flat-mode memory-restore branch,
+  mirroring the existing `cycleMode`/un-star coverage already in `flat_selection_clamp_test.go`
+  — done when: two new tests assert `f.selected` stays valid after each of those two
+  transitions, and pass — effort: 2 (needs: M4.7) — from TRIAGE T37 (D88).
+
 ## M5 — `Starred` as a Picker scope
 
 Delivers: S8

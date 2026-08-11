@@ -17,26 +17,24 @@
 
 ## Cursor
 
-Current task: M5.1
+Current task: M4.12
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.11 (2026-08-12): fixed TRIAGE T27/T28, purely mechanical, no behavior change. Seven
-literal `\u2014` (real backslash-u-2014 text, not a processed em dash) inside `//` comments
-in browse_list.go, plus three more in browse_list_test.go, replaced with an actual em dash
-— left every quoted-string-literal reference alone (e.g. picker_view.go's `"\u2605 "`,
-files.go's `" \u00b7 "`), since those describe a real code literal rather than being a
-broken comment glyph themselves. Also fixed the wrong "scope.go's modeScopes" citation
-(modeScopes is defined in browse.go) in both places it appeared: browse_list.go:163 and
-browse_starred_test.go:78 (the acceptance wording's "both citations", not one in
-browse_list_test.go as the task's own phrasing loosely implied — grep found none there).
-`make check` green (go test -count=1, not just cached).
+Replan (2026-08-12): triaged TRIAGE T32–T37 (all review findings against already-`done` M4
+tasks). Accepted M4.12 (T32+T33: strengthen the Help Modal's filesPane assertion to
+identity-based, add a footer hint test for FilesMode/FilesScope), M4.13 (T34+T36:
+flatEmptyText's default-branch/comment mismatch, a tie-break test comment), M4.14 (T37: two
+missing flat-selection-clamp regression cases for cycleScope/setRoot's restore path) —
+see D86/D87/D88. Wontfix'd T35 (clampSelected double-scan) as D85, mirroring D75's
+reasoning: speculative, bounded by existing caps, no bug. TRIAGE.md is empty again.
 
-Next: M5.1 — add `Starred` as a third Picker scope value (File and Grep Picker), resolving to
-the whole document store rather than a set of Roots. Grep-side Starred is pre-agreed cut 4.
+Next: M4.12, then M4.13, M4.14, in plan order, before returning to M5.1 (Picker `Starred`
+scope, Grep-side pre-agreed cut 4) — none of the three block M5.1, they were just next in
+plan order when accepted.
 
 ## Status
 
@@ -76,6 +74,9 @@ the whole document store rather than a set of Roots. Grep-side Starred is pre-ag
 | M4.9 | done   | 2026-08-12 | -       | replan: Tree's own empty-vs-no-Root message, TRIAGE T22; review: T34  |
 | M4.10 | done  | 2026-08-12 | -       | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83); review: T36 |
 | M4.11 | done  | 2026-08-12 | -       | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
+| M4.12 | todo  | -        | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
+| M4.13 | todo  | -        | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87) |
+| M4.14 | todo  | -        | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
