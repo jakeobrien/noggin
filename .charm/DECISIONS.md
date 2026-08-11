@@ -1181,3 +1181,84 @@
   cause for the two actions M4.3 actually needs; T21 itself is unchanged here since Peek/Edit
   remain broken exactly as it describes, but a future replan should read T21 as narrowed to
   those two actions, not Activate/Star, once this lands.
+
+## D81: Files Nav mode/scope cycle keys get the M2.8 discoverability treatment — M4.8
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: build-flagged (TRIAGE T20) — `keys.FilesMode`/`keys.FilesScope` (M4.1) are absent
+  from `filesPane`'s Footer hints and the Help Modal listing, unlike every other Files-Nav-only
+  binding added alongside its own task (Peek, ctrl+ DV2-targeting) and unlike M2.8's own
+  precedent for `keys.Star`.
+- Decision: accepted as a new task, M4.8 — add both bindings to `filesPane`'s `paneHints` and
+  the Help Modal listing, mirroring M2.8's shape exactly.
+- Why: medium severity, cheap (effort 2), and there is already a same-cycle precedent for
+  exactly this gap (M2.8) — no judgment call left once that precedent is applied. Accept and
+  log rather than leave a second discoverability gap sitting unfixed.
+
+## D82: Flat-row selection index is re-clamped wherever the effective row set can shrink — M4.7
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review (TRIAGE T23), high severity — `f.selected` is a raw index shared across
+  Tree rows and both flat-list row sets, but only `move()` re-clamps it. `cycleMode`/
+  `cycleScope` never touch it, and `setRoot`'s M4.6 memory-restore computes it by walking
+  `visibleRows()` (Tree-only) even when restoring into Recent/Starred. Selecting a lower Tree
+  row then cycling to a shorter Recent/Starred list — or un-starring the last-visible selected
+  row — leaves `f.selected` pointing past the end of the new row set, so `selectedFlatRow()`
+  returns `ok=false` and Activate/Peek/Star silently no-op with no footer message, undermining
+  M4.5's and M4.6's own acceptance wording. A related stale doc comment (TRIAGE T24, on
+  `selectedFlatRow`) claims Peek/Edit/DV2-targeting still go through `selectedNode()` "until
+  M4.5 gives them the same fix" — no longer true since M4.5 landed `togglePeekFlatRowInto`.
+- Decision: accepted as a new task, M4.7 — clamp/re-resolve `f.selected` against the current
+  mode/scope's `rowCount()` at every point that can change the effective row set
+  (`cycleMode`, `cycleScope`, `setRoot`'s flat-mode restore, and any row-set-shrinking store
+  write reachable from a flat list, i.e. un-starring the selected Starred row), mirroring the
+  `nearestSurvivingIndex` treatment Tree refresh already gets; and correct T24's stale comment
+  in the same pass since it documents the state this task changes.
+- Why: high severity and directly reachable in normal use (switch mode with a lower Tree
+  selection, or un-star the last visible Starred row) — a real functional bug in delivered
+  work (M4.5, M4.6), not a theoretical gap, and it silently no-ops with no error message,
+  which is worse than a visible failure. Not blocking the current cursor (M5.1 has no
+  dependency on flat-row selection correctness), but cheap enough (effort 3) and important
+  enough to fix before building more on top of the flat-list machinery. TRIAGE T21 — kept open
+  by build only for replan to confirm/clear — is dropped here as already-handled: the actions
+  themselves (Activate/Peek/Star/Edit, Expand/Collapse-as-no-ops) are all correctly wired per
+  D80/M4.5; the remaining gap is precisely T23's index-clamping bug, not a T21-shaped one.
+
+## D83: Review-flagged test-coverage gaps bundled into one task — M4.10
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review flagged four coverage gaps with no accompanying functional bug: no
+  test exercises `sortByRecency`'s or `starredRows`' path tie-break with two records sharing a
+  timestamp/name (TRIAGE T26, medium); the `view()` height==1 branch has no dedicated test
+  unlike every sibling branch (TRIAGE T25, medium); the orphan bucket's `recentPerRootCap` cap
+  is untested past 100 orphan documents specifically (TRIAGE T29, low); and the Recent-mode
+  render test doesn't assert the star marker itself, unlike Starred-mode's (TRIAGE T31, low).
+- Decision: accepted as a single new task, M4.10, covering all four — each is a small,
+  independent test addition with no shared implementation risk, so bundling keeps the plan
+  from growing four tiny tasks for what is really one "close the coverage gaps review found"
+  unit of work.
+- Why: medium+low severity, no bug suspected in any of the four (reviewers explicitly called
+  the underlying logic correct by inspection), but each is cheap and closes a real gap in
+  logic specifically added to guard against nondeterminism or cap violations — worth accepting
+  rather than leaving as latent regression risk with no test to catch it.
+
+## D84: `toggleDocStar`'s inline flat-mode branch stays inline, not extracted for symmetry (TRIAGE T30)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review (TRIAGE T30, low) noted `activateFlatRowInto`/`togglePeekFlatRowInto`
+  are named helpers with their own doc comments, while `toggleDocStar`'s equivalent flat-mode
+  branch is left inline — a minor structural inconsistency across an otherwise-symmetric trio.
+- Decision: wontfix for this cycle. No PLAN task; the inline branch stands as implemented.
+- Why: low severity, cosmetic-only — `toggleDocStar` and its M4.3 branch are already
+  `done`/Reviewed; extracting a helper for symmetry alone would clear that Reviewed cell back
+  to `-` for zero functional gain, the same reopening-cost reasoning D76 already applied to a
+  comparable cosmetic finding. Revisit only if a future task needs to touch this branch for a
+  real reason.

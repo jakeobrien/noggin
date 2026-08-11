@@ -173,6 +173,34 @@ Delivers: S5, S6, S7 (and S2's Starred-list removal clause)
   (Root, mode); every session starts on `Tree` — done when: a test sets distinct mode/scope
   pairs on two Roots, switches away and back to each, gets the last pair for each, and a fresh
   model starts on `Tree` — effort: 2 (needs: M4.1)
+- **M4.7** — Re-clamp the flat-list selection index wherever the effective row set can shrink:
+  `cycleMode`, `cycleScope`, `setRoot`'s flat-mode memory restore, and un-starring the selected
+  row out of a Starred list — and correct `selectedFlatRow`'s doc comment, which still claims
+  Peek/Edit/DV2-targeting await M4.5's fix — done when: selecting a lower Tree row then cycling
+  to a shorter Recent/Starred list leaves Activate/Peek/Star acting on a valid row (not a
+  silent no-op), the same holds after un-starring shrinks the Starred row set, and the comment
+  no longer describes a pre-M4.5 state — effort: 3 (needs: M4.5, M4.6) — from TRIAGE T23, T24
+  (D82); resolves TRIAGE T21 (dropped as already-handled — see D82).
+- **M4.8** — Add `keys.FilesMode` and `keys.FilesScope` to the Files Nav's Footer hints and
+  Help Modal listing, mirroring M2.8's precedent for `keys.Star` — done when: both bindings
+  appear in `filesPane`'s `paneHints` and the Help Modal listing, and
+  `TestHelpModalListsThePaneOwnBindings`'s existing pins still pass (reworded if needed)
+  — effort: 2 (needs: M4.1) — from TRIAGE T20 (D81).
+- **M4.9** — Give Tree mode its own empty-state message, distinct from "no Root open," for an
+  open Root with zero visible rows (empty folder, or every top-level entry gitignored) —
+  matching the per-scope wording M4.4 already gave Recent/Starred — done when: a render test
+  shows a different message for an open-but-empty Root than for no Root open at all — effort: 1
+  (needs: M4.4) — from TRIAGE T22.
+- **M4.10** — Close four review-flagged test-coverage gaps: a tie-break test for
+  `sortByRecency` and `starredRows`' name sort (two records sharing a timestamp/name), an
+  orphan-bucket test with >100 documents confirming the cap applies there too, a `view()`
+  height==1 test, and a star-marker assertion on a starred Recent-mode row — done when: all
+  four new tests exist and pass — effort: 2 (needs: M4.2, M4.3, M4.4) — from TRIAGE T25, T26,
+  T29, T31 (D83).
+- **M4.11** — Fix broken `\u2014` comment literals (real text, not a processed escape, inside
+  `//` comments) and the wrong "scope.go" citation (should read browse.go) across
+  `browse_list.go` and its test — done when: no comment contains a literal `\uXXXX` escape,
+  both citations read `browse.go`, and `make check` is green — effort: 1 — from TRIAGE T27, T28.
 
 ## M5 — `Starred` as a Picker scope
 

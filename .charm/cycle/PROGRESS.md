@@ -17,41 +17,32 @@
 
 ## Cursor
 
-Current task: M5.1
+Current task: M4.7
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Build (2026-08-11): completed M4.6 (session-only browse memory: mode remembered per Root,
-scope remembered per (Root, mode); every session starts on Tree). `files.go`'s `filesNav` gained
-a live `scopeByMode map[browseMode]browseScope` field (the current Root's own per-mode scope
-history) and a `withScopeRemembered` helper that snapshots the outgoing mode's live `f.scope`
-into it — called from both `cycleMode` (leaving a mode without leaving the Root) and `remember`
-(leaving the Root itself), so neither path can lose a mode's scope. `scopeForCurrentMode` reads
-it back (falling through to `modeScopes(mode)[0]`, or the zero value for Tree, for a mode this
-Root has never shown). `filesNavMemory` gained `mode`/`scopeByMode` fields alongside its existing
-`expanded`/`selectedPath`, so `setRoot` now restores all four together on a Root it has shown
-before, and resets all four to Tree/no-scope-memory on one it hasn't — the same shape M3.1's
-expansion/selection round-trip already had, just extended to the two new axes. `cycleMode`'s own
-behavior changed: switching mode now restores that mode's last scope on the *current* Root
-(not just resets to the new mode's first value) — this was flagged as an M4.6 TODO in `cycleMode`'s
-own pre-existing doc comment, not a design decision made fresh here. Existing test
-`TestBrowseModeSwitchResetsScopeToTheNewModesFirstValue` still passes unmodified: it switches to
-a mode never yet visited this Root/session, so the fallback-to-first-value path is still what
-fires; behavior for an *already-visited* mode is the new coverage in `browse_memory_test.go`
-(`TestBrowseMemoryFreshSessionStartsOnTree`, `TestBrowseMemoryModePerRootScopePerRootMode`,
-`TestBrowseMemoryScopePerModeSurvivesAThirdModeVisit`). `make check` and `make check-pty` both
-green (full runs, no pty behavior touched by this task).
+Replan (2026-08-12): triaged the full inbox (T20–T31, all from M4's code review). Accepted five
+new M4-suffixed tasks in priority order — **M4.7** (highest priority: fixes a real high-severity
+bug, TRIAGE T23/D82 — `f.selected` isn't re-clamped when cycleMode/cycleScope/setRoot's flat
+restore shrinks the row set, so Activate/Peek/Star can silently no-op on a stale index; also
+fixes T24's stale comment), M4.8 (T20/D81, footer/help discoverability for the two Browse cycle
+keys, mirrors M2.8), M4.9 (T22, Tree's own empty-vs-no-Root message), M4.10 (T25/T26/T29/T31/D83,
+bundled test-coverage gaps), M4.11 (T27/T28, comment-literal and citation fixes). Dropped T21 as
+already-handled (D82 explains why: the actions are all correctly wired now, T23 is the precise
+remaining gap it was gesturing at). Wontfixed T30 (D84, cosmetic-only, not worth reopening a
+Reviewed cell). TRIAGE.md is now empty. Cursor moved from M5.1 to **M4.7**: it's a real bug in
+already-*done* work, cheap (effort 3), and better fixed before M5 builds more on the same flat-list
+machinery — M5.1 itself is unblocked and can resume once M4.7–M4.11 are cleared or explicitly
+reordered past.
 
-Not done / logged: TRIAGE T20 unchanged (build/medium — FilesMode/FilesScope discoverability).
-TRIAGE T21 still open only for replan to confirm/clear (already fully resolved as of M4.5).
-TRIAGE T22 unchanged (build/low — Tree's own "no root"/"empty root" message conflation).
-
-Next: cursor is **M5.1** (Starred as a third Picker scope value, both File and Grep Picker,
-resolving to the whole store rather than a set of Roots) — needs M1.4, M2.1 (both done).
-Nothing blocks it. M4 is now fully done (M4.1–M4.6); M5 is next up.
+Next: start M4.7. `files.go`'s `move()` already has the re-clamp pattern to mirror
+(`nearestSurvivingIndex`-style); `cycleMode`/`cycleScope`/`setRoot`'s flat-restore path and any
+Starred-row-removing store write are the call sites needing the same treatment. Then M4.8–M4.11
+in order (all independent, cheap, no inter-dependencies beyond what's noted in PLAN.md), then
+resume M5.1.
 
 ## Status
 
@@ -86,6 +77,11 @@ Nothing blocks it. M4 is now fully done (M4.1–M4.6); M5 is next up.
 | M4.4 | done   | 2026-08-12 | -       | render test walks all six mode/scope combos; TRIAGE T22 |
 | M4.5 | done   | 2026-08-12 | -       | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21; review: T23, T24, T25 |
 | M4.6 | done   | 2026-08-12 | -       | review found selection-index restore gap, TRIAGE T23                |
+| M4.7 | todo   | -        | -         | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled |
+| M4.8 | todo   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
+| M4.9 | todo   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
+| M4.10 | todo  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
+| M4.11 | todo  | -        | -         | replan: comment-literal and citation fixes, TRIAGE T27/T28 |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
