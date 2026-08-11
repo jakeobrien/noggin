@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M6.4
+Current task: M7.1
 
 ## Handoff
 
@@ -43,7 +43,15 @@ and updated its comment's row-count math accordingly — same fix shape as T17's
 
 `make check` and `make check-pty` both green.
 
-Cursor moves to M6.4 (D91 re-Activate scroll-preserve regression test, TRIAGE T43).
+M6.4 built: added `TestReActivatingTheAlreadyActiveDocumentPreservesScrollPosition`
+(history_scroll_test.go, mirrors the file's existing style) covering D91's flagged-but-
+untested side effect — re-Activating the document already open in DV1, with no navigation in
+between, preserves its scroll offset instead of resetting to top. Confirmed the mechanism
+(`viewer.open()`'s bank-then-restore via `docOffsets`, D91) already behaves correctly; this
+was a coverage gap, not a bug, so no production code changed. `make check` and
+`make check-pty` both green.
+
+Cursor moves to M7.1 (pane focus badges, first task of the last milestone, M7).
 
 ## Status
 
@@ -92,6 +100,6 @@ Cursor moves to M6.4 (D91 re-Activate scroll-preserve regression test, TRIAGE T4
 | M4.15 | done  | -        | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
 | M5.2 | done   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
 | M6.3 | done   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41; check-pty M5.3 viewer-block height widened 36→38 |
-| M6.4 | todo   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43 |
+| M6.4 | done   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43; confirmed no bug, coverage gap only |
 | M7.1 | todo   | -        | -         |                                          |
 | M7.2 | todo   | -        | -         |                                          |

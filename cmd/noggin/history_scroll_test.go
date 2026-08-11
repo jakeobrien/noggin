@@ -37,6 +37,37 @@ func longDocFixture(t *testing.T) (m model, docA, docB, docC string) {
 	return m, docA, docB, docC
 }
 
+// TestReActivatingTheAlreadyActiveDocumentPreservesScrollPosition regression-
+// tests D91's flagged-but-untested side effect (TRIAGE T43): re-Activating a
+// document that is already the Active Document, with no navigation in
+// between, preserves its scroll position rather than resetting to top.
+// D91 put M6.2's docOffsets save-before-leaving/restore-on-arrival logic
+// inside viewer.open() itself rather than only in the history walk, so
+// every Activate funnels through it, including a no-motion re-Activate of
+// the document already open — open() banks the outgoing (= incoming)
+// document's offset via rememberOffset(), then immediately restores that
+// same value from docOffsets, a no-op by construction rather than a special
+// case, per D91's own reasoning. This was flagged as untested by review
+// (D91) rather than demonstrated broken; this test closes that gap.
+func TestReActivatingTheAlreadyActiveDocumentPreservesScrollPosition(t *testing.T) {
+	m, docA, _, _ := longDocFixture(t)
+
+	m = activateSelected(t, m) // a.md, top
+	if total := m.dv1.lineCount(); total <= m.dv1.height() {
+		t.Fatalf("fixture renders %d lines into a %d-line viewport; nothing to scroll", total, m.dv1.height())
+	}
+	m.dv1 = m.dv1.withOffset(52)
+	wantOffset := m.dv1.offset()
+
+	m = activateSelected(t, m) // a.md again — same document, no navigation away
+	if m.dv1.doc.path != docA {
+		t.Fatalf("setup: DV1 = %q, want %q", m.dv1.doc.path, docA)
+	}
+	if got := m.dv1.offset(); got != wantOffset {
+		t.Errorf("offset after re-Activating the already-active document = %d, want unchanged %d", got, wantOffset)
+	}
+}
+
 // TestHistoryBackRestoresRememberedScrollPosition is M6.2's own acceptance
 // criterion, verbatim: "a test scrolls a document, navigates away and back,
 // and lands at the remembered offset".
