@@ -165,6 +165,59 @@ func TestPickerStarTogglingUpdatesTheRenderedMarkerLive(t *testing.T) {
 	}
 }
 
+// TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode is M2.13's
+// Grep-mode variant of TestPickerStarTogglingUpdatesTheRenderedMarkerLive,
+// closing the mode-parity gap M2.11's acceptance wording left open (TRIAGE
+// T19/D78): the same live, no-refresh-needed marker toggle must hold for a
+// Grep Result's row, not only a File Result's.
+func TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode(t *testing.T) {
+	dir := t.TempDir()
+	storePath := filepath.Join(dir, "documents")
+	path := writeFileContent(t, filepath.Join(dir, "notes.md"), "alpha\nbravo\n")
+
+	m := sized(t, newModel().withDocs(storePath, loadDocStore(storePath)), 80, 24).
+		withRipgrep(ripgrepAvailability{available: true})
+	m, _ = m.openPicker()
+	m = m.switchPickerModeForTest()
+	m.picker.input.SetValue("bravo")
+	m.picker.results = pickerResults{
+		query: "bravo",
+		mode:  grepMode,
+		scope: activeRootScope,
+		grep:  []grepResult{{file: pickerFile{root: root{path: dir}, path: path}, line: 2, text: "bravo"}},
+	}
+	m.picker.selected = 0
+
+	resultRow := func(content string) string {
+		for _, l := range strings.Split(content, "\n") {
+			if strings.Contains(l, "notes.md") {
+				return l
+			}
+		}
+		return ""
+	}
+
+	before := ansi.Strip(m.View().Content)
+	if row := resultRow(before); row == "" || strings.Contains(row, "\u2605") {
+		t.Fatalf("Results row before starring = %q, want the notes.md row present with no star marker\n%s", row, before)
+	}
+
+	m = press(t, m, keys.PickerStar.Keys()[0])
+
+	after := ansi.Strip(m.View().Content)
+	if row := resultRow(after); !strings.Contains(row, "\u2605") {
+		t.Errorf("Results row after starring the selected Result = %q, want it to carry the \"\u2605\" marker\n%s", row, after)
+	}
+
+	// Un-starring clears the marker in the same frame, matching S2's "marker
+	// cleared" wording literally now that there is a rendered marker to clear.
+	m = press(t, m, keys.PickerStar.Keys()[0])
+	cleared := ansi.Strip(m.View().Content)
+	if row := resultRow(cleared); strings.Contains(row, "\u2605") {
+		t.Errorf("Results row after un-starring = %q, want the star marker gone\n%s", row, cleared)
+	}
+}
+
 // switchPickerModeForTest flips to Grep mode without going through
 // queuePickerSearch's debounce/Cmd plumbing (irrelevant here — the test
 // installs m.picker.results directly), the same shortcut
