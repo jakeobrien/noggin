@@ -17,27 +17,24 @@
 
 ## Cursor
 
-Current task: M3.2
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Validated (fresh-context subagent, this session): M2.1–M2.9 and M3.1, all unvalidated
-since their build sessions. `make check` green; `make check-pty` shows only the
-pre-existing T11 failures, nothing new. All nine M2 tasks PASS against their PLAN.md
-criteria with real, independently-re-run tests (no overclaims found). M3.1 PASSes its own
-PLAN.md wording, but the subagent independently confirmed TRIAGE T12 (SPEC S4/GLOSSARY's
-Activate definition covers Picker commits too; picker.go's activatePickerInto/
-activateGrepPickerInto never call recordViewed — model.go:278-283,468,994 vs
-picker.go:579-603,699-717). Not a new finding (T12 was already open from prior review) and
-not an M3.1 overclaim since PLAN's own criterion never mentioned the Picker — left T12 as-is
-for charm-replan, did not touch PLAN.md. Stamped Validated=2026-08-11 for M2.1-M2.9, M3.1 in
-the Status table. No new TRIAGE entries needed. Next: **M3.2** — record lastViewed regardless
-of Root provenance (ad-hoc/absent Roots); depends on M3.1, which is done and now validated.
-When M3.2 lands, consider whether T12's fix belongs alongside it (both touch recordViewed
-call sites) — a call for charm-replan, not decided here.
+M3.2 done: added `TestActivateRecordsLastViewedRegardlessOfRootProvenance`
+(recency_provenance_test.go) covering S4's two remaining provenance cases — an ad-hoc
+(unstarred, in-session) Root and a Root absent from the session entirely (m.files.root set
+directly, m.roots holding an unrelated entry). No production code change needed:
+recordViewed/docRecord/withDocRecord were already plain path-keyed writes with no Root
+attachment (D61, built in M3.1), so this closes the gap between M3.1's narrower own test
+coverage and S4's full wording rather than fixing a bug. `make check` green. M3 milestone is
+now all `done`, unreviewed/unvalidated — a milestone boundary. Next: **M4.1** (Files Nav
+browse modes), but first consider `charm-validate`/code-review for M3.1-M3.2 per
+cycle-state's milestone-complete rule; TRIAGE T12 (Picker never calls recordViewed) remains
+open and directly touches this same area — still a call for charm-replan, not decided here.
 
 ## Status
 
@@ -58,7 +55,7 @@ call sites) — a call for charm-replan, not decided here.
 | M2.8 | done   | 2026-08-11 | 2026-08-11 | replan: star-binding discoverability, TRIAGE T5/T6 |
 | M2.9 | done   | 2026-08-11 | 2026-08-11 | replan: naming cleanup, TRIAGE T1/T2/T9  |
 | M3.1 | done   | 2026-08-11 | 2026-08-11 | SPEC/GLOSSARY-level gap re: Picker Activate not recording lastViewed — tracked as TRIAGE T12, not a M3.1 overclaim |
-| M3.2 | todo   | -        | -         |                                          |
+| M3.2 | done   | -        | -         |                                          |
 | M4.1 | todo   | -        | -         |                                          |
 | M4.2 | todo   | -        | -         |                                          |
 | M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |
