@@ -1024,9 +1024,10 @@ check("M5.3 exits 0 after a help round-trip", code == 0, f"exit {code}")
 # Opens over the Document Viewer too, with the viewer's own context (search
 # keys plus M2.8's star, not Files/Roots-only ones like expand), proving
 # "any pane" rather than one.
-# Height 36, not 24 (TRIAGE T17): helpBindings(dv1Pane)'s list renders a
-# 33-row box (8 scrollActions + 20 explicit bindings, incl. M2.8's star +
-# title/blank + border), taller than the Files-pane block's own 29-row box
+# Height 38, not 24 (TRIAGE T17; widened again for C4/M6.3, TRIAGE T41):
+# helpBindings(dv1Pane)'s list renders a 35-row box (8 scrollActions + 22
+# explicit bindings, incl. M2.8's star and M6.3's HistoryBack/HistoryForward
+# + title/blank + border), taller than the Files-pane block's own 29-row box
 # above and taller than a 24-row terminal fits. A 24-row session let this
 # block pass only by luck — Find/FindNext/FindPrevious sit near the top of
 # the list and expand was never in it at all — silently exercising a
@@ -1034,14 +1035,14 @@ check("M5.3 exits 0 after a help round-trip", code == 0, f"exit {code}")
 # binding added ahead of those three could push an assertion past the clamp
 # with no failure to signal it. Widened the same way the Files-pane block already
 # was, plus the same top/footer-unchanged assertions that block already has.
-s = Session([BINARY, FIXTURE], 80, 36)
+s = Session([BINARY, FIXTURE], 80, 38)
 s.pump(1.2)
-viewer_before = screen_of(s.out, 80, 36)
+viewer_before = screen_of(s.out, 80, 38)
 viewer_top_before = viewer_before.raw_lines()[0]
 viewer_footer_before = viewer_before.raw_lines()[-1]
 
 s.send(KEY["Help"], 0.5)
-viewer_opened = screen_of(s.out, 80, 36)
+viewer_opened = screen_of(s.out, 80, 38)
 viewer_help = "\n".join(viewer_opened.raw_lines())
 check("M5.3 opened from the viewer, the modal names the Document context",
       "Help: Document" in viewer_help, repr(viewer_help[:200]))

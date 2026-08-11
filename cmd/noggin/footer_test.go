@@ -235,6 +235,32 @@ func TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane(t *testing.T) {
 	}
 }
 
+// TestPaneHintsNameHistoryBackAndForwardOnlyInViewerPanes checks S9's
+// per-viewer back/forward walk keys (C4/M6.1) against the footer, mirroring
+// TestPaneHintsNamePeekOnlyInFilesPane's shape: dv1Pane's and dv2Pane's
+// hints name them, but rootsPane's and filesPane's — which have no history
+// of their own to walk — do not.
+func TestPaneHintsNameHistoryBackAndForwardOnlyInViewerPanes(t *testing.T) {
+	for _, p := range []pane{dv1Pane, dv2Pane} {
+		text := hintText(p, 200)
+		if !strings.Contains(text, "back") {
+			t.Errorf("pane %v hint text = %q, want it to contain %q", p, text, "back")
+		}
+		if !strings.Contains(text, "forward") {
+			t.Errorf("pane %v hint text = %q, want it to contain %q", p, text, "forward")
+		}
+	}
+	for _, p := range []pane{rootsPane, filesPane} {
+		text := hintText(p, 200)
+		if strings.Contains(text, "back") {
+			t.Errorf("pane %v: hint text = %q, unexpectedly names back (viewer-only)", p, text)
+		}
+		if strings.Contains(text, "forward") {
+			t.Errorf("pane %v: hint text = %q, unexpectedly names forward (viewer-only)", p, text)
+		}
+	}
+}
+
 // TestPickerHintTextNamesToggleHidden checks S4/M6.2's dotfile toggle is
 // named among the open Picker's footer hints (pickerHints), the same
 // always-does-something-while-open reasoning PickerMode/PickerScope already

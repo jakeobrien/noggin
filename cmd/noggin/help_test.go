@@ -40,9 +40,9 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 		want    []string
 		wantNot []string
 	}{
-		{rootsPane, []string{"star", "up", "down"}, []string{"expand", "collapse", "next match"}},
-		{filesPane, []string{"expand", "collapse", "star"}, []string{"next match"}},
-		{dv1Pane, []string{"page up", "next match", "prev match", "cancel", "star"}, []string{"expand"}},
+		{rootsPane, []string{"star", "up", "down"}, []string{"expand", "collapse", "next match", "back", "forward"}},
+		{filesPane, []string{"expand", "collapse", "star"}, []string{"next match", "back", "forward"}},
+		{dv1Pane, []string{"page up", "next match", "prev match", "cancel", "star", "back", "forward"}, []string{"expand"}},
 	}
 	for _, c := range cases {
 		box := helpBox(c.pane)

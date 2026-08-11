@@ -17,41 +17,33 @@
 
 ## Cursor
 
-Current task: M6.3
+Current task: M6.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M5.2 built: deleted the dead `grepFiles` (TRIAGE T42/D94) — `pickerSearchCmd` already resolved
-`files` itself (`starredPickerFiles`/`listFiles`) and called `grepPickerFiles(files, query)`
-directly, so `grepFiles` (the old roots-based wrapper) had no remaining production caller,
-only `files_search_test.go`'s pre-existing tests; its own doc comment's claim that
-`pickerSearchCmd` was a caller was already factually wrong. Removed the function; merged its
-still-true documentation (literal/smart-case search semantics, why searching listFiles' exact
-file list keeps grep and the File Picker's view of Scope in agreement, the batching/cap
-contract) into `grepPickerFiles`'s own doc comment, which is now the sole entry point.
-Updated every stale `grepFiles` mention in production comments (picker.go, files_search.go's
-`grepArgMaxBytes`/`batchFilePaths`/`grepBatch`/`rgJSONMessage` comments) to name
-`grepPickerFiles`/`grepBatch` instead; two comments narrating the pre-M5.1 historical design
-(`grepArgMaxBytes`'s TRIAGE T1/D43 origin, and a one-line note that a roots-based wrapper once
-sat in front of `grepPickerFiles`) deliberately keep the old name in explicit past tense —
-they are not stale claims, they are the history D94 itself records.
+M6.3 built: added `keys.HistoryBack`/`keys.HistoryForward` (S9's `[`/`]` back/forward walk,
+C4/M6.1) to the viewer case in both discoverability surfaces, mirroring M2.8's/M4.8's
+precedent. `footer.go`'s `paneHints` default case (dv1Pane/dv2Pane) now lists them right after
+`keys.Star`; `help.go`'s `helpBindings` default case lists them right after `keys.Star` too,
+ahead of Edit/Navigator/Picker. Their Help() text (`back`/`forward`) collides with nothing
+already listed, unlike PickerStar or FilesMode/FilesScope, so no identity-based test was
+needed (a plain string check suffices). Added `TestPaneHintsNameHistoryBackAndForwardOnly-
+InViewerPanes` (footer_test.go, mirrors `TestPaneHintsNamePeekOnlyInFilesPane`'s shape) and
+extended `TestHelpModalListsThePaneOwnBindings`'s dv1Pane case with "back"/"forward" in `want`
+and added them to rootsPane's/filesPane's `wantNot` (help_test.go).
 
-Repointed files_search_test.go's nine former `grepFiles(...)` call sites at
-`grepPickerFiles(listFiles(roots, 0, activeRootScope, hideDotfiles), query)` directly (no new
-wrapper helper, matching D94's own "not even a thin wrapper" spirit) and renamed every
-`TestGrepFiles*` function to `TestGrepPickerFiles*` for consistency with the function each
-actually exercises (mirroring earlier cycles' naming-cleanup precedent, e.g. M2.9). Also
-renamed `picker_test.go`'s `TestPickerGrepModeWiresToGrepFilesAndRendersRows` and fixed two
-more stray doc-comment mentions there. `grepFiles` now has zero symbol references anywhere
-(`grep -n "\bgrepFiles\b"` only matches the two intentional past-tense historical mentions
-above). All nine repointed/renamed tests plus the full suite pass; `make check` and
-`make check-pty` both green.
+Growing the viewer's Help Modal binding list by two pushed `test/pty/checks.py`'s M5.3
+viewer-context block (previously widened to height 36 for TRIAGE T17) past its margin: the
+modal's box grew from 33 to 35 rows, leaving no room for the centered modal to clear row 0,
+failing "the top border is unchanged outside the modal". Widened that Session to height 38
+and updated its comment's row-count math accordingly — same fix shape as T17's own history.
 
-Cursor moves to M6.3 (HistoryBack/HistoryForward Footer/Help discoverability, TRIAGE T41),
-next in the cleanup queue this session's earlier replan sequenced ahead of M7.
+`make check` and `make check-pty` both green.
+
+Cursor moves to M6.4 (D91 re-Activate scroll-preserve regression test, TRIAGE T43).
 
 ## Status
 
@@ -99,7 +91,7 @@ next in the cleanup queue this session's earlier replan sequenced ahead of M7.
 | M6.2 | done   | 2026-08-11 | -         | pre-agreed cut 2, not actually cut (D91); review found untested re-Activate scroll-preserve behavior, TRIAGE T43 |
 | M4.15 | done  | -        | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
 | M5.2 | done   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
-| M6.3 | todo   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41 |
+| M6.3 | done   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41; check-pty M5.3 viewer-block height widened 36→38 |
 | M6.4 | todo   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43 |
 | M7.1 | todo   | -        | -         |                                          |
 | M7.2 | todo   | -        | -         |                                          |

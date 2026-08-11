@@ -74,6 +74,15 @@ import (
 // above on those) — a real duplicate line, not a bug: the two pairs are
 // never reachable at the same time (Picker closed vs. open), so the modal
 // simply documents both contexts' "tab cycles mode" shape once each.
+//
+// keys.HistoryBack/keys.HistoryForward (C4/M6.1) join the viewer case below
+// (M6.3, TRIAGE T41), for the identical viewer-only reason as the rest of
+// this func's viewer-specific additions: S9's per-viewer back/forward walk
+// has no discoverability surface but this modal and paneHints' matching
+// addition (footer.go). Their Help() text ("["/"back", "]"/"forward")
+// collides with nothing else already listed here, unlike keys.PickerStar
+// (this func's own comment above) or keys.FilesMode/keys.FilesScope, so a
+// plain string check is enough to pin their presence.
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
@@ -100,7 +109,7 @@ func helpBindings(p pane) []key.Binding {
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
-			keys.Star, keys.Edit, keys.Navigator, keys.Picker,
+			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,

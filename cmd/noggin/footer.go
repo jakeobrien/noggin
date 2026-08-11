@@ -45,6 +45,13 @@ import (
 // footer hint anywhere. Files-Nav-only by design, like Peek/ActivateDV2/
 // PeekDV2 below, so they appear only in this case, placed right after
 // Expand/Collapse — the pane's other own browsing actions — and before Star.
+//
+// keys.HistoryBack/keys.HistoryForward (C4/M6.1) join the viewer case below
+// (M6.3, TRIAGE T41), mirroring M2.8's and M4.8's precedent above: S9's
+// per-viewer back/forward walk had no footer hint anywhere. Viewer-only by
+// design (DV1/DV2 each walk their own history; Roots Nav and Files Nav have
+// none), so they appear only in the default case, placed right after Star —
+// the pane's other own document action — and before Edit.
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
@@ -56,7 +63,7 @@ func paneHints(p pane) []key.Binding {
 		// once a search is active, and a hint for an inapplicable binding is
 		// worse than no hint (S12's help modal, M5.3, lists the full keymap
 		// regardless — that is the discoverability backstop for these).
-		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Star, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
+		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
 	}
 }
 
