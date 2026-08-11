@@ -75,9 +75,18 @@ func TestPeekShowsSelectedDocumentWithoutChangingActiveDocumentOrFocus(t *testin
 // TestPeekHeaderIsInvertedFromTheActiveDocuments checks S7's "inverted
 // header" requirement is a real, distinct style from the plain title the
 // Active Document's own view already uses — not just different text.
+//
+// The expected rows are built through titleRow, the same helper renderPane
+// itself calls (M7.1), rather than the bare title text: DV1's title row now
+// carries a right-aligned focus-key badge ("[o]") the raw title alone does
+// not, so comparing against an un-badged render would never match.
 func TestPeekHeaderIsInvertedFromTheActiveDocuments(t *testing.T) {
 	m, _, _ := peekFixture(t)
-	plainViewerTitle := titleStyle.Render(m.paneTitle(dv1Pane)) // "Document: active.md", not inverted
+	l := computeLayout(m.width, m.height, m.navigatorHidden, m.stale)
+	dv1Rect, _ := l.splitViewer(m.dv2 != nil)
+	width := dv1Rect.content().width
+
+	plainViewerTitle := titleStyle.Render(titleRow(m.paneTitle(dv1Pane), dv1Pane.focusBadge(), width)) // "Document: active.md ... [o]", not inverted
 	if !strings.Contains(m.View().Content, plainViewerTitle) {
 		t.Fatalf("setup: Active Document's own (non-inverted) title not found before Peeking")
 	}
@@ -85,7 +94,8 @@ func TestPeekHeaderIsInvertedFromTheActiveDocuments(t *testing.T) {
 	m = press(t, m, keys.Peek.Keys()[0])
 	after := m.View().Content
 
-	if !strings.Contains(after, peekTitleStyle.Render("Peek: peeked.md")) {
+	peekTitle := peekTitleStyle.Render(titleRow(m.paneTitle(dv1Pane), dv1Pane.focusBadge(), width)) // "Peek: peeked.md ... [o]", inverted
+	if !strings.Contains(after, peekTitle) {
 		t.Errorf("Peek header not rendered in peekTitleStyle; view = %q", after)
 	}
 	if strings.Contains(after, plainViewerTitle) {

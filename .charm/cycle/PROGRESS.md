@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M7.1
+Current task: M7.2
 
 ## Handoff
 
@@ -43,15 +43,31 @@ and updated its comment's row-count math accordingly — same fix shape as T17's
 
 `make check` and `make check-pty` both green.
 
-M6.4 built: added `TestReActivatingTheAlreadyActiveDocumentPreservesScrollPosition`
-(history_scroll_test.go, mirrors the file's existing style) covering D91's flagged-but-
-untested side effect — re-Activating the document already open in DV1, with no navigation in
-between, preserves its scroll offset instead of resetting to top. Confirmed the mechanism
-(`viewer.open()`'s bank-then-restore via `docOffsets`, D91) already behaves correctly; this
-was a coverage gap, not a bug, so no production code changed. `make check` and
-`make check-pty` both green.
+M7.1 built: each pane's title row (`model.go`'s `renderPane`) now carries its own
+right-aligned focus-key badge — `pane.focusKey()` maps rootsPane/filesPane/dv1Pane/dv2Pane to
+keys.FocusRoots/FocusFiles/FocusDV1/FocusDV2, `pane.focusBadge()` brackets the primary key and
+compacts "ctrl+" to "^" (so FocusDV2 reads `[^o]`, not the much wider `[ctrl+o]`), and the new
+`titleRow(title, badge, width)` helper right-aligns the badge against the title within the
+pane's interior width, dropping the badge (never the title) when they don't both fit.
+renderPane now builds its styled title via `titleRenderStyle.Render(titleRow(...))` instead of
+`titleRenderStyle.Render(m.paneTitle(p))` directly — Peek's inverted header (S7) still applies
+to the whole row unchanged, since titleRow's output is one string passed through the same
+Render call. DV2's badge only ever renders when DV2 exists (renderPane is only called on
+dv2Pane inside the existing `m.dv2 != nil` branch) — no extra guard needed.
 
-Cursor moves to M7.1 (pane focus badges, first task of the last milestone, M7).
+Updated `TestPeekHeaderIsInvertedFromTheActiveDocuments` (peek_test.go), which had built its
+expected plain/inverted title strings from the bare title text — now stale since the title row
+carries a badge — to build them through `titleRow` instead, preserving the original style-
+inversion assertion rather than weakening it. Added `focus_badge_test.go`: an integration test
+rendering the full frame at 80x24 with DV2 open, Focus parked on filesPane, checking all four
+badges appear on the right rows including three unfocused panes; a `renderPane`-level test
+pinning the exact-fit-vs-one-column-short boundary (rootsPane: title 5 + separator 1 + badge 3
+= 9 interior columns) confirming the badge (not the title) drops; and a direct `titleRow` unit
+test pinning the same boundary. `make check` and `make check-pty` both green (check-pty's
+existing screens already show the new badges verbatim in PASS output, confirming no unrelated
+screen regressed). code-reviewer pass found only a doc-comment nit (fixed).
+
+Cursor moves to M7.2 (remove the Footer's focus-key hints, now redundant with the badges).
 
 ## Status
 
@@ -101,5 +117,5 @@ Cursor moves to M7.1 (pane focus badges, first task of the last milestone, M7).
 | M5.2 | done   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
 | M6.3 | done   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41; check-pty M5.3 viewer-block height widened 36→38 |
 | M6.4 | done   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43; confirmed no bug, coverage gap only |
-| M7.1 | todo   | -        | -         |                                          |
+| M7.1 | done   | 2026-08-11 | -         |                                        |
 | M7.2 | todo   | -        | -         |                                          |

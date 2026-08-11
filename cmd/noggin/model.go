@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -49,6 +50,35 @@ func (p pane) title() string {
 	default: // dv1Pane, dv2Pane
 		return "Document"
 	}
+}
+
+// focusKey is the key.Binding that jumps Focus straight to p (S5/S10,
+// M7.1) — FocusRoots/FocusFiles/FocusDV1/FocusDV2, the same four bindings
+// keymap.go already defines and the Footer used to hint directly (M7.2
+// removes that hint list; the badge replaces it on the pane itself).
+func (p pane) focusKey() key.Binding {
+	switch p {
+	case rootsPane:
+		return keys.FocusRoots
+	case filesPane:
+		return keys.FocusFiles
+	case dv2Pane:
+		return keys.FocusDV2
+	default: // dv1Pane
+		return keys.FocusDV1
+	}
+}
+
+// focusBadge is p's title-row badge (S10, M7.1): its focusKey's primary key,
+// bracketed, with lipgloss's own "ctrl+" spelling compacted to the terminal
+// convention "^" so `ctrl+o` reads as the four-character `[^o]` the
+// acceptance criterion asks for, not the much wider `[ctrl+o]` — matching
+// how every other badge (`[r]`, `[f]`, `[o]`) already fits comfortably
+// beside a title. Derived from p.focusKey() rather than a literal so it
+// tracks the binding if it is ever rebound.
+func (p pane) focusBadge() string {
+	k := strings.ReplaceAll(p.focusKey().Keys()[0], "ctrl+", "^")
+	return "[" + k + "]"
 }
 
 // model is the root Bubble Tea model: the frame (Navigator column, Document
@@ -1623,7 +1653,23 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	if (p == dv1Pane || p == dv2Pane) && m.viewerFor(p).peeking() {
 		titleRenderStyle = peekTitleStyle
 	}
-	return renderBox(style, r, titleRenderStyle.Render(m.paneTitle(p)), content)
+	return renderBox(style, r, titleRenderStyle.Render(titleRow(m.paneTitle(p), p.focusBadge(), r.content().width)), content)
+}
+
+// titleRow lays out a pane's title row: the title on the left, its focus-key
+// badge (S10, M7.1) right-aligned against it, both within the pane's
+// interior width — the same content width r.content() already computes for
+// the row beneath. The badge is dropped, not the title, when width is too
+// tight for both plus the one column of separation between them; a
+// too-narrow title is left for the surrounding box's own Width-driven
+// truncation to handle, as it always has.
+func titleRow(title, badge string, width int) string {
+	titleWidth := lipgloss.Width(title)
+	badgeWidth := lipgloss.Width(badge)
+	if width <= 0 || titleWidth+1+badgeWidth > width {
+		return title
+	}
+	return title + strings.Repeat(" ", width-titleWidth-badgeWidth) + badge
 }
 
 // paneTitle is a pane's heading: its name, plus what it is currently showing
