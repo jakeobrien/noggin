@@ -71,11 +71,11 @@ the whole document store rather than a set of Roots. Grep-side Starred is pre-ag
 | M4.4 | done   | 2026-08-12 | -       | render test walks all six mode/scope combos; TRIAGE T22 |
 | M4.5 | done   | 2026-08-12 | -       | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21; review: T23, T24, T25 |
 | M4.6 | done   | 2026-08-12 | -       | review found selection-index restore gap, TRIAGE T23                |
-| M4.7 | done   | -        | -         | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled |
-| M4.8 | done   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
-| M4.9 | done   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
-| M4.10 | done  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
-| M4.11 | done  | -        | -         | replan: comment-literal and citation fixes, TRIAGE T27/T28 |
+| M4.7 | done   | 2026-08-12 | -       | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled; review: T37 |
+| M4.8 | done   | 2026-08-12 | -       | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81); review: T32/T33 |
+| M4.9 | done   | 2026-08-12 | -       | replan: Tree's own empty-vs-no-Root message, TRIAGE T22; review: T34  |
+| M4.10 | done  | 2026-08-12 | -       | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83); review: T36 |
+| M4.11 | done  | 2026-08-12 | -       | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
