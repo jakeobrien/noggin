@@ -24,17 +24,20 @@ Current task: M3.2
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.9 done — naming cleanup, no behavior change. Renamed
-TestLoadStarredRootsNoConfigDir→TestLoadStarredRootsNoDataDir (store_test.go),
-evictDocStore's `cap` parameter→`limit` (docstore.go, both the signature and its two
-internal comparisons, plus the doc comment), and toggleStarPicker→togglePickerStar
-(picker.go's definition/call site, plus comment references in files_star_sync_test.go and
-model.go). Left docstore_test.go's own test names/prose (TestEvictDocStoreNoopUnderCap etc.,
-"cap 3" in comments) alone — they refer to the still-unrenamed docStoreCap constant/concept,
-not the renamed parameter, and the plan didn't ask for them. `make check` green; `make
-check-pty` shows only the pre-existing, unrelated T11 (git-status marker column) failures.
-Next: **M3.2** — record lastViewed regardless of Root provenance (ad-hoc/absent Roots);
-depends on M3.1, which is done.
+Validated (fresh-context subagent, this session): M2.1–M2.9 and M3.1, all unvalidated
+since their build sessions. `make check` green; `make check-pty` shows only the
+pre-existing T11 failures, nothing new. All nine M2 tasks PASS against their PLAN.md
+criteria with real, independently-re-run tests (no overclaims found). M3.1 PASSes its own
+PLAN.md wording, but the subagent independently confirmed TRIAGE T12 (SPEC S4/GLOSSARY's
+Activate definition covers Picker commits too; picker.go's activatePickerInto/
+activateGrepPickerInto never call recordViewed — model.go:278-283,468,994 vs
+picker.go:579-603,699-717). Not a new finding (T12 was already open from prior review) and
+not an M3.1 overclaim since PLAN's own criterion never mentioned the Picker — left T12 as-is
+for charm-replan, did not touch PLAN.md. Stamped Validated=2026-08-11 for M2.1-M2.9, M3.1 in
+the Status table. No new TRIAGE entries needed. Next: **M3.2** — record lastViewed regardless
+of Root provenance (ad-hoc/absent Roots); depends on M3.1, which is done and now validated.
+When M3.2 lands, consider whether T12's fix belongs alongside it (both touch recordViewed
+call sites) — a call for charm-replan, not decided here.
 
 ## Status
 
@@ -44,17 +47,17 @@ depends on M3.1, which is done.
 | M1.2 | done   | 2026-08-10 | 2026-08-10 |                                       |
 | M1.3 | done   | 2026-08-10 | 2026-08-10 |                                       |
 | M1.4 | done   | 2026-08-10 | 2026-08-10 |                                       |
-| M2.1 | done   | 2026-08-10 | -         |                                          |
-| M2.2 | done   | 2026-08-10 | -         |                                          |
-| M2.3 | done   | 2026-08-10 | -         |                                          |
-| M2.4 | done   | 2026-08-10 | -         |                                          |
-| M2.5 | done   | 2026-08-10 | -         | pre-agreed cut 1                         |
-| M2.6 | done   | 2026-08-10 | -         |                                          |
-| M1.1a | done  | -        | -         | replan: pty harness fix, TRIAGE T4 (D71) |
-| M2.7 | done   | -        | -         | replan: stale marker fix, TRIAGE T7 (D70) |
-| M2.8 | done   | -        | -         | replan: star-binding discoverability, TRIAGE T5/T6 |
-| M2.9 | done   | -        | -         | replan: naming cleanup, TRIAGE T1/T2/T9  |
-| M3.1 | done   | -        | -         |                                          |
+| M2.1 | done   | 2026-08-10 | 2026-08-11 |                                      |
+| M2.2 | done   | 2026-08-10 | 2026-08-11 |                                      |
+| M2.3 | done   | 2026-08-10 | 2026-08-11 |                                      |
+| M2.4 | done   | 2026-08-10 | 2026-08-11 |                                      |
+| M2.5 | done   | 2026-08-10 | 2026-08-11 | pre-agreed cut 1, not actually cut   |
+| M2.6 | done   | 2026-08-10 | 2026-08-11 |                                      |
+| M1.1a | done  | 2026-08-11 | -       | replan: pty harness fix, TRIAGE T4 (D71) |
+| M2.7 | done   | 2026-08-11 | 2026-08-11 | replan: stale marker fix, TRIAGE T7 (D70) |
+| M2.8 | done   | 2026-08-11 | 2026-08-11 | replan: star-binding discoverability, TRIAGE T5/T6 |
+| M2.9 | done   | 2026-08-11 | 2026-08-11 | replan: naming cleanup, TRIAGE T1/T2/T9  |
+| M3.1 | done   | 2026-08-11 | 2026-08-11 | SPEC/GLOSSARY-level gap re: Picker Activate not recording lastViewed — tracked as TRIAGE T12, not a M3.1 overclaim |
 | M3.2 | todo   | -        | -         |                                          |
 | M4.1 | todo   | -        | -         |                                          |
 | M4.2 | todo   | -        | -         |                                          |
