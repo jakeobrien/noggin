@@ -17,9 +17,11 @@ import (
 type keyMap struct {
 	Quit key.Binding
 
-	// Roots Nav actions (S3): selection moves with the shared LineUp/LineDown
-	// bindings; Star toggles the selected root's starred mark, persisted via
-	// the S2 store. Activate (below) also opens the selected root.
+	// Star toggles the selected item's starred mark, persisted via the S1/S2
+	// document (or Roots) store: the Roots Nav's selected root, the Files
+	// Nav's selected file, or a focused Document Viewer's Active Document
+	// (C4/M2.1, M2.2, M2.8). Roots Nav selection moves with the shared
+	// LineUp/LineDown bindings; Activate (below) also opens the selected root.
 	Star key.Binding
 
 	// Files Nav folder control (S5): open and close a folder in place.

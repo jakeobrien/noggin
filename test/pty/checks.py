@@ -460,7 +460,7 @@ check("M3.3 exits 0 after browsing and starring roots", code == 0, f"exit {code}
 
 # Hardens what was, through M3.2, an ad-hoc script: star an ad-hoc root in one
 # process, exit, then start a second, independent process against the same
-# isolated $HOME/$XDG_CONFIG_HOME and confirm the star is still there. Two
+# isolated $HOME/$XDG_DATA_HOME and confirm the star is still there. Two
 # real OS processes, not two Sessions against one running binary, is the
 # point — it is the only way to actually exercise "survives a restart".
 persist_home = tempfile.mkdtemp()

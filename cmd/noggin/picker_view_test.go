@@ -169,8 +169,12 @@ func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
 
 	joined := strings.Join(plainLines(m.View().Content), "\n")
 	resultsWidth := computePickerLayout(80, 24).results.content().width
-	wantA := pickerRootLabel(pickerFile{root: root{path: rootA}, path: fileA}, resultsWidth, "  report.md") + "  report.md"
-	wantB := pickerRootLabel(pickerFile{root: root{path: rootB}, path: fileB}, resultsWidth, "  report.md") + "  report.md"
+	// contentWidth mirrors pickerFileRow's own budget math: 2 columns are
+	// reserved for the (here, unstarred) star marker (D72) before the Root
+	// label's own truncation budget is computed.
+	contentWidth := resultsWidth - 2
+	wantA := "  " + pickerRootLabel(pickerFile{root: root{path: rootA}, path: fileA}, contentWidth, "  report.md") + "  report.md"
+	wantB := "  " + pickerRootLabel(pickerFile{root: root{path: rootB}, path: fileB}, contentWidth, "  report.md") + "  report.md"
 	if wantA == wantB {
 		t.Fatal("test fixture produced identical rows; setup is broken")
 	}
@@ -277,24 +281,86 @@ func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
 		root: root{path: "/home/user/work/admin/project"},
 		path: "/home/user/work/admin/project/report.md",
 	}
-	const width = 23 // computePickerLayout(80, 24).results.content().width
+	const width = 23        // computePickerLayout(80, 24).results.content().width
+	const contentWidth = 21 // width minus the 2-column star marker field (D72)
 
-	wantLabel := "project  \u2026n/" // name(7) + gap(2) + leftTruncate(".../work/admin/", 3)
-	if got := pickerRootLabel(f, width, "  report.md"); got != wantLabel {
+	wantLabel := "project  \u2026" // name(7) + gap(2) + leftTruncate(".../work/admin/", 1)
+	if got := pickerRootLabel(f, contentWidth, "  report.md"); got != wantLabel {
 		t.Fatalf("pickerRootLabel() = %q, want %q", got, wantLabel)
 	}
 
-	wantRow := wantLabel + "  report.md"
+	wantRow := "  " + wantLabel + "  report.md" // "  " is the (unstarred) marker
 	// Empty query: this test pins the row's layout arithmetic, so it renders
 	// the row with no match highlighting (M6.1) in play — the exact-string
 	// comparison below is over plain text, and highlighting is pinned
 	// separately by TestPickerFileRowHighlightsMatchedNameCharacters.
-	got := pickerFileRow(f, "", width, false)
+	got := pickerFileRow(f, "", width, false, false)
 	if got != wantRow {
 		t.Errorf("pickerFileRow() = %q, want %q", got, wantRow)
 	}
 	if w := lipgloss.Width(got); w != width {
 		t.Errorf("pickerFileRow() rendered width = %d, want exactly %d (the Results content width) — the budget formula is leaving the parent segment short of what's actually available", w, width)
+	}
+}
+
+// TestPickerFileRowShowsStarMarkerForAStarredResult closes the S3/D72 gap
+// TRIAGE T8 found: S2/M2.5's own wording already talked about a Picker
+// Result's "star marker" being cleared, but no Picker row actually rendered
+// one. A starred Result's row now carries the same "\u2605 "/"  " two-column
+// field Files Nav and Roots Nav rows already use, prepended ahead of the
+// Root label rather than appended — the marker is styling-adjacent state,
+// not part of the disambiguating path text pickerRootLabel computes.
+func TestPickerFileRowShowsStarMarkerForAStarredResult(t *testing.T) {
+	f := pickerFile{root: root{path: "/home/user/notes"}, path: "/home/user/notes/report.md"}
+	const width = 40
+
+	starred := pickerFileRow(f, "", width, false, true)
+	unstarred := pickerFileRow(f, "", width, false, false)
+
+	if !strings.HasPrefix(starred, "\u2605 ") {
+		t.Errorf("starred pickerFileRow() = %q, want it to start with the \"\u2605 \" marker", starred)
+	}
+	if strings.Contains(unstarred, "\u2605") {
+		t.Errorf("unstarred pickerFileRow() = %q, want no star glyph", unstarred)
+	}
+	if !strings.HasPrefix(unstarred, "  ") {
+		t.Errorf("unstarred pickerFileRow() = %q, want it to start with two blank columns in the marker's place", unstarred)
+	}
+	// The marker occupies its own 2-column field — the rest of the row (Root
+	// label, path, file name) must be byte-identical whether starred or not,
+	// and both rows must still fill exactly width.
+	if got, want := strings.TrimPrefix(starred, "\u2605 "), strings.TrimPrefix(unstarred, "  "); got != want {
+		t.Errorf("starred/unstarred rows differ beyond the marker field:\n starred (marker stripped) = %q\nunstarred (marker stripped) = %q", got, want)
+	}
+	if w := lipgloss.Width(starred); w != width {
+		t.Errorf("starred pickerFileRow() width = %d, want %d", w, width)
+	}
+}
+
+// TestPickerGrepRowShowsStarMarkerForAStarredResult is
+// TestPickerFileRowShowsStarMarkerForAStarredResult's Grep Picker mirror
+// (S2 names "the selected Result" without restricting it to File mode, the
+// same reasoning TestPickerStarTogglesSelectedGrepResult already gives for
+// the toggle itself).
+func TestPickerGrepRowShowsStarMarkerForAStarredResult(t *testing.T) {
+	f := pickerFile{root: root{path: "/tmp/notes"}, path: "/tmp/notes/report.md"}
+	g := grepResult{file: f, line: 5, text: "the quarterly report is late"}
+	const width = 40
+
+	starred := pickerGrepRow(g, "", width, false, true)
+	unstarred := pickerGrepRow(g, "", width, false, false)
+
+	if !strings.HasPrefix(starred, "\u2605 ") {
+		t.Errorf("starred pickerGrepRow() = %q, want it to start with the \"\u2605 \" marker", starred)
+	}
+	if strings.Contains(unstarred, "\u2605") {
+		t.Errorf("unstarred pickerGrepRow() = %q, want no star glyph", unstarred)
+	}
+	if got, want := strings.TrimPrefix(starred, "\u2605 "), strings.TrimPrefix(unstarred, "  "); got != want {
+		t.Errorf("starred/unstarred rows differ beyond the marker field:\n starred (marker stripped) = %q\nunstarred (marker stripped) = %q", got, want)
+	}
+	if w := lipgloss.Width(starred); w != width {
+		t.Errorf("starred pickerGrepRow() width = %d, want %d", w, width)
 	}
 }
 
@@ -348,8 +414,8 @@ func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 	// joined is ANSI-stripped, and match highlighting (M6.2) is styling only
 	// — it never changes a row's characters, which is itself asserted by
 	// TestPickerGrepRowHighlightsTheQueryOccurrence.
-	wantA := pickerGrepRow(m.picker.results.grep[0], "", resultsWidth, false)
-	wantB := pickerGrepRow(m.picker.results.grep[1], "", resultsWidth, false)
+	wantA := pickerGrepRow(m.picker.results.grep[0], "", resultsWidth, false, false)
+	wantB := pickerGrepRow(m.picker.results.grep[1], "", resultsWidth, false, false)
 	if !strings.Contains(wantA, "report.md:3") || !strings.Contains(wantB, "notes.md:12") {
 		t.Fatalf("test fixture did not produce the expected file:line prefixes: %q, %q", wantA, wantB)
 	}
@@ -361,13 +427,14 @@ func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 	}
 
 	// wantC is hand-computed, not derived from pickerGrepRow: "short.md:1  hi"
-	// (14 runes) left-aligned and padded with spaces to resultsWidth (23 at
-	// this fixture's size) by styleRow's Width(resultsWidth), since 14 < 23
-	// means rightTruncate is a no-op and nothing needs truncating.
+	// (14 runes), prefixed by the (unstarred) 2-column star marker (D72) and
+	// padded with spaces to resultsWidth (23 at this fixture's size) by
+	// styleRow's Width(resultsWidth), since 14 < 21 (resultsWidth minus the
+	// marker) means rightTruncate is a no-op and nothing needs truncating.
 	if resultsWidth != 23 {
 		t.Fatalf("computePickerLayout(80, 24).results.content().width = %d, want 23 — wantC below is hand-computed for exactly that width", resultsWidth)
 	}
-	wantC := "short.md:1  hi" + strings.Repeat(" ", resultsWidth-len("short.md:1  hi"))
+	wantC := "  " + "short.md:1  hi" + strings.Repeat(" ", resultsWidth-2-len("short.md:1  hi"))
 	if !strings.Contains(joined, wantC) {
 		t.Errorf("rendered modal is missing %q (short.md's match line text \"hi\", hand-computed independently of pickerGrepRow)\n%s", wantC, joined)
 	}
@@ -389,7 +456,7 @@ func TestPickerGrepRowTruncatesLongLinesWithoutWrapping(t *testing.T) {
 	// Empty query: this pins the row's truncation layout, with no match
 	// highlighting in play (M6.2 covers a truncated row's highlight in
 	// TestPickerGrepRowHighlightsTheQueryOccurrence).
-	got := pickerGrepRow(g, "", width, false)
+	got := pickerGrepRow(g, "", width, false, false)
 
 	if lines := strings.Split(got, "\n"); len(lines) != 1 {
 		t.Fatalf("pickerGrepRow() produced %d lines, want exactly 1 (truncated, not wrapped):\n%q", len(lines), got)
@@ -611,12 +678,12 @@ func TestPickerFileRowHighlightsMatchedNameCharacters(t *testing.T) {
 	const width = 40
 	const name = "report.md"
 
-	got := pickerFileRow(f, "rpt", width, false)
+	got := pickerFileRow(f, "rpt", width, false, false)
 
 	// The highlight is styling only: the row's displayed characters must be
 	// exactly the unhighlighted row's.
 	plain := ansi.Strip(got)
-	if want := pickerFileRow(f, "", width, false); plain != want {
+	if want := pickerFileRow(f, "", width, false, false); plain != want {
 		t.Fatalf("highlighted row's plain text = %q, want %q (highlighting must not change the row's content or width)", plain, want)
 	}
 
@@ -654,7 +721,7 @@ func TestPickerFileRowHighlightKeepsSelectionBar(t *testing.T) {
 	}
 	const width = 40
 
-	got := pickerFileRow(f, "rpt", width, true)
+	got := pickerFileRow(f, "rpt", width, true, false)
 	cells := cellStyles(got)
 	if len(cells) != width {
 		t.Fatalf("selected row rendered %d cells, want %d", len(cells), width)
@@ -705,7 +772,7 @@ func columnRange(start, n int) []int {
 // case here also pins that the prefix is never emphasized.
 func TestPickerGrepRowHighlightsTheQueryOccurrence(t *testing.T) {
 	f := pickerFile{root: root{path: "/tmp/notes"}, path: "/tmp/notes/report.md"}
-	const prefix = 13 // "report.md:5  "
+	const prefix = 15 // marker(2, D72) + "report.md:5  "(13)
 
 	cases := []struct {
 		name     string
@@ -748,16 +815,18 @@ func TestPickerGrepRowHighlightsTheQueryOccurrence(t *testing.T) {
 			wantPlan: "rg reports the line once however often the query occurs in it",
 		},
 		{
-			// width 23 (the standard fixture's Results content width) means
-			// the row keeps 22 cells of text plus rightTruncate's ellipsis.
-			// The match starts at column 13+7=20 and runs to 25, so only
-			// columns 20 and 21 survive the cut — and the ellipsis at 22 is
-			// not part of the match.
+			// width 25 leaves a content width of 23 (25 minus the 2-column
+			// star marker, D72) — the same content budget this case pinned
+			// before the marker existed — so the row keeps 22 cells of text
+			// plus rightTruncate's ellipsis. The match starts at content
+			// column 13+7=20 and runs to 25, so only its first two
+			// characters survive the cut; shifted by the marker's own 2
+			// columns, that lands at absolute columns 22 and 23.
 			name:     "truncated row: only the visible part of the match",
 			text:     "xxxxxxxreport and more text past the cut",
 			query:    "report",
-			width:    23,
-			want:     []int{20, 21},
+			width:    25,
+			want:     []int{22, 23},
 			wantPlan: "the rest of the match was truncated away",
 		},
 		{
@@ -773,12 +842,12 @@ func TestPickerGrepRowHighlightsTheQueryOccurrence(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			g := grepResult{file: f, line: 5, text: c.text}
-			got := pickerGrepRow(g, c.query, c.width, false)
+			got := pickerGrepRow(g, c.query, c.width, false, false)
 
 			// Highlighting is styling only: the row's characters and width
 			// must be exactly the unhighlighted row's.
 			plain := ansi.Strip(got)
-			if want := pickerGrepRow(g, "", c.width, false); plain != want {
+			if want := pickerGrepRow(g, "", c.width, false, false); plain != want {
 				t.Fatalf("highlighted row's plain text = %q, want %q", plain, want)
 			}
 			if w := lipgloss.Width(got); w != c.width {
@@ -795,7 +864,7 @@ func TestPickerGrepRowHighlightsTheQueryOccurrence(t *testing.T) {
 	// TestPickerFileRowHighlightKeepsSelectionBar pins for file rows, now
 	// that both share highlightMatches.
 	g := grepResult{file: f, line: 5, text: "the quarterly report is late"}
-	selected := pickerGrepRow(g, "report", 60, true)
+	selected := pickerGrepRow(g, "report", 60, true, false)
 	for i, c := range cellStyles(selected) {
 		if !c.reverse {
 			t.Fatalf("cell %d of the selected grep row is not reversed\nrow: %q", i, selected)

@@ -3,7 +3,10 @@ package main
 import (
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 // TestPickerStarTogglesSelectedFileResult is M2.5's own acceptance
@@ -105,6 +108,60 @@ func TestPickerStarNoOpWithNothingSelected(t *testing.T) {
 	}
 	if len(m.docs) != 0 {
 		t.Errorf("docs after Picker star with nothing selected = %+v, want untouched", m.docs)
+	}
+}
+
+// TestPickerStarTogglingUpdatesTheRenderedMarkerLive is D72's resolution of
+// TRIAGE T8, end to end: unlike the Files Nav's own m.files.starred cache
+// (M2.7/D70, which needed an explicit resync when a star changed via a
+// different surface), the Picker's Results rows read the S1 store straight
+// off m.docs on every render (pickerResultsContent's own docs parameter),
+// so there is nothing to go stale — toggling PickerStar must show the
+// marker in the very next View(), with no separate refresh step.
+func TestPickerStarTogglingUpdatesTheRenderedMarkerLive(t *testing.T) {
+	dir := t.TempDir()
+	storePath := filepath.Join(dir, "documents")
+	path := writeFileContent(t, filepath.Join(dir, "report.md"), "report")
+
+	m := sized(t, newModel().withDocs(storePath, loadDocStore(storePath)), 80, 24).
+		withRipgrep(ripgrepAvailability{available: true})
+	m, _ = m.openPicker()
+	m.picker.input.SetValue("report")
+	m.picker.results = pickerResults{
+		query: "report",
+		mode:  fileMode,
+		scope: activeRootScope,
+		files: []pickerFile{{root: root{path: dir}, path: path}},
+	}
+	m.picker.selected = 0
+
+	resultRow := func(content string) string {
+		for _, l := range strings.Split(content, "\n") {
+			if strings.Contains(l, "report.md") {
+				return l
+			}
+		}
+		return ""
+	}
+
+	before := ansi.Strip(m.View().Content)
+	if row := resultRow(before); row == "" || strings.Contains(row, "\u2605") {
+		t.Fatalf("Results row before starring = %q, want the report.md row present with no star marker\n%s", row, before)
+	}
+
+	m = press(t, m, keys.PickerStar.Keys()[0])
+
+	after := ansi.Strip(m.View().Content)
+	if row := resultRow(after); !strings.Contains(row, "\u2605") {
+		t.Errorf("Results row after starring the selected Result = %q, want it to carry the \"\u2605\" marker\n%s", row, after)
+	}
+
+	// Un-starring clears the marker in the same frame, matching S2's "marker
+	// cleared" wording literally now that there is a rendered marker to clear.
+	m = press(t, m, keys.PickerStar.Keys()[0])
+	cleared := ansi.Strip(m.View().Content)
+	if row := resultRow(cleared); strings.Contains(row, "\u2605") {
+		t.Errorf("Results row after un-starring = %q, want the star marker gone\n%s", row, cleared)
 	}
 }
 

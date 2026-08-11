@@ -29,9 +29,10 @@ Status: agreed 2026-08-10
   cleared, since removing the row under the cursor mid-search is jumpier than it is worth.
 
 - **S3** — **Star is visible**: a star marker on Files Nav rows in every browse mode *except*
-  Starred (where membership already says it), and a star indicator to the left of the document
-  title in each Document Viewer's title row — so starring is legible even with the Navigator
-  hidden. A **broken starred document** (its path no longer exists) is still listed and still
+  Starred (where membership already says it), a star indicator to the left of the document
+  title in each Document Viewer's title row, and a star marker on Picker rows (File and Grep)
+  for a starred Result — so starring is legible even with the Navigator hidden, and while
+  picking. A **broken starred document** (its path no longer exists) is still listed and still
   marked, but cannot be activated — the same treatment a Broken Root gets. Broken stars are
   therefore only visible in a Starred list, never in a Tree.
 
@@ -121,7 +122,8 @@ Status: agreed 2026-08-10
   combination used there in that session.
 - The Recent list orders documents by when they were last Activated or edited, ignores Peeks,
   and does not lose entries when Roots are un-starred.
-- Starring is legible from the Document Viewer alone, with the Navigator hidden.
+- Starring is legible from the Document Viewer alone, with the Navigator hidden, and a
+  starred Result is visibly marked in both Picker modes.
 - Each Document Viewer walks its own back/forward history independently, lands at the scroll
   position last used in each document, and never changes the Active Root while doing so.
 - Every pane's focus key is readable off its own title row, and the Footer no longer carries

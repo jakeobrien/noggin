@@ -83,6 +83,18 @@ Delivers: S2, S3
   `toggleStarPicker` → `togglePickerStar`, for consistency with each area's own conventions
   — done when: `make check` is green with the new names and no reference to the old names
   remains — effort: 1 (needs: M1.1, M1.3, M2.5) — from TRIAGE T1, T2, T9.
+- **M2.10** — Update `make check-pty`'s C2a/M4.1 git-status-marker checks for the two-char
+  star-marker column M2.3 inserted between the status marker and the file name (row layout is
+  now status + star + name, so an unstarred modified file renders `"M   tracked.md"`, not
+  `"M tracked.md"`) — done when: `make check-pty` passes against the current row layout
+  without weakening what the checks verify — effort: 1 (needs: M2.3) — from TRIAGE T11.
+- **M2.11** — Add S3's third star-marker surface: a starred Result's row (File and Grep
+  Picker) shows the same `\u2605 `/`  ` marker Files Nav and Roots Nav rows already use, computed
+  live from the S1 document store on every render (no cache to go stale, unlike M2.7's Files
+  Nav marker) — done when: a render test shows the marker on a starred Result's row in both
+  Picker modes, absent on an unstarred Result's row with the rest of the row byte-identical,
+  and confirms toggling `PickerStar` shows/clears the marker in the same frame with no
+  separate refresh — effort: 2 (needs: M2.5) — from TRIAGE T8 (D72).
 
 ## M3 — Recency is recorded
 
@@ -96,6 +108,17 @@ Delivers: S4
   absent Roots all get timestamps — done when: a test Activates a document from an ad-hoc Root
   and one whose Root is not in the session at all, and both records persist — effort: 1
   (needs: M3.1)
+- **M3.3** — Record `lastViewed` when a document is Activated via the File or Grep Picker into
+  DV1 or DV2, not only via the Files Nav's own Activate — `activatePickerInto` and
+  `activateGrepPickerInto` currently call `openDocumentInto` directly, bypassing `activateInto`
+  and therefore `recordViewed` entirely — done when: a test Activates a File Picker Result and
+  a Grep Picker Result, into both DV1 and DV2, and confirms a timestamp lands in each case
+  — effort: 2 (needs: M3.1) — from TRIAGE T12 (D74).
+- **M3.4** — `recordViewed`'s store-write failure path must not silently overwrite a
+  just-set Activate/Edit success message with an unrelated store-save error — done when: a
+  test forces the store write to fail during an Activate or Edit and confirms the resulting
+  message reflects the store failure without discarding it as an untraceable overwrite —
+  effort: 1 (needs: M3.1) — from TRIAGE T13.
 
 ## M4 — Files Nav browse modes
 
@@ -112,7 +135,7 @@ Delivers: S5, S6, S7 (and S2's Starred-list removal clause)
   per Root; `All Roots` merges by timestamp with no further cap; records whose file is gone are
   silently omitted — done when: tests cover ordering by timestamp, the per-Root cap, the merged
   `All Roots` ordering, the two right-hand label forms, and omission of a deleted file
-  — effort: 3 (needs: M4.1, M3.1)
+  — effort: 3 (needs: M4.1, M3.1, M3.3)
 - **M4.3** — `Starred` mode lists across `Active Root` | `All Starred` | `Orphans`, where a
   broken starred document is listed and marked but cannot be Activated, and un-starring a
   displayed row removes it immediately — done when: tests confirm each scope's membership

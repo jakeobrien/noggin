@@ -249,16 +249,58 @@ func pickerRootLabel(f pickerFile, width int, rest string) string {
 // query is what the row was matched against, needed only to highlight the
 // matched characters of the file name (S5/M6.1) — an empty query renders
 // exactly the unhighlighted row M3.1 shipped.
-func pickerFileRow(f pickerFile, query string, width int, selected bool) string {
+// starred is S3/D72's Picker-side star marker: a starred Result renders the
+// same "\u2605 "/"  " two-column field Files Nav, Roots Nav and the Document
+// Viewer already use, computed live from the caller's docs lookup rather
+// than cached on picker itself (unlike M2.7's m.files.starred, there is
+// nothing here that needs syncing — every frame re-renders straight from
+// the S1 store). The marker is prepended to line, not to the already-
+// rendered row, and columns is shifted to match: line's own text stays
+// exactly what suffixColumns computed positions against, and
+// highlightMatches' self-contained-per-run styling (its own doc comment)
+// then covers the marker for free — a separately pre-styled marker would
+// introduce a mid-string reset that cancels a selected row's reverse video
+// from there on, the same nesting hazard that comment warns about.
+func pickerFileRow(f pickerFile, query string, width int, selected bool, starred bool) string {
+	marker := starMarker(starred)
+	contentWidth := max(width-lipgloss.Width(marker), 0)
 	rel, err := filepath.Rel(f.root.path, f.path)
 	if err != nil {
 		rel = f.path
 	}
 	suffix := "  " + rel
-	line := pickerRootLabel(f, width, suffix) + suffix
+	line := pickerRootLabel(f, contentWidth, suffix) + suffix
 	name := filepath.Base(f.path)
 	columns := suffixColumns(line, name, fileNameMatchPositions(name, query))
-	return styleRow(highlightMatches(line, columns, selected), width, selected)
+	full, shifted := prependMarker(marker, line, columns)
+	return styleRow(highlightMatches(full, shifted, selected), width, selected)
+}
+
+// starMarker returns the two-column starred-state field shared by every
+// star-marking surface (files.go, rootsnav.go, model.go's Document Viewer
+// title, and now Picker rows, S3/D72): "\u2605 " when starred, two blank
+// columns otherwise, so every row in a column stays aligned regardless of
+// mixed starred state.
+func starMarker(starred bool) string {
+	if starred {
+		return "\u2605 "
+	}
+	return "  "
+}
+
+// prependMarker puts marker in front of line and shifts columns (rune
+// indexes into line, as suffixColumns/clipColumns already produce) by
+// marker's own rune width, so they keep addressing the same characters of
+// the combined string — shared by pickerFileRow and pickerGrepRow, both of
+// which compute columns against the unprefixed line and then need the
+// marker folded in before highlightMatches sees it.
+func prependMarker(marker, line string, columns []int) (string, []int) {
+	offset := len([]rune(marker))
+	shifted := make([]int, len(columns))
+	for i, c := range columns {
+		shifted[i] = c + offset
+	}
+	return marker + line, shifted
 }
 
 // suffixColumns translates positions within name — rune indexes into the
@@ -422,14 +464,16 @@ func rightTruncate(s string, width int) string {
 // only, offset by the prefix's width, never searched for in the row as a
 // whole: a query like "md" or "3" occurs in the file/line-number prefix of
 // plenty of rows without that being what matched.
-func pickerGrepRow(g grepResult, query string, width int, selected bool) string {
+func pickerGrepRow(g grepResult, query string, width int, selected bool, starred bool) string {
+	marker := starMarker(starred)
+	contentWidth := max(width-lipgloss.Width(marker), 0)
 	rel, err := filepath.Rel(g.file.root.path, g.file.path)
 	if err != nil {
 		rel = g.file.path
 	}
 	prefix := fmt.Sprintf("%s:%d  ", rel, g.line)
 	full := prefix + g.text
-	line := rightTruncate(full, width)
+	line := rightTruncate(full, contentWidth)
 
 	// A truncated row's last cell is rightTruncate's own ellipsis, not the
 	// line's text, so it is never part of a match — hence visible stops one
@@ -443,7 +487,9 @@ func pickerGrepRow(g grepResult, query string, width int, selected bool) string 
 	for _, p := range grepMatchPositions(g.text, query) {
 		columns = append(columns, offset+p)
 	}
-	return styleRow(highlightMatches(line, clipColumns(columns, visible), selected), width, selected)
+	clipped := clipColumns(columns, visible)
+	marked, shifted := prependMarker(marker, line, clipped)
+	return styleRow(highlightMatches(marked, shifted, selected), width, selected)
 }
 
 // pickerResultsContent renders the Results list's content (M3.1, M4.1),
@@ -455,7 +501,7 @@ func pickerGrepRow(g grepResult, query string, width int, selected bool) string 
 // for either mode — pickerStatus is already saying "searching" for that
 // same mismatch, and showing the previous mode's stale rows underneath that
 // caption would contradict it.
-func pickerResultsContent(p picker, width, height int, hideDotfiles bool) string {
+func pickerResultsContent(p picker, width, height int, hideDotfiles bool, docs map[string]docRecord) string {
 	if width <= 0 || height <= 0 || !p.resultsCurrent(hideDotfiles) {
 		return ""
 	}
@@ -465,7 +511,8 @@ func pickerResultsContent(p picker, width, height int, hideDotfiles bool) string
 			return ""
 		}
 		return windowedView(width, height, p.selected, len(grep), func(idx int) string {
-			return pickerGrepRow(grep[idx], p.results.query, width, idx == p.selected)
+			g := grep[idx]
+			return pickerGrepRow(g, p.results.query, width, idx == p.selected, docs[filepath.Clean(g.file.path)].Starred)
 		})
 	}
 	files := p.results.files
@@ -473,7 +520,8 @@ func pickerResultsContent(p picker, width, height int, hideDotfiles bool) string
 		return ""
 	}
 	return windowedView(width, height, p.selected, len(files), func(idx int) string {
-		return pickerFileRow(files[idx], p.results.query, width, idx == p.selected)
+		f := files[idx]
+		return pickerFileRow(f, p.results.query, width, idx == p.selected, docs[filepath.Clean(f.path)].Starred)
 	})
 }
 
@@ -485,13 +533,13 @@ func pickerResultsContent(p picker, width, height int, hideDotfiles bool) string
 // whichever frame pane currently has focus — Results/Preview use the plain
 // borderStyle, same as an unfocused frame pane. Results now carries the File
 // Picker's rows (M3.1); Preview still carries none (M3.2 fills it).
-func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfiles bool) string {
+func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfiles bool, docs map[string]docRecord) string {
 	promptContent := p.promptView(l.prompt.content().width)
 	if status := pickerStatus(p, avail, hideDotfiles); status != "" {
 		promptContent += "\n" + status
 	}
 	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerModeScope(p, hideDotfiles)), promptContent)
-	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, hideDotfiles)
+	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, hideDotfiles, docs)
 	results := renderBox(borderStyle, l.results, titleStyle.Render("Results"), resultsContent)
 	preview := renderBox(borderStyle, l.preview, titleStyle.Render("Preview"), p.preview.View())
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
@@ -507,9 +555,9 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfi
 // here is the suspenders to computePickerLayout's belt (layout-correct
 // sizing does not by itself guarantee lipgloss never pads a row wider, the
 // same reasoning overlayHelp's comment already spells out).
-func overlayPicker(frame string, width, height int, p picker, avail ripgrepAvailability, hideDotfiles bool) string {
+func overlayPicker(frame string, width, height int, p picker, avail ripgrepAvailability, hideDotfiles bool, docs map[string]docRecord) string {
 	l := computePickerLayout(width, height)
-	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l, avail, hideDotfiles))
+	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l, avail, hideDotfiles, docs))
 	bw, bh := lipgloss.Width(box), lipgloss.Height(box)
 	x := max((width-bw)/2, 0)
 	y := max((height-bh)/2, 0)

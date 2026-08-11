@@ -969,27 +969,38 @@
   per PROGRESS's gotchas), but caused by this cycle's own M1.1 change and cheap to fix
   (effort 2) — accept and log rather than leave a known-broken check sitting unfixed.
 
-## D72: Does the Picker get a visible star marker, or does S2/M2.5's wording get amended? (TRIAGE T8)
+## D72: The Picker gets a visible star marker (TRIAGE T8) — S3 amended, built as M2.11
 
-- Status: open
+- Status: decided
 - Cycle: C4
 - Date: 2026-08-10
 - Context: S2 says un-starring from the Picker "leaves the Result in place with its star
   marker cleared", and M2.5's own acceptance criterion talks about confirming "the marker is
-  gone" — but the Picker's Results list renders no star marker at all today
-  (`pickerFileRow`/`pickerGrepRow` take no starred/docs input); `TestPickerStarTogglesSelected-
-  FileResult` only checks internal `docRecord`/`picker.results` state. S3, which is the
-  deliverable that actually enumerates marker *surfaces*, never lists the Picker among them —
-  only Files Nav rows and the Document Viewer title. So the S2/M2.5 wording may be a carry-over
-  from an earlier draft rather than a deliberate requirement.
-- Open question: either (a) add a visible star marker to Picker rows (a small UI addition,
-  Files-list and Grep-list rows both), or (b) amend S2/M2.5's wording to describe the internal
-  star state only, matching what S3 actually promises. Not decided here because it is a
-  product-surface call (does the user want to *see* stars while picking?), not an
-  implementation detail — surfaced to the user rather than assumed.
-- Why: high severity (spec/build mismatch on a delivered surface) but non-blocking, and it is
-  a judgment question about product intent rather than deferrable work — per the escalation
-  matrix, logged open rather than silently resolved either way.
+  gone" — but the Picker's Results list rendered no star marker at all
+  (`pickerFileRow`/`pickerGrepRow` took no starred/docs input); `TestPickerStarTogglesSelected-
+  FileResult` only checked internal `docRecord`/`picker.results` state. S3, the deliverable
+  that enumerates marker *surfaces*, never listed the Picker among them — only Files Nav rows
+  and the Document Viewer title. Left open pending a product-surface call rather than assumed.
+- Decision: option (a) — add a visible star marker to Picker rows, taken by direct user
+  instruction this session. SPEC.md's S3 is amended in place (no key change; S3 already
+  covered "star is visible" as a deliverable, this closes a surface it should have named from
+  the start) to add "a star marker on Picker rows (File and Grep) for a starred Result," and
+  its cycle-level acceptance line gains a matching bullet. Built immediately as **M2.11**
+  (`cmd/noggin/picker_view.go`): both `pickerFileRow` and `pickerGrepRow` gain a `starred bool`
+  parameter and render the same "\u2605 "/"  " two-column field Files Nav/Roots Nav already use,
+  prepended ahead of the row's existing content and computed live from `m.docs` on every
+  render (`pickerResultsContent` now takes a `docs map[string]docRecord`) — unlike the Files
+  Nav's own cached `m.files.starred` (M2.7/D70), there is nothing here to go stale, since the
+  Picker re-renders straight from the store every frame. Tests:
+  `TestPickerFileRowShowsStarMarkerForAStarredResult`,
+  `TestPickerGrepRowShowsStarMarkerForAStarredResult` (unit, marker present/absent, rest of
+  the row byte-identical), and `TestPickerStarTogglingUpdatesTheRenderedMarkerLive`
+  (integration: toggling `PickerStar` shows/clears the marker in the very next `View()`, no
+  refresh needed). `make check` green.
+- Why: high severity (spec/build mismatch on a delivered surface), decided directly rather
+  than left open once the user weighed in — the escalation matrix's "high, non-blocking"
+  routing to an open DECISIONS entry was the right call while unresolved, but a product-surface
+  question is exactly what a direct user answer settles outright.
 
 ## D73: M3.1's recording does not cover launch-time document opens
 
@@ -1010,3 +1021,45 @@
 - Why: low risk, straightforward reading of the spec's own enumerated trigger list; the
   alternative (recording on launch too) is a small, easily-reversible extension if the user
   wants it, not a foreclosed path — noted here rather than silently assumed either way.
+
+## D74: Picker Activate must also record `lastViewed` (TRIAGE T12) — accepted as M3.3
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: code review (TRIAGE T12) found that `activatePickerInto` and
+  `activateGrepPickerInto` call `openDocumentInto` directly rather than through
+  `activateInto`, so neither ever reaches `recordViewed` — a document opened via the File or
+  Grep Picker never gets a `lastViewed` timestamp. GLOSSARY's Activate entry and the keymap's
+  own doc comment already use "Activate" for both the Files Nav's and the Picker's commit
+  action, landing either way in DV1 or DV2 — the same action S4 names as a recording trigger.
+  D73 (M3.1) deliberately chose explicit call sites over centralizing in `openDocumentInto`,
+  but only enumerated `activateInto`/`finishEdit`; it did not consider that the Picker's own
+  activate functions bypass `activateInto` entirely, so the gap is a missed call site under
+  D73's own chosen mechanism, not a reason to revisit it.
+- Decision: accepted as a new task, M3.3 — add explicit `recordViewed` calls at
+  `activatePickerInto`'s and `activateGrepPickerInto`'s own DV1/DV2 landing points, extending
+  D73's explicit-call-site list to four rather than reversing D73's rejection of
+  centralizing inside `openDocumentInto` (launch-time opens via `applyResolution` still do
+  not record, unchanged from D73).
+- Why: high severity — this undercuts a delivered deliverable (S4) and will silently starve
+  M4.2's `Recent` mode of every Picker-opened document once built — but non-blocking for the
+  cycle's current cursor, and the fix is small and well-scoped (effort 2). Per the escalation
+  matrix: accept and log rather than break flow. M4.2's PLAN entry now also depends on M3.3
+  so `Recent` mode isn't built and tested against a known-incomplete data source.
+
+## D75: `recordViewed`'s `m.files.starred` recompute-on-every-write stays as is (TRIAGE T16)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-10
+- Context: code review (TRIAGE T16) noted `recordViewed` recomputes and reassigns
+  `m.files.starred` via `filesStarredMarks()` on every recency-only write, even though only
+  `LastViewed` changed — coupling a write path that has nothing to do with stars to Files Nav
+  state, for currently-harmless cost bounded by `docStoreCap` (1000 records, D68).
+- Decision: wontfix for this cycle. No PLAN task; the coupling stands as implemented.
+- Why: low severity, speculative — the reviewer's own note frames it as "worth revisiting if
+  this path gets hot," not a present correctness or performance problem, and any document
+  store bounded at 1000 records makes a full recompute cheap regardless of trigger. Revisit
+  only if a real cost is observed, not preemptively; logged so a future session doesn't
+  reintroduce the same review finding without knowing it was already weighed.
