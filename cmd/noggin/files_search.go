@@ -373,20 +373,20 @@ type grepResult struct {
 //
 // Test-only mutation contract (TRIAGE T18): tests that need a small batch
 // size mutate this package-level var directly (save the original, shrink
-// it, defer restoring it — see TestGrepFilesBatchesAcrossArgSizeLimit).
+// it, defer restoring it — see TestGrepPickerFilesBatchesAcrossArgSizeLimit).
 // That save/shrink/restore pattern is not goroutine-safe: no test in this
 // package may call t.Parallel() while any test still mutates
 // grepArgMaxBytes this way, or the mutation could leak across concurrently
-// running tests. Threading the limit through grepFiles as a parameter
+// running tests. Threading the limit through grepPickerFiles as a parameter
 // instead would remove this hazard entirely, but isn't worth the call-chain
-// churn (grepFiles, batchFilePaths and their one production caller) unless
-// this package actually adopts parallel tests.
+// churn (grepPickerFiles, batchFilePaths and their production callers)
+// unless this package actually adopts parallel tests.
 var grepArgMaxBytes = 128 * 1024
 
 // batchFilePaths splits files into groups whose combined path byte length
 // stays at or under maxBytes per group, preserving files' relative order
-// within and across batches — grepFiles's cap/truncation contract does not
-// depend on batch boundaries, but a stable order keeps behaviour
+// within and across batches — grepPickerFiles's cap/truncation contract
+// does not depend on batch boundaries, but a stable order keeps behaviour
 // deterministic. Never produces an empty batch; a single file whose own
 // path exceeds maxBytes still gets a (oversized) batch of its own rather
 // than being dropped.
@@ -410,22 +410,33 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 	return batches
 }
 
-// grepFiles searches query literally (S4: rg's --fixed-strings, so regex
-// metacharacters in a half-typed query are just characters — D29) with
-// smart case across the Readable files in scope: rg's own --smart-case
-// flag implements exactly find.go's S8 semantic (all-lowercase matches
-// either case; any uppercase makes it case-sensitive), so this reuses that
-// behaviour by name rather than reimplementing find.go's fold-and-compare.
+// grepPickerFiles searches query literally (S4: rg's --fixed-strings, so
+// regex metacharacters in a half-typed query are just characters — D29)
+// with smart case (rg's own --smart-case flag, set in grepBatch, implements
+// exactly find.go's S8 semantic: all-lowercase matches either case, any
+// uppercase makes it case-sensitive) across whatever candidate file list
+// the caller already resolved, rather than resolving one itself from
+// roots/scope: pickerSearchCmd's production call resolves files the
+// roots-based way (listFiles) for Active Root/All Roots, or
+// starredPickerFiles' own candidate set for Starred scope (S8) — this is
+// pulled apart from any particular resolver so Starred's grep search does
+// not have to fit through liveRootsInScope's roots-shaped contract, which
+// S8's "whole store, no Roots involved" scope has no use for. (A thin
+// roots-based wrapper, grepFiles, once sat in front of this for the
+// listFiles case specifically; C4/M5.2 deleted it once M5.1's split left it
+// with no production caller — see D94. files_search_test.go's coverage
+// calls grepPickerFiles(listFiles(...), query) directly instead.)
 //
-// It runs rg over the *explicit* file list listFiles already produced,
-// rather than letting rg walk Scope's directories itself the way rgFiles
-// does for the file list: verified against the sandbox's real rg (15.1.0),
-// rg does not apply `.gitignore`/hidden-file rules to files named explicitly
-// on its command line — only to directories it walks. listFiles has
-// already applied every one of those rules (plus the Readable allowlist and
-// Broken-Root skipping, M1.2) to produce that list, so searching exactly
-// those files is what makes grep agree with the File Picker's own view of
-// Scope, rather than re-deriving (and risking disagreeing with) it.
+// It runs rg over the *explicit* file list the caller passed in, rather
+// than letting rg walk Scope's directories itself the way rgFiles does for
+// listFiles' own file list: verified against the sandbox's real rg
+// (15.1.0), rg does not apply `.gitignore`/hidden-file rules to files named
+// explicitly on its command line — only to directories it walks. listFiles
+// (and starredPickerFiles) have already applied every one of those rules
+// (plus the Readable allowlist and Broken-Root skipping, M1.2) to produce
+// their own list, so searching exactly those files is what makes grep
+// agree with the File Picker's own view of Scope, rather than re-deriving
+// (and risking disagreeing with) it.
 //
 // The file list is run through rg in batches (batchFilePaths, grepBatch)
 // rather than one invocation (D43/M1.4a) — see grepArgMaxBytes. Batches are
@@ -436,19 +447,6 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 // to no results without invoking rg at all — an empty query would otherwise
 // be an empty-pattern rg run, which matches every line of every file, not
 // "nothing to search".
-func grepFiles(roots []root, active int, scope pickerScope, query string, hideDotfiles bool) (results []grepResult, truncated bool) {
-	return grepPickerFiles(listFiles(roots, active, scope, hideDotfiles), query)
-}
-
-// grepPickerFiles is grepFiles' scope-agnostic half (C4/M5.1): the batching,
-// per-batch rg invocation and pickerResultCap/truncation logic, run over
-// whatever candidate file list the caller already resolved rather than
-// resolving one itself from roots/scope. grepFiles (above) is one caller,
-// resolving files the roots-based way (listFiles) for Active Root/All
-// Roots; starredPickerFiles' own candidate set (below) is the other, for
-// Starred scope (S8) — pulled apart from grepFiles so Starred's grep search
-// does not have to fit through liveRootsInScope's roots-shaped contract,
-// which S8's "whole store, no Roots involved" scope has no use for.
 func grepPickerFiles(files []pickerFile, query string) (results []grepResult, truncated bool) {
 	if len(files) == 0 || query == "" {
 		return nil, false
@@ -467,8 +465,8 @@ func grepPickerFiles(files []pickerFile, query string) (results []grepResult, tr
 
 // grepBatch runs a single rg invocation over exactly the given files (one
 // batch from batchFilePaths) and returns every matching line, uncapped —
-// grepFiles is what applies pickerResultCap, across the merged results of
-// every batch.
+// grepPickerFiles is what applies pickerResultCap, across the merged
+// results of every batch.
 func grepBatch(files []pickerFile, query string) []grepResult {
 	byPath := make(map[string]pickerFile, len(files))
 	args := make([]string, 0, len(files)+5)
@@ -510,7 +508,7 @@ func grepBatch(files []pickerFile, query string) []grepResult {
 }
 
 // rgJSONMessage is the subset of one line of rg's `--json` JSON-Lines output
-// (docs.rs/grep-printer, the "match" message shape) grepFiles needs: which
+// (docs.rs/grep-printer, the "match" message shape) grepBatch needs: which
 // file, which line number, the line's own text. Parsed instead of rg's
 // plain `path:line:text` text output because a colon can legitimately
 // appear in either a path or a line's text, which that format leaves

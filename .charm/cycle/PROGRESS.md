@@ -17,35 +17,41 @@
 
 ## Cursor
 
-Current task: M5.2
+Current task: M6.3
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.15 built: fixed `filesNav.setRoot`'s selection-reset bug (TRIAGE T38) — its own
-`clampSelected()` call ran before `model.openFolder`'s later `refreshFilesRecentSource`
-re-points `f.activeRootPath` at the incoming Root, so a flat-mode (Recent/Starred) Active
-Root restore re-clamped against the *outgoing* Root's still-stale bucket size, collapsing the
-memory-restored row to 0. Fix: `setRoot` now sets `f.activeRootPath = root.Path` itself,
-immediately after `f.root = root` and before the memory-restore/clamp block — its one caller
-(`model.openFolder`) only ever passes a root that already is, or is about to become, the
-session's Active Root, so this is exact, not a guess; `docs`/`sessionRoots` need no equivalent
-fix since neither varies with which Root is active. Doc comment on `setRoot` updated to cite
-the hand-off explicitly.
+M5.2 built: deleted the dead `grepFiles` (TRIAGE T42/D94) — `pickerSearchCmd` already resolved
+`files` itself (`starredPickerFiles`/`listFiles`) and called `grepPickerFiles(files, query)`
+directly, so `grepFiles` (the old roots-based wrapper) had no remaining production caller,
+only `files_search_test.go`'s pre-existing tests; its own doc comment's claim that
+`pickerSearchCmd` was a caller was already factually wrong. Removed the function; merged its
+still-true documentation (literal/smart-case search semantics, why searching listFiles' exact
+file list keeps grep and the File Picker's view of Scope in agreement, the batching/cap
+contract) into `grepPickerFiles`'s own doc comment, which is now the sole entry point.
+Updated every stale `grepFiles` mention in production comments (picker.go, files_search.go's
+`grepArgMaxBytes`/`batchFilePaths`/`grepBatch`/`rgJSONMessage` comments) to name
+`grepPickerFiles`/`grepBatch` instead; two comments narrating the pre-M5.1 historical design
+(`grepArgMaxBytes`'s TRIAGE T1/D43 origin, and a one-line note that a roots-based wrapper once
+sat in front of `grepPickerFiles`) deliberately keep the old name in explicit past tense —
+they are not stale claims, they are the history D94 itself records.
 
-New: openfolder_flat_restore_test.go's `TestOpenFolderRestoresFlatModeSelectionAgainstThe-
-CorrectRoot` drives `model.openFolder` itself (not `filesNav.setRoot` in isolation, which
-`TestSettingRootRestoringAFlatModeReClampsSelection` already covers for a different shrink and
-explicitly deferred this exact ordering hand-off in its own doc comment) — two Roots with
-differing Starred/Active-Root bucket sizes, switching Root A (Starred, row 2 selected) away to
-Root B and back, asserting selection lands back on row 2 (a3.md), not 0. Confirmed failing
-pre-fix (asserted `selected == 0`, `selectedFlatRow` returned a1.md) and passing post-fix.
-`make check` and `make check-pty` both green; `go test ./... -v` shows 422 passing, 0 failing.
+Repointed files_search_test.go's nine former `grepFiles(...)` call sites at
+`grepPickerFiles(listFiles(roots, 0, activeRootScope, hideDotfiles), query)` directly (no new
+wrapper helper, matching D94's own "not even a thin wrapper" spirit) and renamed every
+`TestGrepFiles*` function to `TestGrepPickerFiles*` for consistency with the function each
+actually exercises (mirroring earlier cycles' naming-cleanup precedent, e.g. M2.9). Also
+renamed `picker_test.go`'s `TestPickerGrepModeWiresToGrepFilesAndRendersRows` and fixed two
+more stray doc-comment mentions there. `grepFiles` now has zero symbol references anywhere
+(`grep -n "\bgrepFiles\b"` only matches the two intentional past-tense historical mentions
+above). All nine repointed/renamed tests plus the full suite pass; `make check` and
+`make check-pty` both green.
 
-Cursor moves to M5.2 (delete dead `grepFiles`, D94), next in the four-item cleanup queue
-(M5.2, M6.3, M6.4) this session's replan sequenced ahead of M7.
+Cursor moves to M6.3 (HistoryBack/HistoryForward Footer/Help discoverability, TRIAGE T41),
+next in the cleanup queue this session's earlier replan sequenced ahead of M7.
 
 ## Status
 
@@ -92,7 +98,7 @@ Cursor moves to M5.2 (delete dead `grepFiles`, D94), next in the four-item clean
 | M6.1 | done   | 2026-08-11 | -         |                                          |
 | M6.2 | done   | 2026-08-11 | -         | pre-agreed cut 2, not actually cut (D91); review found untested re-Activate scroll-preserve behavior, TRIAGE T43 |
 | M4.15 | done  | -        | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
-| M5.2 | todo   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
+| M5.2 | done   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
 | M6.3 | todo   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41 |
 | M6.4 | todo   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43 |
 | M7.1 | todo   | -        | -         |                                          |

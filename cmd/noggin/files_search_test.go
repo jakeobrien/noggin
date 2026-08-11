@@ -311,71 +311,72 @@ func grepLines(results []grepResult) []string {
 	return lines
 }
 
-// TestGrepFilesMatchesLiterally: a query containing regex metacharacters
+// TestGrepPickerFilesMatchesLiterally: a query containing regex metacharacters
 // matches only their literal occurrence, not what they'd mean as regex
 // (S4, D29: --fixed-strings).
-func TestGrepFilesMatchesLiterally(t *testing.T) {
+func TestGrepPickerFilesMatchesLiterally(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	writeFileContent(t, filepath.Join(dir, "notes.md"), "see v1.2 here\nnot v1x2 though\n")
 	roots := []root{{path: dir}}
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "v1.2", false)
+	results, truncated := grepPickerFiles(listFiles(roots, 0, activeRootScope, false), "v1.2")
 
 	if truncated {
-		t.Fatalf("grepFiles() truncated = true, want false")
+		t.Fatalf("grepPickerFiles() truncated = true, want false")
 	}
 	want := []string{filepath.Join(dir, "notes.md") + ":1:see v1.2 here"}
 	if got := grepLines(results); !equalStrings(got, want) {
-		t.Fatalf("grepFiles(\"v1.2\") = %v, want %v", got, want)
+		t.Fatalf("grepPickerFiles(\"v1.2\") = %v, want %v", got, want)
 	}
 }
 
-// TestGrepFilesFindsMatchesInsideDotfiles is S4/M6.1's Grep Picker half:
-// once listFiles includes a dotfile (TestListFilesIncludesDotfiles above),
-// grepFiles searches it too with no extra keystroke — it runs over exactly
-// that file list (grepFiles' own doc comment), so this is really pinning
-// that grepBatch's explicit-file-argument invocation of rg does not itself
-// re-apply a hidden-file filter on top (verified against the sandbox's real
-// rg: an explicitly-named file is always searched regardless of --hidden).
-func TestGrepFilesFindsMatchesInsideDotfiles(t *testing.T) {
+// TestGrepPickerFilesFindsMatchesInsideDotfiles is S4/M6.1's Grep Picker
+// half: once listFiles includes a dotfile (TestListFilesIncludesDotfiles
+// above), grepPickerFiles searches it too with no extra keystroke — it runs
+// over exactly that file list (grepPickerFiles' own doc comment), so this
+// is really pinning that grepBatch's explicit-file-argument invocation of
+// rg does not itself re-apply a hidden-file filter on top (verified
+// against the sandbox's real rg: an explicitly-named file is always
+// searched regardless of --hidden).
+func TestGrepPickerFilesFindsMatchesInsideDotfiles(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	writeFileContent(t, filepath.Join(dir, ".hidden.md"), "needle in a dotfile\n")
 	roots := []root{{path: dir}}
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", false)
+	results, truncated := grepPickerFiles(listFiles(roots, 0, activeRootScope, false), "needle")
 
 	if truncated {
-		t.Fatalf("grepFiles() truncated = true, want false")
+		t.Fatalf("grepPickerFiles() truncated = true, want false")
 	}
 	want := []string{filepath.Join(dir, ".hidden.md") + ":1:needle in a dotfile"}
 	if got := grepLines(results); !equalStrings(got, want) {
-		t.Fatalf("grepFiles(\"needle\") = %v, want %v", got, want)
+		t.Fatalf("grepPickerFiles(\"needle\") = %v, want %v", got, want)
 	}
 }
 
-// TestGrepFilesHidesDotfilesWhenToggled is S4/M6.2's Grep Picker half:
-// hideDotfiles=true drops a dotfile from grepFiles' own candidate set (it
-// reuses listFiles, TestListFilesHidesDotfilesWhenToggled's own guarantee)
-// just as it does for the File Picker, so a match that only exists inside a
-// dotfile is not found at all — not merely hidden after being found — while
-// a match in a plain file is unaffected.
-func TestGrepFilesHidesDotfilesWhenToggled(t *testing.T) {
+// TestGrepPickerFilesHidesDotfilesWhenToggled is S4/M6.2's Grep Picker half:
+// hideDotfiles=true drops a dotfile from listFiles' own candidate set
+// before it ever reaches grepPickerFiles (TestListFilesHidesDotfilesWhen-
+// Toggled's own guarantee) just as it does for the File Picker, so a match
+// that only exists inside a dotfile is not found at all — not merely
+// hidden after being found — while a match in a plain file is unaffected.
+func TestGrepPickerFilesHidesDotfilesWhenToggled(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	writeFileContent(t, filepath.Join(dir, ".hidden.md"), "needle in a dotfile\n")
 	writeFileContent(t, filepath.Join(dir, "plain.md"), "needle in a plain file\n")
 	roots := []root{{path: dir}}
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", true)
+	results, truncated := grepPickerFiles(listFiles(roots, 0, activeRootScope, true), "needle")
 
 	if truncated {
-		t.Fatalf("grepFiles(hideDotfiles=true) truncated = true, want false")
+		t.Fatalf("grepPickerFiles(hideDotfiles=true) truncated = true, want false")
 	}
 	want := []string{filepath.Join(dir, "plain.md") + ":1:needle in a plain file"}
 	if got := grepLines(results); !equalStrings(got, want) {
-		t.Fatalf("grepFiles(hideDotfiles=true) = %v, want %v", got, want)
+		t.Fatalf("grepPickerFiles(hideDotfiles=true) = %v, want %v", got, want)
 	}
 }
 
@@ -402,51 +403,52 @@ func TestIsDotfilePath(t *testing.T) {
 	}
 }
 
-// TestGrepFilesIsSmartCase: an all-lowercase query matches mixed-case text,
-// but a query containing uppercase matches only that exact case (S4,
+// TestGrepPickerFilesIsSmartCase: an all-lowercase query matches mixed-case
+// text, but a query containing uppercase matches only that exact case (S4,
 // matching find.go's S8 smart-case semantic via rg's own --smart-case).
-func TestGrepFilesIsSmartCase(t *testing.T) {
+func TestGrepPickerFilesIsSmartCase(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	writeFileContent(t, filepath.Join(dir, "notes.md"), "Hello World\n")
 	roots := []root{{path: dir}}
+	files := listFiles(roots, 0, activeRootScope, false)
 
-	lower, _ := grepFiles(roots, 0, activeRootScope, "hello", false)
+	lower, _ := grepPickerFiles(files, "hello")
 	if len(lower) != 1 {
-		t.Fatalf("grepFiles(\"hello\") = %v, want one match against mixed-case text", grepLines(lower))
+		t.Fatalf("grepPickerFiles(\"hello\") = %v, want one match against mixed-case text", grepLines(lower))
 	}
 
-	upper, _ := grepFiles(roots, 0, activeRootScope, "HELLO", false)
+	upper, _ := grepPickerFiles(files, "HELLO")
 	if len(upper) != 0 {
-		t.Fatalf("grepFiles(\"HELLO\") = %v, want no match against differently-cased text", grepLines(upper))
+		t.Fatalf("grepPickerFiles(\"HELLO\") = %v, want no match against differently-cased text", grepLines(upper))
 	}
 }
 
-// TestGrepFilesOnlySearchesReadableFiles: a non-Readable file in Scope
-// (S13) is never searched, even though it contains the query — grepFiles
-// only ever sees what listFiles already allowed through.
-func TestGrepFilesOnlySearchesReadableFiles(t *testing.T) {
+// TestGrepPickerFilesOnlySearchesReadableFiles: a non-Readable file in Scope
+// (S13) is never searched, even though it contains the query —
+// grepPickerFiles only ever sees what listFiles already allowed through.
+func TestGrepPickerFilesOnlySearchesReadableFiles(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	writeFileContent(t, filepath.Join(dir, "notes.md"), "needle here\n")
 	writeFileContent(t, filepath.Join(dir, "image.png"), "needle here too\n")
 	roots := []root{{path: dir}}
 
-	results, _ := grepFiles(roots, 0, activeRootScope, "needle", false)
+	results, _ := grepPickerFiles(listFiles(roots, 0, activeRootScope, false), "needle")
 
 	want := []string{filepath.Join(dir, "notes.md") + ":1:needle here"}
 	if got := grepLines(results); !equalStrings(got, want) {
-		t.Fatalf("grepFiles(\"needle\") = %v, want %v", got, want)
+		t.Fatalf("grepPickerFiles(\"needle\") = %v, want %v", got, want)
 	}
 }
 
-// TestGrepFilesCapsAndReportsTruncation: a match count larger than
+// TestGrepPickerFilesCapsAndReportsTruncation: a match count larger than
 // pickerResultCap comes back capped at that length with the truncation
 // flag set (S12), the same shape fuzzyFiles gives the File Picker; a match
 // count exactly at the cap comes back untouched and unflagged (TRIAGE T3 /
 // D45, matching TestFuzzyFilesCapsAndReportsTruncation's existing coverage
 // of that boundary).
-func TestGrepFilesCapsAndReportsTruncation(t *testing.T) {
+func TestGrepPickerFilesCapsAndReportsTruncation(t *testing.T) {
 	requireRipgrep(t)
 	notesWithLines := func(t *testing.T, n int) []root {
 		t.Helper()
@@ -459,31 +461,31 @@ func TestGrepFilesCapsAndReportsTruncation(t *testing.T) {
 		return []root{{path: dir}}
 	}
 
-	results, truncated := grepFiles(notesWithLines(t, pickerResultCap+50), 0, activeRootScope, "needle", false)
+	results, truncated := grepPickerFiles(listFiles(notesWithLines(t, pickerResultCap+50), 0, activeRootScope, false), "needle")
 	if !truncated {
-		t.Fatalf("grepFiles() truncated = false, want true")
+		t.Fatalf("grepPickerFiles() truncated = false, want true")
 	}
 	if len(results) != pickerResultCap {
-		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)
+		t.Fatalf("grepPickerFiles() returned %d results, want %d", len(results), pickerResultCap)
 	}
 
-	results, truncated = grepFiles(notesWithLines(t, pickerResultCap), 0, activeRootScope, "needle", false)
+	results, truncated = grepPickerFiles(listFiles(notesWithLines(t, pickerResultCap), 0, activeRootScope, false), "needle")
 	if truncated {
-		t.Fatalf("grepFiles() truncated = true at exactly the cap, want false")
+		t.Fatalf("grepPickerFiles() truncated = true at exactly the cap, want false")
 	}
 	if len(results) != pickerResultCap {
-		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)
+		t.Fatalf("grepPickerFiles() returned %d results, want %d", len(results), pickerResultCap)
 	}
 }
 
-// TestGrepFilesBatchesAcrossArgSizeLimit: with grepArgMaxBytes shrunk to
-// force one file per rg invocation, grepFiles still finds matches in files
-// from every batch, merged as if it had run in a single invocation
+// TestGrepPickerFilesBatchesAcrossArgSizeLimit: with grepArgMaxBytes shrunk
+// to force one file per rg invocation, grepPickerFiles still finds matches
+// in files from every batch, merged as if it had run in a single invocation
 // (TRIAGE T1 / D43, M1.4a) — a small injected limit exercises the same
 // batching boundary a real ARG_MAX overflow would, cheaply. A genuine
 // no-match under the same batching still reports "no results", not
 // something conflated with a batch that failed to run.
-func TestGrepFilesBatchesAcrossArgSizeLimit(t *testing.T) {
+func TestGrepPickerFilesBatchesAcrossArgSizeLimit(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	const fileCount = 6
@@ -494,43 +496,44 @@ func TestGrepFilesBatchesAcrossArgSizeLimit(t *testing.T) {
 	}
 	sort.Strings(want)
 	roots := []root{{path: dir}}
+	files := listFiles(roots, 0, activeRootScope, false)
 
 	orig := grepArgMaxBytes
 	grepArgMaxBytes = 1 // forces a new batch for every file
 	defer func() { grepArgMaxBytes = orig }()
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", false)
+	results, truncated := grepPickerFiles(files, "needle")
 	if truncated {
-		t.Fatalf("grepFiles() truncated = true, want false")
+		t.Fatalf("grepPickerFiles() truncated = true, want false")
 	}
 	if got := grepLines(results); !equalStrings(got, want) {
-		t.Fatalf("grepFiles() with batching = %v, want %v", got, want)
+		t.Fatalf("grepPickerFiles() with batching = %v, want %v", got, want)
 	}
 
-	noMatch, truncated := grepFiles(roots, 0, activeRootScope, "absent", false)
+	noMatch, truncated := grepPickerFiles(files, "absent")
 	if truncated {
-		t.Fatalf("grepFiles(\"absent\") truncated = true, want false")
+		t.Fatalf("grepPickerFiles(\"absent\") truncated = true, want false")
 	}
 	if len(noMatch) != 0 {
-		t.Fatalf("grepFiles(\"absent\") = %v, want no results", grepLines(noMatch))
+		t.Fatalf("grepPickerFiles(\"absent\") = %v, want no results", grepLines(noMatch))
 	}
 }
 
-// TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated: M1.4a (batching)
-// and M1.4b (the exact-cap boundary) each cover their own concern in
-// isolation only; this pins the combination (TRIAGE T19) — a match count
-// landing exactly at pickerResultCap while spread across multiple
-// grepArgMaxBytes batches still reports truncated = false, not a false
-// positive from batch-boundary accounting (e.g. checking the cap only at
-// the end of a batch rather than as each result is appended).
+// TestGrepPickerFilesBatchedResultsExactlyAtCapAreNotTruncated: M1.4a
+// (batching) and M1.4b (the exact-cap boundary) each cover their own
+// concern in isolation only; this pins the combination (TRIAGE T19) — a
+// match count landing exactly at pickerResultCap while spread across
+// multiple grepArgMaxBytes batches still reports truncated = false, not a
+// false positive from batch-boundary accounting (e.g. checking the cap
+// only at the end of a batch rather than as each result is appended).
 //
-// D56 (TRIAGE T23): today grepFiles checks the cap per-appended-result
-// inside the innermost loop regardless of batch boundaries, so this test
-// can't yet exercise a path TestGrepFilesCapsAndReportsTruncation doesn't
-// already cover — kept anyway as a forward-looking regression guard: it
-// starts covering real distinct behavior the moment a future batching
-// refactor moves the cap check outside the per-result loop.
-func TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated(t *testing.T) {
+// D56 (TRIAGE T23): today grepPickerFiles checks the cap per-appended-
+// result inside the innermost loop regardless of batch boundaries, so this
+// test can't yet exercise a path TestGrepPickerFilesCapsAndReportsTruncation
+// doesn't already cover — kept anyway as a forward-looking regression
+// guard: it starts covering real distinct behavior the moment a future
+// batching refactor moves the cap check outside the per-result loop.
+func TestGrepPickerFilesBatchedResultsExactlyAtCapAreNotTruncated(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	const fileCount = 4
@@ -551,12 +554,12 @@ func TestGrepFilesBatchedResultsExactlyAtCapAreNotTruncated(t *testing.T) {
 	grepArgMaxBytes = 1 // forces a new batch per file, spreading the cap-sized total across fileCount batches
 	defer func() { grepArgMaxBytes = orig }()
 
-	results, truncated := grepFiles(roots, 0, activeRootScope, "needle", false)
+	results, truncated := grepPickerFiles(listFiles(roots, 0, activeRootScope, false), "needle")
 	if truncated {
-		t.Fatalf("grepFiles() truncated = true at exactly the cap spread across batches, want false")
+		t.Fatalf("grepPickerFiles() truncated = true at exactly the cap spread across batches, want false")
 	}
 	if len(results) != pickerResultCap {
-		t.Fatalf("grepFiles() returned %d results, want %d", len(results), pickerResultCap)
+		t.Fatalf("grepPickerFiles() returned %d results, want %d", len(results), pickerResultCap)
 	}
 }
 

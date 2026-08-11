@@ -59,7 +59,7 @@ const pickerQueryMinLength = 3
 //
 // files and grep are the two modes' shapes; exactly one is ever populated,
 // selected by mode. truncated is S12's cap flag, passed straight through
-// from fuzzyFiles/grepFiles.
+// from fuzzyFiles/grepPickerFiles.
 type pickerResults struct {
 	query        string
 	mode         pickerMode
@@ -257,7 +257,7 @@ type pickerResultsMsg struct {
 // clears results outright and schedules nothing, so deleting a query back
 // below the threshold cannot leave the previous query's results on screen,
 // and rg is never handed an empty pattern (which matches every line of every
-// file — see grepFiles) nor a one-character one. A session without ripgrep
+// file — see grepPickerFiles) nor a one-character one. A session without ripgrep
 // (S14) is the same story: there is nothing to search on, so nothing is
 // scheduled and the modal reports why instead (pickerStatus).
 func (m model) queuePickerSearch() (model, tea.Cmd) {
@@ -519,8 +519,8 @@ func (m model) searchable() bool {
 }
 
 // pickerSearchCmd is the search itself, as a tea.Cmd: M1's blocking,
-// rg-shelling search layer (listFiles/fuzzyFiles, grepFiles) run on Bubble
-// Tea's own goroutine and reported back as a message. This is the codebase's
+// rg-shelling search layer (listFiles/fuzzyFiles, grepPickerFiles) run on
+// Bubble Tea's own goroutine and reported back as a message. This is the codebase's
 // first genuinely concurrent command (the $EDITOR handoff, model.go's
 // startEdit, suspends the program instead), so it is deliberately shaped as
 // a pure function of its arguments: everything it needs is copied in by
@@ -539,7 +539,7 @@ func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, 
 		if scope == starredScope {
 			// S8: the whole store, not a walk of any Root's tree —
 			// starredPickerFiles resolves Scope on its own terms, so
-			// grepFiles/listFiles' roots-shaped contract (liveRootsInScope)
+			// listFiles' own roots-shaped contract (liveRootsInScope)
 			// never sees starredScope at all.
 			files = starredPickerFiles(docs, roots, hideDotfiles)
 		} else {

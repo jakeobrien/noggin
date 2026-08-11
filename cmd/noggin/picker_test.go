@@ -1242,8 +1242,8 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 	}
 
 	// Grep mode: switching to it and searching again confirms the toggle is
-	// shared by both modes (S4), still narrowing grepFiles' own candidate
-	// set (files_search.go), not just fuzzyFiles'.
+	// shared by both modes (S4), still narrowing grepPickerFiles' own
+	// candidate set (files_search.go), not just fuzzyFiles'.
 	next, _ = m.Update(keyPress(keys.PickerMode.Keys()[0]))
 	m = concrete(t, next)
 	m, seqs = typePickerQuery(t, m, "needle")
@@ -1655,7 +1655,7 @@ func TestPickerDiscardsResultsFromAnEarlierOpen(t *testing.T) {
 // TestPickerEmptyPromptClearsResultsAndSearchesNothing: deleting a query back
 // to nothing must not leave the old query's results on display, and must not
 // dispatch a search for the empty string (which rg would match against every
-// line of every file — see grepFiles).
+// line of every file — see grepPickerFiles).
 func TestPickerEmptyPromptClearsResultsAndSearchesNothing(t *testing.T) {
 	requireRipgrep(t)
 	m, _ := pickerRoot(t)
@@ -1765,17 +1765,17 @@ func TestPickerCursorKeysDoNotRestartTheSearch(t *testing.T) {
 	}
 }
 
-// TestPickerGrepModeWiresToGrepFilesAndRendersRows is M4.1's own acceptance
-// criterion end to end: switching to Grep mode and typing a query actually
-// dispatches grepFiles (M1.4) over the fixture Root through the same
-// debounce/dispatch path M2.4 already gives File mode
+// TestPickerGrepModeWiresToGrepPickerFilesAndRendersRows is M4.1's own
+// acceptance criterion end to end: switching to Grep mode and typing a
+// query actually dispatches grepPickerFiles (M1.4) over the fixture Root
+// through the same debounce/dispatch path M2.4 already gives File mode
 // (TestPickerSearchIsDebouncedAndShowsOnlyTheFinalQuery's own shape), and
 // the results land as one Results row per matching line with the correct
 // (1-based, rg's own) line number — not merely a result set assembled by
 // hand and handed straight to the renderer, the way
 // TestPickerGrepResultsShowFileLineNumberAndText (picker_view_test.go)
 // isolates the rendering half alone.
-func TestPickerGrepModeWiresToGrepFilesAndRendersRows(t *testing.T) {
+func TestPickerGrepModeWiresToGrepPickerFilesAndRendersRows(t *testing.T) {
 	requireRipgrep(t)
 	m, _ := pickerRoot(t)
 	m.picker.mode = grepMode
