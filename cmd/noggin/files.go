@@ -138,6 +138,13 @@ func newFilesNav() filesNav {
 // (M3.1/S3, S7/M4.6). Either way, the outgoing root's own state (if there
 // was one) is captured into memory first, so leaving it is round-trippable
 // the next time it becomes active.
+//
+// The restore branch's f.selected starts out Tree-shaped — indexOfPath
+// walks visibleRows(), the tree's own flattening — even when saved.mode is
+// Recent/Starred, whose flat lists have no relationship to that index at
+// all. clampSelected's final pass is what makes this safe: a restore into a
+// flat mode re-resolves f.selected against that list's own rowCount instead
+// of trusting the Tree-shaped value indexOfPath produced (TRIAGE T23/D82).
 func (f filesNav) setRoot(root *tree.Node) filesNav {
 	if f.root != nil {
 		f = f.remember(f.root.Path)
@@ -157,7 +164,7 @@ func (f filesNav) setRoot(root *tree.Node) filesNav {
 		f.scopeByMode = nil
 		f.scope = activeRootBrowseScope
 	}
-	return f
+	return f.clampSelected()
 }
 
 // remember snapshots the pane's current expansion, selection, Browse Mode
@@ -282,12 +289,17 @@ func (f filesNav) withStarred(starred map[string]bool) filesNav {
 // withRecentSource installs the snapshot recentRows (M4.2) computes the
 // pane's Recent-mode flat list from — see the docs/sessionRoots/
 // activeRootPath fields' own comment for why this is a source snapshot
-// rather than the rows themselves.
+// rather than the rows themselves. Every call re-clamps f.selected
+// (clampSelected): a store write that un-starred the selected row out of a
+// Starred list reaches this same path (model.withDocRecord's own
+// refreshFilesRecentSource call), and a shrinking Starred/Recent list is
+// exactly the case TRIAGE T23/D82 needs guarded here, not only from
+// cycleMode/cycleScope/setRoot.
 func (f filesNav) withRecentSource(docs map[string]docRecord, roots []root, activeRootPath string) filesNav {
 	f.docs = docs
 	f.sessionRoots = roots
 	f.activeRootPath = activeRootPath
-	return f
+	return f.clampSelected()
 }
 
 // cycleMode advances S5's Browse Mode one step (Tree -> Recent -> Starred ->
@@ -309,7 +321,7 @@ func (f filesNav) cycleMode() filesNav {
 		f.mode = treeBrowse
 	}
 	f.scope = f.scopeForCurrentMode()
-	return f
+	return f.clampSelected()
 }
 
 // withScopeRemembered snapshots the current mode's live f.scope into
@@ -360,7 +372,7 @@ func (f filesNav) cycleScope() filesNav {
 		}
 	}
 	f.scope = scopes[(idx+1)%len(scopes)]
-	return f
+	return f.clampSelected()
 }
 
 // scopeLabel is the current scope's own S5 display name for the mode/scope
@@ -443,12 +455,15 @@ func (f filesNav) flatRows() []browseRow {
 
 // selectedFlatRow is the browseRow under the selection cursor while the
 // pane is in a flat-list mode, or false when the mode is Tree or the cursor
-// is out of range (e.g. an empty list). model.activateInto/toggleDocStar use
-// this to resolve "the selected document" against whichever list is
-// actually on screen (TRIAGE T21's own citation for the mismatch this
-// closes for those two actions) rather than selectedNode's tree-based row
-// underneath — Peek/Edit/DV2-targeting (M4.5) still go through selectedNode
-// until that task gives them the same fix.
+// is out of range (e.g. an empty list). model.activateInto/toggleDocStar/
+// togglePeekFlatRowInto all use this to resolve "the selected document"
+// against whichever list is actually on screen (TRIAGE T21's own citation
+// for the mismatch M4.3/M4.5 closed for those actions) rather than
+// selectedNode's tree-based row underneath — every flat-list action goes
+// through this accessor now, none still on selectedNode (TRIAGE T24: this
+// comment used to claim Peek/Edit/DV2-targeting awaited M4.5's fix; M4.5
+// landed it). f.selected staying in range for this to succeed is
+// clampSelected's own job (TRIAGE T23/D82), not this method's.
 func (f filesNav) selectedFlatRow() (browseRow, bool) {
 	rows := f.flatRows()
 	if f.selected < 0 || f.selected >= len(rows) {
@@ -467,6 +482,30 @@ func (f filesNav) rowCount() int {
 		return len(f.flatRows())
 	}
 	return len(f.visibleRows())
+}
+
+// clampSelected re-clamps f.selected into the current mode/scope's valid
+// row range ([0, rowCount()-1]), or 0 when there are no rows at all — the
+// same shape moveSelection already gives every ordinary Up/Down step
+// (move), just for the other ways the *effective row set itself* can
+// change out from under a still-in-range-looking index: cycleMode and
+// cycleScope switching which list is on screen, setRoot's flat-mode memory
+// restore (whose saved index is Tree-shaped and meaningless once the
+// restored mode is Recent/Starred), and withRecentSource picking up a
+// store write that shrank the current flat list (e.g. un-starring the
+// selected row out of a Starred list). Before this existed, any of those
+// could leave f.selected pointing past the end of the new row set, making
+// selectedFlatRow() return ok=false and Activate/Peek/Star silently no-op
+// with no footer message (TRIAGE T23/D82) — this is the one place that gap
+// closes, called from every site that can shrink the row set rather than
+// each guarding itself.
+func (f filesNav) clampSelected() filesNav {
+	if n := f.rowCount(); n > 0 {
+		f.selected = clamp(f.selected, 0, n-1)
+	} else {
+		f.selected = 0
+	}
+	return f
 }
 
 // handleKey applies the Files Nav binding msg is bound to, reporting whether it

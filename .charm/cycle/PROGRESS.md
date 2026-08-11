@@ -17,32 +17,30 @@
 
 ## Cursor
 
-Current task: M4.7
+Current task: M4.8
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Replan (2026-08-12): triaged the full inbox (T20–T31, all from M4's code review). Accepted five
-new M4-suffixed tasks in priority order — **M4.7** (highest priority: fixes a real high-severity
-bug, TRIAGE T23/D82 — `f.selected` isn't re-clamped when cycleMode/cycleScope/setRoot's flat
-restore shrinks the row set, so Activate/Peek/Star can silently no-op on a stale index; also
-fixes T24's stale comment), M4.8 (T20/D81, footer/help discoverability for the two Browse cycle
-keys, mirrors M2.8), M4.9 (T22, Tree's own empty-vs-no-Root message), M4.10 (T25/T26/T29/T31/D83,
-bundled test-coverage gaps), M4.11 (T27/T28, comment-literal and citation fixes). Dropped T21 as
-already-handled (D82 explains why: the actions are all correctly wired now, T23 is the precise
-remaining gap it was gesturing at). Wontfixed T30 (D84, cosmetic-only, not worth reopening a
-Reviewed cell). TRIAGE.md is now empty. Cursor moved from M5.1 to **M4.7**: it's a real bug in
-already-*done* work, cheap (effort 3), and better fixed before M5 builds more on the same flat-list
-machinery — M5.1 itself is unblocked and can resume once M4.7–M4.11 are cleared or explicitly
-reordered past.
+M4.7 (2026-08-11): built the TRIAGE T23/D82 re-clamp fix. Added `filesNav.clampSelected()`
+(`files.go`) — clamps `f.selected` into `[0, rowCount()-1]`, or 0 when empty — and call it from
+the four sites D82 named: `cycleMode`, `cycleScope`, `setRoot`'s flat-mode memory restore (whose
+`indexOfPath` result is Tree-shaped and meaningless once the restored mode is Recent/Starred),
+and `withRecentSource` (the point every store write that can shrink a flat list — e.g.
+un-starring the selected Starred row via `model.withDocRecord`'s `refreshFilesRecentSource` —
+flows through). Also corrected `selectedFlatRow`'s stale doc comment (T24): it no longer claims
+Peek/Edit/DV2-targeting await M4.5's fix (M4.5 already landed it) and now credits
+`clampSelected` for keeping its index valid. Added two regression tests
+(`flat_selection_clamp_test.go`): one cycles Tree (lower selection) → a shorter Recent list and
+confirms `activateInto` opens the re-clamped row; one un-stars the last-visible row of a
+two-row Starred list and confirms a second `toggleDocStar` acts on the surviving row rather than
+no-op. Verified both fail against the pre-fix code (`git stash` sanity check) and pass with it.
+`make check` and `make check-pty` both green.
 
-Next: start M4.7. `files.go`'s `move()` already has the re-clamp pattern to mirror
-(`nearestSurvivingIndex`-style); `cycleMode`/`cycleScope`/`setRoot`'s flat-restore path and any
-Starred-row-removing store write are the call sites needing the same treatment. Then M4.8–M4.11
-in order (all independent, cheap, no inter-dependencies beyond what's noted in PLAN.md), then
-resume M5.1.
+Next: M4.8 — add `keys.FilesMode`/`keys.FilesScope` to `filesPane`'s Footer hints and Help Modal
+listing, mirroring M2.8's precedent (D81). Independent of M4.9–M4.11; any order is fine.
 
 ## Status
 
@@ -77,7 +75,7 @@ resume M5.1.
 | M4.4 | done   | 2026-08-12 | -       | render test walks all six mode/scope combos; TRIAGE T22 |
 | M4.5 | done   | 2026-08-12 | -       | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21; review: T23, T24, T25 |
 | M4.6 | done   | 2026-08-12 | -       | review found selection-index restore gap, TRIAGE T23                |
-| M4.7 | todo   | -        | -         | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled |
+| M4.7 | done   | -        | -         | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled |
 | M4.8 | todo   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
 | M4.9 | todo   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
 | M4.10 | todo  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
