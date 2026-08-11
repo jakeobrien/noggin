@@ -256,9 +256,8 @@ func TestFilesNavRecentModeRendersFlatRows(t *testing.T) {
 }
 
 // TestFilesNavRecentModeEmptyShowsAMessage checks Recent mode's own resting
-// state: with nothing recently viewed, the pane shows a message rather than
-// a blank list (S6's general "nothing to show" rule, ahead of M4.4's own
-// per-combination polish).
+// state: with nothing recently viewed, the pane shows Active Root scope's
+// own M4.4 message rather than a blank list.
 func TestFilesNavRecentModeEmptyShowsAMessage(t *testing.T) {
 	dir := t.TempDir()
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
@@ -274,8 +273,9 @@ func TestFilesNavRecentModeEmptyShowsAMessage(t *testing.T) {
 
 	m = press(t, m, keys.FilesMode.Keys()[0]) // Tree -> Recent
 
-	view := m.files.view()
-	if !strings.Contains(view, recentEmptyText) {
-		t.Errorf("empty Recent view = %q, want it to contain %q", view, recentEmptyText)
+	view := normalizedRows(m.files.view())
+	want := flatEmptyText(recentBrowse, activeRootBrowseScope)
+	if !strings.Contains(view, want) {
+		t.Errorf("empty Recent view = %q, want it to contain %q", view, want)
 	}
 }

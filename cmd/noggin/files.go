@@ -16,16 +16,6 @@ import (
 // a root to show; until then this is its resting state.
 const emptyFilesText = "No folder open."
 
-// recentEmptyText is Recent mode's own resting message (S6: "every mode/
-// scope combination with nothing to show displays a brief message") — a
-// placeholder distinct from emptyFilesText until M4.4 gives every one of
-// S5's six mode/scope combinations its own considered wording.
-const recentEmptyText = "No recent documents."
-
-// starredEmptyText is Starred mode's own resting message (S6), mirroring
-// recentEmptyText's placeholder-pending-M4.4 status.
-const starredEmptyText = "No starred documents."
-
 // filesNav is the Files Nav pane: an expansion/selection model layered over an
 // immutable tree.Node. The tree itself is static data (M2.1); which folders are
 // open and which row is selected is UI state kept here, keyed by absolute Path
@@ -521,9 +511,9 @@ func (f filesNav) modeScopeRow() string {
 // overall once split.
 //
 // Recent and Starred (M4.2/M4.3) render flatRows' own list here; Tree still
-// renders visibleRows exactly as before — the empty-state message text
-// differs per mode (recentEmptyText/starredEmptyText vs emptyFilesText)
-// since M4.4 has not yet unified per-combination wording.
+// renders visibleRows exactly as before — the empty-state message text is
+// M4.4's own per-mode/scope-combination wording (flatEmptyText) for the
+// former, emptyFilesText for the latter.
 func (f filesNav) rowsView(height int) string {
 	if height <= 0 {
 		return ""
@@ -550,10 +540,7 @@ func (f filesNav) rowsView(height int) string {
 func (f filesNav) flatRowsView(height int) string {
 	rows := f.flatRows()
 	if len(rows) == 0 {
-		text := recentEmptyText
-		if f.mode == starredBrowse {
-			text = starredEmptyText
-		}
+		text := flatEmptyText(f.mode, f.scope)
 		return emptyFilesStyle.
 			Width(f.width).Height(height).
 			MaxWidth(f.width).MaxHeight(height).

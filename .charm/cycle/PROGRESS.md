@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.4
+Current task: M4.5
 
 ## Handoff
 
@@ -58,15 +58,41 @@ the two new model-level action tests (`activateInto` refuses/opens a Starred row
 `toggleDocStar` drops a displayed Starred row immediately). `make check` and `make check-pty`
 both green (full runs).
 
+Build (2026-08-11): completed M4.4 (every mode/scope combination with nothing to show gets
+its own considered message). Replaced the flat `recentEmptyText`/`starredEmptyText` pair
+(each identical across its own mode's scopes) with `flatEmptyText(mode, scope)` in
+`browse.go`: Recent's Active Root/All Roots and Starred's Active Root/All Starred/Orphans
+each get their own sentence naming what was (or wasn't) searched — e.g. "No recently viewed
+documents in this Root." vs "... in any Root.", "No starred documents in this Root." vs the
+scope-neutral "No starred documents." (All Starred) vs "... outside a session Root."
+(Orphans). Tree keeps `emptyFilesText` unchanged (out of this task's scope — see TRIAGE T22
+below). `files.go`'s `flatRowsView` now calls `flatEmptyText(f.mode, f.scope)` instead of the
+two-way `if f.mode == starredBrowse` branch. New `browse_empty_test.go`:
+`TestFilesNavEveryModeScopeCombinationEmptyShowsAMessage` walks all six mode/scope
+combinations (Tree; Recent x{Active Root, All Roots}; Starred x{Active Root, All Starred,
+Orphans}) with an empty root/no docs and asserts each shows its own non-blank, distinct
+message. Needed a `normalizedRows` test helper (ansi.Strip + trim + space-join each row)
+because the Files Nav's narrow content width (~20-24 cols at the test harness's 80-col total,
+layout.go's navigatorPercent/minNavigatorWidth) word-wraps the longer new messages across
+more than one row — a plain `strings.Contains` against the raw multi-line view broke on the
+wrap boundary, a gotcha not visible with the old, shorter placeholder text. Updated the two
+pre-existing M4.2/M4.3 empty-state tests (`TestFilesNavRecentModeEmptyShowsAMessage`,
+`TestFilesNavStarredModeEmptyShowsAMessage`) to assert against `flatEmptyText(...,
+activeRootBrowseScope)` through the same helper rather than the now-removed constants. `make
+check` and `make check-pty` both green (full runs).
+
 Not done / logged: TRIAGE T20 unchanged (build/medium — FilesMode/FilesScope discoverability).
 TRIAGE T21 narrowed by D80 to Peek/Edit only (Activate/Star now correctly target the flat row
 in Recent/Starred) — a future replan should re-read T21 against D80 before retriaging it, and
 confirm M4.5's own acceptance wording still needs updating for Peek/Edit-only rather than the
-original Activate/Peek/Edit/Star list.
+original Activate/Peek/Edit/Star list. New TRIAGE T22 (build/low): Tree mode's own empty
+message ("No folder open.") is shared between "no Root open" and "Root open but nothing
+visible" (e.g. an empty folder) — only accurate for the former; left as pre-existing and out
+of M4.4's scope (which was about Recent/Starred's per-scope wording).
 
-Next: cursor is **M4.4** (every mode/scope combination with nothing to show gets a
-considered message; also the point to reconcile `recentEmptyText`/`starredEmptyText`'s
-current placeholder wording) — needs M4.2 (done), M4.3 (done). Nothing blocks it.
+Next: cursor is **M4.5** (flat-list rows support Activate/Peek/Edit and their DV2 targeting;
+Expand/Collapse become no-ops) — needs M4.2 (done). Nothing blocks it. Re-read TRIAGE T21/D80
+first — M4.5's acceptance wording may need a Peek/Edit-only correction per the M4.3 handoff.
 
 ## Status
 
@@ -98,7 +124,7 @@ current placeholder wording) — needs M4.2 (done), M4.3 (done). Nothing blocks 
 | M4.1 | done   | -        | -         | discoverability gap logged as TRIAGE T20   |
 | M4.2 | done   | -        | -         | orphan-bucket cap + live-recompute judgment calls, D79; TRIAGE T21 |
 | M4.3 | done   | -        | -         | flat-row Activate/Star wiring added beyond listing, D80; narrows TRIAGE T21 |
-| M4.4 | todo   | -        | -         |                                          |
+| M4.4 | done   | -        | -         | render test walks all six mode/scope combos; TRIAGE T22 |
 | M4.5 | todo   | -        | -         |                                          |
 | M4.6 | todo   | -        | -         |                                          |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |

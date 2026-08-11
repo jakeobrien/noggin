@@ -248,7 +248,7 @@ func TestFilesNavStarredModeRendersFlatRowsWithoutStarMarker(t *testing.T) {
 }
 
 // TestFilesNavStarredModeEmptyShowsAMessage checks Starred mode's own
-// resting state (S6's general "nothing to show" rule).
+// resting state: Active Root scope's own M4.4 message.
 func TestFilesNavStarredModeEmptyShowsAMessage(t *testing.T) {
 	dir := t.TempDir()
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
@@ -265,9 +265,10 @@ func TestFilesNavStarredModeEmptyShowsAMessage(t *testing.T) {
 	m = press(t, m, keys.FilesMode.Keys()[0])
 	m = press(t, m, keys.FilesMode.Keys()[0])
 
-	view := m.files.view()
-	if !strings.Contains(view, starredEmptyText) {
-		t.Errorf("empty Starred view = %q, want it to contain %q", view, starredEmptyText)
+	view := normalizedRows(m.files.view())
+	want := flatEmptyText(starredBrowse, activeRootBrowseScope)
+	if !strings.Contains(view, want) {
+		t.Errorf("empty Starred view = %q, want it to contain %q", view, want)
 	}
 }
 

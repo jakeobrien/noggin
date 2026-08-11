@@ -79,3 +79,34 @@ func modeScopes(m browseMode) []browseScope {
 		return nil
 	}
 }
+
+// flatEmptyText is M4.4's own per-combination wording (S6: "every mode/
+// scope combination with nothing to show displays a brief message saying
+// so"): each of Recent's and Starred's five scope pairs gets its own
+// sentence naming what was searched, rather than recentEmptyText/
+// starredEmptyText's pre-M4.4 placeholder pair that read identically across
+// every scope of their own mode. Tree itself is not this function's
+// concern — it has no scope (modeScopes(treeBrowse) is empty), and keeps
+// emptyFilesText, whose "no root to browse" wording already covers Tree's
+// one empty case; the caller (filesNav.flatRowsView) only ever reaches
+// this while flatMode(), i.e. mode is Recent or Starred.
+func flatEmptyText(mode browseMode, scope browseScope) string {
+	switch mode {
+	case recentBrowse:
+		if scope == allRootsBrowseScope {
+			return "No recently viewed documents in any Root."
+		}
+		return "No recently viewed documents in this Root."
+	case starredBrowse:
+		switch scope {
+		case allStarredBrowseScope:
+			return "No starred documents."
+		case orphansBrowseScope:
+			return "No starred documents outside a session Root."
+		default:
+			return "No starred documents in this Root."
+		}
+	default:
+		return emptyFilesText
+	}
+}
