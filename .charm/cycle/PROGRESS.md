@@ -34,11 +34,22 @@ sites: a "file Result" subtest (activatePickerInto) and a "grep Result" subtest
 failure verbatim while the document still opens. `make check` green; both subtests pass
 individually verified.
 
-Next: cursor moved to **M4.1** (mode/scope model + Files Nav mode/scope row) — ready (needs
-M1.4, done). M2 and M3's tracked tasks are now all done; M2.10/M2.12/M2.13 (and earlier M2/M3
-rows) still need Reviewed/Validated coverage before building further on top of them per the
-cycle-state rule (milestone all done, Reviewed/Validated blank) — flagged, not blocking M4.1
-since M4 doesn't build on the specific rows still missing coverage.
+Validate (2026-08-11): closed the Reviewed/Validated gap flagged in the previous handoff.
+Deterministic: `make check` and `make check-pty` both green (full run, all pty checks
+passed). Verified independently: M1.1a (`config_env` in test/pty/checks.py resolves via the
+same dataDir()/storePath() logic as cmd/noggin/docstore.go, main.go, model.go; M3.3's Roots
+pane listing/marking/persistence pty checks all pass), M2.10 (checks.py:582-588 confirms the
+status+star+name row layout, `"M   tracked.md"` present, and the C2a/M4.1 pty checks pass),
+M2.12 (picker_view.go:282-290's comment now correctly says only Picker rows call
+starMarker(); Roots/Files/DV render the literal independently), M2.13
+(TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode drives a real m.View() through
+a Grep-mode PickerStar toggle, asserts the marker appears/clears same-frame — passes), M3.5
+(TestPickerActivateStoreWriteFailureSurfacesMessage has file-Result and grep-Result subtests
+mirroring M3.4's DV test — both pass). Stamped Validated 2026-08-11 for all five in
+PROGRESS.md's Status table. No discrepancies found; no TRIAGE items raised.
+
+Next: cursor is **M4.1** (mode/scope model + Files Nav mode/scope row) — ready (needs M1.4,
+done). All done rows in M1-M3 now have Reviewed and Validated coverage; nothing blocks M4.1.
 
 ## Status
 
@@ -54,7 +65,7 @@ since M4 doesn't build on the specific rows still missing coverage.
 | M2.4 | done   | 2026-08-10 | 2026-08-11 |                                      |
 | M2.5 | done   | 2026-08-10 | 2026-08-11 | pre-agreed cut 1, not actually cut   |
 | M2.6 | done   | 2026-08-10 | 2026-08-11 |                                      |
-| M1.1a | done  | 2026-08-11 | -       | replan: pty harness fix, TRIAGE T4 (D71) |
+| M1.1a | done  | 2026-08-11 | 2026-08-11 | replan: pty harness fix, TRIAGE T4 (D71) |
 | M2.7 | done   | 2026-08-11 | 2026-08-11 | replan: stale marker fix, TRIAGE T7 (D70) |
 | M2.8 | done   | 2026-08-11 | 2026-08-11 | replan: star-binding discoverability, TRIAGE T5/T6 |
 | M2.9 | done   | 2026-08-11 | 2026-08-11 | replan: naming cleanup, TRIAGE T1/T2/T9  |
@@ -62,11 +73,11 @@ since M4 doesn't build on the specific rows still missing coverage.
 | M3.2 | done   | 2026-08-10 | 2026-08-10 |                                          |
 | M3.3 | done   | 2026-08-10 | 2026-08-10 | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
 | M3.4 | done   | 2026-08-10 | 2026-08-10 | replan: recordViewed failure message clobber, TRIAGE T13; no bug found, test coverage added; review found coverage gap re: Picker call sites, resolved as M3.5 (D77) |
-| M3.5 | done   | -        | -          | replan: Picker-path store-write-failure regression tests, TRIAGE T18 (D77) |
-| M2.10 | done  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
+| M3.5 | done   | 2026-08-10 | 2026-08-11 | replan: Picker-path store-write-failure regression tests, TRIAGE T18 (D77) |
+| M2.10 | done  | 2026-08-10 | 2026-08-11 | replan: pty star-marker column checks, TRIAGE T11        |
 | M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, resolved as M2.12 (D76); validate found Grep-mode live-toggle coverage gap, resolved as M2.13 (D78) |
-| M2.12 | done  | -        | -         | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
-| M2.13 | done  | -        | -         | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
+| M2.12 | done  | 2026-08-10 | 2026-08-11 | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
+| M2.13 | done  | 2026-08-10 | 2026-08-11 | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
 | M4.1 | todo   | -        | -         |                                          |
 | M4.2 | todo   | -        | -         |                                          |
 | M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |
