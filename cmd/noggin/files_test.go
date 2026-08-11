@@ -194,6 +194,9 @@ func TestFilesNavRestoresPerRootStateAcrossSwitches(t *testing.T) {
 	}
 }
 
+// TestFilesViewFillsBoxAndMarksSelection checks the row list, one row below
+// S5's own mode/scope row (M4.1) — lines[0] is always that status line now,
+// so the rows checked here are shifted down by one from before M4.1.
 func TestFilesViewFillsBoxAndMarksSelection(t *testing.T) {
 	f := newFiles(fixtureTree()).setSize(20, 6)
 	view := f.view()
@@ -206,16 +209,20 @@ func TestFilesViewFillsBoxAndMarksSelection(t *testing.T) {
 			t.Errorf("line %d width = %d, want 20", i, w)
 		}
 	}
-	// The selected (first) row carries the reverse-video SGR; a later row does
-	// not, so the selection is visibly distinct.
-	if !strings.Contains(lines[0], "docs") {
-		t.Errorf("first row = %q, want it to name docs", lines[0])
+	if !strings.Contains(lines[0], "Tree") || !strings.Contains(lines[0], "-") {
+		t.Errorf("mode/scope row = %q, want it to show Tree and its no-scope dash", lines[0])
 	}
-	if !strings.Contains(lines[0], "\x1b[7m") {
-		t.Errorf("selected row = %q, want reverse-video SGR", lines[0])
+	// The selected row (now lines[1], one below the mode/scope row) carries
+	// the reverse-video SGR; a later row does not, so the selection is
+	// visibly distinct.
+	if !strings.Contains(lines[1], "docs") {
+		t.Errorf("first file row = %q, want it to name docs", lines[1])
 	}
-	if strings.Contains(lines[1], "\x1b[7m") {
-		t.Errorf("unselected row = %q, want no reverse-video SGR", lines[1])
+	if !strings.Contains(lines[1], "\x1b[7m") {
+		t.Errorf("selected row = %q, want reverse-video SGR", lines[1])
+	}
+	if strings.Contains(lines[2], "\x1b[7m") {
+		t.Errorf("unselected row = %q, want no reverse-video SGR", lines[2])
 	}
 }
 
@@ -224,6 +231,13 @@ func TestFilesEmptyStateWhenNoRoot(t *testing.T) {
 	lines := strings.Split(f.view(), "\n")
 	if len(lines) != 6 {
 		t.Fatalf("empty-state view has %d lines, want 6", len(lines))
+	}
+	// The mode/scope row (M4.1) still shows above the empty-state message,
+	// which is one row shorter than the whole box for the same reason the
+	// file list is (S5: "costing the file list one row of height in every
+	// mode" applies with no root open too, files.go's view doc comment).
+	if !strings.Contains(lines[0], "Tree") {
+		t.Errorf("mode/scope row = %q, want it to show Tree", lines[0])
 	}
 	if !strings.Contains(f.view(), "No folder open") {
 		t.Errorf("empty-state view = %q, want the no-folder message", f.view())

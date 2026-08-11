@@ -220,6 +220,23 @@ type keyMap struct {
 	// (selection change, Focus change, opening the Picker, a refresh) is
 	// enforced at its own call site — see model.setFocus and model.refresh.
 	Peek key.Binding
+
+	// FilesMode and FilesScope are S5's two Browse cycle keys (C4/M4.1):
+	// Files-Nav-only, like Peek above, so they are matched in Update's
+	// filesPane case (via filesNav.handleKey, beside Expand/Collapse) rather
+	// than the global switch, and do nothing from any other Focus. Tab and
+	// Shift+Tab, reused from keys.PickerMode/keys.PickerScope's own physical
+	// chords rather than new ones: the two contexts never overlap (the
+	// Picker owns the keyboard exclusively while open, handlePickerInput's
+	// own gate, so Update's filesPane case is only ever reached with the
+	// Picker closed) the same way keys.Activate's "enter" already means one
+	// thing on the Files Nav and another on the Roots Nav/Picker without
+	// collision. FilesMode cycles Tree -> Recent -> Starred -> Tree ...
+	// (filesNav.cycleMode); FilesScope cycles the current mode's own Browse
+	// Scope values (filesNav.cycleScope), a no-op while the mode is Tree,
+	// which has none (S5).
+	FilesMode  key.Binding
+	FilesScope key.Binding
 }
 
 // keys is the program's keymap.
@@ -359,6 +376,14 @@ var keys = keyMap{
 	Peek: key.NewBinding(
 		key.WithKeys("p"),
 		key.WithHelp("p", "peek"),
+	),
+	FilesMode: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "mode"),
+	),
+	FilesScope: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tab", "scope"),
 	),
 	ActivateDV2: key.NewBinding(
 		key.WithKeys("ctrl+enter", "ctrl+l"),

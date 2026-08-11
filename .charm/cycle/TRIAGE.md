@@ -25,4 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-<!-- empty: all open items triaged 2026-08-11 (replan) -> PLAN.md M2.12/M2.13/M3.5, DECISIONS.md D76/D77/D78 -->
+| T20 | build | medium | cmd/noggin/footer.go:41 (paneHints), cmd/noggin/help.go:60 (helpBindings) | keys.FilesMode/keys.FilesScope (M4.1, S5's two Browse cycle keys) are not yet in filesPane's footer hints or Help Modal listing, unlike every other Files-Nav-only binding (Peek/ActivateDV2/PeekDV2) added alongside its own task, and unlike M2.8's precedent (Star's own dedicated discoverability task). Mirrors T5/T6's shape. | open |

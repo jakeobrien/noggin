@@ -58,6 +58,17 @@ type filesNav struct {
 	// map: no markers, the same degrade status already gives.
 	starred map[string]bool
 
+	// mode and scope are S5's Browse Mode/Browse Scope, cycled by
+	// keys.FilesMode/keys.FilesScope (handleKey below) only while the Files
+	// Nav has Focus. The zero values (treeBrowse, activeRootBrowseScope) are S5's
+	// own starting state, so newFilesNav needs no explicit initialization —
+	// a session always opens on Tree (S7), and Tree's scope reads "-"
+	// (scopeLabel) regardless of the scope field's value. M4.6 gives these
+	// per-Root/per-(Root,mode) memory; M4.1 has exactly one pair, session-
+	// wide, with no restore across Root switches yet.
+	mode  browseMode
+	scope browseScope
+
 	// width and height are the content box the pane draws into, borders and
 	// title already deducted (see computeLayout / rect.content).
 	width  int
@@ -211,6 +222,60 @@ func (f filesNav) withStarred(starred map[string]bool) filesNav {
 	return f
 }
 
+// cycleMode advances S5's Browse Mode one step (Tree -> Recent -> Starred ->
+// Tree ...), keys.FilesMode's own action. The new mode's scope resets to its
+// own first value (modeScopes(mode)[0], or the zero value for Tree, which
+// scopeLabel ignores anyway) rather than carrying over whatever scope index
+// the previous mode was on — a scope value only means something read
+// against the mode that produced it (S5's own per-mode value sets), and
+// M4.1 does not yet have M4.6's per-(Root,mode) memory to restore instead.
+func (f filesNav) cycleMode() filesNav {
+	switch f.mode {
+	case treeBrowse:
+		f.mode = recentBrowse
+	case recentBrowse:
+		f.mode = starredBrowse
+	default:
+		f.mode = treeBrowse
+	}
+	if scopes := modeScopes(f.mode); len(scopes) > 0 {
+		f.scope = scopes[0]
+	} else {
+		f.scope = activeRootBrowseScope
+	}
+	return f
+}
+
+// cycleScope advances S5's Browse Scope one step within the current mode's
+// own value set, wrapping; a no-op while the mode is Tree, whose scope key
+// does nothing (S5: "the scope key is a no-op" for Tree) since
+// modeScopes(treeBrowse) is empty.
+func (f filesNav) cycleScope() filesNav {
+	scopes := modeScopes(f.mode)
+	if len(scopes) == 0 {
+		return f
+	}
+	idx := 0
+	for i, s := range scopes {
+		if s == f.scope {
+			idx = i
+			break
+		}
+	}
+	f.scope = scopes[(idx+1)%len(scopes)]
+	return f
+}
+
+// scopeLabel is the current scope's own S5 display name for the mode/scope
+// row: "-" for Tree regardless of the scope field's value (Tree has no
+// scope to speak of), otherwise the scope's own label.
+func (f filesNav) scopeLabel() string {
+	if f.mode == treeBrowse {
+		return "-"
+	}
+	return f.scope.label()
+}
+
 // setSize sets the content box the pane draws into.
 func (f filesNav) setSize(width, height int) filesNav {
 	f.width = max(width, 0)
@@ -269,6 +334,10 @@ func (f filesNav) handleKey(msg tea.KeyPressMsg) (filesNav, bool) {
 		return f.expand(), true
 	case key.Matches(msg, keys.Collapse):
 		return f.collapse(), true
+	case key.Matches(msg, keys.FilesMode):
+		return f.cycleMode(), true
+	case key.Matches(msg, keys.FilesScope):
+		return f.cycleScope(), true
 	}
 	return f, false
 }
@@ -319,23 +388,61 @@ func (f filesNav) withExpanded(path string, open bool) filesNav {
 var (
 	filesSelectedStyle = lipgloss.NewStyle().Reverse(true)
 	emptyFilesStyle    = lipgloss.NewStyle().Foreground(dimColor)
+	// modeScopeRowStyle is S5's mode/scope row (below): dim, like every
+	// other pane's resting/empty text (dimColor's own doc comment), so it
+	// reads as a status line rather than competing with the selected-row
+	// reverse video or a git-status/star marker.
+	modeScopeRowStyle = lipgloss.NewStyle().Foreground(dimColor)
 )
 
 // view renders the pane's content box at exactly its width x height, the same
-// contract the viewer keeps. A window into the visible rows is drawn with the
-// selection always on screen; short trees pad to the box height.
+// contract the viewer keeps. S5's mode/scope row (modeScopeRow) always takes
+// the box's first line, in every mode and even with no root open (S5: "costing
+// the file list one row of height in every mode" — the row itself, not just
+// the modes it names, is what the pane always shows); the rest of the box
+// (f.height-1) is the row list or the empty-state message exactly as before
+// M4.1, just one row shorter.
 func (f filesNav) view() string {
 	if f.width <= 0 || f.height <= 0 {
+		return ""
+	}
+	row := f.modeScopeRow()
+	if f.height == 1 {
+		// No room left for the list past the mode/scope row itself — join
+		// would otherwise append an extra blank line (rowsView(0) == ""),
+		// overshooting the exactly-f.height-lines contract.
+		return row
+	}
+	return row + "\n" + f.rowsView(f.height-1)
+}
+
+// modeScopeRow renders S5's own status line: the current Browse Mode and
+// Browse Scope, " \u00b7 "-joined the same way the footer joins its hints
+// (footer.go's joinHints) so the two status lines read consistently.
+func (f filesNav) modeScopeRow() string {
+	text := f.mode.label() + " \u00b7 " + f.scopeLabel()
+	return modeScopeRowStyle.Width(f.width).MaxWidth(f.width).Render(text)
+}
+
+// rowsView renders the file-list portion of the box at exactly height rows
+// (the box height less modeScopeRow's own line) — the empty-state message
+// when there is nothing to browse, or a scrollable window into the visible
+// rows with the selection always on screen, otherwise. A height of 0 (a
+// pane too short to show anything past its mode/scope row) renders as an
+// empty string, which "a\n" + "" still leaves as exactly f.height lines
+// overall once split.
+func (f filesNav) rowsView(height int) string {
+	if height <= 0 {
 		return ""
 	}
 	rows := f.visibleRows()
 	if len(rows) == 0 {
 		return emptyFilesStyle.
-			Width(f.width).Height(f.height).
-			MaxWidth(f.width).MaxHeight(f.height).
+			Width(f.width).Height(height).
+			MaxWidth(f.width).MaxHeight(height).
 			Render(emptyFilesText)
 	}
-	return windowedView(f.width, f.height, f.selected, len(rows), func(idx int) string {
+	return windowedView(f.width, height, f.selected, len(rows), func(idx int) string {
 		return f.renderRow(rows[idx], idx == f.selected)
 	})
 }

@@ -17,39 +17,45 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M4.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Build (2026-08-11): completed M3.5. Added
-`TestPickerActivateStoreWriteFailureSurfacesMessage` (new file,
-cmd/noggin/recency_picker_store_write_failure_test.go), mirroring M3.4's
-`TestActivateStoreWriteFailureSurfacesMessage` for the Picker's two `recordViewed` call
-sites: a "file Result" subtest (activatePickerInto) and a "grep Result" subtest
-(activateGrepPickerInto), both forcing the store write to fail via the existing
-`storeWriteFailurePath` helper and asserting the resulting message reflects the store
-failure verbatim while the document still opens. `make check` green; both subtests pass
-individually verified.
+Build (2026-08-11): completed M4.1. Added `browse.go`: `browseMode`
+(treeBrowse/recentBrowse/starredBrowse) and `browseScope`
+(activeRootBrowseScope/allRootsBrowseScope/allStarredBrowseScope/orphansBrowseScope), plus
+`modeScopes(mode)` giving each mode its own ordered scope set (none for Tree, two for
+Recent, three for Starred — Orphans is in the model now even though M4.3's own *listing* of
+it is pre-agreed cut 3, per that task's note; costs nothing to carry). `filesNav` gained
+`mode`/`scope` fields, `cycleMode`/`cycleScope` (a mode switch resets scope to the new
+mode's own first value — no M4.6 per-Root/per-mode memory yet, that's its own task) and
+`scopeLabel` ("-" for Tree regardless of the scope field). `view()` now always reserves its
+first line for the mode/scope row (`modeScopeRow`, " · "-joined like the footer's own hints)
+and renders the row list into the remaining height-1 (`rowsView`), with a height==1 guard so
+a pane with room for only the header doesn't overshoot the exactly-height-lines contract.
+keys.FilesMode/keys.FilesScope (tab/shift+tab, reusing the Picker's own physical chords —
+the two contexts are mutually exclusive by construction, see keymap.go's own comment) are
+matched in `filesNav.handleKey` beside Expand/Collapse, so they only ever fire with Files
+Nav Focus, same as every other Files-Nav-only binding. Updated the two pre-existing
+files_test.go view tests for the one-row shift; added `browse_test.go` covering the mode
+cycle/wrap, each mode's own scope set and wrap, Tree's scope no-op, the reset-on-mode-switch
+rule, the row's own text per mode, the one-row-height cost (a box that fits N rows loses one
+to a box N-1 tall the same way), and the model-level "acts only from Files Nav Focus" /
+"acts and renders immediately from it" pair. `make check` and `make check-pty` both green
+(full runs).
 
-Validate (2026-08-11): closed the Reviewed/Validated gap flagged in the previous handoff.
-Deterministic: `make check` and `make check-pty` both green (full run, all pty checks
-passed). Verified independently: M1.1a (`config_env` in test/pty/checks.py resolves via the
-same dataDir()/storePath() logic as cmd/noggin/docstore.go, main.go, model.go; M3.3's Roots
-pane listing/marking/persistence pty checks all pass), M2.10 (checks.py:582-588 confirms the
-status+star+name row layout, `"M   tracked.md"` present, and the C2a/M4.1 pty checks pass),
-M2.12 (picker_view.go:282-290's comment now correctly says only Picker rows call
-starMarker(); Roots/Files/DV render the literal independently), M2.13
-(TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode drives a real m.View() through
-a Grep-mode PickerStar toggle, asserts the marker appears/clears same-frame — passes), M3.5
-(TestPickerActivateStoreWriteFailureSurfacesMessage has file-Result and grep-Result subtests
-mirroring M3.4's DV test — both pass). Stamped Validated 2026-08-11 for all five in
-PROGRESS.md's Status table. No discrepancies found; no TRIAGE items raised.
+Not done, logged as TRIAGE T20 (build, medium): keys.FilesMode/FilesScope have no footer
+hint or Help Modal listing yet — every other Files-Nav-only binding got one alongside its
+own task (Peek/ActivateDV2/PeekDV2), and M2.8 set precedent for treating this as its own
+task rather than folding it into the acceptance criterion that introduced the binding.
 
-Next: cursor is **M4.1** (mode/scope model + Files Nav mode/scope row) — ready (needs M1.4,
-done). All done rows in M1-M3 now have Reviewed and Validated coverage; nothing blocks M4.1.
+Next: cursor is **M4.2** (`Recent` mode's actual flat-list rows) — needs M4.1 (done), M3.1
+(done), M3.3 (done). Nothing blocks it. TRIAGE has one open item (T20, non-blocking); a
+future replan should decide whether it becomes its own task or is folded into whichever of
+M4.2/M4.3/M4.5 next touches filesPane's hint lists.
 
 ## Status
 
@@ -78,7 +84,7 @@ done). All done rows in M1-M3 now have Reviewed and Validated coverage; nothing 
 | M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, resolved as M2.12 (D76); validate found Grep-mode live-toggle coverage gap, resolved as M2.13 (D78) |
 | M2.12 | done  | 2026-08-10 | 2026-08-11 | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
 | M2.13 | done  | 2026-08-10 | 2026-08-11 | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
-| M4.1 | todo   | -        | -         |                                          |
+| M4.1 | done   | -        | -         | discoverability gap logged as TRIAGE T20   |
 | M4.2 | todo   | -        | -         |                                          |
 | M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |
 | M4.4 | todo   | -        | -         |                                          |

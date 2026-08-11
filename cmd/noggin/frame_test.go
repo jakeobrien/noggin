@@ -301,6 +301,7 @@ func allBindings() []key.Binding {
 		keys.ToggleHidden, keys.PickerStar,
 		keys.Peek,
 		keys.ActivateDV2, keys.PeekDV2,
+		keys.FilesMode, keys.FilesScope,
 	}
 }
 
