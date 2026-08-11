@@ -208,6 +208,33 @@ func TestPaneHintsNamePeekOnlyInFilesPane(t *testing.T) {
 	}
 }
 
+// TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane checks S5's Browse
+// mode/scope cycle keys (C4/M4.1) against the footer, mirroring
+// TestPaneHintsNamePeekOnlyInFilesPane's shape directly above: filesPane's
+// hints name them, but rootsPane's and dv1Pane/dv2Pane's — which can never
+// trigger a Files-Nav-only cycle — do not.
+func TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane(t *testing.T) {
+	// 220, matching TestPaneHintsNamePeekOnlyInFilesPane: FilesMode/FilesScope
+	// sort earlier than Peek in paneHints' filesPane list, so any width wide
+	// enough to keep "peek" untruncated keeps these two too.
+	text := hintText(filesPane, 220)
+	if !strings.Contains(text, "mode") {
+		t.Errorf("filesPane hint text = %q, want it to contain %q", text, "mode")
+	}
+	if !strings.Contains(text, "scope") {
+		t.Errorf("filesPane hint text = %q, want it to contain %q", text, "scope")
+	}
+	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
+		text := hintText(p, 220)
+		if strings.Contains(text, "mode") {
+			t.Errorf("pane %v: hint text = %q, unexpectedly names mode (Files-Nav-only)", p, text)
+		}
+		if strings.Contains(text, "scope") {
+			t.Errorf("pane %v: hint text = %q, unexpectedly names scope (Files-Nav-only)", p, text)
+		}
+	}
+}
+
 // TestPickerHintTextNamesToggleHidden checks S4/M6.2's dotfile toggle is
 // named among the open Picker's footer hints (pickerHints), the same
 // always-does-something-while-open reasoning PickerMode/PickerScope already

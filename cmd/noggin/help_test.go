@@ -60,6 +60,28 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 			}
 		}
 	}
+
+	// keys.FilesMode/keys.FilesScope render as "tab"/"mode" and
+	// "shift+tab"/"scope" — text identical to keys.PickerMode/
+	// keys.PickerScope's own (help.go's own comment), which are already
+	// listed unconditionally for filesPane. A plain string check against
+	// the rendered box above can't tell those two pairs apart, so it would
+	// still pass even if FilesMode/FilesScope were dropped from filesPane's
+	// helpBindings entirely. Counting occurrences of the matching Help()
+	// text in helpBindings(filesPane) directly does catch that: dropping
+	// FilesMode/FilesScope takes the count from 2 (itself plus
+	// PickerMode/PickerScope) down to 1.
+	for _, want := range []key.Binding{keys.FilesMode, keys.FilesScope} {
+		count := 0
+		for _, b := range helpBindings(filesPane) {
+			if b.Help().Key == want.Help().Key && b.Help().Desc == want.Help().Desc {
+				count++
+			}
+		}
+		if count != 2 {
+			t.Errorf("filesPane: helpBindings has %d binding(s) matching %q (%q), want 2 (it plus PickerMode/PickerScope's identical text)", count, want.Help().Key, want.Help().Desc)
+		}
+	}
 }
 
 // TestHelpOverlayLeavesTheFrameVisibleAroundIt checks the "opens over" half

@@ -17,24 +17,29 @@
 
 ## Cursor
 
-Current task: M4.12
+Current task: M4.13
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Replan (2026-08-12): triaged TRIAGE T32–T37 (all review findings against already-`done` M4
-tasks). Accepted M4.12 (T32+T33: strengthen the Help Modal's filesPane assertion to
-identity-based, add a footer hint test for FilesMode/FilesScope), M4.13 (T34+T36:
-flatEmptyText's default-branch/comment mismatch, a tie-break test comment), M4.14 (T37: two
-missing flat-selection-clamp regression cases for cycleScope/setRoot's restore path) —
-see D86/D87/D88. Wontfix'd T35 (clampSelected double-scan) as D85, mirroring D75's
-reasoning: speculative, bounded by existing caps, no bug. TRIAGE.md is empty again.
+M4.12 done (2026-08-12): strengthened `TestHelpModalListsThePaneOwnBindings`'s filesPane
+case with a count-based identity assertion on `helpBindings(filesPane)` — plain string
+matching against the rendered box can't tell `keys.FilesMode`/`keys.FilesScope` apart from
+`keys.PickerMode`/`keys.PickerScope`'s identical "tab"/"mode", "shift+tab"/"scope" text, so
+the check counts occurrences (want 2: the Files pair plus the always-present Picker pair) —
+dropping either takes the count to 1. Added `TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane`
+mirroring `TestPaneHintsNamePeekOnlyInFilesPane`'s shape (footer's `paneHints` doesn't share
+the Picker collision, so a plain `strings.Contains` suffices there). Verified both new
+assertions actually catch the regression (temporarily dropped FilesMode/FilesScope from both
+lists, confirmed both tests fail with the expected messages, restored, `make check` green
+again). `make check` passes.
 
-Next: M4.12, then M4.13, M4.14, in plan order, before returning to M5.1 (Picker `Starred`
-scope, Grep-side pre-agreed cut 4) — none of the three block M5.1, they were just next in
-plan order when accepted.
+Next: M4.13 (flatEmptyText's default-branch/comment mismatch, tie-break test comment), then
+M4.14 (flat-selection-clamp regression cases for cycleScope/setRoot's restore path), then
+back to M5.1 (Picker `Starred` scope, Grep-side pre-agreed cut 4) — neither remaining task
+blocks M5.1, they're just next in plan order.
 
 ## Status
 
@@ -74,7 +79,7 @@ plan order when accepted.
 | M4.9 | done   | 2026-08-12 | -       | replan: Tree's own empty-vs-no-Root message, TRIAGE T22; review: T34  |
 | M4.10 | done  | 2026-08-12 | -       | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83); review: T36 |
 | M4.11 | done  | 2026-08-12 | -       | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
-| M4.12 | todo  | -        | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
+| M4.12 | done  | -        | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
 | M4.13 | todo  | -        | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87) |
 | M4.14 | todo  | -        | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
