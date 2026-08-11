@@ -599,6 +599,10 @@ func (m model) activatePickerInto(target pane) model {
 		m.message = fmt.Sprintf("cannot open %s: %v", f.path, err)
 		return m.dismissPicker()
 	}
+	// S4/M3.3: Picker Activate records recency the same as the Files Nav's
+	// own activateInto (M3.1) — TRIAGE T12 found this call site bypassing
+	// recordViewed entirely by going straight to openDocumentInto.
+	m = m.recordViewed(f.path)
 	m = m.openDocumentInto(target, d)
 	return m.dismissPicker()
 }
@@ -707,6 +711,9 @@ func (m model) activateGrepPickerInto(target pane) model {
 		m.message = fmt.Sprintf("cannot open %s: %v", g.file.path, err)
 		return m.dismissPicker()
 	}
+	// S4/M3.3: same recordViewed fix as activatePickerInto's fileMode half,
+	// for the grepMode path (TRIAGE T12).
+	m = m.recordViewed(g.file.path)
 	m = m.openDocumentInto(target, d)
 	v := m.viewerFor(target).commitQuery(query)
 	if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line); ok {

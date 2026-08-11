@@ -17,37 +17,28 @@
 
 ## Cursor
 
-Current task: M3.3
+Current task: M3.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Replan session: triaged all six open TRIAGE items (T11-T16). T12 (Picker Activate never
-records lastViewed) and T13 (recordViewed's failure message can clobber a success message)
-accepted as new tasks **M3.3**, **M3.4** (D74) — M3 is reopened, no longer fully `done`; M4.2
-now also needs M3.3 so `Recent` mode isn't built against a known-incomplete data source. T11
-(pty check literals broken by M2.3's star column) accepted as **M2.10**. T14 and T15 (stale
-doc comments) were trivial and fixed directly during replan, not turned into tasks —
-keys.Star's doc comment (keymap.go) and a stale `$XDG_CONFIG_HOME` comment (test/pty/checks.py)
-both updated. T16 (recordViewed's harmless-looking m.files.starred recompute) logged wontfix
-(D75), no task. TRIAGE.md is now empty.
+M3.3 built: `activatePickerInto` (fileMode) and `activateGrepPickerInto` (grepMode), both in
+picker.go, called `openDocumentInto` directly without ever routing through `activateInto` —
+TRIAGE T12's bug. Fix: each now calls `m.recordViewed(path)` immediately before
+`openDocumentInto`, the same ordering `activateInto` (model.go) already uses, right before
+the `dismissPicker()` return. New test file `recency_picker_test.go` (`TestPickerActivateRecordsLastViewed`,
+4 subtests: file/grep Result x DV1/DV2 target) stages `m.picker.results` directly the same
+way picker_test.go's existing Activate tests do (no live ripgrep search needed) and confirms
+a timestamp lands + survives a reload via `loadDocStore`. Verified red-then-green: reverted
+picker.go alone and confirmed all 4 subtests fail with a zero `LastViewed`, then confirmed
+they pass with the fix restored. `make check` green; `gofmt -l` clean on both changed files.
 
-The user then resolved the previously-open **D72** directly (Picker rows should show a
-visible star marker) — SPEC.md's S3 amended in place, and **M2.11** built the same session:
-`pickerFileRow`/`pickerGrepRow` (picker_view.go) gained a `starred bool` param and prepend the
-shared "\u2605 "/"  " marker, computed live from `m.docs` via `pickerResultsContent`'s new `docs`
-param (threaded through `renderPicker`/`overlayPicker`); the marker is folded into
-`highlightMatches`' existing self-contained-per-run styling via a new `prependMarker` helper
-rather than pre-styled separately, avoiding the reset-cancels-reverse hazard that comment
-warns about. Nine existing pinned-string/pinned-column tests in picker_view_test.go needed
-updating for the new 2-column budget (content width is now `width-2`); three new tests added
-(two unit, one integration covering live toggle-without-refresh). `make check` green.
-
-Next: **M3.3**, then M3.4 and M2.10 (independent, any order) before M4.1; consider
-charm-validate/code-review for the M3 milestone once M3.3/M3.4 land (M2.11 could use the same
-pass), since M3 was about to close that gate when this replan reopened it.
+Next: **M3.4** (recordViewed's failure-message clobber), then M2.10 (independent, any order)
+before M4.1; consider charm-validate/code-review for the M3 milestone once M3.4 lands (M2.11
+could use the same pass), since M3 was about to close that gate before this replan reopened
+it.
 
 ## Status
 
@@ -69,7 +60,7 @@ pass), since M3 was about to close that gate when this replan reopened it.
 | M2.9 | done   | 2026-08-11 | 2026-08-11 | replan: naming cleanup, TRIAGE T1/T2/T9  |
 | M3.1 | done   | 2026-08-11 | 2026-08-11 | SPEC/GLOSSARY-level gap re: Picker Activate not recording lastViewed — tracked as TRIAGE T12, not a M3.1 overclaim |
 | M3.2 | done   | -        | -         |                                          |
-| M3.3 | todo   | -        | -         | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
+| M3.3 | done   | -        | -         | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
 | M3.4 | todo   | -        | -         | replan: recordViewed failure message clobber, TRIAGE T13 |
 | M2.10 | todo  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
 | M2.11 | done  | -        | -         | replan: Picker star marker (D72, TRIAGE T8), built same session |
