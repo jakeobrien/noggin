@@ -155,13 +155,22 @@ func newFilesNav() filesNav {
 // Recent/Starred, whose flat lists have no relationship to that index at
 // all. clampSelected's final pass is what makes this safe: a restore into a
 // flat mode re-resolves f.selected against that list's own rowCount instead
-// of trusting the Tree-shaped value indexOfPath produced (TRIAGE T23/D82).
+// of trusting the Tree-shaped value indexOfPath produced (TRIAGE T23/D82) —
+// but only once f.activeRootPath itself already names root (below), not the
+// Root being left: a flat mode's Active Root scope reads the bucket keyed
+// by activeRootPath (recentRows/starredRows), and the model's own
+// refreshFilesRecentSource call that would otherwise repoint it never runs
+// until after setRoot returns (TRIAGE T38/M4.15) — this method's single
+// caller (model.openFolder) only ever passes a root that is already, or is
+// about to become, the session's Active Root, so setting it here directly
+// is exact, not a guess.
 func (f filesNav) setRoot(root *tree.Node) filesNav {
 	if f.root != nil {
 		f = f.remember(f.root.Path)
 	}
 
 	f.root = root
+	f.activeRootPath = root.Path
 	if saved, ok := f.memory[root.Path]; ok {
 		f.expanded = saved.expanded
 		f.selected = f.indexOfPath(saved.selectedPath)

@@ -17,46 +17,35 @@
 
 ## Cursor
 
-Current task: M4.15
+Current task: M5.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M6.2 built: per-document scroll memory in history (S9's pre-agreed cut 2 — delivered, not
-cut; TRIAGE was empty of blocking items and the cycle has not spilled, same call as M2.5/
-M4.3/M5.1's earlier "not actually cut" cases). `viewer` gained a `docOffsets map[string]int`
-(viewer.go), keyed by path rather than by history entry — the same document recurring at two
-different history entries (pushHistory allows non-adjacent repeats) shares one, most-recently-
-remembered offset. `viewer.open()` itself now saves the outgoing document's offset (a new
-`rememberOffset` helper) before switching, and restores the incoming document's remembered
-offset if this viewer has ever had it open before, or GotoTop otherwise — the same single
-method every navigation path already funnels through (M6.1's own `navigate`/
-`walkViewerHistory` design), so Activate, the Picker, launch and history's own back/forward
-all get scroll memory with no extra call sites. `refreshDoc`/`close` are untouched: neither
-ever leaves a document. One side effect logged as D91: re-Activating the already-open document
-now preserves its scroll position instead of resetting to top (banked and immediately restored
-as the same value) — untested before, not contradicted by anything, and a smaller surprise
-than Back/Forward and Activate disagreeing on the same document.
+M4.15 built: fixed `filesNav.setRoot`'s selection-reset bug (TRIAGE T38) — its own
+`clampSelected()` call ran before `model.openFolder`'s later `refreshFilesRecentSource`
+re-points `f.activeRootPath` at the incoming Root, so a flat-mode (Recent/Starred) Active
+Root restore re-clamped against the *outgoing* Root's still-stale bucket size, collapsing the
+memory-restored row to 0. Fix: `setRoot` now sets `f.activeRootPath = root.Path` itself,
+immediately after `f.root = root` and before the memory-restore/clamp block — its one caller
+(`model.openFolder`) only ever passes a root that already is, or is about to become, the
+session's Active Root, so this is exact, not a guess; `docs`/`sessionRoots` need no equivalent
+fix since neither varies with which Root is active. Doc comment on `setRoot` updated to cite
+the hand-off explicitly.
 
-New: history_scroll_test.go — two tests against M6.2's own acceptance wording verbatim: Back
-restoring a remembered offset after navigating away and back, and a *different* history entry
-for the same document (a re-visited via b in between) sharing that same, most recently
-remembered offset rather than its own original one. Both fail without the implementation
-(verified by reverting model.go/viewer.go and re-running) and pass with it. `make check` and
-`make check-pty` both green.
+New: openfolder_flat_restore_test.go's `TestOpenFolderRestoresFlatModeSelectionAgainstThe-
+CorrectRoot` drives `model.openFolder` itself (not `filesNav.setRoot` in isolation, which
+`TestSettingRootRestoringAFlatModeReClampsSelection` already covers for a different shrink and
+explicitly deferred this exact ordering hand-off in its own doc comment) — two Roots with
+differing Starred/Active-Root bucket sizes, switching Root A (Starred, row 2 selected) away to
+Root B and back, asserting selection lands back on row 2 (a3.md), not 0. Confirmed failing
+pre-fix (asserted `selected == 0`, `selectedFlatRow` returned a1.md) and passing post-fix.
+`make check` and `make check-pty` both green; `go test ./... -v` shows 422 passing, 0 failing.
 
-Replan (this session): triaged TRIAGE T38-T43, all six now routed and cleared from the inbox.
-Accepted as new tasks: M4.15 (T38, openFolder's flat-mode selection-reset bug), M5.2 (T42,
-delete dead `grepFiles`, D94), M6.3 (T41, HistoryBack/HistoryForward Footer/Help
-discoverability, mirrors M2.8/M4.8), M6.4 (T43, D91's untested re-Activate scroll-preserve
-regression). T39 (M4.13's 4-line vs "one-line" comment wording) wontfixed as D92. T40
-(Orphans scope not actually cut) resolved as D93, mirroring D89 — note added to M4.3's row
-below rather than editing SPEC/PLAN. Cursor moves to M4.15: these four are cheap cleanup on
-already-`done` milestones, sequenced ahead of M7 (a fresh, independent feature) rather than
-after it — no dependency forces this order, it's a judgment call to close out known gaps
-first. M7.1/M7.2 (pane focus badges, S10) remain queued after, still fully independent.
+Cursor moves to M5.2 (delete dead `grepFiles`, D94), next in the four-item cleanup queue
+(M5.2, M6.3, M6.4) this session's replan sequenced ahead of M7.
 
 ## Status
 
@@ -102,7 +91,7 @@ first. M7.1/M7.2 (pane focus badges, S10) remain queued after, still fully indep
 | M5.1 | done   | 2026-08-11 | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5); review found grepFiles dead code, TRIAGE T42 |
 | M6.1 | done   | 2026-08-11 | -         |                                          |
 | M6.2 | done   | 2026-08-11 | -         | pre-agreed cut 2, not actually cut (D91); review found untested re-Activate scroll-preserve behavior, TRIAGE T43 |
-| M4.15 | todo  | -        | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
+| M4.15 | done  | -        | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
 | M5.2 | todo   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
 | M6.3 | todo   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41 |
 | M6.4 | todo   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43 |
