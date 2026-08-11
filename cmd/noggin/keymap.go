@@ -238,6 +238,18 @@ type keyMap struct {
 	// which has none (S5).
 	FilesMode  key.Binding
 	FilesScope key.Binding
+
+	// HistoryBack and HistoryForward walk a focused Document Viewer's own S9
+	// back/forward stack (C4/M6.1): matched in Update's dv1Pane/dv2Pane case
+	// beside keys.Star, so — like it — they act on whichever viewer holds
+	// Focus (DV1 and DV2 each walk their own history independently) and do
+	// nothing from the Roots Nav or Files Nav. `[`/`]`, unused elsewhere in
+	// the keymap and free of S2's Picker-Prompt "always typing" constraint
+	// PickerUp/PickerDown, ToggleHidden and PickerStar each had to route
+	// around, since neither the Files Nav nor a focused viewer is ever a
+	// typing context the way the Picker's Prompt is.
+	HistoryBack    key.Binding
+	HistoryForward key.Binding
 }
 
 // keys is the program's keymap.
@@ -393,5 +405,13 @@ var keys = keyMap{
 	PeekDV2: key.NewBinding(
 		key.WithKeys("ctrl+p"),
 		key.WithHelp("ctrl+p", "peek in dv2"),
+	),
+	HistoryBack: key.NewBinding(
+		key.WithKeys("["),
+		key.WithHelp("[", "back"),
+	),
+	HistoryForward: key.NewBinding(
+		key.WithKeys("]"),
+		key.WithHelp("]", "forward"),
 	),
 }

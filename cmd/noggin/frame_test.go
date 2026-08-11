@@ -302,6 +302,7 @@ func allBindings() []key.Binding {
 		keys.Peek,
 		keys.ActivateDV2, keys.PeekDV2,
 		keys.FilesMode, keys.FilesScope,
+		keys.HistoryBack, keys.HistoryForward,
 	}
 }
 

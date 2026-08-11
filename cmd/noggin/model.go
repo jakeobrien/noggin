@@ -361,7 +361,7 @@ func (m model) openFolder(root *tree.Node) model {
 // Targeting-modified load (a later task) or an edit resumed on DV2
 // (finishEdit) needs instead.
 func (m model) openDocument(d document) model {
-	return m.openDocumentInto(dv1Pane, d)
+	return m.navigate(dv1Pane, d)
 }
 
 // openDocumentInto makes d pane p's Active Document and puts Focus on p,
@@ -391,6 +391,64 @@ func (m model) openDocumentInto(p pane, d document) model {
 	m = m.resetStaleBaseline()
 	return m
 }
+
+// navigate is openDocumentInto's history-recording form (C4/M6.1): every
+// "real" navigation to a new document — the Files Nav's Activate (plain and
+// DV2-targeted), the Picker's Activate, and the launch-time document
+// (applyResolution) — pushes onto the target viewer's own S9 back/forward
+// stack in the same call that opens it (viewer.pushHistory). p is expected
+// to already be dv1Pane or dv2Pane, exactly as openDocumentInto itself
+// expects, since every caller here already resolved it (activateInto's
+// target, the dv1Pane literal above, the Picker's target). openDocumentInto
+// itself stays history-blind on purpose: the $EDITOR handoff (finishEdit)
+// and history's own traversal (walkViewerHistory, below) both call it, or
+// its underlying pieces, directly instead — neither counts as a
+// navigation S9 wants recorded ("the $EDITOR handoff and Refresh do not
+// create entries").
+func (m model) navigate(p pane, d document) model {
+	m = m.openDocumentInto(p, d)
+	return m.withViewerFor(p, m.viewerFor(p).pushHistory(d.path))
+}
+
+// walkViewerHistory is historyBack/historyForward's shared step (C4/M6.1):
+// asks the focused viewer to move one entry along its own S9 stack (dir is
+// viewer.goBack or viewer.goForward), then re-reads that entry's document
+// from disk and opens it directly into the same pane (viewer.open, landing
+// at the top — per-document scroll memory is M6.2's own pre-agreed cut),
+// never through navigate/openDocumentInto: the pane already holds Focus (no
+// setFocus needed), DV2 already exists if that is where Focus is (visible()
+// guarantees it), and this is history moving, not a new entry for
+// pushHistory to record. dir's own ok == false (either end of history) and
+// a Peeked viewer (moved.peeking(), matching toggleActiveDocStar's own
+// guard — Peek only ever lives while Focus sits on the Files Nav, so this
+// never actually fires today, but costs nothing to keep true) are both
+// silent no-ops, the same "nothing to do" shape FindNext/FindPrevious give
+// an empty match list, not a refusal. A read failure reports the same
+// "cannot open" message activate()'s own read failure gives and leaves the
+// model untouched — dir's moved viewer only ever exists in a local
+// variable until a successful read is in hand, so a failed load costs
+// nothing, the history position included.
+func (m model) walkViewerHistory(dir func(viewer) (viewer, string, bool)) model {
+	p := m.focusedViewerPane()
+	moved, path, ok := dir(m.viewerFor(p))
+	if !ok || moved.peeking() {
+		return m
+	}
+	d, err := loadDocument(path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", path, err)
+		return m
+	}
+	m = m.withViewerFor(p, moved.open(d))
+	return m.resetStaleBaseline()
+}
+
+// historyBack and historyForward are keys.HistoryBack/keys.HistoryForward's
+// actions (C4/M6.1): each focused Document Viewer walks its own S9
+// back/forward stack independently, never the Active Root (walkViewerHistory
+// never calls openFolder/setRoot, so m.roots is untouched either way).
+func (m model) historyBack() model    { return m.walkViewerHistory(viewer.goBack) }
+func (m model) historyForward() model { return m.walkViewerHistory(viewer.goForward) }
 
 // ensureDV2 creates DV2 if it does not exist yet (S1: on demand, never by an
 // explicit "open a second viewer" action) and re-lays out the frame, which is
@@ -505,7 +563,7 @@ func (m model) activateInto(target pane) model {
 	// targets — unlike activateRoot, which never records (S4 names
 	// Activate-in-a-viewer, not Root activation).
 	m = m.recordViewed(n.Path)
-	return m.openDocumentInto(target, d)
+	return m.navigate(target, d)
 }
 
 // activateFlatRowInto is activateInto's flat-list branch (M4.3): row.broken
@@ -526,7 +584,7 @@ func (m model) activateFlatRowInto(row browseRow, target pane) model {
 		return m
 	}
 	m = m.recordViewed(row.path)
-	return m.openDocumentInto(target, d)
+	return m.navigate(target, d)
 }
 
 // activateRoot makes the Roots Nav's selected entry the active root,
@@ -1242,6 +1300,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// the Roots Nav and Files Nav cases each bind to their own action.
 			if key.Matches(msg, keys.Star) {
 				return m.toggleActiveDocStar(), nil
+			}
+			// HistoryBack/HistoryForward (S9, C4/M6.1) walk this viewer's own
+			// back/forward stack, the same per-pane targeting keys.Star just
+			// got above — DV1 and DV2 each own their own history.
+			if key.Matches(msg, keys.HistoryBack) {
+				return m.historyBack(), nil
+			}
+			if key.Matches(msg, keys.HistoryForward) {
+				return m.historyForward(), nil
 			}
 		case filesPane:
 			if key.Matches(msg, keys.Activate) {

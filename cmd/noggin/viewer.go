@@ -36,6 +36,21 @@ type viewer struct {
 	// every other field on viewer is value-semantic (see withOffset's own
 	// doc comment) and this keeps that true.
 	peek peekState
+
+	// history and historyPos are S9/C4-M6.1's per-viewer back/forward stack:
+	// the document paths opened via model.navigate (Activate, the Picker's
+	// Activate, and the launch-time document), in visit order, with
+	// historyPos indexing the current entry. Zero value (nil, 0) means no
+	// history yet, matching every viewer's fresh state — the pair is never
+	// populated by open()/refreshDoc themselves (Peek's startPeek, the
+	// $EDITOR handoff's re-open, and a Refresh re-render all leave it alone,
+	// S9's own list of non-recording events); only pushHistory writes to it,
+	// and only model.navigate calls that. A pointer-free, value-semantic pair
+	// like every other viewer field (withOffset's own doc comment) — DV2's
+	// history is simply whatever *m.dv2 carries, so it disappears the moment
+	// closeDV2 drops the pointer, with nothing further to clean up.
+	history    []string
+	historyPos int
 }
 
 // peekState is one Peeked document: its own read-only viewport, kept
@@ -110,6 +125,61 @@ func (v viewer) refreshDoc(d document) viewer {
 func (v viewer) close() viewer {
 	v.doc = document{}
 	return v.render()
+}
+
+// pushHistory appends path as the S9 history's new current entry (C4/
+// M6.1), discarding any forward entries left by an earlier goBack —
+// browser semantics: "activating a new document after going back discards
+// the forward entries". A no-op when path is already the current entry,
+// which is what keeps the same document from ever landing in two adjacent
+// entries (S9's own rule) — every other insertion only ever appends after
+// truncating to historyPos, so this one check at push time is enough to
+// hold that invariant across the whole stack, not just the latest push.
+// The empty-history case is handled separately since slicing history[:1]
+// against a nil/empty slice would panic.
+func (v viewer) pushHistory(path string) viewer {
+	if len(v.history) == 0 {
+		v.history = []string{path}
+		v.historyPos = 0
+		return v
+	}
+	if v.history[v.historyPos] == path {
+		return v
+	}
+	kept := append([]string{}, v.history[:v.historyPos+1]...)
+	v.history = append(kept, path)
+	v.historyPos = len(v.history) - 1
+	return v
+}
+
+// canGoBack reports whether the S9 history has an earlier entry to move to.
+func (v viewer) canGoBack() bool { return v.historyPos > 0 }
+
+// canGoForward reports whether the S9 history has a later entry to move to
+// — true only after goBack has moved off the most recent entry and nothing
+// has pushed a fresh one since (pushHistory's own truncation).
+func (v viewer) canGoForward() bool { return v.historyPos < len(v.history)-1 }
+
+// goBack and goForward move the S9 history position one entry in their own
+// direction, returning the path to open there — model.walkViewerHistory is
+// what actually loads and opens it, since a viewer method has no access to
+// disk. ok is false, v unchanged, at either end of history: there is
+// nothing to move to, not a refusal, the same "nothing to do" shape
+// FindNext/FindPrevious already give an empty match list.
+func (v viewer) goBack() (viewer, string, bool) {
+	if !v.canGoBack() {
+		return v, "", false
+	}
+	v.historyPos--
+	return v, v.history[v.historyPos], true
+}
+
+func (v viewer) goForward() (viewer, string, bool) {
+	if !v.canGoForward() {
+		return v, "", false
+	}
+	v.historyPos++
+	return v, v.history[v.historyPos], true
 }
 
 // peeking reports whether a document is currently Peeked (S7, M7.1).

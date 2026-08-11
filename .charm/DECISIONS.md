@@ -1364,3 +1364,32 @@
   demanded both modes; the cut existed only as spill insurance, and the cycle has not spilled.
   Deliberately crippling Grep-mode's search after already building the shared mechanism that
   makes it work would be *extra* engineering effort (a special-case exclusion), not less.
+
+## D90: M6.1's history mechanics — key chords, launch seeds history, boundary is silent
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: M6.1 (per-viewer document history, S9) left several small implementation choices
+  unspecified by SPEC.md/PLAN.md: (1) which two keys drive Back/Forward; (2) whether the
+  launch-time document (`applyResolution`'s `openDocument`) seeds history entry 0, or only
+  later Activates do; (3) whether hitting either end of history (nothing to go back/forward
+  to) is a silent no-op or a footer message; (4) how to keep `openDocumentInto`'s ~39
+  existing call sites (mostly test fixtures) untouched while still recording history only at
+  the "real navigation" ones.
+- Decision: (1) `[`/`]` (HistoryBack/HistoryForward), unused elsewhere in the keymap and free
+  of the Picker Prompt's always-typing constraint since neither the Files Nav nor a focused
+  viewer types. (2) Launch seeds history like any other Activate (`openDocument` routes
+  through the same `model.navigate` wrapper) — browser parity (the first page load is history
+  entry one) and simplest to implement uniformly. (3) Silent no-op at either boundary, no
+  message — mirrors FindNext/FindPrevious's existing "nothing to do" shape for an empty match
+  list, not activate()'s "silence is not an error" refusal-with-message shape, since walking
+  off the end of history is not a refusal of anything the user asked for. (4) A new
+  `model.navigate(p, d)` wrapper around the unchanged `openDocumentInto`, called only from the
+  Files Nav's `activateInto`/`activateFlatRowInto`, the Picker's `activatePickerInto`/
+  `activateGrepPickerInto`, and `openDocument` — `openDocumentInto` itself and every one of its
+  other ~39 call sites (finishEdit, `walkViewerHistory`'s own back/forward re-open, and every
+  existing test fixture) are completely untouched.
+- Why: (1)/(2)/(3) are low-risk product-shape judgment calls with no acceptance-criterion
+  wording to contradict; (4) avoids a 39-site mechanical signature change for a two-line
+  wrapper, keeping the diff scoped to the five call sites that actually changed behavior.

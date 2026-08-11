@@ -17,40 +17,45 @@
 
 ## Cursor
 
-Current task: M6.1
+Current task: M6.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M5.1 built: `pickerScope` gained a third value (`starredScope`), a shared axis both File
-and Grep Picker modes read (`switchPickerScope` now cycles Active Root -> All Roots ->
-Starred -> Active Root; mode switches never touch it). Candidate resolution is new
-(`starredPickerFiles`, files_search.go): the whole S1 store's starred documents, orphans
-included, dropping missing files (unlike Browse's own broken-star display) and still
-honouring the Readable allowlist and hideDotfiles. `grepFiles` was split into a thin
-roots-resolving wrapper plus `grepPickerFiles` (batching/cap logic, takes a file list
-directly) so Starred scope's Grep search reuses it without going through
-`liveRootsInScope`'s roots-shaped contract. `pickerFile` gained an `orphan bool` field;
-row rendering (`pickerLocationLabel`, picker_view.go) falls back to the document's own
-parent directory for an orphan, mirroring browse_list.go's existing orphan treatment
-(pickerGrepRow needed no change — its existing filepath.Rel error-fallback already does
-the right thing for an empty root path).
+M6.1 built: per-viewer back/forward document history (S9). `viewer` gained `history
+[]string`/`historyPos int` plus `pushHistory`/`canGoBack`/`canGoForward`/`goBack`/
+`goForward` (viewer.go) — browser semantics (adjacent-duplicate suppression at push time,
+forward-truncation on a new push) live entirely in `pushHistory`. A new `model.navigate(p,
+d)` wraps the existing `openDocumentInto` and is the only thing that calls `pushHistory`;
+it replaces `openDocumentInto` at exactly the five "real navigation" call sites
+(`openDocument`, `activateInto`, `activateFlatRowInto`, `activatePickerInto`,
+`activateGrepPickerInto`) while `openDocumentInto` itself — and its ~39 other call sites,
+mostly test fixtures — stays untouched, so finishEdit (the $EDITOR handoff) and Refresh
+(refreshDoc, not open, never touches navigate at all) both correctly create no entries with
+zero special-casing. `model.walkViewerHistory` (historyBack/historyForward) re-reads the
+target path from disk and writes the moved viewer back only on a successful load — a read
+failure leaves the history position exactly where it was, mirroring activate()'s own
+refusal shape. New keys `[`/`]` (HistoryBack/HistoryForward), matched in Update's
+dv1Pane/dv2Pane case beside keys.Star (each viewer owns its own history). DV2's history
+needs no explicit teardown: it lives on the `*viewer` struct itself, so closeDV2 dropping
+the pointer already drops it, and a freshly re-created DV2 starts at the zero value.
 
-Built both File- *and* Grep-side Starred scope despite PLAN.md/SPEC.md naming Grep-side a
-pre-agreed cut (#4): the shared-scope/shared-candidate-set design made Grep search under
-Starred work for free, and M5.1's own acceptance wording already asked for both literally.
-Logged as D89 (same "not actually cut" class as M2.5/TRIAGE T40 — SPEC.md/PLAN.md wording
-now stale in the same way, left for a future doc-wording pass rather than edited here).
+Design judgment calls (key chords, launch seeding history entry 0, silent-no-op boundary
+instead of a footer message, the navigate-wrapper-not-signature-change shape) logged as
+D90 rather than escalated — none contradicted by SPEC/PLAN wording, all low-risk.
+Discoverability (Footer hints, Help Modal listing) deliberately not wired this session,
+matching the M2.8/M4.8 precedent of shipping the mechanism first — logged as TRIAGE T41.
 
-All new: files_search_test.go (starredPickerFiles unit tests), picker_view_test.go (orphan
-row rendering, both modes), picker_scope_starred_test.go (scope-cycle, mode-switch-
-preserves-scope, and full File/Grep search-under-Starred acceptance tests). Updated a
-stale pty check (test/pty/checks.py) that assumed Scope was still a two-way toggle. `make
-check` and `make check-pty` both green. Next: M6.1 (per-viewer document history) is
-unblocked to start next session — no gate issues (TRIAGE still holds only the same three
-low-severity open items from before this session, none blocking).
+All new: history_test.go — 8 tests covering independent DV1/DV2 sequences, both history
+boundaries, forward-truncation on a post-Back Activate, no-adjacent-duplicate, no entry
+from the $EDITOR handoff or Refresh, the Active Root staying put while history walks into
+another Root's document, and DV2's history dying with DV2. `make check` and `make
+check-pty` both green. Next: M6.2 (per-document scroll memory in history) is a pre-agreed
+cut — check TRIAGE/DECISIONS state before starting since the cycle may choose to drop it
+per SPEC.md's ordered cut list; M7.1/M7.2 (pane focus badges) are otherwise next in plan
+order and fully independent if M6.2 is dropped.
 
 ## Status
 
@@ -94,7 +99,7 @@ low-severity open items from before this session, none blocking).
 | M4.13 | done  | 2026-08-11 | 2026-08-11 | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87); review: T39 |
 | M4.14 | done  | 2026-08-11 | 2026-08-11 | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | done   | -        | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5) |
-| M6.1 | todo   | -        | -         |                                          |
+| M6.1 | done   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
 | M7.1 | todo   | -        | -         |                                          |
 | M7.2 | todo   | -        | -         |                                          |

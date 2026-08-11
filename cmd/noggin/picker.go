@@ -626,7 +626,10 @@ func (m model) activatePickerInto(target pane) model {
 	// own activateInto (M3.1) — TRIAGE T12 found this call site bypassing
 	// recordViewed entirely by going straight to openDocumentInto.
 	m = m.recordViewed(f.path)
-	m = m.openDocumentInto(target, d)
+	// S9/C4/M6.1: the Picker's Activate is a real navigation, so it records
+	// onto the target viewer's own back/forward stack the same way the
+	// Files Nav's activateInto does (model.navigate).
+	m = m.navigate(target, d)
 	return m.dismissPicker()
 }
 
@@ -737,7 +740,9 @@ func (m model) activateGrepPickerInto(target pane) model {
 	// S4/M3.3: same recordViewed fix as activatePickerInto's fileMode half,
 	// for the grepMode path (TRIAGE T12).
 	m = m.recordViewed(g.file.path)
-	m = m.openDocumentInto(target, d)
+	// S9/C4/M6.1: same history-recording navigation as fileMode's own
+	// activatePickerInto above.
+	m = m.navigate(target, d)
 	v := m.viewerFor(target).commitQuery(query)
 	if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line); ok {
 		v.findState.current = ordinal
