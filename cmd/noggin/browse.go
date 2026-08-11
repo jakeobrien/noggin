@@ -86,10 +86,13 @@ func modeScopes(m browseMode) []browseScope {
 // sentence naming what was searched, rather than recentEmptyText/
 // starredEmptyText's pre-M4.4 placeholder pair that read identically across
 // every scope of their own mode. Tree itself is not this function's
-// concern — it has no scope (modeScopes(treeBrowse) is empty), and keeps
-// emptyFilesText, whose "no root to browse" wording already covers Tree's
-// one empty case; the caller (filesNav.flatRowsView) only ever reaches
-// this while flatMode(), i.e. mode is Recent or Starred.
+// concern — it has no scope (modeScopes(treeBrowse) is empty), and instead
+// gets its own two-message split directly in filesNav.rowsView (M4.9,
+// TRIAGE T22: emptyFilesText for no Root open, emptyTreeText for a Root
+// open but empty); the caller here (filesNav.flatRowsView) only ever
+// reaches this while flatMode(), i.e. mode is Recent or Starred — this
+// func's own default case is unreachable in practice, just a defensive
+// fallback.
 func flatEmptyText(mode browseMode, scope browseScope) string {
 	switch mode {
 	case recentBrowse:

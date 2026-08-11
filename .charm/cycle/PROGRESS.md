@@ -17,29 +17,30 @@
 
 ## Cursor
 
-Current task: M4.9
+Current task: M4.10
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.8 (2026-08-12): built D81 exactly as decided — added `keys.FilesMode`/`keys.FilesScope` to
-`filesPane`'s cases in both `paneHints` (footer.go) and `helpBindings` (help.go), mirroring
-M2.8's `keys.Star` treatment. Placed right after Expand/Collapse and before Star in both lists
-(judgment call: they're core S5 browsing actions, not an afterthought like Peek/DV2-targeting
-at the list's tail). `helpBindings`' filesPane case now carries a real duplicate line vs.
-PickerMode/PickerScope's own ("tab mode"/"shift+tab scope" read identically) — documented as
-harmless in help.go's comment: the two contexts are never reachable at once. Growing both lists
-by two entries pushed several width/height-fixed tests past their thresholds as pure collateral
-(no behavioral change, just longer/taller rendered output): bumped three `footer_test.go` widths
-(200→220 twice, 260→270) and one `help_test.go`/`checks.py` terminal height (32→33, both the Go
-test and its pty twin) with comments explaining why. `TestHelpModalListsThePaneOwnBindings`
-needed no rewording — "mode"/"scope" don't collide with its existing want/wantNot pins.
-`make check` and `make check-pty` both green.
+M4.9 (2026-08-12): fixed TRIAGE T22 — Tree mode's empty state previously shared
+`emptyFilesText` ("No folder open.") across two different causes: no Root open at all, and a
+Root open with `visibleRows()` empty (an empty folder, or one whose every top-level entry the
+tree walk excluded via `.gitignore`/dotfile policy). Added `emptyTreeText` (files.go) and
+branched `rowsView`'s Tree case on `f.root != nil` to pick between the two. Updated M4.4's own
+render test (`browse_empty_test.go`), whose Tree combo fixture actually opens a Root with an
+empty folder — it was asserting the bug (`emptyFilesText` wanted) as correct; now wants
+`emptyTreeText`. Added `TestTreeEmptyMessageDiffersFromNoRootOpen`, the acceptance criterion's
+own check, and verified it (and the updated M4.4 test) fail against the pre-fix code before
+confirming they pass with it. Fixed a stale `flatEmptyText` doc comment in browse.go that still
+claimed Tree's one empty case was covered by `emptyFilesText` alone. `make check` and
+`make check-pty` both green (no pty coverage needed — this is plain-text content, not a
+rendering ambiguity pty checks exist for).
 
-Next: M4.9 — give Tree mode its own empty-state message, distinct from "no Root open," for an
-open Root with zero visible rows. Independent of M4.10–M4.11; any order is fine.
+Next: M4.10 — close four review-flagged test-coverage gaps (D83, TRIAGE T25/T26/T29/T31):
+sortByRecency/starredRows tie-break, orphan-bucket >100 cap, view() height==1, Recent-mode star
+marker assertion. Independent of M4.11; any order is fine.
 
 ## Status
 
@@ -76,7 +77,7 @@ open Root with zero visible rows. Independent of M4.10–M4.11; any order is fin
 | M4.6 | done   | 2026-08-12 | -       | review found selection-index restore gap, TRIAGE T23                |
 | M4.7 | done   | -        | -         | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled |
 | M4.8 | done   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
-| M4.9 | todo   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
+| M4.9 | done   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
 | M4.10 | todo  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
 | M4.11 | todo  | -        | -         | replan: comment-literal and citation fixes, TRIAGE T27/T28 |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |

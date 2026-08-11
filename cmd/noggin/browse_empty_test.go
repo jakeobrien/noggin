@@ -33,7 +33,12 @@ func normalizedRows(view string) string {
 // Active Root, All Starred and Orphans) renders a brief, non-blank message
 // of its own when it has nothing to show, rather than sharing one
 // placeholder across a whole mode (recentEmptyText/starredEmptyText's
-// pre-M4.4 shape) or leaving the row list blank.
+// pre-M4.4 shape) or leaving the row list blank. The Tree combo's own
+// message is emptyTreeText, not emptyFilesText (M4.9, TRIAGE T22): this
+// fixture's Root is open (setRoot(node) below) with an empty folder under
+// it, the open-but-empty case emptyTreeText names — emptyFilesText is
+// reserved for no Root open at all, which TestTreeEmptyMessageDiffersFromNoRootOpen
+// covers directly.
 func TestFilesNavEveryModeScopeCombinationEmptyShowsAMessage(t *testing.T) {
 	dir := t.TempDir()
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
@@ -75,7 +80,7 @@ func TestFilesNavEveryModeScopeCombinationEmptyShowsAMessage(t *testing.T) {
 
 		var want string
 		if c.mode == treeBrowse {
-			want = emptyFilesText
+			want = emptyTreeText
 		} else {
 			want = flatEmptyText(c.mode, c.scope)
 		}
@@ -87,5 +92,39 @@ func TestFilesNavEveryModeScopeCombinationEmptyShowsAMessage(t *testing.T) {
 			t.Errorf("%s and %s share the same empty message %q, want each combination's own", c.name, prior, want)
 		}
 		seen[want] = c.name
+	}
+}
+
+// TestTreeEmptyMessageDiffersFromNoRootOpen is M4.9's own acceptance
+// wording directly (TRIAGE T22): Tree mode's empty state has two distinct
+// causes — no Root open at all, and a Root open with nothing visible under
+// it (an empty folder, or one whose every top-level entry the tree walk
+// excluded) — and each must show its own message, not share emptyFilesText
+// across both the way rowsView did before this task.
+func TestTreeEmptyMessageDiffersFromNoRootOpen(t *testing.T) {
+	noRoot := newFilesNav().setSize(40, 10)
+	if got := normalizedRows(noRoot.rowsView(noRoot.height)); !strings.Contains(got, emptyFilesText) {
+		t.Errorf("no Root open: rows = %q, want it to contain %q", got, emptyFilesText)
+	}
+
+	dir := t.TempDir()
+	empty := mkdir(t, filepath.Join(dir, "empty-project"))
+	node, err := tree.Walk(empty)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	openButEmpty := newFilesNav().setRoot(node).setSize(40, 10)
+	if got := normalizedRows(openButEmpty.rowsView(openButEmpty.height)); !strings.Contains(got, emptyTreeText) {
+		t.Errorf("Root open but empty: rows = %q, want it to contain %q", got, emptyTreeText)
+	}
+
+	if emptyFilesText == emptyTreeText {
+		t.Fatal("emptyFilesText and emptyTreeText are identical, want distinct wording for the two causes")
+	}
+	if strings.Contains(normalizedRows(openButEmpty.rowsView(openButEmpty.height)), emptyFilesText) {
+		t.Error("Root open but empty: rows unexpectedly contain the no-Root-open message")
+	}
+	if strings.Contains(normalizedRows(noRoot.rowsView(noRoot.height)), emptyTreeText) {
+		t.Error("no Root open: rows unexpectedly contain the open-but-empty message")
 	}
 }

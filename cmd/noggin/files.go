@@ -16,6 +16,17 @@ import (
 // a root to show; until then this is its resting state.
 const emptyFilesText = "No folder open."
 
+// emptyTreeText is Tree mode's own empty-state message (M4.9, TRIAGE T22)
+// for the other empty case emptyFilesText does not cover: a Root *is* open
+// (f.root != nil) but visibleRows() is still empty — an empty folder, or one
+// whose every top-level entry the tree walk excluded (.gitignore, dotfiles).
+// Before this, rowsView's Tree branch used emptyFilesText for both cases, so
+// an open-but-empty Root read exactly like no Root being open at all —
+// wrong, and the one gap M4.4's "every mode/scope combination... displays a
+// message saying so" (S6) left in Tree specifically, since Tree has no
+// scope for flatEmptyText's per-combination treatment to key off.
+const emptyTreeText = "This folder has nothing to show (empty, or everything in it is hidden)."
+
 // filesNav is the Files Nav pane: an expansion/selection model layered over an
 // immutable tree.Node. The tree itself is static data (M2.1); which folders are
 // open and which row is selected is UI state kept here, keyed by absolute Path
@@ -634,7 +645,10 @@ func (f filesNav) modeScopeRow() string {
 // Recent and Starred (M4.2/M4.3) render flatRows' own list here; Tree still
 // renders visibleRows exactly as before — the empty-state message text is
 // M4.4's own per-mode/scope-combination wording (flatEmptyText) for the
-// former, emptyFilesText for the latter.
+// former, and (M4.9) one of two Tree-specific messages for the latter:
+// emptyFilesText when there is no Root open at all (f.root == nil),
+// emptyTreeText when a Root is open but has nothing visible under it —
+// distinct causes, so distinct wording (TRIAGE T22).
 func (f filesNav) rowsView(height int) string {
 	if height <= 0 {
 		return ""
@@ -644,10 +658,14 @@ func (f filesNav) rowsView(height int) string {
 	}
 	rows := f.visibleRows()
 	if len(rows) == 0 {
+		text := emptyFilesText
+		if f.root != nil {
+			text = emptyTreeText
+		}
 		return emptyFilesStyle.
 			Width(f.width).Height(height).
 			MaxWidth(f.width).MaxHeight(height).
-			Render(emptyFilesText)
+			Render(text)
 	}
 	return windowedView(f.width, height, f.selected, len(rows), func(idx int) string {
 		return f.renderRow(rows[idx], idx == f.selected)
