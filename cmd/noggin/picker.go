@@ -603,7 +603,7 @@ func (m model) activatePickerInto(target pane) model {
 	return m.dismissPicker()
 }
 
-// toggleStarPicker flips the S1 document store's star mark for the
+// togglePickerStar flips the S1 document store's star mark for the
 // Picker's currently selected Result (S2's third starring surface,
 // M2.5) — whichever mode is open, fileMode's pickerPreviewCandidate or
 // grepMode's pickerGrepCandidate, both already gated on resultsCurrent so
@@ -617,7 +617,7 @@ func (m model) activatePickerInto(target pane) model {
 // A no-op with nothing selected (empty Results, no search run yet, or a
 // stale generation) is silent, the same shape activatePickerInto's own
 // "not ok" case already gives.
-func (m model) toggleStarPicker() model {
+func (m model) togglePickerStar() model {
 	path, ok := m.pickerSelectedPath()
 	if !ok {
 		return m
@@ -628,7 +628,7 @@ func (m model) toggleStarPicker() model {
 }
 
 // pickerSelectedPath is the path named by the Picker's currently selected
-// Result, in whichever mode is open — the one piece toggleStarPicker needs
+// Result, in whichever mode is open — the one piece togglePickerStar needs
 // that pickerPreviewCandidate (fileMode) and pickerGrepCandidate (grepMode)
 // do not already share directly, since Star (unlike Activate) does not
 // otherwise care which mode produced the Result or need D34's extra
@@ -818,7 +818,7 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.ToggleHidden):
 		return m.toggleHiddenFiles()
 	case key.Matches(msg, keys.PickerStar):
-		return m.toggleStarPicker(), nil
+		return m.togglePickerStar(), nil
 	}
 	before := m.picker.input.Value()
 	next, cmd := m.picker.input.Update(msg)

@@ -126,11 +126,11 @@ func TestToggleStoreUnstars(t *testing.T) {
 	}
 }
 
-// TestLoadStarredRootsNoConfigDir checks the main.go entry point degrades to
+// TestLoadStarredRootsNoDataDir checks the main.go entry point degrades to
 // "no starred roots" rather than panicking when the data directory cannot be
 // resolved. dataDir() consults $HOME/$XDG_DATA_HOME on unix; clearing both
 // forces its error path.
-func TestLoadStarredRootsNoConfigDir(t *testing.T) {
+func TestLoadStarredRootsNoDataDir(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", "")
 	t.Setenv("HOME", "")
 	got := loadStarredRoots()

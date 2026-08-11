@@ -240,7 +240,7 @@ func (m model) docRecord(path string) docRecord {
 // It also refreshes the Files Nav's S3 star-marker set (filesStarredMarks)
 // on every successful write, not only when the write originated from the
 // Files Nav's own toggleDocStar — a star flipped from a focused Document
-// Viewer (toggleActiveDocStar) or the Picker (toggleStarPicker) changes the
+// Viewer (toggleActiveDocStar) or the Picker (togglePickerStar) changes the
 // same m.docs this marker set is derived from, so a Files Nav row for that
 // same path would otherwise show a stale marker until its next
 // openFolder/refresh (M2.7/TRIAGE T7). recordViewed's lastViewed-only writes

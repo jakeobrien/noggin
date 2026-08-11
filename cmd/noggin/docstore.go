@@ -114,14 +114,14 @@ func loadDocStore(path string) map[string]docRecord {
 // are walked oldest-`LastViewed`-first (a zero LastViewed sorts as oldest);
 // an unstarred candidate is deleted outright, while a starred candidate is
 // never removed — eviction instead clears its LastViewed, leaving the star
-// — and does not count toward shrinking the map below the cap. Walking
-// stops as soon as the map is within cap, so a starred record encountered
-// only after the cap is already satisfied is left completely untouched
+// — and does not count toward shrinking the map below the limit. Walking
+// stops as soon as the map is within limit, so a starred record encountered
+// only after the limit is already satisfied is left completely untouched
 // (star and timestamp both). If there are not enough unstarred records to
-// reach the cap, the map is left larger than docStoreCap rather than ever
+// reach the limit, the map is left larger than docStoreCap rather than ever
 // removing a starred record — the star guarantee outranks the bound.
-func evictDocStore(records map[string]docRecord, cap int) map[string]docRecord {
-	if len(records) <= cap {
+func evictDocStore(records map[string]docRecord, limit int) map[string]docRecord {
+	if len(records) <= limit {
 		return records
 	}
 
@@ -142,7 +142,7 @@ func evictDocStore(records map[string]docRecord, cap int) map[string]docRecord {
 
 	remaining := len(records)
 	for _, e := range entries {
-		if remaining <= cap {
+		if remaining <= limit {
 			break
 		}
 		if e.rec.Starred {

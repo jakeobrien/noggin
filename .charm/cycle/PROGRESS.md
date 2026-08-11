@@ -17,33 +17,24 @@
 
 ## Cursor
 
-Current task: M2.9
+Current task: M3.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M2.8 done — keys.Star and keys.PickerStar are now discoverable outside the Roots Nav
-(TRIAGE T5/T6). keys.PickerStar already lived in the Picker's footer hints (pickerHints,
-footer.go) since M2.5's own build; the real gap was keys.Star missing from the Files Nav's
-and each Document Viewer's (dv1Pane/dv2Pane, shared `default` switch case) paneHints
-(footer.go) and Help Modal listing (help.go's helpBindings) — the binding already worked
-from both (model.go's Update switch), it just had no hint anywhere but the Roots Nav.
-keys.PickerStar stays deliberately off every Help Modal listing (its "star" Help()
-description collides with keys.Star's own, now present in all three panes' lists, not just
-Roots' — help.go's own comment covers the reasoning), so its footer hint remains its only
-discoverability surface, unchanged from before.
-Reworded the pinned TestHelpModalListsThePaneOwnBindings cases (filesPane/dv1Pane now want
-"star", no longer wantNot) and bumped two go-test/pty-check terminal heights (30→32,
-filesPane's Help Modal box grew from 28→29 rows) to keep the centered modal off the top
-border — confirmed via TestHelpOverlayLeavesTheFrameVisibleAroundIt and the M5.3 pty block.
-Also reworded the pty M5.3 viewer-context check (asserted "star" absent; now asserts it's
-present) and its stale row-count comment. `make check` and `make check-pty` both green apart
-from the pre-existing, unrelated T11.
-Next: **M2.9** — naming cleanup (TestLoadStarredRootsNoConfigDir→...NoDataDir, evictDocStore's
-cap→limit, toggleStarPicker→togglePickerStar); its dependencies (M1.1, M1.3, M2.5) are all
-done. M3.2 (recency regardless of Root provenance) is also independently available.
+M2.9 done — naming cleanup, no behavior change. Renamed
+TestLoadStarredRootsNoConfigDir→TestLoadStarredRootsNoDataDir (store_test.go),
+evictDocStore's `cap` parameter→`limit` (docstore.go, both the signature and its two
+internal comparisons, plus the doc comment), and toggleStarPicker→togglePickerStar
+(picker.go's definition/call site, plus comment references in files_star_sync_test.go and
+model.go). Left docstore_test.go's own test names/prose (TestEvictDocStoreNoopUnderCap etc.,
+"cap 3" in comments) alone — they refer to the still-unrenamed docStoreCap constant/concept,
+not the renamed parameter, and the plan didn't ask for them. `make check` green; `make
+check-pty` shows only the pre-existing, unrelated T11 (git-status marker column) failures.
+Next: **M3.2** — record lastViewed regardless of Root provenance (ad-hoc/absent Roots);
+depends on M3.1, which is done.
 
 ## Status
 
@@ -62,7 +53,7 @@ done. M3.2 (recency regardless of Root provenance) is also independently availab
 | M1.1a | done  | -        | -         | replan: pty harness fix, TRIAGE T4 (D71) |
 | M2.7 | done   | -        | -         | replan: stale marker fix, TRIAGE T7 (D70) |
 | M2.8 | done   | -        | -         | replan: star-binding discoverability, TRIAGE T5/T6 |
-| M2.9 | todo   | -        | -         | replan: naming cleanup, TRIAGE T1/T2/T9  |
+| M2.9 | done   | -        | -         | replan: naming cleanup, TRIAGE T1/T2/T9  |
 | M3.1 | done   | -        | -         |                                          |
 | M3.2 | todo   | -        | -         |                                          |
 | M4.1 | todo   | -        | -         |                                          |

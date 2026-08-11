@@ -54,7 +54,7 @@ func TestFilesNavMarkerSyncsWhenStarredFromDocumentViewer(t *testing.T) {
 }
 
 // TestFilesNavMarkerSyncsWhenStarredFromPicker is M2.7's Picker half: the
-// same stale-marker gap existed for toggleStarPicker, since it also wrote
+// same stale-marker gap existed for togglePickerStar, since it also wrote
 // through withDocRecord without refreshing m.files.starred.
 func TestFilesNavMarkerSyncsWhenStarredFromPicker(t *testing.T) {
 	dir := t.TempDir()
