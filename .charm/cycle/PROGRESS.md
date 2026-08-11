@@ -24,27 +24,20 @@ Current task: M2.10
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M3.4 investigated (TRIAGE T13: "recordViewed's store-write failure path... can silently
-overwrite/mask a just-succeeded Activate/Edit's own message"). Traced both call sites by
-hand: Update()'s `tea.KeyPressMsg` case clears `m.message = ""` *before* dispatching to
-activate/activateInto (model.go ~1032), and `finishEdit` clears it to `""` itself *before*
-calling `recordViewed` (model.go:992) — in both orderings `recordViewed`'s write failure runs
-last and nothing downstream (`openDocumentInto`, `dismissPicker`, `commitQuery`) ever touches
-`m.message` again. Forced a real write failure (docsPath pointed at a directory, not
-`docsPath==""`, to distinguish a genuine save error from M3.1's "no resolvable data
-directory" refusal) against both Activate and finishEdit by hand before writing any
-assertions: in both cases the store failure already won as the final message, undisturbed.
-No bug found — T13's real gap was "no test covers this interaction", per its own citation.
-Added `TestActivateStoreWriteFailureSurfacesMessage` and
-`TestFinishEditStoreWriteFailureSurfacesMessage` (recency_test.go) pinning that ordering as
-regression coverage, using a directory-as-store-path fixture (`storeWriteFailurePath`) to
-force `saveDocStore`'s `os.WriteFile` to fail with a real error. `make check` green; `gofmt
--l` clean.
+Validated (fresh-context subagent, 2026-08-10): M3.1-M3.4 and M2.11 all PASS against their
+PLAN.md acceptance criteria — `make check` green, every claimed test independently re-run.
+No overclaims found; PROGRESS.md's existing notes on T17/T18 confirmed accurate (T18's line
+citation was stale, cosmetic only, now corrected to picker.go:604,716). One new gap surfaced:
+M2.11's same-frame live-render toggle test (`TestPickerStarTogglingUpdatesTheRenderedMarkerLive`,
+picker_star_test.go:121) only exercises File Picker mode, not Grep — logged as TRIAGE T19
+(low severity; underlying render read is mode-agnostic so a real bug is unlikely, but it's
+short of M2.11's "both Picker modes" wording for the toggle clause). Stamped Validated dates
+for M3.1-M3.4 and M2.11 in the Status table.
 
-Next: **M2.10** (pty star-marker column checks, TRIAGE T11) — M3 is now fully done
-(M3.1-M3.4); consider charm-validate/code-review for the M3 milestone (M2.11 could use the
-same pass) before M4.1, since M3 was about to close that gate when the replan session
-reopened it.
+Next: **M2.10** (pty star-marker column checks, TRIAGE T11) — M3 milestone gate is now closed
+(reviewed + validated). TRIAGE has T17, T18, T19 open (all low/medium, non-blocking); consider
+a charm-replan pass to dispose of them before they accumulate further, but they don't block
+M2.10 or M4.1.
 
 ## Status
 
@@ -64,12 +57,12 @@ reopened it.
 | M2.7 | done   | 2026-08-11 | 2026-08-11 | replan: stale marker fix, TRIAGE T7 (D70) |
 | M2.8 | done   | 2026-08-11 | 2026-08-11 | replan: star-binding discoverability, TRIAGE T5/T6 |
 | M2.9 | done   | 2026-08-11 | 2026-08-11 | replan: naming cleanup, TRIAGE T1/T2/T9  |
-| M3.1 | done   | 2026-08-11 | 2026-08-11 | SPEC/GLOSSARY-level gap re: Picker Activate not recording lastViewed — tracked as TRIAGE T12, not a M3.1 overclaim |
-| M3.2 | done   | -        | -         |                                          |
-| M3.3 | done   | -        | -         | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
-| M3.4 | done   | -        | -         | replan: recordViewed failure message clobber, TRIAGE T13; no bug found, test coverage added |
+| M3.1 | done   | 2026-08-11 | 2026-08-10 | SPEC/GLOSSARY-level gap re: Picker Activate not recording lastViewed — tracked as TRIAGE T12, not a M3.1 overclaim |
+| M3.2 | done   | 2026-08-10 | 2026-08-10 |                                          |
+| M3.3 | done   | 2026-08-10 | 2026-08-10 | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
+| M3.4 | done   | 2026-08-10 | 2026-08-10 | replan: recordViewed failure message clobber, TRIAGE T13; no bug found, test coverage added; review found coverage gap re: Picker call sites, TRIAGE T18 (re-confirmed by validate) |
 | M2.10 | todo  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
-| M2.11 | done  | -        | -         | replan: Picker star marker (D72, TRIAGE T8), built same session |
+| M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, TRIAGE T17; validate found Grep-mode live-toggle coverage gap, TRIAGE T19 |
 | M4.1 | todo   | -        | -         |                                          |
 | M4.2 | todo   | -        | -         |                                          |
 | M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |
