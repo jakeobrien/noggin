@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +90,83 @@ func TestFinishEditRecordsLastViewed(t *testing.T) {
 	got := m.docRecord(aPath).LastViewed
 	if got.IsZero() || got.Before(before) {
 		t.Errorf("LastViewed after finishEdit = %v, want a timestamp at/after %v", got, before)
+	}
+}
+
+// storeWriteFailurePath is a docsPath that makes every saveDocStore call it
+// (withDocRecord's own write) fail with a real write error distinct from
+// M3.1's "no resolvable data directory" refusal (m.docsPath == ""): a
+// directory sitting where the store file would be written, so
+// os.WriteFile's own open fails (EISDIR) only once MkdirAll(filepath.Dir)
+// has already succeeded — the write itself is what fails, not path
+// resolution.
+func storeWriteFailurePath(t *testing.T, dir string) string {
+	t.Helper()
+	return mkdir(t, filepath.Join(dir, "documents"))
+}
+
+// TestActivateStoreWriteFailureSurfacesMessage is M3.4's own acceptance
+// criterion (TRIAGE T13): recordViewed's write failure inside withDocRecord
+// must not be silently overwritten by anything Activate does afterwards
+// (openDocumentInto touches m.viewer/m.focus alone, never m.message) — the
+// store failure is the last thing to touch m.message on this path, so it
+// must be exactly what the footer shows once Activate returns, not an
+// "untraceable" success/empty message papering over a real write failure.
+// The document still opens (S1's "silence is not an error" is about
+// refusing to run, not about masking a real error once something did run).
+func TestActivateStoreWriteFailureSurfacesMessage(t *testing.T) {
+	dir := t.TempDir()
+	root := mkdir(t, filepath.Join(dir, "root"))
+	aPath := writeFileContent(t, filepath.Join(root, "a.md"), "# A\n")
+	badStore := storeWriteFailurePath(t, dir)
+
+	node, err := tree.Walk(root)
+	if err != nil {
+		t.Fatalf("tree.Walk: %v", err)
+	}
+	m := sized(t, newModel().withDocs(badStore, loadDocStore(badStore)).openFolder(node), 80, 24)
+
+	got := press(t, m, keys.Activate.Keys()[0])
+
+	if got.message == "" {
+		t.Fatal("message is empty after a store write failure, want the store's own error")
+	}
+	if !strings.Contains(got.message, "cannot save document store") {
+		t.Errorf("message = %q, want it to reflect the store write failure verbatim, not an unrelated overwrite", got.message)
+	}
+	if got.dv1.doc.path != aPath {
+		t.Errorf("Active Document = %q, want %q (a store failure does not refuse the open itself)", got.dv1.doc.path, aPath)
+	}
+}
+
+// TestFinishEditStoreWriteFailureSurfacesMessage is M3.4's Edit-side case:
+// finishEdit clears m.message to "" on a successful reload *before* calling
+// recordViewed (model.go), so a subsequent store write failure must win —
+// this pins that ordering rather than a future edit accidentally reversing
+// it and letting the cleared "success" state silently swallow the failure.
+func TestFinishEditStoreWriteFailureSurfacesMessage(t *testing.T) {
+	dir := t.TempDir()
+	docPath := writeFileContent(t, filepath.Join(dir, "a.md"), "# before\n")
+	badStore := storeWriteFailurePath(t, dir)
+
+	d, err := loadDocument(docPath)
+	if err != nil {
+		t.Fatalf("loading %s: %v", docPath, err)
+	}
+	m := sized(t, newModel().withDocs(badStore, loadDocStore(badStore)), 80, 24)
+	m = m.openDocument(d)
+	m.message = "stale message from before the edit"
+
+	got := m.finishEdit(editFinishedMsg{path: docPath})
+
+	if got.message == "" {
+		t.Fatal("message is empty after a store write failure, want the store's own error")
+	}
+	if !strings.Contains(got.message, "cannot save document store") {
+		t.Errorf("message = %q, want it to reflect the store write failure, not the stale pre-edit message or a silently cleared success", got.message)
+	}
+	if got.dv1.doc.path != docPath {
+		t.Errorf("Active Document = %q, want %q (a store failure does not refuse the reload itself)", got.dv1.doc.path, docPath)
 	}
 }
 
