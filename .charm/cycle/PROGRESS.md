@@ -24,20 +24,21 @@ Current task: M2.10
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Validated (fresh-context subagent, 2026-08-10): M3.1-M3.4 and M2.11 all PASS against their
-PLAN.md acceptance criteria — `make check` green, every claimed test independently re-run.
-No overclaims found; PROGRESS.md's existing notes on T17/T18 confirmed accurate (T18's line
-citation was stale, cosmetic only, now corrected to picker.go:604,716). One new gap surfaced:
-M2.11's same-frame live-render toggle test (`TestPickerStarTogglingUpdatesTheRenderedMarkerLive`,
-picker_star_test.go:121) only exercises File Picker mode, not Grep — logged as TRIAGE T19
-(low severity; underlying render read is mode-agnostic so a real bug is unlikely, but it's
-short of M2.11's "both Picker modes" wording for the toggle clause). Stamped Validated dates
-for M3.1-M3.4 and M2.11 in the Status table.
+Replan (2026-08-11): triaged TRIAGE T17/T18/T19 (all low/medium, non-blocking, reviewer/
+validator findings on already-done M2.11/M3.4 work). All three accepted as small follow-up
+tasks rather than wontfix — none is a design question, each has an obvious cheap fix: T17 →
+M2.12 (reword `starMarker()`'s overclaiming doc comment rather than refactor files.go/
+rootsnav.go, which would reopen their already-Reviewed/Validated status), T18 → M3.5 (add the
+missing Picker-path store-write-failure regression tests), T19 → M2.13 (add the missing Grep
+same-frame toggle render test). Logged as D76/D77/D78. TRIAGE is now empty.
 
-Next: **M2.10** (pty star-marker column checks, TRIAGE T11) — M3 milestone gate is now closed
-(reviewed + validated). TRIAGE has T17, T18, T19 open (all low/medium, non-blocking); consider
-a charm-replan pass to dispose of them before they accumulate further, but they don't block
-M2.10 or M4.1.
+Also caught a pre-existing drift while reconciling: M1.1a (D71, already `done`) was never
+added to PLAN.md — added it now, retroactively, matching what was actually built; no
+behavior change.
+
+Next: **M2.10** (pty star-marker column checks, TRIAGE T11) is still the cursor — unaffected
+by this replan. M2.12/M2.13/M3.5 are new todo tasks appended after M2.11/M3.4 respectively;
+pick them up whenever convenient, none blocks M2.10 or M4.1.
 
 ## Status
 
@@ -60,9 +61,12 @@ M2.10 or M4.1.
 | M3.1 | done   | 2026-08-11 | 2026-08-10 | SPEC/GLOSSARY-level gap re: Picker Activate not recording lastViewed — tracked as TRIAGE T12, not a M3.1 overclaim |
 | M3.2 | done   | 2026-08-10 | 2026-08-10 |                                          |
 | M3.3 | done   | 2026-08-10 | 2026-08-10 | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
-| M3.4 | done   | 2026-08-10 | 2026-08-10 | replan: recordViewed failure message clobber, TRIAGE T13; no bug found, test coverage added; review found coverage gap re: Picker call sites, TRIAGE T18 (re-confirmed by validate) |
+| M3.4 | done   | 2026-08-10 | 2026-08-10 | replan: recordViewed failure message clobber, TRIAGE T13; no bug found, test coverage added; review found coverage gap re: Picker call sites, resolved as M3.5 (D77) |
+| M3.5 | todo   | -        | -          | replan: Picker-path store-write-failure regression tests, TRIAGE T18 (D77) |
 | M2.10 | todo  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
-| M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, TRIAGE T17; validate found Grep-mode live-toggle coverage gap, TRIAGE T19 |
+| M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, resolved as M2.12 (D76); validate found Grep-mode live-toggle coverage gap, resolved as M2.13 (D78) |
+| M2.12 | todo  | -        | -         | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
+| M2.13 | todo  | -        | -         | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
 | M4.1 | todo   | -        | -         |                                          |
 | M4.2 | todo   | -        | -         |                                          |
 | M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |

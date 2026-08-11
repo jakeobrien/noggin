@@ -1063,3 +1063,59 @@
   store bounded at 1000 records makes a full recompute cheap regardless of trigger. Revisit
   only if a real cost is observed, not preemptively; logged so a future session doesn't
   reintroduce the same review finding without knowing it was already weighed.
+
+## D76: `starMarker()`'s doc comment is corrected, not made true by refactor (TRIAGE T17) — M2.12
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-11
+- Context: code review (TRIAGE T17) found M2.11's `starMarker()` doc comment claims the
+  two-column marker field is "shared by every star-marking surface (files.go, rootsnav.go,
+  model.go's Document Viewer title, and now Picker rows)", but only Picker rows actually call
+  it — files.go and rootsnav.go still hand-roll the identical literal independently. Two fixes
+  were open: refactor files.go/rootsnav.go to call `starMarker`, or reword the comment.
+- Decision: reword the comment only, as a new task, M2.12. Not a refactor: files.go's and
+  rootsnav.go's row renderers belong to M2.3 and the C2a/C3 Roots Nav work, both already
+  `done`/Reviewed/Validated — touching them to chase a comment's accuracy would clear those
+  cells back to `-` (doc-map's own rule) for a purely cosmetic gain, since the duplication
+  itself causes no divergence today (both call sites render the exact same literal).
+- Why: low risk × low-medium value — the finding is a doc-comment overclaim, not a functional
+  bug; the cheapest true fix is the one that doesn't reopen already-verified work. Decided and
+  logged rather than left open, since there is no real judgment call left once the reopening
+  cost is weighed.
+
+## D77: Picker-path `recordViewed` failure coverage extended, not centralized (TRIAGE T18) — M3.5
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-11
+- Context: code review, re-confirmed by validate (TRIAGE T18), found M3.4's regression tests
+  (`TestActivateStoreWriteFailureSurfacesMessage`, `TestFinishEditStoreWriteFailureSurfacesMessage`)
+  cover only `activateInto`/`finishEdit`, not the two `recordViewed` call sites M3.3 added at
+  `activatePickerInto`/`activateGrepPickerInto`. No functional bug today (neither Picker path
+  sets a success message a store-write failure could clobber), but GLOSSARY's Activate entry
+  and D74 both treat Picker commit as "Activate" too, so this is narrower than M3.4's stated
+  goal and T13's original spirit.
+- Decision: accepted as a new task, M3.5 — add a File Picker and a Grep Picker variant of the
+  existing store-write-failure test, mirroring the two M3.4 already has, rather than reworking
+  either M3.4's tests or `recordViewed` itself.
+- Why: low-medium severity, non-blocking, cheap (effort 1) — regression insurance against a
+  future success-message addition on the Picker path, not a present bug. Accept and log rather
+  than leave a known coverage gap sitting unfixed, per the escalation matrix.
+
+## D78: Grep-mode same-frame star-toggle render test added for M2.11 parity (TRIAGE T19) — M2.13
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-11
+- Context: validate (TRIAGE T19) found M2.11's same-frame live-render toggle test
+  (`TestPickerStarTogglingUpdatesTheRenderedMarkerLive`) exercises only File Picker mode; no
+  equivalent test drives a real `m.View()` render through a `PickerStar` toggle in Grep mode.
+  The underlying read (`docs[...].Starred`, computed fresh every render) is mode-agnostic, so a
+  real bug is unlikely, but M2.11's acceptance wording explicitly says "both Picker modes" for
+  the toggle clause.
+- Decision: accepted as a new task, M2.13 — add a Grep-mode variant of the same-frame toggle
+  test, mirroring the existing File Picker one.
+- Why: low severity, cheap (effort 1), and closes M2.11's acceptance criterion literally rather
+  than leaving it short of its own stated wording. Accept and log rather than drop, since the
+  gap is real even though a bug is unlikely.

@@ -23,6 +23,11 @@ Delivers: S1
   read or migrated — done when: a test with a populated config-dir store and an empty data-dir
   store starts with zero starred Roots, and star/un-star round-trips through the data-dir path
   — effort: 2
+- **M1.1a** — Update `make check-pty`'s harness (`test/pty/checks.py`'s `config_env`) to
+  resolve the starred-Roots store path the same way the shipped code does post-M1.1
+  (`dataDir()`/`storePath()`, not the old config-directory path) — done when: `make check-pty`'s
+  Roots pane listing/marking/persistence checks (C3's M3.3/M3.4) pass again — effort: 2
+  (needs: M1.1) — from TRIAGE T4 (D71).
 - **M1.2** — A path-keyed document store: one record per absolute document path carrying
   `starred` and `lastViewed`, with load/save that tolerates a missing or malformed file the way
   the Roots store does, and no attachment to Roots — done when: unit tests cover round-trip,
@@ -95,6 +100,16 @@ Delivers: S2, S3
   Picker modes, absent on an unstarred Result's row with the rest of the row byte-identical,
   and confirms toggling `PickerStar` shows/clears the marker in the same frame with no
   separate refresh — effort: 2 (needs: M2.5) — from TRIAGE T8 (D72).
+- **M2.12** — Correct `starMarker()`'s doc comment, which currently claims the two-column
+  marker field is already shared by files.go, rootsnav.go, model.go's Document Viewer title
+  and Picker rows — in reality only Picker rows call it; the other three independently render
+  an identical literal — done when: the comment no longer overclaims consolidation that hasn't
+  happened, and `make check` is green — effort: 1 (needs: M2.11) — from TRIAGE T17 (D76).
+- **M2.13** — Add a Grep Picker variant of M2.11's same-frame star-marker toggle render test,
+  closing the mode-parity gap in its acceptance wording — done when: a new test drives a real
+  `m.View()` render through a `PickerStar` toggle in Grep mode and confirms the marker
+  appears/clears in the same frame, mirroring the existing File Picker test — effort: 1
+  (needs: M2.11) — from TRIAGE T19 (D78).
 
 ## M3 — Recency is recorded
 
@@ -119,6 +134,11 @@ Delivers: S4
   test forces the store write to fail during an Activate or Edit and confirms the resulting
   message reflects the store failure without discarding it as an untraceable overwrite —
   effort: 1 (needs: M3.1) — from TRIAGE T13.
+- **M3.5** — Extend M3.4's store-write-failure regression coverage to the Picker's own
+  `recordViewed` call sites (`activatePickerInto`, `activateGrepPickerInto`), mirroring the
+  existing DV1/DV2 tests — done when: a File Picker and a Grep Picker variant of
+  `TestActivateStoreWriteFailureSurfacesMessage` exist and pass — effort: 1 (needs: M3.3, M3.4)
+  — from TRIAGE T18 (D77).
 
 ## M4 — Files Nav browse modes
 
