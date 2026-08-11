@@ -89,8 +89,8 @@ fully independent of M6's history work.
 | M4.12 | done  | 2026-08-11 | 2026-08-11 | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
 | M4.13 | done  | 2026-08-11 | 2026-08-11 | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87); review: T39 |
 | M4.14 | done  | 2026-08-11 | 2026-08-11 | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
-| M5.1 | done   | -        | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5) |
-| M6.1 | done   | -        | -         |                                          |
-| M6.2 | done   | -        | -         | pre-agreed cut 2, not actually cut (D91) |
+| M5.1 | done   | 2026-08-11 | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5); review found grepFiles dead code, TRIAGE T42 |
+| M6.1 | done   | 2026-08-11 | -         |                                          |
+| M6.2 | done   | 2026-08-11 | -         | pre-agreed cut 2, not actually cut (D91); review found untested re-Activate scroll-preserve behavior, TRIAGE T43 |
 | M7.1 | todo   | -        | -         |                                          |
 | M7.2 | todo   | -        | -         |                                          |
