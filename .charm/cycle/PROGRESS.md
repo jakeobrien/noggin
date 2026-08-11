@@ -83,9 +83,9 @@ automatic. Surfacing this rather than proceeding.
 | M4.9 | done   | 2026-08-12 | -       | replan: Tree's own empty-vs-no-Root message, TRIAGE T22; review: T34  |
 | M4.10 | done  | 2026-08-12 | -       | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83); review: T36 |
 | M4.11 | done  | 2026-08-12 | -       | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
-| M4.12 | done  | -        | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
-| M4.13 | done  | -        | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87) |
-| M4.14 | done  | -        | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
+| M4.12 | done  | 2026-08-11 | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
+| M4.13 | done  | 2026-08-11 | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87); review: T39 |
+| M4.14 | done  | 2026-08-11 | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
