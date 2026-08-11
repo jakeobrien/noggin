@@ -477,7 +477,21 @@ func (m model) activate() model {
 // Every refusal above (folder, empty pane, read error) applies identically
 // whichever viewer is targeted, and is checked before openDocumentInto runs,
 // so a refused load never leaves a newly created, empty DV2 behind.
+//
+// While the Files Nav is in a flat-list mode (Recent/Starred, M4.2/M4.3)
+// this resolves against the flat row on screen instead (selectedFlatRow),
+// not the unrelated tree row underneath (TRIAGE T21) — delegating to
+// activateFlatRowInto, which also gives Starred's own "broken starred
+// document ... cannot be activated" (S3) the same refused-with-a-message
+// shape activateRoot gives a broken Root.
 func (m model) activateInto(target pane) model {
+	if m.files.flatMode() {
+		row, ok := m.files.selectedFlatRow()
+		if !ok {
+			return m
+		}
+		return m.activateFlatRowInto(row, target)
+	}
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
 		return m
@@ -491,6 +505,27 @@ func (m model) activateInto(target pane) model {
 	// targets — unlike activateRoot, which never records (S4 names
 	// Activate-in-a-viewer, not Root activation).
 	m = m.recordViewed(n.Path)
+	return m.openDocumentInto(target, d)
+}
+
+// activateFlatRowInto is activateInto's flat-list branch (M4.3): row.broken
+// (Starred's own S3 clause; always false for a Recent row, since recentRows
+// never produces one for a missing file) is refused with a footer message
+// mirroring activateRoot's own broken-Root refusal below, rather than the
+// generic "cannot open" read-error wording — the two are different refusals
+// (the file was never even attempted to load) even though both end in a
+// message. Otherwise this behaves exactly like activateInto's tree branch.
+func (m model) activateFlatRowInto(row browseRow, target pane) model {
+	if row.broken {
+		m.message = fmt.Sprintf("%s no longer exists; not activated", row.path)
+		return m
+	}
+	d, err := loadDocument(row.path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", row.path, err)
+		return m
+	}
+	m = m.recordViewed(row.path)
 	return m.openDocumentInto(target, d)
 }
 
@@ -556,6 +591,23 @@ func (m model) toggleStar() model {
 // a footer message) when the data directory can't be resolved or the write
 // fails, so no separate guard is needed here.
 func (m model) toggleDocStar() model {
+	// While the Files Nav is in a flat-list mode (Recent/Starred, M4.2/M4.3)
+	// this resolves against the flat row on screen instead (selectedFlatRow),
+	// not the unrelated tree row underneath (TRIAGE T21) — this is what
+	// makes S2's "un-starring a document while it is displayed in a Files
+	// Nav Starred list removes that row immediately" true for the key
+	// itself, not only for a star flip that happened to arrive from
+	// elsewhere (a Document Viewer, the Picker): withDocRecord's refresh
+	// (below) already made that part true on its own.
+	if m.files.flatMode() {
+		row, ok := m.files.selectedFlatRow()
+		if !ok {
+			return m
+		}
+		rec := m.docRecord(row.path)
+		rec.Starred = !rec.Starred
+		return m.withDocRecord(row.path, rec)
+	}
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
 		return m

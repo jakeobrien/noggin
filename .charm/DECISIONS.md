@@ -1152,3 +1152,32 @@
   `status`/`starred`'s existing one, at a cost (`recentRows` re-scans `m.docs` and re-derives
   per-path Root coverage every render) the store's own `docStoreCap` (1000 records) keeps cheap
   regardless — the same reasoning D75 already accepted for `filesStarredMarks`' full recompute.
+
+## D80: activateInto/toggleDocStar resolve against the flat row, not the tree, while Recent/Starred is showing — M4.3, narrows TRIAGE T21
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-11
+- Context: M4.3's own acceptance wording requires two behavioral tests — "activating a broken
+  star is refused the way a Broken Root is" and "un-starring drops the row" — but M4.3 depends
+  only on M4.1/M2.1, not M4.5 (the task that gives flat-list rows Activate/Peek/Edit/DV2-
+  targeting generically, per its own acceptance wording). Before this task, `activateInto` and
+  `toggleDocStar` both resolved the "selected document" via `filesNav.selectedNode()` — the
+  Tree's own row set — regardless of Browse Mode (TRIAGE T21's exact citation), so there was no
+  way to reach "activate this Starred row" or "un-star this Starred row" at all once `starredRows`
+  existed, let alone test the refusal M4.3's wording names.
+- Decision: give `filesNav` a `selectedFlatRow()` accessor (the flat row at `f.selected` while
+  `flatMode()`, mirroring `selectedNode()`'s tree-based shape) and route `activateInto` and
+  `toggleDocStar` through it first when the pane is in Recent or Starred mode, falling back to
+  the existing tree-based path only for Tree. A broken flat row's own refusal
+  (`activateFlatRowInto`) mirrors `activateRoot`'s wording exactly (`"%s no longer exists; not
+  activated"`). This is scoped to exactly these two actions; Peek, Edit, and ctrl+ DV2-targeting
+  keep resolving via `selectedNode()` (still wrong while Recent/Starred is showing) until M4.5
+  gives them the same fix, and Expand/Collapse are untouched (M4.5 makes them explicit no-ops).
+- Why: M4.3's acceptance criterion cannot be met, even minimally, without some path to attempt
+  activating/un-starring a flat row — deferring both to M4.5 would leave the task's own stated
+  done-condition untestable. Scoping the fix to Activate+Star only (not Peek/Edit/DV2-targeting)
+  keeps this from silently absorbing M4.5's broader mandate while still resolving T21's root
+  cause for the two actions M4.3 actually needs; T21 itself is unchanged here since Peek/Edit
+  remain broken exactly as it describes, but a future replan should read T21 as narrowed to
+  those two actions, not Activate/Star, once this lands.

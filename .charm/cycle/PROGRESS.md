@@ -17,51 +17,56 @@
 
 ## Cursor
 
-Current task: M4.3
+Current task: M4.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Build (2026-08-11): completed M4.2 (`Recent` mode's actual flat-list rows). New
-`browse_list.go`: `browseRow` (path/name/rootLabel-or-orphanDir/orphan) and `recentRows(docs,
-roots, activeRootPath, scope)` — buckets every non-zero-`LastViewed`, still-on-disk
-(`pathMissing`) record by its covering session Root (`roots.go`'s new `rootForPath`, first
-match, roots never nest) or into a `""` orphan bucket, sorts each bucket newest-first
-(`sortByRecency`, tie-broken by path) and caps it at `recentPerRootCap` (100, S6) *before*
-scope is applied — Active Root reads just that Root's own bucket (`activeRootPath == ""`
-short-circuits to none, never `buckets[""]` by accident), All Roots merges every
-already-capped bucket (orphans included — D79: this is where Recent's own two right-hand
-label forms both appear, since Recent's scope set has no dedicated Orphans value the way
-Starred's does) sorted again with no further cap. `filesNav` gained a `docs`/`sessionRoots`/
-`activeRootPath` snapshot (`withRecentSource`) that `model.refreshFilesRecentSource` pushes
-in at every point that could change it (`withDocs`, `withDocRecord`, `openFolder`,
-`applyResolution`, `refresh`) — rows themselves are never cached, `flatRows()`/`recentRows`
-recompute fresh on every `rowsView` call instead (D79, same "no cache to go stale" shape
-M2.11 chose over M2.7's marker cache). `rowsView` branches on `mode == recentBrowse` to a new
-`flatRowsView`/`renderFlatRow` (star marker per S3, name left, label right-aligned via
-`leftTruncate`, `recentEmptyText` placeholder pending M4.4's per-combination wording); `move`/
-`rowCount` now count whichever list (`flatRows()` or `visibleRows()`) the current mode
-actually shows. `browse_list_test.go` covers ordering, the per-Root cap, the merged All
-Roots ordering + both label forms, Active-Root-only isolation, omission of a deleted file,
-zero-`LastViewed` exclusion, the no-active-root edge case, and two model-level render checks
-(Recent shows the flat rows and its own empty message). `make check` and `make check-pty`
+Build (2026-08-11): completed M4.3 (`Starred` mode's own flat-list rows across Active
+Root/All Starred/Orphans). `browse_list.go` gained `starredRows(docs, roots, activeRootPath,
+scope)`, `recentRows`'s own shape with the three differences S3/S6 call for a Starred list:
+every `Starred` record appears regardless of `LastViewed` (S1's independent fields), a record
+whose file no longer exists is *marked broken* rather than omitted (`browseRow` gained a
+`broken` field, always computed by `buildBrowseRow` via `pathMissing`), and rows sort by name
+(no timestamp axis to order by) rather than recency, with no per-Root cap (`recentPerRootCap`
+is Recent's own S6 bound). Buckets reuse `recentRows`' own `rootForPath`-keyed shape (a `""`
+orphan bucket, never capped); Active Root reads only its own bucket, All Starred merges every
+bucket, Orphans reads just `""`. `files.go`: `flatMode()` (`mode == recentBrowse ||
+starredBrowse`) is now the one predicate `flatRows`/`rowCount`/`rowsView` branch on;
+`flatRows()` dispatches to `recentRows`/`starredRows` by mode; `renderFlatRow` branches on
+mode too — Recent keeps its star-marker-prefix left segment, Starred instead omits the marker
+(S3: "membership already says it") and marks a broken row dimmed with a `" (missing)"` suffix
+(mirrors `rootsnav.go`'s broken-Root treatment); `starredEmptyText` is the new mode's own
+placeholder pending M4.4. New `selectedFlatRow()` accessor (the flat row at `f.selected`
+while `flatMode()`) — added because M4.3's own acceptance ( "activating a broken star is
+refused the way a Broken Root is", "un-starring drops the row") cannot be tested at all
+without *some* path to attempt those two actions on a flat row, and none existed (TRIAGE
+T21's exact citation). `activateInto`/`toggleDocStar` (model.go) now route through
+`selectedFlatRow()` first while `flatMode()`, falling back to the tree path only for Tree;
+`activateFlatRowInto` refuses a broken row with `activateRoot`'s own wording
+(`"%s no longer exists; not activated"`). Scoped to exactly these two actions — Peek/Edit/
+DV2-targeting still resolve via `selectedNode()` (still wrong while Recent/Starred is showing)
+until M4.5; Expand/Collapse untouched. D80 (DECISIONS.md) records this judgment call and its
+scoping, and narrows (not closes) TRIAGE T21 to Peek/Edit only. New
+`browse_starred_test.go`: scope-membership tests (Active Root/All Starred/Orphans, including
+an orphan appearing in the latter two only), unstarred-exclusion, never-viewed-inclusion,
+broken-marked-not-omitted, no-active-root edge case, name ordering, two model-level render
+checks (flat rows without a star marker, empty message, broken-row "(missing)" marking), and
+the two new model-level action tests (`activateInto` refuses/opens a Starred row,
+`toggleDocStar` drops a displayed Starred row immediately). `make check` and `make check-pty`
 both green (full runs).
 
-Not done / logged: TRIAGE T20 (unchanged, build/medium — FilesMode/FilesScope still lack a
-footer hint or Help Modal listing). New TRIAGE T21 (build, medium): while browsing Recent
-mode, Star/Activate/Peek/Edit still act on `filesNav.selectedNode()`'s tree row (same index,
-unrelated list) rather than the flat row on screen — M4.5's own acceptance wording names
-Activate/Peek/Edit-and-DV2-targeting and "Expand/Collapse become no-ops" but never mentions
-Star, so replan should confirm M4.5 covers it too or add a task that does. D79 (DECISIONS.md)
-records the orphan-bucket-cap and live-recompute judgment calls this task made where SPEC.md
-was silent.
+Not done / logged: TRIAGE T20 unchanged (build/medium — FilesMode/FilesScope discoverability).
+TRIAGE T21 narrowed by D80 to Peek/Edit only (Activate/Star now correctly target the flat row
+in Recent/Starred) — a future replan should re-read T21 against D80 before retriaging it, and
+confirm M4.5's own acceptance wording still needs updating for Peek/Edit-only rather than the
+original Activate/Peek/Edit/Star list.
 
-Next: cursor is **M4.3** (`Starred` mode's own flat-list rows across Active Root/All
-Starred/Orphans) — needs M4.1 (done), M2.1 (done). Nothing blocks it. TRIAGE has two open
-items (T20, T21; both non-blocking) — a future replan should triage both, and M4.4 (empty-
-state messaging) still needs M4.3 done first.
+Next: cursor is **M4.4** (every mode/scope combination with nothing to show gets a
+considered message; also the point to reconcile `recentEmptyText`/`starredEmptyText`'s
+current placeholder wording) — needs M4.2 (done), M4.3 (done). Nothing blocks it.
 
 ## Status
 
@@ -92,7 +97,7 @@ state messaging) still needs M4.3 done first.
 | M2.13 | done  | 2026-08-10 | 2026-08-11 | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
 | M4.1 | done   | -        | -         | discoverability gap logged as TRIAGE T20   |
 | M4.2 | done   | -        | -         | orphan-bucket cap + live-recompute judgment calls, D79; TRIAGE T21 |
-| M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |
+| M4.3 | done   | -        | -         | flat-row Activate/Star wiring added beyond listing, D80; narrows TRIAGE T21 |
 | M4.4 | todo   | -        | -         |                                          |
 | M4.5 | todo   | -        | -         |                                          |
 | M4.6 | todo   | -        | -         |                                          |

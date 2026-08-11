@@ -22,6 +22,10 @@ const emptyFilesText = "No folder open."
 // S5's six mode/scope combinations its own considered wording.
 const recentEmptyText = "No recent documents."
 
+// starredEmptyText is Starred mode's own resting message (S6), mirroring
+// recentEmptyText's placeholder-pending-M4.4 status.
+const starredEmptyText = "No starred documents."
+
 // filesNav is the Files Nav pane: an expansion/selection model layered over an
 // immutable tree.Node. The tree itself is static data (M2.1); which folders are
 // open and which row is selected is UI state kept here, keyed by absolute Path
@@ -353,25 +357,52 @@ func (f filesNav) selectedNode() *tree.Node {
 	return rows[f.selected].node
 }
 
-// flatRows is the pane's current flat list (M4.2/M4.3): Recent's own rows,
-// freshly computed from the withRecentSource snapshot and the current scope,
-// while the mode is Recent; nil for Tree (no flat list) and, until M4.3
-// gives it one, Starred too — which still browses via visibleRows exactly
-// as before M4.1/M4.2, unchanged by this task.
+// flatMode reports whether the pane's current Browse Mode shows a flat list
+// (Recent, M4.2; Starred, M4.3) rather than the Tree — the one predicate
+// flatRows/rowCount/rowsView/selectedFlatRow all branch on, so a third flat
+// mode would only ever need to be added here.
+func (f filesNav) flatMode() bool {
+	return f.mode == recentBrowse || f.mode == starredBrowse
+}
+
+// flatRows is the pane's current flat list (M4.2/M4.3): Recent's or
+// Starred's own rows, freshly computed from the withRecentSource snapshot
+// and the current scope, while the mode is one of the two; nil for Tree (no
+// flat list).
 func (f filesNav) flatRows() []browseRow {
-	if f.mode != recentBrowse {
+	switch f.mode {
+	case recentBrowse:
+		return recentRows(f.docs, f.sessionRoots, f.activeRootPath, f.scope)
+	case starredBrowse:
+		return starredRows(f.docs, f.sessionRoots, f.activeRootPath, f.scope)
+	default:
 		return nil
 	}
-	return recentRows(f.docs, f.sessionRoots, f.activeRootPath, f.scope)
+}
+
+// selectedFlatRow is the browseRow under the selection cursor while the
+// pane is in a flat-list mode, or false when the mode is Tree or the cursor
+// is out of range (e.g. an empty list). model.activateInto/toggleDocStar use
+// this to resolve "the selected document" against whichever list is
+// actually on screen (TRIAGE T21's own citation for the mismatch this
+// closes for those two actions) rather than selectedNode's tree-based row
+// underneath — Peek/Edit/DV2-targeting (M4.5) still go through selectedNode
+// until that task gives them the same fix.
+func (f filesNav) selectedFlatRow() (browseRow, bool) {
+	rows := f.flatRows()
+	if f.selected < 0 || f.selected >= len(rows) {
+		return browseRow{}, false
+	}
+	return rows[f.selected], true
 }
 
 // rowCount is however many rows move/rowsView have to work with for the
-// pane's current mode: flatRows' own length for Recent, visibleRows'
-// otherwise (Tree, and Starred until M4.3) — the one place both a tree
-// selection and a flat-list selection are counted the same way, so move
-// clamps against whichever list is actually on screen.
+// pane's current mode: flatRows' own length for Recent/Starred, visibleRows'
+// otherwise (Tree) — the one place both a tree selection and a flat-list
+// selection are counted the same way, so move clamps against whichever list
+// is actually on screen.
 func (f filesNav) rowCount() int {
-	if f.mode == recentBrowse {
+	if f.flatMode() {
 		return len(f.flatRows())
 	}
 	return len(f.visibleRows())
@@ -489,15 +520,15 @@ func (f filesNav) modeScopeRow() string {
 // empty string, which "a\n" + "" still leaves as exactly f.height lines
 // overall once split.
 //
-// Recent (M4.2) renders flatRows' own list here; every other mode (Tree,
-// and Starred until M4.3) still renders visibleRows exactly as before this
-// task — the empty-state message text differs (recentEmptyText vs
-// emptyFilesText) since M4.4 has not yet unified per-combination wording.
+// Recent and Starred (M4.2/M4.3) render flatRows' own list here; Tree still
+// renders visibleRows exactly as before — the empty-state message text
+// differs per mode (recentEmptyText/starredEmptyText vs emptyFilesText)
+// since M4.4 has not yet unified per-combination wording.
 func (f filesNav) rowsView(height int) string {
 	if height <= 0 {
 		return ""
 	}
-	if f.mode == recentBrowse {
+	if f.flatMode() {
 		return f.flatRowsView(height)
 	}
 	rows := f.visibleRows()
@@ -512,40 +543,58 @@ func (f filesNav) rowsView(height int) string {
 	})
 }
 
-// flatRowsView is rowsView's Recent-mode branch (M4.2): the same empty-
-// message-or-scrollable-window shape, over flatRows() instead of
+// flatRowsView is rowsView's Recent/Starred-mode branch (M4.2/M4.3): the
+// same empty-message-or-scrollable-window shape, over flatRows() instead of
 // visibleRows(). Left as its own method (rather than folded into rowsView)
-// so M4.3 can give Starred an identical call without duplicating the
-// windowedView plumbing a third time.
+// so both flat modes share one copy of the windowedView plumbing.
 func (f filesNav) flatRowsView(height int) string {
 	rows := f.flatRows()
 	if len(rows) == 0 {
+		text := recentEmptyText
+		if f.mode == starredBrowse {
+			text = starredEmptyText
+		}
 		return emptyFilesStyle.
 			Width(f.width).Height(height).
 			MaxWidth(f.width).MaxHeight(height).
-			Render(recentEmptyText)
+			Render(text)
 	}
 	return windowedView(f.width, height, f.selected, len(rows), func(idx int) string {
 		return f.renderFlatRow(rows[idx], idx == f.selected)
 	})
 }
 
-// renderFlatRow lays out one Recent-mode row (S6): the star marker (S3 —
-// Recent is not Starred, so membership alone does not already say it), the
-// file name left-aligned, and the right-hand label — the covering Root's
-// base name, or the left-truncated parent directory for an orphan document
-// — right-aligned with at least one gap column between the two. The
-// selected row draws in reverse video, the same bar convention renderRow's
-// tree rows already use; each style call is fully specified across the
-// row's own two segments (lipgloss-v2-row-rendering-gotchas.md) rather than
-// applied to the joined line, so a wide label is never accidentally re-run
-// through a second, un-reversed style call once joined.
+// renderFlatRow lays out one flat-list row (S6), the file name left-aligned
+// and the right-hand label — the covering Root's base name, or the
+// left-truncated parent directory for an orphan document — right-aligned
+// with at least one gap column between the two. The two flat modes differ
+// in the row's own left segment (S3): Recent gets the same star marker
+// prefix Tree rows carry (Recent is not Starred, so membership alone does
+// not already say it), while Starred omits it (membership already says it)
+// and instead marks a broken row (S3's "broken starred document ... still
+// listed and still marked, but cannot be activated") with a dimmed style and
+// the same " (missing)" suffix rootsnav.go's renderRow gives a broken Root.
+// The selected row draws in reverse video, the same bar convention
+// renderRow's tree rows already use; each style call is fully specified
+// across the row's own two segments (lipgloss-v2-row-rendering-gotchas.md)
+// rather than applied to the joined line, so a wide label is never
+// accidentally re-run through a second, un-reversed style call once joined.
 func (f filesNav) renderFlatRow(r browseRow, selected bool) string {
-	star := "  "
-	if f.starred[r.path] {
-		star = "★ "
+	var left string
+	broken := false
+	if f.mode == starredBrowse {
+		left = r.name
+		if r.broken {
+			left += " (missing)"
+			broken = true
+		}
+	} else {
+		star := "  "
+		if f.starred[r.path] {
+			star = "★ "
+		}
+		left = star + r.name
 	}
-	left := star + r.name
 
 	label := r.rootLabel
 	if r.orphan {
@@ -562,8 +611,11 @@ func (f filesNav) renderFlatRow(r browseRow, selected bool) string {
 	line := left + strings.Repeat(" ", pad) + right
 
 	style := lipgloss.NewStyle()
+	if broken {
+		style = style.Faint(true)
+	}
 	if selected {
-		style = filesSelectedStyle
+		style = style.Reverse(true)
 	}
 	return style.Width(f.width).MaxWidth(f.width).Render(line)
 }
