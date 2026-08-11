@@ -17,30 +17,29 @@
 
 ## Cursor
 
-Current task: M4.8
+Current task: M4.9
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.7 (2026-08-11): built the TRIAGE T23/D82 re-clamp fix. Added `filesNav.clampSelected()`
-(`files.go`) — clamps `f.selected` into `[0, rowCount()-1]`, or 0 when empty — and call it from
-the four sites D82 named: `cycleMode`, `cycleScope`, `setRoot`'s flat-mode memory restore (whose
-`indexOfPath` result is Tree-shaped and meaningless once the restored mode is Recent/Starred),
-and `withRecentSource` (the point every store write that can shrink a flat list — e.g.
-un-starring the selected Starred row via `model.withDocRecord`'s `refreshFilesRecentSource` —
-flows through). Also corrected `selectedFlatRow`'s stale doc comment (T24): it no longer claims
-Peek/Edit/DV2-targeting await M4.5's fix (M4.5 already landed it) and now credits
-`clampSelected` for keeping its index valid. Added two regression tests
-(`flat_selection_clamp_test.go`): one cycles Tree (lower selection) → a shorter Recent list and
-confirms `activateInto` opens the re-clamped row; one un-stars the last-visible row of a
-two-row Starred list and confirms a second `toggleDocStar` acts on the surviving row rather than
-no-op. Verified both fail against the pre-fix code (`git stash` sanity check) and pass with it.
+M4.8 (2026-08-12): built D81 exactly as decided — added `keys.FilesMode`/`keys.FilesScope` to
+`filesPane`'s cases in both `paneHints` (footer.go) and `helpBindings` (help.go), mirroring
+M2.8's `keys.Star` treatment. Placed right after Expand/Collapse and before Star in both lists
+(judgment call: they're core S5 browsing actions, not an afterthought like Peek/DV2-targeting
+at the list's tail). `helpBindings`' filesPane case now carries a real duplicate line vs.
+PickerMode/PickerScope's own ("tab mode"/"shift+tab scope" read identically) — documented as
+harmless in help.go's comment: the two contexts are never reachable at once. Growing both lists
+by two entries pushed several width/height-fixed tests past their thresholds as pure collateral
+(no behavioral change, just longer/taller rendered output): bumped three `footer_test.go` widths
+(200→220 twice, 260→270) and one `help_test.go`/`checks.py` terminal height (32→33, both the Go
+test and its pty twin) with comments explaining why. `TestHelpModalListsThePaneOwnBindings`
+needed no rewording — "mode"/"scope" don't collide with its existing want/wantNot pins.
 `make check` and `make check-pty` both green.
 
-Next: M4.8 — add `keys.FilesMode`/`keys.FilesScope` to `filesPane`'s Footer hints and Help Modal
-listing, mirroring M2.8's precedent (D81). Independent of M4.9–M4.11; any order is fine.
+Next: M4.9 — give Tree mode its own empty-state message, distinct from "no Root open," for an
+open Root with zero visible rows. Independent of M4.10–M4.11; any order is fine.
 
 ## Status
 
@@ -76,7 +75,7 @@ listing, mirroring M2.8's precedent (D81). Independent of M4.9–M4.11; any orde
 | M4.5 | done   | 2026-08-12 | -       | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21; review: T23, T24, T25 |
 | M4.6 | done   | 2026-08-12 | -       | review found selection-index restore gap, TRIAGE T23                |
 | M4.7 | done   | -        | -         | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled |
-| M4.8 | todo   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
+| M4.8 | done   | -        | -         | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81) |
 | M4.9 | todo   | -        | -         | replan: Tree's own empty-vs-no-Root message, TRIAGE T22  |
 | M4.10 | todo  | -        | -         | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83) |
 | M4.11 | todo  | -        | -         | replan: comment-literal and citation fixes, TRIAGE T27/T28 |

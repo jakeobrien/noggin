@@ -38,12 +38,19 @@ import (
 // hint anywhere outside the Roots Nav. Placed right after each pane's own
 // open/expand action, mirroring the Roots Nav's existing Activate-then-Star
 // order.
+//
+// keys.FilesMode/keys.FilesScope (C4/M4.1) join filesPane's list here too
+// (M4.8, TRIAGE T20, D81), mirroring M2.8's keys.Star treatment above: they
+// were a real, frequently-used action (S5's Browse mode/scope cycle) with no
+// footer hint anywhere. Files-Nav-only by design, like Peek/ActivateDV2/
+// PeekDV2 below, so they appear only in this case, placed right after
+// Expand/Collapse — the pane's other own browsing actions — and before Star.
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is

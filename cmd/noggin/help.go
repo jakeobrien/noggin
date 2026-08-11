@@ -63,6 +63,17 @@ import (
 // only to filesPane, since all three are Files-Nav-only by design — listing
 // them for rootsPane/dv1Pane/dv2Pane would document bindings those panes can
 // never actually trigger.
+//
+// keys.FilesMode/keys.FilesScope (C4/M4.1) join filesPane's list too (M4.8,
+// TRIAGE T20, D81), for the identical Files-Nav-only reason as Peek/
+// ActivateDV2/PeekDV2 just above — S5's Browse mode/scope cycle has no other
+// discoverability surface than this modal and paneHints' matching addition
+// (footer.go). Their Help() key/desc ("tab"/"mode", "shift+tab"/"scope")
+// happen to read identically to keys.PickerMode/keys.PickerScope's own,
+// already listed here for the Picker-open case (see this func's comment
+// above on those) — a real duplicate line, not a bug: the two pairs are
+// never reachable at the same time (Picker closed vs. open), so the modal
+// simply documents both contexts' "tab cycles mode" shape once each.
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
@@ -75,7 +86,7 @@ func helpBindings(p pane) []key.Binding {
 		}
 	case filesPane:
 		return []key.Binding{
-			keys.Activate, keys.Expand, keys.Collapse, keys.Star, keys.LineUp, keys.LineDown,
+			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.Peek,

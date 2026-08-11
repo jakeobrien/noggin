@@ -968,14 +968,15 @@ check("M5.2 exits 0 after the selection-intact check", code == 0, f"exit {code}"
 # own keys: opened from Files, it must name Files' own bindings (expand/
 # collapse, and M2.8's star — no longer Roots-only, since the Files Nav can
 # star too) and not an inapplicable one (next match is viewer-only).
-# Height 32, not 24 (C2a/M9.1 grew filesPane's helpBindings list past what a
-# 24-row terminal fits without clamping, and M2.8 grew it by one more row
-# (star) past the previous 30-row session; see the go-test-only
+# Height 33, not 24 (C2a/M9.1 grew filesPane's helpBindings list past what a
+# 24-row terminal fits without clamping, M2.8 grew it by one more row
+# (star) past the previous 30-row session, and M4.8 grew it by one more
+# again (FilesMode, FilesScope); see the go-test-only
 # TestHelpOverlayNeverExceedsTheTerminal for the clamped case, which this
 # check is not exercising).
-s = Session([BINARY, TREE], 80, 32)
+s = Session([BINARY, TREE], 80, 33)
 s.pump(1.2)
-before = screen_of(s.out, 80, 32)
+before = screen_of(s.out, 80, 33)
 before_lines = before.raw_lines()
 top_edge_before = before_lines[0]
 footer_before = before_lines[-1]
@@ -983,7 +984,7 @@ check("M5.3 focus starts on Files",
       footer_before.startswith("Files"), repr(footer_before))
 
 s.send(KEY["Help"], 0.5)
-opened = screen_of(s.out, 80, 32)
+opened = screen_of(s.out, 80, 33)
 opened_body = "\n".join(opened.raw_lines())
 check("M5.3 the modal names the focused pane's own context",
       "Help: Files" in opened_body, repr(opened_body[:200]))
@@ -1006,14 +1007,14 @@ check("M5.3 the footer is unchanged outside the modal",
 s.send(KEY["Down"], 0.3)
 s.send(KEY["Down"], 0.3)
 s.send(KEY["Cancel"], 0.5)
-restored = "\n".join(screen_of(s.out, 80, 32).raw_lines())
+restored = "\n".join(screen_of(s.out, 80, 33).raw_lines())
 check("M5.3 esc dismisses the modal, restoring the exact previous screen",
       restored == "\n".join(before_lines), repr(restored[:80]))
 
 # The Help key itself dismisses it too (pressing the affordance again).
 s.send(KEY["Help"], 0.5)
 s.send(KEY["Help"], 0.5)
-restored_again = "\n".join(screen_of(s.out, 80, 32).raw_lines())
+restored_again = "\n".join(screen_of(s.out, 80, 33).raw_lines())
 check("M5.3 pressing Help again also dismisses the modal",
       restored_again == "\n".join(before_lines), repr(restored_again[:80]))
 

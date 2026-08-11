@@ -149,7 +149,10 @@ func TestFooterShowsPickerHintsWhileOpen(t *testing.T) {
 // half separately.
 func TestPaneHintsNameFocusAndRefreshFromEveryPane(t *testing.T) {
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
+		// 220, not 200 (M4.8): filesPane's own hint list grew by
+		// FilesMode/FilesScope, which now pushes "refresh" past 200 cols'
+		// truncation point (footer.go's paneHints — it drops from the end).
+		text := hintText(p, 220)
 		for _, want := range []string{"roots", "files", "dv1", "refresh"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("pane %v: hint text = %q, want it to contain %q", p, text, want)
@@ -192,11 +195,13 @@ func TestPaneHintsOmitCloseDV2Everywhere(t *testing.T) {
 // inapplicable-binding-is-worse-than-no-hint reasoning paneHints already
 // gives for the viewer's own omissions.
 func TestPaneHintsNamePeekOnlyInFilesPane(t *testing.T) {
-	if !strings.Contains(hintText(filesPane, 200), "peek") {
-		t.Errorf("filesPane hint text = %q, want it to contain %q", hintText(filesPane, 200), "peek")
+	// 220, not 200 (M4.8): see TestPaneHintsNameFocusAndRefreshFromEveryPane's
+	// comment — filesPane's grown hint list now truncates "peek" away at 200.
+	if !strings.Contains(hintText(filesPane, 220), "peek") {
+		t.Errorf("filesPane hint text = %q, want it to contain %q", hintText(filesPane, 220), "peek")
 	}
 	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
+		text := hintText(p, 220)
 		if strings.Contains(text, "peek") {
 			t.Errorf("pane %v: hint text = %q, unexpectedly names Peek (Files-Nav-only)", p, text)
 		}
@@ -232,8 +237,9 @@ func TestCtrlPNamedOnlyByPeekDV2(t *testing.T) {
 	// filesPane's full hint list (paneHints) is wide enough that 200 cols
 	// already truncates ActivateDV2/PeekDV2 away (they sort last, least
 	// essential) regardless of this rebind, so this half needs a generous
-	// width to actually observe the untruncated line.
-	if text := hintText(filesPane, 260); !strings.Contains(text, "ctrl+p") {
+	// width to actually observe the untruncated line. 270, not 260 (M4.8):
+	// FilesMode/FilesScope grew the full line past 260 too.
+	if text := hintText(filesPane, 270); !strings.Contains(text, "ctrl+p") {
 		t.Errorf("filesPane hint text = %q, want it to name ctrl+p (PeekDV2, D55)", text)
 	}
 }
