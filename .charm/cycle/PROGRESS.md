@@ -24,26 +24,15 @@ Current task: M5.1
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.14 done (2026-08-12), closing M4: added `TestCyclingScopeToASmallerFlatListReClampsSelection`
-(Recent's own two-value scope cycle shrinking All Roots -> Active Root) and
-`TestSettingRootRestoringAFlatModeReClampsSelection` (setRoot's flat-mode memory-restore
-branch, a Tree-shaped restored index needing re-resolution against a shrunk Starred list),
-mirroring the file's existing cycleMode/un-star tests' shape. Verified both actually catch
-the regression (neutered `clampSelected` to a no-op, confirmed both fail with the expected
-out-of-range symptoms, restored, `make check` green again). The setRoot test deliberately
-drives `filesNav` directly (browse_memory_test.go's style) rather than a full model Root
-switch: a real switch also re-points `activeRootPath` in the same step
-(`model.refreshFilesRecentSource`, called right after `setRoot` by `openFolder`), which
-folds in a second, unrelated ordering effect — `setRoot`'s own `clampSelected` call can run
-against the *outgoing* root's still-stale `activeRootPath`, zeroing selection outright rather
-than re-clamping the restored index, before the follow-up refresh corrects `activeRootPath`
-too late to matter. Never out-of-range (so not a correctness bug), logged as TRIAGE T38 for
-replan rather than fixed here (out of scope for this task). `make check` passes.
-
-M4 milestone is now all `done`, but most M4 rows' Reviewed/Validated columns are still blank
-(see Status table) — per cycle-state.md, that is a process gate: `charm-validate` (fresh
-context) and `code-review` (for Reviewed-blank rows) are due before building M5.1, not
-automatic. Surfacing this rather than proceeding.
+`charm-validate` (fresh-context subagent) ran against the whole M4 milestone (M4.1-M4.14):
+`make check` and `go test ./cmd/noggin/... -v` both green (393/393); every M4.1-M4.14
+acceptance criterion independently re-verified against source and by running its named
+tests directly (not file-presence alone) — all PASS, Validated column now stamped
+2026-08-11 for all fourteen. T38/T39 spot-checked as still accurate, low severity, left
+open. One new finding logged as TRIAGE T40 (low, doc-only): `Orphans` scope is marked a
+pre-agreed cut in SPEC.md/PLAN.md but was actually fully delivered — same class as M2.5's
+already-flagged case, this one wasn't. The M4 review/validate gate is now clear; M5.1
+(Grep-side `Starred` scope) is unblocked to start next session — no code changes this pass.
 
 ## Status
 
@@ -72,20 +61,20 @@ automatic. Surfacing this rather than proceeding.
 | M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, resolved as M2.12 (D76); validate found Grep-mode live-toggle coverage gap, resolved as M2.13 (D78) |
 | M2.12 | done  | 2026-08-10 | 2026-08-11 | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
 | M2.13 | done  | 2026-08-10 | 2026-08-11 | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
-| M4.1 | done   | 2026-08-12 | -       | discoverability gap logged as TRIAGE T20; review found selection-index gap, TRIAGE T23 |
-| M4.2 | done   | 2026-08-12 | -       | orphan-bucket cap + live-recompute judgment calls, D79; TRIAGE T21; review: T26, T29 |
-| M4.3 | done   | 2026-08-12 | -       | flat-row Activate/Star wiring added beyond listing, D80; narrows TRIAGE T21; review: T23 |
-| M4.4 | done   | 2026-08-12 | -       | render test walks all six mode/scope combos; TRIAGE T22 |
-| M4.5 | done   | 2026-08-12 | -       | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21; review: T23, T24, T25 |
-| M4.6 | done   | 2026-08-12 | -       | review found selection-index restore gap, TRIAGE T23                |
-| M4.7 | done   | 2026-08-12 | -       | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled; review: T37 |
-| M4.8 | done   | 2026-08-12 | -       | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81); review: T32/T33 |
-| M4.9 | done   | 2026-08-12 | -       | replan: Tree's own empty-vs-no-Root message, TRIAGE T22; review: T34  |
-| M4.10 | done  | 2026-08-12 | -       | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83); review: T36 |
-| M4.11 | done  | 2026-08-12 | -       | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
-| M4.12 | done  | 2026-08-11 | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
-| M4.13 | done  | 2026-08-11 | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87); review: T39 |
-| M4.14 | done  | 2026-08-11 | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
+| M4.1 | done   | 2026-08-12 | 2026-08-11 | discoverability gap logged as TRIAGE T20; review found selection-index gap, TRIAGE T23 |
+| M4.2 | done   | 2026-08-12 | 2026-08-11 | orphan-bucket cap + live-recompute judgment calls, D79; TRIAGE T21; review: T26, T29 |
+| M4.3 | done   | 2026-08-12 | 2026-08-11 | flat-row Activate/Star wiring added beyond listing, D80; narrows TRIAGE T21; review: T23; validate found stale pre-agreed-cut-3 note, TRIAGE T40 |
+| M4.4 | done   | 2026-08-12 | 2026-08-11 | render test walks all six mode/scope combos; TRIAGE T22 |
+| M4.5 | done   | 2026-08-12 | 2026-08-11 | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21; review: T23, T24, T25 |
+| M4.6 | done   | 2026-08-12 | 2026-08-11 | review found selection-index restore gap, TRIAGE T23                |
+| M4.7 | done   | 2026-08-12 | 2026-08-11 | replan: flat-row selection re-clamp bug, TRIAGE T23/T24 (D82); drops T21 as already-handled; review: T37 |
+| M4.8 | done   | 2026-08-12 | 2026-08-11 | replan: Browse cycle keys' footer/help discoverability, TRIAGE T20 (D81); review: T32/T33 |
+| M4.9 | done   | 2026-08-12 | 2026-08-11 | replan: Tree's own empty-vs-no-Root message, TRIAGE T22; review: T34  |
+| M4.10 | done  | 2026-08-12 | 2026-08-11 | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83); review: T36 |
+| M4.11 | done  | 2026-08-12 | 2026-08-11 | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
+| M4.12 | done  | 2026-08-11 | 2026-08-11 | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
+| M4.13 | done  | 2026-08-11 | 2026-08-11 | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87); review: T39 |
+| M4.14 | done  | 2026-08-11 | 2026-08-11 | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
