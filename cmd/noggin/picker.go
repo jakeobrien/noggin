@@ -309,18 +309,25 @@ func (m model) switchPickerMode() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
-// switchPickerScope flips the open Picker's Scope (Active Root ↔ All
-// Roots, S7/M5.2), the exact same shape switchPickerMode gives mode
-// (above): only p.scope changes, the Prompt is untouched, and the switch
-// goes through queuePickerSearch so the new Scope's search for the same
-// query follows the same debounce/generation contract as everything else
-// — resultsCurrent's scope comparison stales the old Scope's rows
-// immediately, the same way it stales an old mode's.
+// switchPickerScope cycles the open Picker's Scope (Active Root -> All
+// Roots -> Starred -> Active Root, S7/S8/M5.2/C4-M5.1), the exact same
+// shape switchPickerMode gives mode (above): only p.scope changes, the
+// Prompt is untouched, and the switch goes through queuePickerSearch so
+// the new Scope's search for the same query follows the same debounce/
+// generation contract as everything else — resultsCurrent's scope
+// comparison stales the old Scope's rows immediately, the same way it
+// stales an old mode's. S8 adds the third value (Starred) to what used to
+// be a two-way flip; the fixed cycle order matches modeScopes'/browse.go's
+// own convention of naming a scope's cycle order once rather than as a
+// pairwise toggle per value.
 func (m model) switchPickerScope() (model, tea.Cmd) {
-	if m.picker.scope == allRootsScope {
-		m.picker.scope = activeRootScope
-	} else {
+	switch m.picker.scope {
+	case activeRootScope:
 		m.picker.scope = allRootsScope
+	case allRootsScope:
+		m.picker.scope = starredScope
+	default:
+		m.picker.scope = activeRootScope
 	}
 	return m.queuePickerSearch()
 }
@@ -340,7 +347,7 @@ func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
 	}
 	m.picker.searching = true
 	return m, pickerSearchCmd(m.picker.seq, m.picker.mode, m.picker.scope,
-		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles)
+		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles, m.docs)
 }
 
 // resultCount is how many Result rows the current mode has to show right
@@ -518,15 +525,31 @@ func (m model) searchable() bool {
 // startEdit, suspends the program instead), so it is deliberately shaped as
 // a pure function of its arguments: everything it needs is copied in by
 // value, and it touches no model state, because it runs while Update keeps
-// processing keystrokes.
-func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int, hideDotfiles bool) tea.Cmd {
+// processing keystrokes. docs is the one exception to "copied in by value"
+// in spirit rather than letter (S8/C4-M5.1, starredScope's own candidate
+// set, starredPickerFiles): the S1 docs map is passed by reference like
+// roots is passed by slice header, but model.go's own copy-on-write
+// discipline (withDocRecord always builds a fresh map before replacing
+// m.docs, never mutates one in place) makes it as safe to read from a
+// concurrent goroutine as roots already is.
+func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int, hideDotfiles bool, docs map[string]docRecord) tea.Cmd {
 	return func() tea.Msg {
 		results := pickerResults{query: query, mode: mode, scope: scope, hideDotfiles: hideDotfiles}
+		var files []pickerFile
+		if scope == starredScope {
+			// S8: the whole store, not a walk of any Root's tree —
+			// starredPickerFiles resolves Scope on its own terms, so
+			// grepFiles/listFiles' roots-shaped contract (liveRootsInScope)
+			// never sees starredScope at all.
+			files = starredPickerFiles(docs, roots, hideDotfiles)
+		} else {
+			files = listFiles(roots, active, scope, hideDotfiles)
+		}
 		switch mode {
 		case grepMode:
-			results.grep, results.truncated = grepFiles(roots, active, scope, query, hideDotfiles)
+			results.grep, results.truncated = grepPickerFiles(files, query)
 		default:
-			results.files, results.truncated = fuzzyFiles(listFiles(roots, active, scope, hideDotfiles), query)
+			results.files, results.truncated = fuzzyFiles(files, query)
 		}
 		return pickerResultsMsg{seq: seq, results: results}
 	}

@@ -1,15 +1,22 @@
 package main
 
 // pickerScope selects which Roots a Picker searches (S6, GLOSSARY.md
-// "Scope"): the session's single Active Root, or every Root at once. Shared
-// by the File Picker's listing (M1.2) and the Grep Picker's search (M1.4),
-// and by the in-Picker switch between them (picker.go's switchPickerScope,
-// M5.2).
+// "Scope"): the session's single Active Root, every Root at once, or (S8,
+// C4/M5.1) the whole S1 document store's starred documents, orphans
+// included, independent of any Root. Shared by the File Picker's listing
+// (M1.2) and the Grep Picker's search (M1.4), and by the in-Picker switch
+// between them (picker.go's switchPickerScope, M5.2).
+//
+// starredScope is deliberately not resolved by liveRootsInScope below: S8's
+// "the whole store" is a property of the S1 docs map, not of the session's
+// Roots list, so it has its own candidate-set function (starredPickerFiles,
+// files_search.go) rather than a third branch here.
 type pickerScope int
 
 const (
 	activeRootScope pickerScope = iota
 	allRootsScope
+	starredScope
 )
 
 // liveRootsInScope resolves scope against the session's roots and which one

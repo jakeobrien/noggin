@@ -1340,3 +1340,27 @@
   stated acceptance criterion is not literally met without them, and the fix is cheap
   (effort 2) — accept and log rather than leave a named acceptance-criterion clause
   unactually-tested.
+
+## D89: M5.1 delivers the Grep Picker's own Starred scope too, despite PLAN.md naming it a pre-agreed cut
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: SPEC.md's pre-agreed-cuts list (#4) and PLAN.md's M5.1 note both name the Grep
+  Picker's own `Starred` scope a candidate to drop first if the cycle spills. Implementing
+  M5.1's shared `pickerScope` axis (one field read by both modes, S8's own "switching mode
+  never rewrites the scope") and its candidate-set resolution (`starredPickerFiles`,
+  `grepPickerFiles`) made Grep-mode search under Starred scope work for free — no separate
+  code path, no meaningful extra risk or effort over File-mode alone. M5.1's own acceptance
+  wording already asks for it literally ("a Grep and a File search under Starred return
+  matches..."). This mirrors two earlier findings this cycle (PROGRESS.md's M2.5 "pre-agreed
+  cut 1, not actually cut" and TRIAGE T40 on M4.3's Orphans/cut 3): a milestone noted as a
+  contingency cut sometimes turns out cheap enough to just deliver.
+- Decision: ship both modes' Starred scope in M5.1, not just File's. PLAN.md/SPEC.md's cut
+  #4 wording is now stale in the same way cut #1's and #3's already were; leaving a
+  PROGRESS.md note rather than editing SPEC.md/PLAN.md after the fact, consistent with how
+  M2.5's own not-actually-cut case was recorded.
+- Why: the acceptance criterion is the arbiter (per the build process), and it already
+  demanded both modes; the cut existed only as spill insurance, and the cycle has not spilled.
+  Deliberately crippling Grep-mode's search after already building the shared mechanism that
+  makes it work would be *extra* engineering effort (a special-case exclusion), not less.

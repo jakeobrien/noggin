@@ -686,3 +686,142 @@ func TestGrepMatchPositionsAreRuneIndexesUnderFolding(t *testing.T) {
 		}
 	}
 }
+
+// starredPickerFileByPath finds one starredPickerFiles result by path, so a
+// test can assert on a single candidate's own fields (root/orphan) rather
+// than just membership.
+func starredPickerFileByPath(files []pickerFile, path string) (pickerFile, bool) {
+	for _, f := range files {
+		if f.path == path {
+			return f, true
+		}
+	}
+	return pickerFile{}, false
+}
+
+// TestStarredPickerFilesIncludesOrphansAndRootCoveredFiles is S8/M5.1's own
+// acceptance wording, first clause: Starred scope's candidate set (S8: "the
+// whole store — every starred document, including orphans") reaches a
+// starred document under no session Root exactly as it reaches one under a
+// Root — mirroring starredRows' own
+// TestStarredRowsAllStarredIncludesOrphansAndOtherRoots (browse_starred_test.go),
+// the Files Nav's identical S1-store-wide guarantee.
+func TestStarredPickerFilesIncludesOrphansAndRootCoveredFiles(t *testing.T) {
+	dir := t.TempDir()
+	rootDir := mkdir(t, filepath.Join(dir, "root-a"))
+	orphanDir := mkdir(t, filepath.Join(dir, "elsewhere"))
+	inRoot := writeFileContent(t, filepath.Join(rootDir, "a.md"), "content\n")
+	orphan := writeFileContent(t, filepath.Join(orphanDir, "orphan.md"), "content\n")
+	// An unstarred document under the same Root must not leak in.
+	writeFileContent(t, filepath.Join(rootDir, "unstarred.md"), "content\n")
+
+	docs := map[string]docRecord{
+		inRoot: {Starred: true},
+		orphan: {Starred: true},
+	}
+	roots := []root{{path: rootDir}}
+
+	got := filePaths(starredPickerFiles(docs, roots, false))
+	want := sortedCopy([]string{inRoot, orphan})
+	if !equalStrings(got, want) {
+		t.Fatalf("starredPickerFiles() = %v, want %v", got, want)
+	}
+
+	rootFile, ok := starredPickerFileByPath(starredPickerFiles(docs, roots, false), inRoot)
+	if !ok || rootFile.orphan || rootFile.root.path != rootDir {
+		t.Errorf("Root-covered candidate = %+v, want orphan=false root.path=%q", rootFile, rootDir)
+	}
+	orphanFile, ok := starredPickerFileByPath(starredPickerFiles(docs, roots, false), orphan)
+	if !ok || !orphanFile.orphan || orphanFile.root.path != "" {
+		t.Errorf("orphan candidate = %+v, want orphan=true, zero-value root", orphanFile)
+	}
+}
+
+// TestStarredPickerFilesExcludesMissingFiles: unlike Browse's own
+// starredRows (S3: a broken star is still listed, marked), the Picker's
+// Starred candidate set drops a starred record whose file no longer exists
+// — there is nothing for a File-mode match or a Grep search to do with a
+// path that does not resolve to real bytes on disk (starredPickerFiles' own
+// doc comment).
+func TestStarredPickerFilesExcludesMissingFiles(t *testing.T) {
+	dir := t.TempDir()
+	present := writeFileContent(t, filepath.Join(dir, "present.md"), "content\n")
+	missing := filepath.Join(dir, "gone.md")
+
+	docs := map[string]docRecord{
+		present: {Starred: true},
+		missing: {Starred: true},
+	}
+
+	got := filePaths(starredPickerFiles(docs, nil, false))
+	want := []string{present}
+	if !equalStrings(got, want) {
+		t.Fatalf("starredPickerFiles() = %v, want %v (missing file dropped)", got, want)
+	}
+}
+
+// TestStarredPickerFilesAppliesReadableAllowlist mirrors
+// TestListFilesAppliesReadableAllowlist: Starred scope's candidate set is
+// still bound by S13's Readable allowlist, the same as every other scope's.
+func TestStarredPickerFilesAppliesReadableAllowlist(t *testing.T) {
+	dir := t.TempDir()
+	notesMd := writeFileContent(t, filepath.Join(dir, "notes.md"), "content\n")
+	binPath := writeFileContent(t, filepath.Join(dir, "image.png"), "content\n")
+
+	docs := map[string]docRecord{
+		notesMd: {Starred: true},
+		binPath: {Starred: true},
+	}
+
+	got := filePaths(starredPickerFiles(docs, nil, false))
+	want := []string{notesMd}
+	if !equalStrings(got, want) {
+		t.Fatalf("starredPickerFiles() = %v, want %v (non-Readable file dropped)", got, want)
+	}
+}
+
+// TestStarredPickerFilesAppliesHideDotfiles mirrors
+// TestListFilesHonoursHideDotfilesToggle: a starred document under a
+// dot-directory or with a dotfile name is dropped when hideDotfiles is set,
+// the same session-scoped toggle every other candidate set already honours.
+func TestStarredPickerFilesAppliesHideDotfiles(t *testing.T) {
+	dir := t.TempDir()
+	plain := writeFileContent(t, filepath.Join(dir, "notes.md"), "content\n")
+	dotdir := mkdir(t, filepath.Join(dir, ".config"))
+	dotted := writeFileContent(t, filepath.Join(dotdir, "hidden.md"), "content\n")
+
+	docs := map[string]docRecord{
+		plain:  {Starred: true},
+		dotted: {Starred: true},
+	}
+
+	shown := filePaths(starredPickerFiles(docs, nil, false))
+	if want := sortedCopy([]string{plain, dotted}); !equalStrings(shown, want) {
+		t.Fatalf("starredPickerFiles(hideDotfiles=false) = %v, want %v", shown, want)
+	}
+
+	hidden := filePaths(starredPickerFiles(docs, nil, true))
+	if want := []string{plain}; !equalStrings(hidden, want) {
+		t.Fatalf("starredPickerFiles(hideDotfiles=true) = %v, want %v (dot-directory file dropped)", hidden, want)
+	}
+}
+
+// TestStarredPickerFilesExcludesUnstarredDocuments confirms the candidate
+// set reads Starred alone, the same S1-field independence starredRows'
+// own doc comment already states for Browse.
+func TestStarredPickerFilesExcludesUnstarredDocuments(t *testing.T) {
+	dir := t.TempDir()
+	starred := writeFileContent(t, filepath.Join(dir, "starred.md"), "content\n")
+	unstarred := writeFileContent(t, filepath.Join(dir, "unstarred.md"), "content\n")
+
+	docs := map[string]docRecord{
+		starred:   {Starred: true},
+		unstarred: {Starred: false},
+	}
+
+	got := filePaths(starredPickerFiles(docs, nil, false))
+	want := []string{starred}
+	if !equalStrings(got, want) {
+		t.Fatalf("starredPickerFiles() = %v, want %v (unstarred document excluded)", got, want)
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -29,6 +30,15 @@ const pickerResultCap = 200
 type pickerFile struct {
 	root root
 	path string
+	// orphan is S8/M5.1's "under no session Root" flag, set only by
+	// starredPickerFiles (below): root is the zero value when this is true
+	// (there is no covering Root to carry), and the Results/Preview row
+	// renderers (picker_view.go's pickerLocationLabel) fall back to the
+	// document's own parent directory instead of a Root's name+parent, the
+	// same fallback browse_list.go's buildBrowseRow already gives an orphan
+	// browseRow. Every other pickerFile producer (listFiles) leaves this
+	// false: a file found by walking a session Root always has one.
+	orphan bool
 }
 
 // listFiles is the File Picker's candidate set (S3, S13): every Readable
@@ -67,6 +77,60 @@ func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool) [
 			files = append(files, pickerFile{root: r, path: filepath.Join(r.path, rel)})
 		}
 	}
+	return files
+}
+
+// starredPickerFiles is Starred scope's own candidate set (S8, C4/M5.1):
+// every starred document in the S1 store, wherever it lives — under a
+// session Root or not (an orphan, S1) — rather than a walk of any Root's
+// tree. Unlike listFiles' rg-derived candidates, a starred document already
+// exists in the docs map by construction (every star was set on a document
+// this session or a previous one actually opened), so there is no
+// walk-and-filter step; the S1 store itself is Scope's candidate set,
+// filtered by the same rules a Root-derived candidate already answers to:
+//   - a missing file (pathMissing) is dropped, not merely marked broken the
+//     way Browse's own starredRows (S3) still lists and marks a broken star
+//     — the Picker's job is finding something to open or grep, and a
+//     missing file can do neither (loadDocument would just fail on
+//     Activate, and rg has nothing to read for it either);
+//   - the Readable allowlist (tree.IsReadable) still applies, matching
+//     every other candidate set this Picker ever offers;
+//   - hideDotfiles still applies, for the same "session-scoped toggle,
+//     applies to every candidate set" reason listFiles honours it — checked
+//     against the document's own absolute path rather than a Root-relative
+//     one (isDotfilePath splits on "/" regardless, so either shape works).
+//
+// A document is an orphan (pickerFile.orphan) when no session Root covers
+// it (rootForPath) — S8's "including orphans" is what makes this scope the
+// one place a starred document survives even after its Root leaves the
+// session, the same guarantee Browse's own All Starred scope already gives
+// the Files Nav (browse_list.go's starredRows).
+//
+// Sorted by path for a deterministic order: docs is a map, whose iteration
+// order is not stable across runs, and neither fuzzyFiles' ranked-match
+// ordering nor grepPickerFiles' own (rg's batch order) would otherwise mask
+// that the way listFiles' Root-by-Root walk order already does not need to.
+func starredPickerFiles(docs map[string]docRecord, roots []root, hideDotfiles bool) []pickerFile {
+	var files []pickerFile
+	for path, rec := range docs {
+		if !rec.Starred || pathMissing(path) {
+			continue
+		}
+		if !tree.IsReadable(filepath.Base(path)) {
+			continue
+		}
+		if hideDotfiles && isDotfilePath(path) {
+			continue
+		}
+		f := pickerFile{path: path}
+		if r, ok := rootForPath(roots, path); ok {
+			f.root = r
+		} else {
+			f.orphan = true
+		}
+		files = append(files, f)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].path < files[j].path })
 	return files
 }
 
@@ -373,7 +437,19 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 // be an empty-pattern rg run, which matches every line of every file, not
 // "nothing to search".
 func grepFiles(roots []root, active int, scope pickerScope, query string, hideDotfiles bool) (results []grepResult, truncated bool) {
-	files := listFiles(roots, active, scope, hideDotfiles)
+	return grepPickerFiles(listFiles(roots, active, scope, hideDotfiles), query)
+}
+
+// grepPickerFiles is grepFiles' scope-agnostic half (C4/M5.1): the batching,
+// per-batch rg invocation and pickerResultCap/truncation logic, run over
+// whatever candidate file list the caller already resolved rather than
+// resolving one itself from roots/scope. grepFiles (above) is one caller,
+// resolving files the roots-based way (listFiles) for Active Root/All
+// Roots; starredPickerFiles' own candidate set (below) is the other, for
+// Starred scope (S8) — pulled apart from grepFiles so Starred's grep search
+// does not have to fit through liveRootsInScope's roots-shaped contract,
+// which S8's "whole store, no Roots involved" scope has no use for.
+func grepPickerFiles(files []pickerFile, query string) (results []grepResult, truncated bool) {
 	if len(files) == 0 || query == "" {
 		return nil, false
 	}

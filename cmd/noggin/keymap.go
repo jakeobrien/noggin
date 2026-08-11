@@ -155,10 +155,11 @@ type keyMap struct {
 	PickerDown key.Binding
 
 	// PickerMode and PickerScope switch the open Picker's mode (File ↔
-	// Grep, S7) and Scope (Active Root ↔ All Roots, S7) in place, without
-	// touching the Prompt (M2.3 reserves them as non-typing; M5.1/M5.2
-	// give them their actions). Tab/Shift+Tab rather than a letter, for
-	// the same reason PickerUp/PickerDown avoid "j"/"k": both are
+	// Grep, S7) and Scope (Active Root -> All Roots -> Starred, S7/S8) in
+	// place, without touching the Prompt (M2.3 reserves them as
+	// non-typing; M5.1/M5.2 give them their actions, C4/M5.1 adds
+	// Scope's third value). Tab/Shift+Tab rather than a letter, for the
+	// same reason PickerUp/PickerDown avoid "j"/"k": both are
 	// non-printable, so typing a query is never at odds with switching.
 	PickerMode  key.Binding
 	PickerScope key.Binding

@@ -143,8 +143,11 @@ func pickerModeScope(p picker, hideDotfiles bool) string {
 		mode = "Grep"
 	}
 	scope := "Active Root"
-	if p.scope == allRootsScope {
+	switch p.scope {
+	case allRootsScope:
 		scope = "All Roots"
+	case starredScope:
+		scope = "Starred"
 	}
 	label := mode + " · " + scope
 	if hideDotfiles {
@@ -233,19 +236,42 @@ func pickerRootLabel(f pickerFile, width int, rest string) string {
 	return name + gap + leftTruncate(parent, budget)
 }
 
+// pickerLocationLabel is pickerFileRow's "where is this file" segment
+// (S3/S8, C4/M5.1): a covering Root's own name+parent (pickerRootLabel)
+// for an ordinary candidate, or — for a Starred-scope orphan
+// (pickerFile.orphan, starredPickerFiles) — the document's own
+// left-truncated parent directory alone, since there is no Root name to
+// pair it with. This is Picker rows' own counterpart to
+// browse_list.go's buildBrowseRow/files.go's renderFlatRow orphan fallback
+// (orphanDir): the same "no covering Root" fact, rendered in whichever
+// layout its own caller already uses — name+parent there, Root-label+rel
+// here.
+func pickerLocationLabel(f pickerFile, width int, rest string) string {
+	if f.orphan {
+		budget := max(width-lipgloss.Width(rest), 0)
+		return leftTruncate(filepath.Dir(f.path), budget)
+	}
+	return pickerRootLabel(f, width, rest)
+}
+
 // pickerFileRow renders one File Picker Result (S3): the file's Root and its
 // path relative to that Root, so two same-named files in different Roots
 // read apart (M3.1's own acceptance criterion), including when two Roots
 // also share a base name (M3.1a/D50, pickerRootLabel). f.path is always
 // inside f.root.path (both pickerFile's own fields and listFiles'
-// construction guarantee it), so filepath.Rel here cannot fail in practice;
-// the fallback to the absolute path exists only so a row still renders
-// *something* if that invariant were ever broken, rather than silently
-// dropping the row. suffix ("  "+rel) is computed once and reused both as
-// pickerRootLabel's rest argument and as the literal text appended after it
-// (TRIAGE T17/D52) — the two must always agree since they describe the same
-// rendered characters, so a single local var makes that structural rather
-// than something two call sites have to keep in sync by hand.
+// construction guarantee it) for every non-orphan candidate, so
+// filepath.Rel here cannot fail in practice for one; the fallback to the
+// absolute path exists only so a row still renders *something* if that
+// invariant were ever broken, rather than silently dropping the row. A
+// Starred-scope orphan (S8, C4/M5.1) has no f.root at all —
+// starredPickerFiles leaves it the zero value — so rel is just the file's
+// own base name there, paired with pickerLocationLabel's parent-directory
+// fallback rather than a Root's own name+parent. suffix ("  "+rel) is
+// computed once and reused both as pickerLocationLabel's rest argument and
+// as the literal text appended after it (TRIAGE T17/D52) — the two must
+// always agree since they describe the same rendered characters, so a
+// single local var makes that structural rather than something two call
+// sites have to keep in sync by hand.
 // query is what the row was matched against, needed only to highlight the
 // matched characters of the file name (S5/M6.1) — an empty query renders
 // exactly the unhighlighted row M3.1 shipped.
@@ -264,12 +290,20 @@ func pickerRootLabel(f pickerFile, width int, rest string) string {
 func pickerFileRow(f pickerFile, query string, width int, selected bool, starred bool) string {
 	marker := starMarker(starred)
 	contentWidth := max(width-lipgloss.Width(marker), 0)
-	rel, err := filepath.Rel(f.root.path, f.path)
-	if err != nil {
-		rel = f.path
+	// An orphan (S8) has no covering Root to be relative to —
+	// pickerLocationLabel already names its directory, so the suffix here
+	// is just the file's own name, the same "no further path to add" shape
+	// buildBrowseRow's orphan row gives the Files Nav's own flat list.
+	rel := filepath.Base(f.path)
+	if !f.orphan {
+		if r, err := filepath.Rel(f.root.path, f.path); err == nil {
+			rel = r
+		} else {
+			rel = f.path
+		}
 	}
 	suffix := "  " + rel
-	line := pickerRootLabel(f, contentWidth, suffix) + suffix
+	line := pickerLocationLabel(f, contentWidth, suffix) + suffix
 	name := filepath.Base(f.path)
 	columns := suffixColumns(line, name, fileNameMatchPositions(name, query))
 	full, shifted := prependMarker(marker, line, columns)
@@ -445,7 +479,13 @@ func rightTruncate(s string, width int) string {
 // Unlike pickerFileRow's Root label (M3.1a/D50), this does not disambiguate
 // same-named Roots — S4 only asks for "the file, the line number and the
 // line", not Root disambiguation, and the line text itself is almost always
-// enough to tell two matches apart.
+// enough to tell two matches apart. A Starred-scope orphan (S8, C4/M5.1)
+// falls out of the same filepath.Rel call for free: g.file.root is the zero
+// value (root.path == ""), so filepath.Rel("", g.file.path) errors and rel
+// falls back to g.file.path — the absolute path, which is exactly what an
+// orphan (no Root to be relative to) should show here; no orphan-specific
+// branch is needed the way pickerFileRow's own rel computation needs one,
+// since this row never tries a name+parent Root label in the first place.
 //
 // The assembled line is right-truncated (rightTruncate) to width *before*
 // styling, unlike pickerFileRow's budget-computed-to-fit construction:

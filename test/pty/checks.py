@@ -1150,9 +1150,18 @@ indicator_allroots = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("M7.1 shift+tab switches the Scope indicator to All Roots",
       "Grep · All Roots" in indicator_allroots, repr(indicator_allroots[:200]))
 
+# S8/C4-M5.1: Scope is now a three-way cycle (Active Root -> All Roots ->
+# Starred -> Active Root), not the two-way toggle originally checked here —
+# a second shift+tab now lands on Starred, and a third is what returns to
+# Active Root.
+s.send(KEY["PickerScope"], 0.4)
+indicator_starred = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("S8 shift+tab switches the Scope indicator to Starred",
+      "Grep · Starred" in indicator_starred, repr(indicator_starred[:200]))
+
 s.send(KEY["PickerScope"], 0.4)
 indicator_activeroot = "\n".join(screen_of(s.out, 80, 24).raw_lines())
-check("M7.1 shift+tab switches the Scope indicator back to Active Root",
+check("S8 a third shift+tab returns the Scope indicator to Active Root",
       "Grep · Active Root" in indicator_activeroot, repr(indicator_activeroot[:200]))
 
 s.send(query, 1.0)  # first query typed, already in Grep mode/Active Root

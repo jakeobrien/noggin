@@ -303,6 +303,41 @@ func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
 	}
 }
 
+// TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory is S8/
+// M5.1's own rendering counterpart to browse_list.go's orphan fallback
+// (buildBrowseRow/renderFlatRow): a Starred-scope orphan candidate
+// (pickerFile.orphan, starredPickerFiles) has no Root to disambiguate it
+// with, so pickerLocationLabel shows the document's own left-truncated
+// parent directory instead of a Root's name+parent pair, and the trailing
+// path segment is just the file's own base name (no meaningful
+// "relative to a Root" path exists for it).
+func TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory(t *testing.T) {
+	f := pickerFile{path: "/home/user/elsewhere/orphan.md", orphan: true}
+	const width = 20
+
+	got := pickerFileRow(f, "", width, false, false)
+	wantSuffix := "  orphan.md"
+	if !strings.HasSuffix(strings.TrimRight(got, " "), wantSuffix) {
+		t.Fatalf("pickerFileRow(orphan) = %q, want it to end (ignoring trailing pad) with %q (the file's own base name, no Root-relative path)", got, wantSuffix)
+	}
+	if strings.Contains(got, "/home/user/elsewhere") {
+		t.Errorf("pickerFileRow(orphan) = %q, expected the parent directory left-truncated away at this width, not shown in full", got)
+	}
+	if w := lipgloss.Width(got); w != width {
+		t.Errorf("pickerFileRow(orphan) width = %d, want %d", w, width)
+	}
+
+	// Wide enough that leftTruncate has no need to truncate: the orphan's
+	// full parent directory shows plainly, mirroring what a Root's own
+	// name+parent label would show for a non-orphan candidate at the same
+	// width.
+	const wideWidth = 80
+	wide := pickerFileRow(f, "", wideWidth, false, false)
+	if !strings.Contains(wide, "/home/user/elsewhere") {
+		t.Errorf("pickerFileRow(orphan) at width %d = %q, want the full parent directory visible", wideWidth, wide)
+	}
+}
+
 // TestPickerFileRowShowsStarMarkerForAStarredResult closes the S3/D72 gap
 // TRIAGE T8 found: S2/M2.5's own wording already talked about a Picker
 // Result's "star marker" being cleared, but no Picker row actually rendered
@@ -361,6 +396,25 @@ func TestPickerGrepRowShowsStarMarkerForAStarredResult(t *testing.T) {
 	}
 	if w := lipgloss.Width(starred); w != width {
 		t.Errorf("starred pickerGrepRow() width = %d, want %d", w, width)
+	}
+}
+
+// TestPickerGrepRowRendersAnOrphanCandidateByItsFullPath is S8/M5.1's Grep
+// Picker counterpart to TestPickerFileRowRendersAnOrphanCandidateByItsOwn-
+// ParentDirectory: a Starred-scope orphan Grep Result (g.file.orphan, zero-
+// value g.file.root) has no Root to be relative to, so the row's own
+// filepath.Rel(g.file.root.path, g.file.path) call errors (an empty base)
+// and falls back to the file's full absolute path — pickerGrepRow's own
+// pre-existing fallback, needing no orphan-specific branch (its doc comment
+// records why: this row never disambiguates by Root in the first place).
+func TestPickerGrepRowRendersAnOrphanCandidateByItsFullPath(t *testing.T) {
+	f := pickerFile{path: "/home/user/elsewhere/orphan.md", orphan: true}
+	g := grepResult{file: f, line: 3, text: "a needle in an orphan"}
+	const width = 80
+
+	got := pickerGrepRow(g, "", width, false, false)
+	if !strings.Contains(got, "/home/user/elsewhere/orphan.md:3") {
+		t.Errorf("pickerGrepRow(orphan) = %q, want the file's full absolute path and line number", got)
 	}
 }
 

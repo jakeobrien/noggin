@@ -63,8 +63,10 @@ func TestPickerStarTogglesSelectedFileResult(t *testing.T) {
 
 // TestPickerStarTogglesSelectedGrepResult confirms the same action reaches
 // a Grep Result too (S2 names "the selected Result" without restricting it
-// to File mode; only the Grep Picker's own Starred *scope*, M5.1, is the
-// pre-agreed cut, not this action).
+// to File mode). PLAN.md originally named the Grep Picker's own Starred
+// *scope* (M5.1) a pre-agreed cut in advance of building it; C4/M5.1 built
+// it after all (see PROGRESS.md/DECISIONS.md), so that carve-out no longer
+// applies to anything, this action included.
 func TestPickerStarTogglesSelectedGrepResult(t *testing.T) {
 	dir := t.TempDir()
 	storePath := filepath.Join(dir, "documents")

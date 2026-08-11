@@ -17,22 +17,40 @@
 
 ## Cursor
 
-Current task: M5.1
+Current task: M6.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-`charm-validate` (fresh-context subagent) ran against the whole M4 milestone (M4.1-M4.14):
-`make check` and `go test ./cmd/noggin/... -v` both green (393/393); every M4.1-M4.14
-acceptance criterion independently re-verified against source and by running its named
-tests directly (not file-presence alone) — all PASS, Validated column now stamped
-2026-08-11 for all fourteen. T38/T39 spot-checked as still accurate, low severity, left
-open. One new finding logged as TRIAGE T40 (low, doc-only): `Orphans` scope is marked a
-pre-agreed cut in SPEC.md/PLAN.md but was actually fully delivered — same class as M2.5's
-already-flagged case, this one wasn't. The M4 review/validate gate is now clear; M5.1
-(Grep-side `Starred` scope) is unblocked to start next session — no code changes this pass.
+M5.1 built: `pickerScope` gained a third value (`starredScope`), a shared axis both File
+and Grep Picker modes read (`switchPickerScope` now cycles Active Root -> All Roots ->
+Starred -> Active Root; mode switches never touch it). Candidate resolution is new
+(`starredPickerFiles`, files_search.go): the whole S1 store's starred documents, orphans
+included, dropping missing files (unlike Browse's own broken-star display) and still
+honouring the Readable allowlist and hideDotfiles. `grepFiles` was split into a thin
+roots-resolving wrapper plus `grepPickerFiles` (batching/cap logic, takes a file list
+directly) so Starred scope's Grep search reuses it without going through
+`liveRootsInScope`'s roots-shaped contract. `pickerFile` gained an `orphan bool` field;
+row rendering (`pickerLocationLabel`, picker_view.go) falls back to the document's own
+parent directory for an orphan, mirroring browse_list.go's existing orphan treatment
+(pickerGrepRow needed no change — its existing filepath.Rel error-fallback already does
+the right thing for an empty root path).
+
+Built both File- *and* Grep-side Starred scope despite PLAN.md/SPEC.md naming Grep-side a
+pre-agreed cut (#4): the shared-scope/shared-candidate-set design made Grep search under
+Starred work for free, and M5.1's own acceptance wording already asked for both literally.
+Logged as D89 (same "not actually cut" class as M2.5/TRIAGE T40 — SPEC.md/PLAN.md wording
+now stale in the same way, left for a future doc-wording pass rather than edited here).
+
+All new: files_search_test.go (starredPickerFiles unit tests), picker_view_test.go (orphan
+row rendering, both modes), picker_scope_starred_test.go (scope-cycle, mode-switch-
+preserves-scope, and full File/Grep search-under-Starred acceptance tests). Updated a
+stale pty check (test/pty/checks.py) that assumed Scope was still a two-way toggle. `make
+check` and `make check-pty` both green. Next: M6.1 (per-viewer document history) is
+unblocked to start next session — no gate issues (TRIAGE still holds only the same three
+low-severity open items from before this session, none blocking).
 
 ## Status
 
@@ -75,7 +93,7 @@ already-flagged case, this one wasn't. The M4 review/validate gate is now clear;
 | M4.12 | done  | 2026-08-11 | 2026-08-11 | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
 | M4.13 | done  | 2026-08-11 | 2026-08-11 | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87); review: T39 |
 | M4.14 | done  | 2026-08-11 | 2026-08-11 | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
-| M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
+| M5.1 | done   | -        | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5) |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
 | M7.1 | todo   | -        | -         |                                          |
