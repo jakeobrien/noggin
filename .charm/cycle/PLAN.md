@@ -227,6 +227,14 @@ Delivers: S5, S6, S7 (and S2's Starred-list removal clause)
   mirroring the existing `cycleMode`/un-star coverage already in `flat_selection_clamp_test.go`
   — done when: two new tests assert `f.selected` stays valid after each of those two
   transitions, and pass — effort: 2 (needs: M4.7) — from TRIAGE T37 (D88).
+- **M4.15** — Fix `openFolder`'s selection reset when switching the Active Root back onto one
+  previously left in a flat browse mode: `filesNav.setRoot`'s own clamp runs against the
+  *outgoing* Root's still-stale `activeRootPath` before `model.refreshFilesRecentSource`
+  re-points it and re-clamps against the correct list, so the restore lands on row 0 instead
+  of the nearest surviving row from M4.6's memory — done when: a test drives `openFolder`
+  itself (not `setRoot` in isolation) switching away from and back to a Root in flat mode and
+  confirms selection lands on the memory-restored row, not index 0 — effort: 2
+  (needs: M4.6, M4.7) — from TRIAGE T38.
 
 ## M5 — `Starred` as a Picker scope
 
@@ -239,6 +247,12 @@ Delivers: S8
   matches from a starred document under no session Root, and switching Picker mode never
   rewrites the scope — effort: 3 (needs: M1.4, M2.1)
   — *Grep-side `Starred` is pre-agreed cut 4.*
+- **M5.2** — Delete the now-dead `grepFiles` (superseded by M5.1's `grepPickerFiles` split;
+  `pickerSearchCmd` no longer calls it) and repoint `files_search_test.go`'s existing coverage
+  at `grepPickerFiles(listFiles(...), query)` directly, so no stale caller or doc-comment
+  claim survives — done when: `grepFiles` has no remaining references, its former tests pass
+  against the new call shape, and `make check` is green — effort: 2 (needs: M5.1) — from
+  TRIAGE T42 (D94).
 
 ## M6 — Per-viewer document history
 
@@ -256,6 +270,15 @@ Delivers: S9
   navigates away and back, and lands at the remembered offset — and revisiting via a *different*
   history entry for the same document lands at the same offset — effort: 2 (needs: M6.1)
   — *pre-agreed cut 2.*
+- **M6.3** — Add `keys.HistoryBack`/`keys.HistoryForward` to the Document Viewer's Footer
+  hints and Help Modal binding list, mirroring M2.8's and M4.8's precedent for newly
+  introduced bindings — done when: both bindings appear in the viewer's `paneHints` and Help
+  Modal listing, and `TestHelpModalListsThePaneOwnBindings`'s existing pins still pass
+  (reworded if needed) — effort: 2 (needs: M6.1) — from TRIAGE T41.
+- **M6.4** — Add a regression test for D91's flagged-but-untested behavior: scroll a document,
+  then re-Activate that same document with no navigation in between, and confirm the offset
+  survives instead of resetting to top, mirroring `history_scroll_test.go`'s existing style —
+  done when: the test exists and passes — effort: 1 (needs: M6.2) — from TRIAGE T43.
 
 ## M7 — Pane focus badges
 

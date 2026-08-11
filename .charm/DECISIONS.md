@@ -1422,3 +1422,66 @@
   and is strictly a smaller surprise than the alternative (Activate keeps a reset-to-top
   special case that Back/Forward on the very same document does not).
 
+## D92: M4.13's tie-break-test comment stays at four lines, not trimmed to "one-line" (TRIAGE T39)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review (TRIAGE T39, low) found M4.13's own acceptance wording
+  (`PLAN.md` M4.13, D87) literally asked for "a one-line comment" on
+  `TestRecencyAndStarredNameTiesBreakByPath`; what landed is four lines. The comment is
+  accurate and matches the project's own norm of thorough narrative comments elsewhere in the
+  same file; no functional issue.
+- Decision: wontfix. No PLAN.md wording amendment, no code change — the delivered comment
+  stands.
+- Why: low severity, cosmetic literal-wording mismatch with no behavioral consequence.
+  Trimming an already-accurate, already-`done`/Reviewed comment to satisfy a word count would
+  cost more than it's worth, and rewriting M4.13's own acceptance wording after the fact to
+  match what shipped sets a precedent (retroactively loosening acceptance criteria) worse than
+  just noting the mismatch here, per the same standard this cycle already applies to itself
+  (T37/M4.14's own literal-gap fixes were about missing coverage, not comment length).
+
+## D93: `Orphans` scope (M4.3) was never actually cut, mirroring D89's M5.1 precedent (TRIAGE T40)
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: validate (TRIAGE T40) found `Orphans` scope — SPEC.md's pre-agreed cut #3, and
+  PLAN.md's M4.3 note `*Orphans is pre-agreed cut 3.*` — is in fact fully implemented,
+  reachable via `keys.FilesScope`, and covered by dedicated tests
+  (`TestStarredRowsOrphansScopeOnlyShowsOrphans`, the six-combo empty-state test, browse-memory
+  round-trip). This is the third such case this cycle: M2.5 (Picker starring, PROGRESS's own
+  "pre-agreed cut 1, not actually cut" note) and M5.1 (Grep Picker's `Starred` scope, D89) both
+  turned out cheap enough to deliver once the underlying mechanism was built for the
+  non-cut sibling.
+- Decision: leave SPEC.md/PLAN.md's cut-#3 wording as written (stale, like cut #1's and #4's
+  already are) rather than editing it after the fact; record the actual outcome as a
+  PROGRESS.md note on M4.3's row, consistent with how M2.5's and M5.1's own not-actually-cut
+  cases were recorded. No PLAN task — there is nothing left to build.
+- Why: the acceptance criterion is the arbiter and M4.3's own wording already named `Orphans`'
+  scope test explicitly; the cut existed only as spill insurance the cycle never needed. Same
+  reasoning as D89, applied to the third instance of the same pattern.
+
+## D94: Dead `grepFiles` is deleted, not restored to a live call site (TRIAGE T42) — M5.2
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: code review (TRIAGE T42, medium) found M5.1's split of `grepFiles` into
+  `grepPickerFiles` left `grepFiles` itself dead in production — `pickerSearchCmd` now
+  resolves `files` itself (`starredPickerFiles` or `listFiles`) and calls `grepPickerFiles`
+  directly, so `grepFiles` has no remaining production caller, kept alive only by
+  `files_search_test.go`'s pre-existing tests. Its own doc comment claiming `pickerSearchCmd`
+  is a caller is now factually wrong. Two options were open: delete `grepFiles` and repoint its
+  tests at `grepPickerFiles(listFiles(...), query)` directly, or correct the doc comment and
+  wire it back into `pickerSearchCmd`'s non-Starred branch as a thin roots-based wrapper.
+- Decision: delete `grepFiles`, as a new task, M5.2. No future caller is named anywhere in
+  SPEC.md/PLAN.md/ROADMAP.md that would need a roots-based wrapper distinct from
+  `grepPickerFiles(listFiles(...), query)` — keeping dead code alive against a hypothetical
+  future caller is the same shape of speculative cost D75/D85 already declined to pay for a
+  recompute, applied here to a whole function instead.
+- Why: medium severity (a doc-comment claim that is factually wrong about the codebase's own
+  call graph is exactly the kind of drift replan exists to catch), cheap (effort 2, no
+  behavior change since the function is already unreachable from production) — accept and log
+  rather than leave a live doc-comment lie sitting in the tree.
+

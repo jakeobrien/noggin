@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M7.1
+Current task: M4.15
 
 ## Handoff
 
@@ -45,8 +45,18 @@ restoring a remembered offset after navigating away and back, and a *different* 
 for the same document (a re-visited via b in between) sharing that same, most recently
 remembered offset rather than its own original one. Both fail without the implementation
 (verified by reverting model.go/viewer.go and re-running) and pass with it. `make check` and
-`make check-pty` both green. Next: M7.1/M7.2 (pane focus badges, S10) are next in plan order,
-fully independent of M6's history work.
+`make check-pty` both green.
+
+Replan (this session): triaged TRIAGE T38-T43, all six now routed and cleared from the inbox.
+Accepted as new tasks: M4.15 (T38, openFolder's flat-mode selection-reset bug), M5.2 (T42,
+delete dead `grepFiles`, D94), M6.3 (T41, HistoryBack/HistoryForward Footer/Help
+discoverability, mirrors M2.8/M4.8), M6.4 (T43, D91's untested re-Activate scroll-preserve
+regression). T39 (M4.13's 4-line vs "one-line" comment wording) wontfixed as D92. T40
+(Orphans scope not actually cut) resolved as D93, mirroring D89 — note added to M4.3's row
+below rather than editing SPEC/PLAN. Cursor moves to M4.15: these four are cheap cleanup on
+already-`done` milestones, sequenced ahead of M7 (a fresh, independent feature) rather than
+after it — no dependency forces this order, it's a judgment call to close out known gaps
+first. M7.1/M7.2 (pane focus badges, S10) remain queued after, still fully independent.
 
 ## Status
 
@@ -77,7 +87,7 @@ fully independent of M6's history work.
 | M2.13 | done  | 2026-08-10 | 2026-08-11 | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
 | M4.1 | done   | 2026-08-12 | 2026-08-11 | discoverability gap logged as TRIAGE T20; review found selection-index gap, TRIAGE T23 |
 | M4.2 | done   | 2026-08-12 | 2026-08-11 | orphan-bucket cap + live-recompute judgment calls, D79; TRIAGE T21; review: T26, T29 |
-| M4.3 | done   | 2026-08-12 | 2026-08-11 | flat-row Activate/Star wiring added beyond listing, D80; narrows TRIAGE T21; review: T23; validate found stale pre-agreed-cut-3 note, TRIAGE T40 |
+| M4.3 | done   | 2026-08-12 | 2026-08-11 | flat-row Activate/Star wiring added beyond listing, D80; narrows TRIAGE T21; review: T23; pre-agreed cut 3, not actually cut (D93, cf. M2.5/M5.1) |
 | M4.4 | done   | 2026-08-12 | 2026-08-11 | render test walks all six mode/scope combos; TRIAGE T22 |
 | M4.5 | done   | 2026-08-12 | 2026-08-11 | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21; review: T23, T24, T25 |
 | M4.6 | done   | 2026-08-12 | 2026-08-11 | review found selection-index restore gap, TRIAGE T23                |
@@ -92,5 +102,9 @@ fully independent of M6's history work.
 | M5.1 | done   | 2026-08-11 | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5); review found grepFiles dead code, TRIAGE T42 |
 | M6.1 | done   | 2026-08-11 | -         |                                          |
 | M6.2 | done   | 2026-08-11 | -         | pre-agreed cut 2, not actually cut (D91); review found untested re-Activate scroll-preserve behavior, TRIAGE T43 |
+| M4.15 | todo  | -        | -         | replan: openFolder flat-mode selection-reset bug, TRIAGE T38 |
+| M5.2 | todo   | -        | -         | replan: delete dead grepFiles, TRIAGE T42 (D94) |
+| M6.3 | todo   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41 |
+| M6.4 | todo   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43 |
 | M7.1 | todo   | -        | -         |                                          |
 | M7.2 | todo   | -        | -         |                                          |
