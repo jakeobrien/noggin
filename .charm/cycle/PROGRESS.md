@@ -17,27 +17,33 @@
 
 ## Cursor
 
-Current task: M4.14
+Current task: M5.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.13 done (2026-08-12): `flatEmptyText`'s unreachable `default` case (mode == treeBrowse,
-never actually hit — `flatRowsView` is only called via `flatMode()`, which excludes
-`treeBrowse`) now returns `emptyTreeText` instead of `emptyFilesText`, matching the doc
-comment's own reasoning: `emptyFilesText`'s "no Root open" case is already `rowsView`'s Tree
-branch's concern, so a hypothetical Tree-mode caller landing here would be asking this func's
-own "nothing to show" question, which `emptyTreeText` names. Comment expanded to state that
-reasoning inline rather than just calling the branch unreachable. Added a one-line comment to
-`TestRecencyAndStarredNameTiesBreakByPath`'s `starredRows` subtest noting the "a" < "b"
-tie-break holds because dirA/dirB share `t.TempDir()`'s parent and differ only in the literal
-subdirectory name, not because of `t.TempDir()`'s own naming. `make check` passes.
+M4.14 done (2026-08-12), closing M4: added `TestCyclingScopeToASmallerFlatListReClampsSelection`
+(Recent's own two-value scope cycle shrinking All Roots -> Active Root) and
+`TestSettingRootRestoringAFlatModeReClampsSelection` (setRoot's flat-mode memory-restore
+branch, a Tree-shaped restored index needing re-resolution against a shrunk Starred list),
+mirroring the file's existing cycleMode/un-star tests' shape. Verified both actually catch
+the regression (neutered `clampSelected` to a no-op, confirmed both fail with the expected
+out-of-range symptoms, restored, `make check` green again). The setRoot test deliberately
+drives `filesNav` directly (browse_memory_test.go's style) rather than a full model Root
+switch: a real switch also re-points `activeRootPath` in the same step
+(`model.refreshFilesRecentSource`, called right after `setRoot` by `openFolder`), which
+folds in a second, unrelated ordering effect — `setRoot`'s own `clampSelected` call can run
+against the *outgoing* root's still-stale `activeRootPath`, zeroing selection outright rather
+than re-clamping the restored index, before the follow-up refresh corrects `activeRootPath`
+too late to matter. Never out-of-range (so not a correctness bug), logged as TRIAGE T38 for
+replan rather than fixed here (out of scope for this task). `make check` passes.
 
-Next: M4.14 (flat-selection-clamp regression cases for cycleScope/setRoot's restore path),
-then back to M5.1 (Picker `Starred` scope, Grep-side pre-agreed cut 4) — M4.14 doesn't block
-M5.1, it's just next in plan order.
+M4 milestone is now all `done`, but most M4 rows' Reviewed/Validated columns are still blank
+(see Status table) — per cycle-state.md, that is a process gate: `charm-validate` (fresh
+context) and `code-review` (for Reviewed-blank rows) are due before building M5.1, not
+automatic. Surfacing this rather than proceeding.
 
 ## Status
 
@@ -79,7 +85,7 @@ M5.1, it's just next in plan order.
 | M4.11 | done  | 2026-08-12 | -       | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
 | M4.12 | done  | -        | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
 | M4.13 | done  | -        | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87) |
-| M4.14 | todo  | -        | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
+| M4.14 | done  | -        | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |

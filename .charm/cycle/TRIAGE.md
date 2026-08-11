@@ -25,4 +25,5 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T38 | build | low | cmd/noggin/files.go:159 (setRoot) | Switching the active Root back onto one left in a flat mode can land selection at 0 instead of the nearest still-valid row: openFolder calls filesNav.setRoot (its own clampSelected runs against the *outgoing* root's still-stale activeRootPath, computing 0 rows for the just-restored mode and zeroing selection) before model.refreshFilesRecentSource re-points activeRootPath and re-clamps against the correct list — by then the original Tree-restored index is already lost to 0, not re-derived. Never out-of-range (still a valid selection), so no crash/no-op; found while building M4.14 (TestSettingRootRestoringAFlatModeReClampsSelection, flat_selection_clamp_test.go, deliberately isolates activeRootPath to avoid this and test setRoot's own restore logic cleanly instead). | open |
 
