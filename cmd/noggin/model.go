@@ -236,6 +236,16 @@ func (m model) docRecord(path string) docRecord {
 // restart would silently revert it" contract toggleStar already gives the
 // Roots store, centralized here once so every future caller (star toggles,
 // recency recording) inherits it for free rather than re-deriving it.
+//
+// It also refreshes the Files Nav's S3 star-marker set (filesStarredMarks)
+// on every successful write, not only when the write originated from the
+// Files Nav's own toggleDocStar — a star flipped from a focused Document
+// Viewer (toggleActiveDocStar) or the Picker (toggleStarPicker) changes the
+// same m.docs this marker set is derived from, so a Files Nav row for that
+// same path would otherwise show a stale marker until its next
+// openFolder/refresh (M2.7/TRIAGE T7). recordViewed's lastViewed-only writes
+// recompute the same unchanged marks — harmless, and simpler than carving
+// out a starred-only variant of this write path.
 func (m model) withDocRecord(path string, rec docRecord) model {
 	if m.docsPath == "" {
 		m.message = "cannot save document store: no resolvable data directory"
@@ -253,6 +263,7 @@ func (m model) withDocRecord(path string, rec docRecord) model {
 		return m
 	}
 	m.docs = docs
+	m.files = m.files.withStarred(m.filesStarredMarks())
 	return m
 }
 
@@ -526,16 +537,13 @@ func (m model) toggleDocStar() model {
 	}
 	rec := m.docRecord(n.Path)
 	rec.Starred = !rec.Starred
-	m = m.withDocRecord(n.Path, rec)
 	// S3: the marker updates immediately, not only after the pane's next
-	// openFolder/refresh — unlike S8's git status, this store can change
-	// from a Files Nav action itself. A declined write (m.docsPath == "" or
-	// a save error, both m.message-only refusals withDocRecord already
-	// makes) leaves m.docs untouched, so recomputing here is harmless either
-	// way — it reflects whatever the store's write half decided actually
-	// stuck.
-	m.files = m.files.withStarred(m.filesStarredMarks())
-	return m
+	// openFolder/refresh — withDocRecord itself refreshes the Files Nav's
+	// star-marker set on every successful write (M2.7), so no separate
+	// recompute is needed here. A declined write (m.docsPath == "" or a
+	// save error, both m.message-only refusals withDocRecord already
+	// makes) leaves m.docs and the marker set untouched either way.
+	return m.withDocRecord(n.Path, rec)
 }
 
 // filesStarredMarks derives the Files Nav's S3 star-marker set from the S1
@@ -543,9 +551,10 @@ func (m model) toggleDocStar() model {
 // this map with a plain `f.starred[path]` lookup, so an absent key already
 // reads as "not starred" — no need to store the false ones). Recomputed by
 // every caller that could have changed either the store or the pane's
-// current root (openFolder, refresh, toggleDocStar) rather than kept live
-// against m.docs, the same "snapshot the caller refreshes" shape S8's
-// gitStatus/withStatus already gives the pane's other per-file marker.
+// current root — openFolder, refresh, and (via M2.7's withDocRecord) every
+// star toggle regardless of which pane it originated from — rather than
+// kept live against m.docs, the same "snapshot the caller refreshes" shape
+// S8's gitStatus/withStatus already gives the pane's other per-file marker.
 func (m model) filesStarredMarks() map[string]bool {
 	marks := make(map[string]bool, len(m.docs))
 	for path, rec := range m.docs {

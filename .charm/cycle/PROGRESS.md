@@ -17,30 +17,29 @@
 
 ## Cursor
 
-Current task: M2.7
+Current task: M2.8
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1a done — `test/pty/checks.py`'s `config_env` (D71) now resolves the store path via
-`$XDG_DATA_HOME` (darwin: `$HOME/Library/Application Support`, matching `store.go`'s
-`dataDir()`) instead of the pre-M1.1 `$XDG_CONFIG_HOME`/`.config` path, returning
-`XDG_DATA_HOME` in the env dict rather than `XDG_CONFIG_HOME`. Confirmed the bug was real and
-is now fixed: reverting the edit and rerunning `make check-pty` reproduces D71 exactly (M3.3's
-root-star-persistence checks fail, then M3.2's restart fixture crashes with `FileNotFoundError`
-on the never-created config-dir store file); with the fix, every M3.2/M3.3/M3.4 check passes.
-`make check` unaffected (was already green).
-One unrelated pre-existing failure surfaced while running the full `make check-pty` suite: the
-two `C2a/M4.1` git-status-marker checks (`test/pty/checks.py:582,584`) now fail because M2.3's
-star-marker column (`files.go:367-369`) shifted the rendered spacing between the status letter
-and the file name (`"A new.md"` is now `"A   new.md"`) — logged as TRIAGE T11 rather than
-fixed here, out of scope for M1.1a's own task.
-Gotcha still live from the previous replan: gate is `make check`; `make check-pty` is the
-separate pty layer (now green apart from the newly-logged T11).
-Next: **M2.7** — Files Nav marker sync when starring from a Document Viewer or the Picker
-(TRIAGE T7 / D70); M2.1, M2.2 and M2.5 (its dependencies) are all done.
+M2.7 done — the Files Nav's S3 star-marker set now stays in sync regardless of which
+surface stars a document. Root cause: `toggleActiveDocStar` (Document Viewer) and
+`toggleStarPicker` (Picker) both wrote through `withDocRecord` but only `toggleDocStar`
+(the Files Nav's own action) refreshed `m.files.starred` afterwards, so a star flipped
+from DV1/DV2 or the Picker left that same file's Files Nav row stale until the pane's
+next openFolder/refresh. Fix: centralized the `m.files.withStarred(m.filesStarredMarks())`
+refresh inside `withDocRecord` itself (model.go:239-268) — the one write half all three
+star toggles and `recordViewed` already share — and removed the now-redundant explicit
+call from `toggleDocStar`. New tests `TestFilesNavMarkerSyncsWhenStarredFromDocumentViewer`
+/ `...FromPicker` (files_star_sync_test.go) reproduce the stale marker on the pre-fix code
+(confirmed via `git stash`) and pass with the fix. `make check` and `make check-pty` both
+green apart from the pre-existing T11 (unrelated, M2.3's marker-column spacing vs. two
+C2a/M4.1 pty checks — still open, not touched here).
+Next: **M2.8** — Footer/Help Modal discoverability for `keys.Star`/`keys.PickerStar`
+(TRIAGE T5/T6); its dependencies (M2.1, M2.2, M2.5) are all done. M2.9 (naming cleanup)
+is independently available too if a different slice is wanted.
 
 ## Status
 
@@ -57,7 +56,7 @@ Next: **M2.7** — Files Nav marker sync when starring from a Document Viewer or
 | M2.5 | done   | 2026-08-10 | -         | pre-agreed cut 1                         |
 | M2.6 | done   | 2026-08-10 | -         |                                          |
 | M1.1a | done  | -        | -         | replan: pty harness fix, TRIAGE T4 (D71) |
-| M2.7 | todo   | -        | -         | replan: stale marker fix, TRIAGE T7 (D70) |
+| M2.7 | done   | -        | -         | replan: stale marker fix, TRIAGE T7 (D70) |
 | M2.8 | todo   | -        | -         | replan: star-binding discoverability, TRIAGE T5/T6 |
 | M2.9 | todo   | -        | -         | replan: naming cleanup, TRIAGE T1/T2/T9  |
 | M3.1 | done   | -        | -         |                                          |
