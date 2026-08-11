@@ -1025,7 +1025,7 @@ check("M5.3 exits 0 after a help round-trip", code == 0, f"exit {code}")
 # keys plus M2.8's star, not Files/Roots-only ones like expand), proving
 # "any pane" rather than one.
 # Height 38, not 24 (TRIAGE T17; widened again for C4/M6.3, TRIAGE T41):
-# helpBindings(dv1Pane)'s list renders a 35-row box (8 scrollActions + 22
+# helpBindings(dv1Pane)'s list renders a 35-row box (8 scrollActions + 23
 # explicit bindings, incl. M2.8's star and M6.3's HistoryBack/HistoryForward
 # + title/blank + border), taller than the Files-pane block's own 29-row box
 # above and taller than a 24-row terminal fits. A 24-row session let this

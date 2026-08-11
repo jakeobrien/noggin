@@ -96,7 +96,15 @@ about substring-collision-avoidance already matching file convention, and a pre-
 lowercase-vs-glossary casing drift not introduced by this task).
 
 This was the plan's last task (M7, the final milestone) — the cycle is content-complete
-pending validation. No open TRIAGE items.
+pending validation.
+
+replan (2026-08-12): reconciled SPEC/PLAN/PROGRESS — all 46 plan tasks match PROGRESS's
+`done` rows, no drift. TRIAGE's sole open item, T44 (low, a stale "22"→"23" explicit-binding
+count in `test/pty/checks.py:1028`'s M6.3 comment), was low-risk/non-blocking enough to just
+fix directly per the effort-scaling guidance rather than spawn a plan task; `make check-pty`
+reconfirmed green after. TRIAGE.md is now empty. No spec or plan changes; nothing to log in
+DECISIONS.md (routine, no judgment call). Cycle remains content-complete, ready for
+charm-validate.
 
 ## Status
 
