@@ -579,12 +579,16 @@ with open(os.path.join(git_repo, "new.md"), "w") as f:
 s = Session([BINARY, git_repo], 80, 24)
 s.pump(1.5)
 body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+# Row layout is status + star + name (M2.3 inserted the two-column star
+# marker between the git-status marker and the file name), so an unstarred
+# modified file reads "M   tracked.md" (one status column, one blank star
+# column) rather than "M tracked.md".
 check("C2a/M4.1 pty: a modified tracked file is marked M in the Files Nav",
-      "M tracked.md" in body, repr(body[:300]))
+      "M   tracked.md" in body, repr(body[:300]))
 check("C2a/M4.1 pty: a new untracked file is marked A in the Files Nav",
-      "A new.md" in body, repr(body[:300]))
+      "A   new.md" in body, repr(body[:300]))
 check("C2a/M4.1 pty: an unchanged tracked file carries no marker",
-      "clean.md" in body and "M clean.md" not in body and "A clean.md" not in body,
+      "clean.md" in body and "M   clean.md" not in body and "A   clean.md" not in body,
       repr(body[:300]))
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
@@ -602,7 +606,7 @@ sc = screen_of(s.out, 80, 24)
 body = "\n".join(sc.raw_lines())
 footer = sc.lines()[-1]
 check("C2a/M4.1 pty: a non-repo Root shows its file with no git status marker",
-      "note.md" in body and "M note.md" not in body and "A note.md" not in body,
+      "note.md" in body and "M   note.md" not in body and "A   note.md" not in body,
       repr(body[:300]))
 check("C2a/M4.1 pty: a non-repo Root raises no footer error",
       "error" not in footer.lower() and "fatal" not in footer.lower(), repr(footer))

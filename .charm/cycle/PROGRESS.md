@@ -17,28 +17,25 @@
 
 ## Cursor
 
-Current task: M2.10
+Current task: M2.12
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Replan (2026-08-11): triaged TRIAGE T17/T18/T19 (all low/medium, non-blocking, reviewer/
-validator findings on already-done M2.11/M3.4 work). All three accepted as small follow-up
-tasks rather than wontfix — none is a design question, each has an obvious cheap fix: T17 →
-M2.12 (reword `starMarker()`'s overclaiming doc comment rather than refactor files.go/
-rootsnav.go, which would reopen their already-Reviewed/Validated status), T18 → M3.5 (add the
-missing Picker-path store-write-failure regression tests), T19 → M2.13 (add the missing Grep
-same-frame toggle render test). Logged as D76/D77/D78. TRIAGE is now empty.
+Build (2026-08-11): completed M2.10. `test/pty/checks.py`'s C2a/M4.1 git-status-marker
+checks assumed the pre-M2.3 row layout (status marker directly adjacent to the file name,
+e.g. `"M tracked.md"`); M2.3 inserted a two-column star-marker field between status and name,
+so the same unstarred-modified row now reads `"M   tracked.md"` (one status column + one
+blank star column). Updated the four affected checks (`tracked.md`, `new.md`, the `clean.md`
+absence pair, and the non-repo-Root `note.md` absence pair) to the new exact strings rather
+than loosening them. `make check` and `make check-pty` both green (all pty checks pass,
+including the updated C2a/M4.1 group).
 
-Also caught a pre-existing drift while reconciling: M1.1a (D71, already `done`) was never
-added to PLAN.md — added it now, retroactively, matching what was actually built; no
-behavior change.
-
-Next: **M2.10** (pty star-marker column checks, TRIAGE T11) is still the cursor — unaffected
-by this replan. M2.12/M2.13/M3.5 are new todo tasks appended after M2.11/M3.4 respectively;
-pick them up whenever convenient, none blocks M2.10 or M4.1.
+Next: cursor moved to **M2.12** (correct `starMarker()`'s doc comment, TRIAGE T17/D76) —
+small, ready (needs M2.11, which is done). M2.13 and M3.5 are also ready and unblocked;
+pick up in any order.
 
 ## Status
 
@@ -63,7 +60,7 @@ pick them up whenever convenient, none blocks M2.10 or M4.1.
 | M3.3 | done   | 2026-08-10 | 2026-08-10 | replan: Picker never records lastViewed, TRIAGE T12 (D74) |
 | M3.4 | done   | 2026-08-10 | 2026-08-10 | replan: recordViewed failure message clobber, TRIAGE T13; no bug found, test coverage added; review found coverage gap re: Picker call sites, resolved as M3.5 (D77) |
 | M3.5 | todo   | -        | -          | replan: Picker-path store-write-failure regression tests, TRIAGE T18 (D77) |
-| M2.10 | todo  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
+| M2.10 | done  | -        | -         | replan: pty star-marker column checks, TRIAGE T11        |
 | M2.11 | done  | 2026-08-10 | 2026-08-10 | replan: Picker star marker (D72, TRIAGE T8), built same session; review found stale doc comment, resolved as M2.12 (D76); validate found Grep-mode live-toggle coverage gap, resolved as M2.13 (D78) |
 | M2.12 | todo  | -        | -         | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
 | M2.13 | todo  | -        | -         | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
