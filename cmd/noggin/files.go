@@ -427,8 +427,15 @@ func (f filesNav) move(delta int) filesNav {
 }
 
 // expand opens the selected folder in place. A file or an already-open folder
-// is a no-op.
+// is a no-op — as is the whole call while the pane is in a flat-list mode
+// (Recent/Starred, M4.5): flatMode's rows have no folders to expand, and
+// f.selected there indexes flatRows, not visibleRows, so selectedNode()
+// would otherwise resolve an unrelated tree row hidden behind the flat list
+// on screen (TRIAGE T21) and mutate its expansion invisibly.
 func (f filesNav) expand() filesNav {
+	if f.flatMode() {
+		return f
+	}
 	n := f.selectedNode()
 	if n != nil && n.IsDir && !f.expanded[n.Path] {
 		f = f.withExpanded(n.Path, true)
@@ -438,8 +445,12 @@ func (f filesNav) expand() filesNav {
 
 // collapse closes the selected folder in place. A file or an already-closed
 // folder is a no-op; the selection stays on the folder, which keeps its index
-// valid as its children vanish beneath it.
+// valid as its children vanish beneath it. Also a no-op in a flat-list mode
+// (M4.5) — see expand's own comment for why.
 func (f filesNav) collapse() filesNav {
+	if f.flatMode() {
+		return f
+	}
 	n := f.selectedNode()
 	if n != nil && n.IsDir && f.expanded[n.Path] {
 		f = f.withExpanded(n.Path, false)

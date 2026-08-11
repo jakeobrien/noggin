@@ -783,6 +783,14 @@ func (m model) togglePeek() model {
 // actually loaded — a no-op must not leave an empty DV2 behind — and Focus
 // never moves either way (S3), so a freshly created DV2 shows its peek while
 // Focus stays in the Files Nav.
+//
+// While the Files Nav is in a flat-list mode (Recent/Starred, M4.2/M4.3)
+// this resolves against the flat row on screen instead (selectedFlatRow),
+// not the unrelated tree row underneath (TRIAGE T21, M4.5's own fix for
+// Peek — activateInto/toggleDocStar already got this in M4.3/D80) —
+// delegating to togglePeekFlatRowInto, which also refuses a broken Starred
+// row (S3) with the same "no longer exists" wording activateFlatRowInto
+// already gives Activate.
 func (m model) togglePeekInto(target pane) model {
 	if target != dv2Pane {
 		target = dv1Pane
@@ -792,6 +800,13 @@ func (m model) togglePeekInto(target pane) model {
 	exists := target == dv1Pane || m.dv2 != nil
 	if exists && m.viewerFor(target).peeking() {
 		return m.clearPeekIn(target)
+	}
+	if m.files.flatMode() {
+		row, ok := m.files.selectedFlatRow()
+		if !ok {
+			return m
+		}
+		return m.togglePeekFlatRowInto(row, target, exists)
 	}
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
@@ -805,6 +820,34 @@ func (m model) togglePeekInto(target pane) model {
 	d, err := loadDocument(n.Path)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
+		return m
+	}
+	if target == dv2Pane {
+		m = m.ensureDV2()
+	}
+	return m.withViewerFor(target, m.viewerFor(target).startPeek(d))
+}
+
+// togglePeekFlatRowInto is togglePeekInto's flat-list branch (M4.5), the
+// same shape activateFlatRowInto (M4.3) already gives Activate: row.broken
+// is refused with a footer message before any load is attempted, otherwise
+// this behaves exactly like togglePeekInto's tree branch — the
+// already-peeking case is handled by the caller before either branch runs,
+// since it depends only on the target viewer, never on which row is
+// selected.
+func (m model) togglePeekFlatRowInto(row browseRow, target pane, exists bool) model {
+	if row.broken {
+		m.message = fmt.Sprintf("%s no longer exists; not peeked", row.path)
+		return m
+	}
+	if exists {
+		if v := m.viewerFor(target); v.doc.isOpen() && row.path == v.doc.path {
+			return m
+		}
+	}
+	d, err := loadDocument(row.path)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot open %s: %v", row.path, err)
 		return m
 	}
 	if target == dv2Pane {
