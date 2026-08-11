@@ -34,11 +34,13 @@ type filesNav struct {
 	selected int
 
 	// memory holds, per Root, the expansion set and selected node's Path last
-	// left there (M3.1/S3), keyed by the Root's own Path — the same value
-	// model.activateRoot re-walks into a brand new *tree.Node each time a Root
-	// is (re)activated, even when nothing on disk changed, so memory is keyed
-	// by Path rather than Node identity, the same way expanded already is. A
-	// Root with no entry here has never been visited this session.
+	// left there (M3.1/S3), and — since M4.6 — the Browse Mode and per-mode
+	// Browse Scope last left there too (S7), keyed by the Root's own Path —
+	// the same value model.activateRoot re-walks into a brand new *tree.Node
+	// each time a Root is (re)activated, even when nothing on disk changed, so
+	// memory is keyed by Path rather than Node identity, the same way expanded
+	// already is. A Root with no entry here has never been visited this
+	// session.
 	memory map[string]filesNavMemory
 
 	// status holds S8's per-file git markers for the current root, keyed by
@@ -64,10 +66,22 @@ type filesNav struct {
 	// own starting state, so newFilesNav needs no explicit initialization —
 	// a session always opens on Tree (S7), and Tree's scope reads "-"
 	// (scopeLabel) regardless of the scope field's value. M4.6 gives these
-	// per-Root/per-(Root,mode) memory; M4.1 has exactly one pair, session-
-	// wide, with no restore across Root switches yet.
+	// per-Root (mode) and per-(Root,mode) (scope) memory via scopeByMode below
+	// and setRoot/remember's own restore/capture.
 	mode  browseMode
 	scope browseScope
+
+	// scopeByMode is the live, current-Root half of S7's Browse Scope memory:
+	// each Browse Mode's own last-used scope while this Root has been active
+	// this visit. cycleMode/remember both snapshot the outgoing mode's live
+	// f.scope into it (withScopeRemembered) before moving off that mode, so
+	// scopeForCurrentMode can always answer "what was this mode's scope last
+	// time" rather than reaching for modeScopes' own first value every time —
+	// which now only happens for a mode never yet visited this Root. setRoot
+	// swaps the whole map out for whatever a different Root's own memory (or
+	// nothing, on a first visit) holds, the same round-trip expanded already
+	// gets.
+	scopeByMode map[browseMode]browseScope
 
 	// docs, sessionRoots and activeRootPath are the S1 store and S1 launch
 	// state's own snapshot the pane's Recent (M4.2) and Starred (M4.3) flat
@@ -99,6 +113,15 @@ type filesNav struct {
 type filesNavMemory struct {
 	expanded     map[string]bool
 	selectedPath string
+
+	// mode and scopeByMode are S7's own per-Root Browse Mode/Browse Scope
+	// memory: mode is the Browse Mode the pane was showing when this Root was
+	// last left; scopeByMode is that visit's own scopeByMode field (filesNav's
+	// doc comment) — every mode's last-used scope while this Root was active,
+	// not only the outgoing mode's, so switching Root and mode independently
+	// each restores its own last value (S7).
+	mode        browseMode
+	scopeByMode map[browseMode]browseScope
 }
 
 func newFilesNav() filesNav {
@@ -107,11 +130,14 @@ func newFilesNav() filesNav {
 
 // setRoot points the pane at root. A Root the pane has never shown this
 // session starts a fresh browse — collapsed at the top level, selection at
-// the top (S5) — the same as before M3.1. A Root shown before instead
-// restores exactly the expansion and selection it was left with, however
-// many other Roots were visited in between (M3.1/S3). Either way, the
-// outgoing root's own state (if there was one) is captured into memory
-// first, so leaving it is round-trippable the next time it becomes active.
+// the top (S5), Tree mode at its own default scope (S7: "every session
+// starts on Tree", which a never-visited Root gets exactly the same as a
+// brand new session) — the same as before M3.1. A Root shown before instead
+// restores exactly the expansion, selection, Browse Mode and per-mode Browse
+// Scope it was left with, however many other Roots were visited in between
+// (M3.1/S3, S7/M4.6). Either way, the outgoing root's own state (if there
+// was one) is captured into memory first, so leaving it is round-trippable
+// the next time it becomes active.
 func (f filesNav) setRoot(root *tree.Node) filesNav {
 	if f.root != nil {
 		f = f.remember(f.root.Path)
@@ -121,20 +147,31 @@ func (f filesNav) setRoot(root *tree.Node) filesNav {
 	if saved, ok := f.memory[root.Path]; ok {
 		f.expanded = saved.expanded
 		f.selected = f.indexOfPath(saved.selectedPath)
+		f.mode = saved.mode
+		f.scopeByMode = saved.scopeByMode
+		f.scope = f.scopeForCurrentMode()
 	} else {
 		f.expanded = map[string]bool{}
 		f.selected = 0
+		f.mode = treeBrowse
+		f.scopeByMode = nil
+		f.scope = activeRootBrowseScope
 	}
 	return f
 }
 
-// remember snapshots the pane's current expansion and selection into memory
-// under path (the outgoing root's own Path) — setRoot's own call, just
-// before switching away from it. The expansion map is stored by reference,
-// not cloned: withExpanded never mutates a map in place, it always builds a
-// fresh one, so the copy kept here can never be changed out from under it by
-// a later expand/collapse on the pane that moved on.
+// remember snapshots the pane's current expansion, selection, Browse Mode
+// and per-mode Browse Scope into memory under path (the outgoing root's own
+// Path) — setRoot's own call, just before switching away from it. The
+// expansion map is stored by reference, not cloned: withExpanded never
+// mutates a map in place, it always builds a fresh one, so the copy kept
+// here can never be changed out from under it by a later expand/collapse on
+// the pane that moved on. withScopeRemembered folds the current mode's live
+// scope into scopeByMode first, so the mode being left behind right now is
+// never missing from what gets stored — the same reason cycleMode calls it
+// too.
 func (f filesNav) remember(path string) filesNav {
+	f = f.withScopeRemembered()
 	selPath := ""
 	if n := f.selectedNode(); n != nil {
 		selPath = n.Path
@@ -143,7 +180,12 @@ func (f filesNav) remember(path string) filesNav {
 	for k, v := range f.memory {
 		memory[k] = v
 	}
-	memory[path] = filesNavMemory{expanded: f.expanded, selectedPath: selPath}
+	memory[path] = filesNavMemory{
+		expanded:     f.expanded,
+		selectedPath: selPath,
+		mode:         f.mode,
+		scopeByMode:  f.scopeByMode,
+	}
 	f.memory = memory
 	return f
 }
@@ -249,13 +291,15 @@ func (f filesNav) withRecentSource(docs map[string]docRecord, roots []root, acti
 }
 
 // cycleMode advances S5's Browse Mode one step (Tree -> Recent -> Starred ->
-// Tree ...), keys.FilesMode's own action. The new mode's scope resets to its
-// own first value (modeScopes(mode)[0], or the zero value for Tree, which
-// scopeLabel ignores anyway) rather than carrying over whatever scope index
-// the previous mode was on — a scope value only means something read
-// against the mode that produced it (S5's own per-mode value sets), and
-// M4.1 does not yet have M4.6's per-(Root,mode) memory to restore instead.
+// Tree ...), keys.FilesMode's own action. The new mode's scope is whatever
+// this Root last had it on (S7/M4.6: scopeForCurrentMode, fed by
+// withScopeRemembered's snapshot of the outgoing mode's own scope just
+// below) — a scope value only means something read against the mode that
+// produced it (S5's own per-mode value sets), and modeScopes(mode)[0] (or
+// the zero value for Tree, which scopeLabel ignores anyway) is
+// scopeForCurrentMode's own fallback for a mode this Root has never shown.
 func (f filesNav) cycleMode() filesNav {
+	f = f.withScopeRemembered()
 	switch f.mode {
 	case treeBrowse:
 		f.mode = recentBrowse
@@ -264,12 +308,39 @@ func (f filesNav) cycleMode() filesNav {
 	default:
 		f.mode = treeBrowse
 	}
-	if scopes := modeScopes(f.mode); len(scopes) > 0 {
-		f.scope = scopes[0]
-	} else {
-		f.scope = activeRootBrowseScope
-	}
+	f.scope = f.scopeForCurrentMode()
 	return f
+}
+
+// withScopeRemembered snapshots the current mode's live f.scope into
+// scopeByMode (cloned, not mutated in place — the same value-semantic
+// convention withExpanded already keeps) — the one point cycleMode and
+// remember both pass through just before the pane moves off the mode it is
+// currently showing, so that mode's scope is never lost to whichever comes
+// next (S7/M4.6).
+func (f filesNav) withScopeRemembered() filesNav {
+	next := make(map[browseMode]browseScope, len(f.scopeByMode)+1)
+	for k, v := range f.scopeByMode {
+		next[k] = v
+	}
+	next[f.mode] = f.scope
+	f.scopeByMode = next
+	return f
+}
+
+// scopeForCurrentMode is the scope to show for f.mode right now: whatever
+// scopeByMode remembers for it from this Root's current visit (S7/M4.6), or
+// — a mode this Root has never shown yet — the mode's own first cycle value
+// (modeScopes(mode)[0]), or the zero value for Tree (modeScopes returns
+// none for it, and scopeLabel ignores the field regardless).
+func (f filesNav) scopeForCurrentMode() browseScope {
+	if s, ok := f.scopeByMode[f.mode]; ok {
+		return s
+	}
+	if scopes := modeScopes(f.mode); len(scopes) > 0 {
+		return scopes[0]
+	}
+	return activeRootBrowseScope
 }
 
 // cycleScope advances S5's Browse Scope one step within the current mode's

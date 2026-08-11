@@ -17,42 +17,41 @@
 
 ## Cursor
 
-Current task: M4.6
+Current task: M5.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Build (2026-08-11): completed M4.5 (flat-list rows support Activate/Peek/Edit and their DV2
-targeting; Expand/Collapse become no-ops). Re-read TRIAGE T21/D80 first as flagged: D80 (M4.3)
-had already fixed Activate/Star's flat-row resolution, leaving Peek (and, transitively, Edit)
-as the actual remaining gap — Edit itself needed no code change since it always acts on the
-focused viewer's Active Document, never Files Nav selection, so it is already correct once
-Activate/Peek load the right document into that viewer. `model.go`'s `togglePeekInto` now
-checks `m.files.flatMode()` first and delegates to new `togglePeekFlatRowInto` (mirrors
-`activateFlatRowInto`'s shape exactly): resolves against `selectedFlatRow()` instead of the
-unrelated tree row `selectedNode()` would give, and refuses a broken Starred row with a footer
-message ("%s no longer exists; not peeked") before attempting the load, the same "cannot be
-activated" treatment S3 already gives Activate. `files.go`'s `expand()`/`collapse()` each gained
-an `if f.flatMode() { return f }` guard at the top — previously they mutated `f.expanded`
-against whatever tree node `selectedNode()` happened to resolve from a flat-list index, an
-invisible-but-real state corruption TRIAGE T21 called out; now a true no-op, mode/selection/
-expansion all provably unchanged. New `flat_actions_test.go`: Peek-into-DV1, Peek-into-DV2,
-Activate-into-DV1-and-DV2 (all against a Recent row, per M4.5's own acceptance wording), a
-Peek-refuses-broken-Starred-row test mirroring M4.3's Activate one, and an Expand/Collapse-
-no-op test asserting `f.expanded`, `f.mode` and `f.selected` are all bit-for-bit unchanged
-across both key presses in Recent mode. `make check` and `make check-pty` both green (full
-runs). TRIAGE T21 updated (not cleared — replan's job) to record every action it named is now
-resolved.
+Build (2026-08-11): completed M4.6 (session-only browse memory: mode remembered per Root,
+scope remembered per (Root, mode); every session starts on Tree). `files.go`'s `filesNav` gained
+a live `scopeByMode map[browseMode]browseScope` field (the current Root's own per-mode scope
+history) and a `withScopeRemembered` helper that snapshots the outgoing mode's live `f.scope`
+into it — called from both `cycleMode` (leaving a mode without leaving the Root) and `remember`
+(leaving the Root itself), so neither path can lose a mode's scope. `scopeForCurrentMode` reads
+it back (falling through to `modeScopes(mode)[0]`, or the zero value for Tree, for a mode this
+Root has never shown). `filesNavMemory` gained `mode`/`scopeByMode` fields alongside its existing
+`expanded`/`selectedPath`, so `setRoot` now restores all four together on a Root it has shown
+before, and resets all four to Tree/no-scope-memory on one it hasn't — the same shape M3.1's
+expansion/selection round-trip already had, just extended to the two new axes. `cycleMode`'s own
+behavior changed: switching mode now restores that mode's last scope on the *current* Root
+(not just resets to the new mode's first value) — this was flagged as an M4.6 TODO in `cycleMode`'s
+own pre-existing doc comment, not a design decision made fresh here. Existing test
+`TestBrowseModeSwitchResetsScopeToTheNewModesFirstValue` still passes unmodified: it switches to
+a mode never yet visited this Root/session, so the fallback-to-first-value path is still what
+fires; behavior for an *already-visited* mode is the new coverage in `browse_memory_test.go`
+(`TestBrowseMemoryFreshSessionStartsOnTree`, `TestBrowseMemoryModePerRootScopePerRootMode`,
+`TestBrowseMemoryScopePerModeSurvivesAThirdModeVisit`). `make check` and `make check-pty` both
+green (full runs, no pty behavior touched by this task).
 
 Not done / logged: TRIAGE T20 unchanged (build/medium — FilesMode/FilesScope discoverability).
-TRIAGE T22 unchanged (build/low — Tree's own "no root"/"empty root" message conflation, from
-M4.4, still out of scope here too).
+TRIAGE T21 still open only for replan to confirm/clear (already fully resolved as of M4.5).
+TRIAGE T22 unchanged (build/low — Tree's own "no root"/"empty root" message conflation).
 
-Next: cursor is **M4.6** (session-only browse memory: mode remembered per Root, scope
-remembered per (Root, mode); every session starts on Tree) — needs M4.1 (done). Nothing blocks
-it.
+Next: cursor is **M5.1** (Starred as a third Picker scope value, both File and Grep Picker,
+resolving to the whole store rather than a set of Roots) — needs M1.4, M2.1 (both done).
+Nothing blocks it. M4 is now fully done (M4.1–M4.6); M5 is next up.
 
 ## Status
 
@@ -86,7 +85,7 @@ it.
 | M4.3 | done   | -        | -         | flat-row Activate/Star wiring added beyond listing, D80; narrows TRIAGE T21 |
 | M4.4 | done   | -        | -         | render test walks all six mode/scope combos; TRIAGE T22 |
 | M4.5 | done   | -        | -         | Peek fixed via togglePeekFlatRowInto; Expand/Collapse no-ops; TRIAGE T21 |
-| M4.6 | todo   | -        | -         |                                          |
+| M4.6 | done   | -        | -         |                                          |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
 | M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
