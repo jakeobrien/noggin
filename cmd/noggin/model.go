@@ -413,9 +413,10 @@ func (m model) navigate(p pane, d document) model {
 // walkViewerHistory is historyBack/historyForward's shared step (C4/M6.1):
 // asks the focused viewer to move one entry along its own S9 stack (dir is
 // viewer.goBack or viewer.goForward), then re-reads that entry's document
-// from disk and opens it directly into the same pane (viewer.open, landing
-// at the top — per-document scroll memory is M6.2's own pre-agreed cut),
-// never through navigate/openDocumentInto: the pane already holds Focus (no
+// from disk and opens it directly into the same pane (viewer.open, which
+// restores that document's own remembered scroll position per S9/C4-M6.2's
+// docOffsets, or the top on a document this viewer has never had open
+// before), never through navigate/openDocumentInto: the pane already holds Focus (no
 // setFocus needed), DV2 already exists if that is where Focus is (visible()
 // guarantees it), and this is history moving, not a new entry for
 // pushHistory to record. dir's own ok == false (either end of history) and

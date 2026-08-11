@@ -17,45 +17,36 @@
 
 ## Cursor
 
-Current task: M6.2
+Current task: M7.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M6.1 built: per-viewer back/forward document history (S9). `viewer` gained `history
-[]string`/`historyPos int` plus `pushHistory`/`canGoBack`/`canGoForward`/`goBack`/
-`goForward` (viewer.go) — browser semantics (adjacent-duplicate suppression at push time,
-forward-truncation on a new push) live entirely in `pushHistory`. A new `model.navigate(p,
-d)` wraps the existing `openDocumentInto` and is the only thing that calls `pushHistory`;
-it replaces `openDocumentInto` at exactly the five "real navigation" call sites
-(`openDocument`, `activateInto`, `activateFlatRowInto`, `activatePickerInto`,
-`activateGrepPickerInto`) while `openDocumentInto` itself — and its ~39 other call sites,
-mostly test fixtures — stays untouched, so finishEdit (the $EDITOR handoff) and Refresh
-(refreshDoc, not open, never touches navigate at all) both correctly create no entries with
-zero special-casing. `model.walkViewerHistory` (historyBack/historyForward) re-reads the
-target path from disk and writes the moved viewer back only on a successful load — a read
-failure leaves the history position exactly where it was, mirroring activate()'s own
-refusal shape. New keys `[`/`]` (HistoryBack/HistoryForward), matched in Update's
-dv1Pane/dv2Pane case beside keys.Star (each viewer owns its own history). DV2's history
-needs no explicit teardown: it lives on the `*viewer` struct itself, so closeDV2 dropping
-the pointer already drops it, and a freshly re-created DV2 starts at the zero value.
+M6.2 built: per-document scroll memory in history (S9's pre-agreed cut 2 — delivered, not
+cut; TRIAGE was empty of blocking items and the cycle has not spilled, same call as M2.5/
+M4.3/M5.1's earlier "not actually cut" cases). `viewer` gained a `docOffsets map[string]int`
+(viewer.go), keyed by path rather than by history entry — the same document recurring at two
+different history entries (pushHistory allows non-adjacent repeats) shares one, most-recently-
+remembered offset. `viewer.open()` itself now saves the outgoing document's offset (a new
+`rememberOffset` helper) before switching, and restores the incoming document's remembered
+offset if this viewer has ever had it open before, or GotoTop otherwise — the same single
+method every navigation path already funnels through (M6.1's own `navigate`/
+`walkViewerHistory` design), so Activate, the Picker, launch and history's own back/forward
+all get scroll memory with no extra call sites. `refreshDoc`/`close` are untouched: neither
+ever leaves a document. One side effect logged as D91: re-Activating the already-open document
+now preserves its scroll position instead of resetting to top (banked and immediately restored
+as the same value) — untested before, not contradicted by anything, and a smaller surprise
+than Back/Forward and Activate disagreeing on the same document.
 
-Design judgment calls (key chords, launch seeding history entry 0, silent-no-op boundary
-instead of a footer message, the navigate-wrapper-not-signature-change shape) logged as
-D90 rather than escalated — none contradicted by SPEC/PLAN wording, all low-risk.
-Discoverability (Footer hints, Help Modal listing) deliberately not wired this session,
-matching the M2.8/M4.8 precedent of shipping the mechanism first — logged as TRIAGE T41.
-
-All new: history_test.go — 8 tests covering independent DV1/DV2 sequences, both history
-boundaries, forward-truncation on a post-Back Activate, no-adjacent-duplicate, no entry
-from the $EDITOR handoff or Refresh, the Active Root staying put while history walks into
-another Root's document, and DV2's history dying with DV2. `make check` and `make
-check-pty` both green. Next: M6.2 (per-document scroll memory in history) is a pre-agreed
-cut — check TRIAGE/DECISIONS state before starting since the cycle may choose to drop it
-per SPEC.md's ordered cut list; M7.1/M7.2 (pane focus badges) are otherwise next in plan
-order and fully independent if M6.2 is dropped.
+New: history_scroll_test.go — two tests against M6.2's own acceptance wording verbatim: Back
+restoring a remembered offset after navigating away and back, and a *different* history entry
+for the same document (a re-visited via b in between) sharing that same, most recently
+remembered offset rather than its own original one. Both fail without the implementation
+(verified by reverting model.go/viewer.go and re-running) and pass with it. `make check` and
+`make check-pty` both green. Next: M7.1/M7.2 (pane focus badges, S10) are next in plan order,
+fully independent of M6's history work.
 
 ## Status
 
@@ -100,6 +91,6 @@ order and fully independent if M6.2 is dropped.
 | M4.14 | done  | 2026-08-11 | 2026-08-11 | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | done   | -        | -         | delivered both File- and Grep-side Starred (D89, not actually cut, cf. M2.5) |
 | M6.1 | done   | -        | -         |                                          |
-| M6.2 | todo   | -        | -         | pre-agreed cut 2                         |
+| M6.2 | done   | -        | -         | pre-agreed cut 2, not actually cut (D91) |
 | M7.1 | todo   | -        | -         |                                          |
 | M7.2 | todo   | -        | -         |                                          |

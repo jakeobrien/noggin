@@ -51,6 +51,25 @@ type viewer struct {
 	// closeDV2 drops the pointer, with nothing further to clean up.
 	history    []string
 	historyPos int
+
+	// docOffsets is S9/C4-M6.2's per-document scroll memory: the last
+	// scroll offset left behind for each path this viewer has ever had
+	// open, keyed by path rather than by history entry — so the same
+	// document recurring at two different history entries (pushHistory
+	// allows non-adjacent repeats) still lands at one shared, most-recent
+	// position, not two independent ones. Populated and consulted only by
+	// open() (below): every path into a document — a plain Activate, the
+	// Picker, launch, and history's own goBack/goForward re-open — already
+	// funnels through it, so recording/restoring there covers all of them
+	// with no extra call sites, the same reasoning M6.1's navigate/history
+	// wrapper doc comments already make about reuse over special-casing.
+	// refreshDoc and close() deliberately do not touch this map: neither
+	// one leaves a document (refreshDoc re-renders the same one in place,
+	// S2's own preserve-scroll contract; close's document has become
+	// unreadable, nothing worth remembering), so open() is still the only
+	// place a document is ever actually left. Session-only and dies with
+	// the viewer, exactly like history itself.
+	docOffsets map[string]int
 }
 
 // peekState is one Peeked document: its own read-only viewport, kept
@@ -96,11 +115,38 @@ func (v viewer) setSize(width, height int) viewer {
 	return v
 }
 
-// open makes d the active document, rendered from the top.
+// open makes d the active document, landing at that document's own
+// remembered scroll position (S9/C4-M6.2's docOffsets, above) if this
+// viewer has ever had it open before, or the top otherwise — the same
+// "top on a document never seen in this viewer" behavior open() always had,
+// now shared with the doc-revisit case rather than unconditional. The
+// currently-open document's own offset (if any) is banked into docOffsets
+// first, before it is replaced, since v.offset() only ever reads the
+// outgoing document's position.
 func (v viewer) open(d document) viewer {
+	if v.doc.isOpen() {
+		v = v.rememberOffset()
+	}
 	v.doc = d
 	v = v.render()
-	v.vp.GotoTop()
+	if off, ok := v.docOffsets[d.path]; ok {
+		v.vp.SetYOffset(off)
+	} else {
+		v.vp.GotoTop()
+	}
+	return v
+}
+
+// rememberOffset banks the currently-open document's scroll position into
+// docOffsets, keyed by its path — open()'s own "leaving a document" step.
+// Lazily allocates the map on first use rather than in newViewer(), keeping
+// every other viewer field's zero-value-means-empty contract (a viewer that
+// has never left a document costs nothing beyond a nil map).
+func (v viewer) rememberOffset() viewer {
+	if v.docOffsets == nil {
+		v.docOffsets = map[string]int{}
+	}
+	v.docOffsets[v.doc.path] = v.offset()
 	return v
 }
 

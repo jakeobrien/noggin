@@ -1393,3 +1393,32 @@
 - Why: (1)/(2)/(3) are low-risk product-shape judgment calls with no acceptance-criterion
   wording to contradict; (4) avoids a 39-site mechanical signature change for a two-line
   wrapper, keeping the diff scoped to the five call sites that actually changed behavior.
+
+## D91: M6.2's scroll memory lives in `viewer.open()` itself, not only in the history walk
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-12
+- Context: M6.2 (per-document scroll memory, S9) is asked for in terms of history's own Back/
+  Forward, but every path into a document — a plain Activate, the Picker's Activate, launch,
+  and history's own `goBack`/`goForward` re-open — already funnels through the single
+  `viewer.open()` method (M6.1's own `navigate`/`walkViewerHistory` design). Putting the new
+  `docOffsets` map's save-before-leaving/restore-on-arrival logic there, rather than only in
+  `model.walkViewerHistory`, covers all of them for free instead of duplicating the same pair
+  of map operations at each call site. One visible side effect: re-Activating a document that
+  is already the Active Document (no history motion at all) now preserves its scroll position
+  instead of `open()`'s previous unconditional `GotoTop()` — since leaving and re-arriving at
+  the same document banks and immediately restores the same offset, this is a no-op by
+  construction, not a special case.
+- Decision: implement scroll memory inside `viewer.open()`, keyed by path, rather than adding
+  a second, history-specific code path. `refreshDoc`/`close` are deliberately left untouched —
+  neither one ever leaves a document (S2's own preserve-scroll contract; a vanished-file close
+  has nothing worth remembering), so `open()` remains the only place a document is ever left.
+- Why: the acceptance criterion ("remembered per document rather than per history entry") is
+  a property of the document, not of the history mechanism specifically, and the reuse avoids
+  a second, parallel bookkeeping path with its own chance to drift out of sync with the first.
+  The one behavior change (same-document re-Activate no longer resets to top) is untested
+  today, matches the same "remembered per document" spirit the acceptance wording asks for,
+  and is strictly a smaller surprise than the alternative (Activate keeps a reset-to-top
+  special case that Back/Forward on the very same document does not).
+
