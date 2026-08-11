@@ -17,45 +17,51 @@
 
 ## Cursor
 
-Current task: M4.2
+Current task: M4.3
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Build (2026-08-11): completed M4.1. Added `browse.go`: `browseMode`
-(treeBrowse/recentBrowse/starredBrowse) and `browseScope`
-(activeRootBrowseScope/allRootsBrowseScope/allStarredBrowseScope/orphansBrowseScope), plus
-`modeScopes(mode)` giving each mode its own ordered scope set (none for Tree, two for
-Recent, three for Starred — Orphans is in the model now even though M4.3's own *listing* of
-it is pre-agreed cut 3, per that task's note; costs nothing to carry). `filesNav` gained
-`mode`/`scope` fields, `cycleMode`/`cycleScope` (a mode switch resets scope to the new
-mode's own first value — no M4.6 per-Root/per-mode memory yet, that's its own task) and
-`scopeLabel` ("-" for Tree regardless of the scope field). `view()` now always reserves its
-first line for the mode/scope row (`modeScopeRow`, " · "-joined like the footer's own hints)
-and renders the row list into the remaining height-1 (`rowsView`), with a height==1 guard so
-a pane with room for only the header doesn't overshoot the exactly-height-lines contract.
-keys.FilesMode/keys.FilesScope (tab/shift+tab, reusing the Picker's own physical chords —
-the two contexts are mutually exclusive by construction, see keymap.go's own comment) are
-matched in `filesNav.handleKey` beside Expand/Collapse, so they only ever fire with Files
-Nav Focus, same as every other Files-Nav-only binding. Updated the two pre-existing
-files_test.go view tests for the one-row shift; added `browse_test.go` covering the mode
-cycle/wrap, each mode's own scope set and wrap, Tree's scope no-op, the reset-on-mode-switch
-rule, the row's own text per mode, the one-row-height cost (a box that fits N rows loses one
-to a box N-1 tall the same way), and the model-level "acts only from Files Nav Focus" /
-"acts and renders immediately from it" pair. `make check` and `make check-pty` both green
-(full runs).
+Build (2026-08-11): completed M4.2 (`Recent` mode's actual flat-list rows). New
+`browse_list.go`: `browseRow` (path/name/rootLabel-or-orphanDir/orphan) and `recentRows(docs,
+roots, activeRootPath, scope)` — buckets every non-zero-`LastViewed`, still-on-disk
+(`pathMissing`) record by its covering session Root (`roots.go`'s new `rootForPath`, first
+match, roots never nest) or into a `""` orphan bucket, sorts each bucket newest-first
+(`sortByRecency`, tie-broken by path) and caps it at `recentPerRootCap` (100, S6) *before*
+scope is applied — Active Root reads just that Root's own bucket (`activeRootPath == ""`
+short-circuits to none, never `buckets[""]` by accident), All Roots merges every
+already-capped bucket (orphans included — D79: this is where Recent's own two right-hand
+label forms both appear, since Recent's scope set has no dedicated Orphans value the way
+Starred's does) sorted again with no further cap. `filesNav` gained a `docs`/`sessionRoots`/
+`activeRootPath` snapshot (`withRecentSource`) that `model.refreshFilesRecentSource` pushes
+in at every point that could change it (`withDocs`, `withDocRecord`, `openFolder`,
+`applyResolution`, `refresh`) — rows themselves are never cached, `flatRows()`/`recentRows`
+recompute fresh on every `rowsView` call instead (D79, same "no cache to go stale" shape
+M2.11 chose over M2.7's marker cache). `rowsView` branches on `mode == recentBrowse` to a new
+`flatRowsView`/`renderFlatRow` (star marker per S3, name left, label right-aligned via
+`leftTruncate`, `recentEmptyText` placeholder pending M4.4's per-combination wording); `move`/
+`rowCount` now count whichever list (`flatRows()` or `visibleRows()`) the current mode
+actually shows. `browse_list_test.go` covers ordering, the per-Root cap, the merged All
+Roots ordering + both label forms, Active-Root-only isolation, omission of a deleted file,
+zero-`LastViewed` exclusion, the no-active-root edge case, and two model-level render checks
+(Recent shows the flat rows and its own empty message). `make check` and `make check-pty`
+both green (full runs).
 
-Not done, logged as TRIAGE T20 (build, medium): keys.FilesMode/FilesScope have no footer
-hint or Help Modal listing yet — every other Files-Nav-only binding got one alongside its
-own task (Peek/ActivateDV2/PeekDV2), and M2.8 set precedent for treating this as its own
-task rather than folding it into the acceptance criterion that introduced the binding.
+Not done / logged: TRIAGE T20 (unchanged, build/medium — FilesMode/FilesScope still lack a
+footer hint or Help Modal listing). New TRIAGE T21 (build, medium): while browsing Recent
+mode, Star/Activate/Peek/Edit still act on `filesNav.selectedNode()`'s tree row (same index,
+unrelated list) rather than the flat row on screen — M4.5's own acceptance wording names
+Activate/Peek/Edit-and-DV2-targeting and "Expand/Collapse become no-ops" but never mentions
+Star, so replan should confirm M4.5 covers it too or add a task that does. D79 (DECISIONS.md)
+records the orphan-bucket-cap and live-recompute judgment calls this task made where SPEC.md
+was silent.
 
-Next: cursor is **M4.2** (`Recent` mode's actual flat-list rows) — needs M4.1 (done), M3.1
-(done), M3.3 (done). Nothing blocks it. TRIAGE has one open item (T20, non-blocking); a
-future replan should decide whether it becomes its own task or is folded into whichever of
-M4.2/M4.3/M4.5 next touches filesPane's hint lists.
+Next: cursor is **M4.3** (`Starred` mode's own flat-list rows across Active Root/All
+Starred/Orphans) — needs M4.1 (done), M2.1 (done). Nothing blocks it. TRIAGE has two open
+items (T20, T21; both non-blocking) — a future replan should triage both, and M4.4 (empty-
+state messaging) still needs M4.3 done first.
 
 ## Status
 
@@ -85,7 +91,7 @@ M4.2/M4.3/M4.5 next touches filesPane's hint lists.
 | M2.12 | done  | 2026-08-10 | 2026-08-11 | replan: correct starMarker() doc comment, TRIAGE T17 (D76) |
 | M2.13 | done  | 2026-08-10 | 2026-08-11 | replan: Grep same-frame star-toggle render test, TRIAGE T19 (D78) |
 | M4.1 | done   | -        | -         | discoverability gap logged as TRIAGE T20   |
-| M4.2 | todo   | -        | -         |                                          |
+| M4.2 | done   | -        | -         | orphan-bucket cap + live-recompute judgment calls, D79; TRIAGE T21 |
 | M4.3 | todo   | -        | -         | `Orphans` scope is pre-agreed cut 3      |
 | M4.4 | todo   | -        | -         |                                          |
 | M4.5 | todo   | -        | -         |                                          |

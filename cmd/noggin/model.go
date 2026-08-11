@@ -214,6 +214,22 @@ func (m model) withStorePath(path string) model {
 func (m model) withDocs(path string, docs map[string]docRecord) model {
 	m.docsPath = path
 	m.docs = docs
+	return m.refreshFilesRecentSource()
+}
+
+// refreshFilesRecentSource pushes the S1 document store and the session's
+// Roots into the Files Nav (filesNav.withRecentSource) so its Recent
+// (M4.2) and Starred (M4.3) flat lists compute against current data on
+// every render — the same "snapshot the caller refreshes" shape S8's
+// gitStatus/withStatus and S3's filesStarredMarks/withStarred already give
+// the pane's other per-file data (see withRecentSource's own doc comment).
+// Called from every point either input can change: withDocs (startup),
+// withDocRecord (every star/recency write), openFolder and applyResolution
+// (the active root, and openFolder's own re-root), and refresh (belt and
+// braces — refresh never itself changes docs or roots, but costs nothing to
+// recompute alongside the tree/status/starred refresh it already does).
+func (m model) refreshFilesRecentSource() model {
+	m.files = m.files.withRecentSource(m.docs, m.roots.rootList(), m.roots.activePath())
 	return m
 }
 
@@ -264,7 +280,7 @@ func (m model) withDocRecord(path string, rec docRecord) model {
 	}
 	m.docs = docs
 	m.files = m.files.withStarred(m.filesStarredMarks())
-	return m
+	return m.refreshFilesRecentSource()
 }
 
 // recordViewed stamps path's document record with the current time (S4,
@@ -296,6 +312,14 @@ func (m model) withRipgrep(avail ripgrepAvailability) model {
 func (m model) applyResolution(res resolution) model {
 	m.roots = m.roots.setRoots(res.roots, res.active)
 	m.message = res.message
+	// openFolder below already refreshes this when there is an active root
+	// to walk; a bare launch with no roots at all never calls it, so the
+	// Files Nav would otherwise start every Recent/Starred flat list against
+	// a stale (zero-value) snapshot rather than the session's actual (empty)
+	// roots — harmless in outcome (no root to browse anyway) but this keeps
+	// the invariant "the snapshot always reflects m.roots" unconditional
+	// rather than contingent on which branch below runs.
+	m = m.refreshFilesRecentSource()
 
 	if path := res.activeRootPath(); path != "" {
 		if node, err := tree.Walk(path); err != nil {
@@ -321,6 +345,7 @@ func (m model) applyResolution(res resolution) model {
 // neither is worth special-casing separately from the other.
 func (m model) openFolder(root *tree.Node) model {
 	m.files = m.files.setRoot(root).withStatus(gitStatus(root.Path)).withStarred(m.filesStarredMarks())
+	m = m.refreshFilesRecentSource()
 	m = m.setFocus(m.resolveFocus(filesPane))
 	// S10/C2a/M10.1: this is a fresh read of the Active Root's tree, so it
 	// is also the new "known good" the periodic staleness check compares
@@ -812,6 +837,7 @@ func (m model) refresh() model {
 			m.message = fmt.Sprintf("cannot read %s: %v", m.files.root.Path, err)
 		} else {
 			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path)).withStarred(m.filesStarredMarks())
+			m = m.refreshFilesRecentSource()
 		}
 	}
 	// C3/M3.1: not focus-scoped — a refresh acts on both viewers whichever

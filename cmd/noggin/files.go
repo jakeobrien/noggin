@@ -16,6 +16,12 @@ import (
 // a root to show; until then this is its resting state.
 const emptyFilesText = "No folder open."
 
+// recentEmptyText is Recent mode's own resting message (S6: "every mode/
+// scope combination with nothing to show displays a brief message") — a
+// placeholder distinct from emptyFilesText until M4.4 gives every one of
+// S5's six mode/scope combinations its own considered wording.
+const recentEmptyText = "No recent documents."
+
 // filesNav is the Files Nav pane: an expansion/selection model layered over an
 // immutable tree.Node. The tree itself is static data (M2.1); which folders are
 // open and which row is selected is UI state kept here, keyed by absolute Path
@@ -68,6 +74,21 @@ type filesNav struct {
 	// wide, with no restore across Root switches yet.
 	mode  browseMode
 	scope browseScope
+
+	// docs, sessionRoots and activeRootPath are the S1 store and S1 launch
+	// state's own snapshot the pane's Recent (M4.2) and Starred (M4.3) flat
+	// lists are computed from, installed by withRecentSource. Like status/
+	// starred (their own doc comments), this is a caller-refreshed snapshot,
+	// not something the pane keeps live itself — model.refreshFilesRecentSource
+	// is the one place that recomputes and pushes it, at every point the
+	// store or the session's roots could have changed. Unlike status/starred,
+	// the rows built from it are never cached on filesNav either: recentRows
+	// runs fresh from these three fields on every render (rowsView), the same
+	// "no cache to go stale" shape M2.11's Picker-row star markers already
+	// chose over M2.7's Files Nav marker cache.
+	docs           map[string]docRecord
+	sessionRoots   []root
+	activeRootPath string
 
 	// width and height are the content box the pane draws into, borders and
 	// title already deducted (see computeLayout / rect.content).
@@ -222,6 +243,17 @@ func (f filesNav) withStarred(starred map[string]bool) filesNav {
 	return f
 }
 
+// withRecentSource installs the snapshot recentRows (M4.2) computes the
+// pane's Recent-mode flat list from — see the docs/sessionRoots/
+// activeRootPath fields' own comment for why this is a source snapshot
+// rather than the rows themselves.
+func (f filesNav) withRecentSource(docs map[string]docRecord, roots []root, activeRootPath string) filesNav {
+	f.docs = docs
+	f.sessionRoots = roots
+	f.activeRootPath = activeRootPath
+	return f
+}
+
 // cycleMode advances S5's Browse Mode one step (Tree -> Recent -> Starred ->
 // Tree ...), keys.FilesMode's own action. The new mode's scope resets to its
 // own first value (modeScopes(mode)[0], or the zero value for Tree, which
@@ -321,6 +353,30 @@ func (f filesNav) selectedNode() *tree.Node {
 	return rows[f.selected].node
 }
 
+// flatRows is the pane's current flat list (M4.2/M4.3): Recent's own rows,
+// freshly computed from the withRecentSource snapshot and the current scope,
+// while the mode is Recent; nil for Tree (no flat list) and, until M4.3
+// gives it one, Starred too — which still browses via visibleRows exactly
+// as before M4.1/M4.2, unchanged by this task.
+func (f filesNav) flatRows() []browseRow {
+	if f.mode != recentBrowse {
+		return nil
+	}
+	return recentRows(f.docs, f.sessionRoots, f.activeRootPath, f.scope)
+}
+
+// rowCount is however many rows move/rowsView have to work with for the
+// pane's current mode: flatRows' own length for Recent, visibleRows'
+// otherwise (Tree, and Starred until M4.3) — the one place both a tree
+// selection and a flat-list selection are counted the same way, so move
+// clamps against whichever list is actually on screen.
+func (f filesNav) rowCount() int {
+	if f.mode == recentBrowse {
+		return len(f.flatRows())
+	}
+	return len(f.visibleRows())
+}
+
 // handleKey applies the Files Nav binding msg is bound to, reporting whether it
 // was one. Selection movement reuses the shared up/down bindings; expand and
 // collapse are the pane's own.
@@ -342,9 +398,10 @@ func (f filesNav) handleKey(msg tea.KeyPressMsg) (filesNav, bool) {
 	return f, false
 }
 
-// move shifts the selection by delta rows, clamped to the visible set.
+// move shifts the selection by delta rows, clamped to the current mode's row
+// set (rowCount).
 func (f filesNav) move(delta int) filesNav {
-	f.selected = moveSelection(f.selected, delta, len(f.visibleRows()))
+	f.selected = moveSelection(f.selected, delta, f.rowCount())
 	return f
 }
 
@@ -426,14 +483,22 @@ func (f filesNav) modeScopeRow() string {
 
 // rowsView renders the file-list portion of the box at exactly height rows
 // (the box height less modeScopeRow's own line) — the empty-state message
-// when there is nothing to browse, or a scrollable window into the visible
-// rows with the selection always on screen, otherwise. A height of 0 (a
-// pane too short to show anything past its mode/scope row) renders as an
+// when there is nothing to browse, or a scrollable window into the current
+// mode's rows with the selection always on screen, otherwise. A height of 0
+// (a pane too short to show anything past its mode/scope row) renders as an
 // empty string, which "a\n" + "" still leaves as exactly f.height lines
 // overall once split.
+//
+// Recent (M4.2) renders flatRows' own list here; every other mode (Tree,
+// and Starred until M4.3) still renders visibleRows exactly as before this
+// task — the empty-state message text differs (recentEmptyText vs
+// emptyFilesText) since M4.4 has not yet unified per-combination wording.
 func (f filesNav) rowsView(height int) string {
 	if height <= 0 {
 		return ""
+	}
+	if f.mode == recentBrowse {
+		return f.flatRowsView(height)
 	}
 	rows := f.visibleRows()
 	if len(rows) == 0 {
@@ -445,6 +510,62 @@ func (f filesNav) rowsView(height int) string {
 	return windowedView(f.width, height, f.selected, len(rows), func(idx int) string {
 		return f.renderRow(rows[idx], idx == f.selected)
 	})
+}
+
+// flatRowsView is rowsView's Recent-mode branch (M4.2): the same empty-
+// message-or-scrollable-window shape, over flatRows() instead of
+// visibleRows(). Left as its own method (rather than folded into rowsView)
+// so M4.3 can give Starred an identical call without duplicating the
+// windowedView plumbing a third time.
+func (f filesNav) flatRowsView(height int) string {
+	rows := f.flatRows()
+	if len(rows) == 0 {
+		return emptyFilesStyle.
+			Width(f.width).Height(height).
+			MaxWidth(f.width).MaxHeight(height).
+			Render(recentEmptyText)
+	}
+	return windowedView(f.width, height, f.selected, len(rows), func(idx int) string {
+		return f.renderFlatRow(rows[idx], idx == f.selected)
+	})
+}
+
+// renderFlatRow lays out one Recent-mode row (S6): the star marker (S3 —
+// Recent is not Starred, so membership alone does not already say it), the
+// file name left-aligned, and the right-hand label — the covering Root's
+// base name, or the left-truncated parent directory for an orphan document
+// — right-aligned with at least one gap column between the two. The
+// selected row draws in reverse video, the same bar convention renderRow's
+// tree rows already use; each style call is fully specified across the
+// row's own two segments (lipgloss-v2-row-rendering-gotchas.md) rather than
+// applied to the joined line, so a wide label is never accidentally re-run
+// through a second, un-reversed style call once joined.
+func (f filesNav) renderFlatRow(r browseRow, selected bool) string {
+	star := "  "
+	if f.starred[r.path] {
+		star = "★ "
+	}
+	left := star + r.name
+
+	label := r.rootLabel
+	if r.orphan {
+		label = r.orphanDir
+	}
+	const gap = " "
+	rightBudget := max(f.width-lipgloss.Width(left)-lipgloss.Width(gap), 0)
+	right := leftTruncate(label, rightBudget)
+
+	pad := f.width - lipgloss.Width(left) - lipgloss.Width(right)
+	if pad < 0 {
+		pad = 0
+	}
+	line := left + strings.Repeat(" ", pad) + right
+
+	style := lipgloss.NewStyle()
+	if selected {
+		style = filesSelectedStyle
+	}
+	return style.Width(f.width).MaxWidth(f.width).Render(line)
 }
 
 // renderRow lays out one row: indent by depth, an expand/collapse marker for a

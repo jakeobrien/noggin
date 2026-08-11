@@ -284,3 +284,19 @@ func strictlyInside(parent, child string) bool {
 	}
 	return rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
+
+// rootForPath returns the session root (S6/M4.2) that covers path — the one
+// root, if any, path sits strictly inside — or false when no root covers it
+// (an "orphan" document, S1/S5: a record is never attached to a Root, so
+// which one "owns" it for display purposes is always derived by path, never
+// stored). Roots never nest (C1/D6), so at most one can ever match; this
+// stops at the first regardless; path is expected already cleaned/absolute,
+// same as every other strictlyInside caller.
+func rootForPath(roots []root, path string) (root, bool) {
+	for _, r := range roots {
+		if strictlyInside(r.path, path) {
+			return r, true
+		}
+	}
+	return root{}, false
+}

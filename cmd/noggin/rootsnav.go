@@ -65,6 +65,18 @@ func (r rootsNav) setRoots(roots []root, active int) rootsNav {
 	return r
 }
 
+// activePath is the active root's own Path, or "" when none is active —
+// the (roots, active) shape's own scalar form the Files Nav's Recent/
+// Starred flat lists need for their own Active Root scope (M4.2/M4.3),
+// mirroring resolution.activeRootPath's identical shape for the launch-time
+// version of the same question.
+func (r rootsNav) activePath() string {
+	if r.active < 0 || r.active >= len(r.rows) {
+		return ""
+	}
+	return r.rows[r.active].root.path
+}
+
 // rootList is the session's roots in pane order, without the pane's own
 // per-row display state (the broken mark) — the (roots, active) shape the
 // search layer takes (scope.go's liveRootsInScope). The pane is where the

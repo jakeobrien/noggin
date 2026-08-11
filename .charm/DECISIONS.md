@@ -1119,3 +1119,36 @@
 - Why: low severity, cheap (effort 1), and closes M2.11's acceptance criterion literally rather
   than leaving it short of its own stated wording. Accept and log rather than drop, since the
   gap is real even though a bug is unlikely.
+
+## D79: Recent's "no session Root" bucket is capped at recentPerRootCap like any other, and All Roots is computed live per render — M4.2
+
+- Status: decided
+- Cycle: C4
+- Date: 2026-08-11
+- Context: S6 says "`Recent` shows at most 100 documents per Root; `Recent`/`All Roots` merges
+  each Root's list sorted by timestamp with no further cap." It does not say what happens to a
+  document last viewed while covered by a Root no longer in the session, or never covered by
+  one at all — Recent's own scope set (S5) has no dedicated Orphans value the way Starred's
+  does, so these "orphan" records have no Active-Root-scope home, yet S6's own "two right-hand
+  label forms" line only makes sense if they can appear somewhere in Recent. Separately,
+  `filesNav` had no existing pattern for a flat list whose data (the S1 store, the session's
+  Roots) lives on `model`, not the pane itself.
+- Decision: treat "no covering Root" as its own bucket, capped at `recentPerRootCap` (100)
+  exactly like a real Root's bucket, then folded into `All Roots`'s merge with every other
+  bucket — this is where an orphan document surfaces in Recent, and the source of its
+  left-truncated-parent-path label form. `Active Root` scope never reads this bucket (an
+  explicit `activeRootPath == ""` guard, not a `buckets[""]` lookup that would coincide with
+  it). Row data itself is never cached on `filesNav`: `model.refreshFilesRecentSource` pushes a
+  fresh `(docs, roots, activeRootPath)` snapshot in at every point that could change (`withDocs`,
+  `withDocRecord`, `openFolder`, `applyResolution`, `refresh`), and `recentRows` recomputes the
+  actual rows from that snapshot on every `rowsView` call — the same "no cache to go stale"
+  shape M2.11 chose for Picker-row star markers over M2.7's Files Nav marker cache, picked here
+  because mode/scope can change on every keypress (`cycleMode`/`cycleScope`) with no natural
+  place to intercept that the way a document load or star toggle already has one.
+- Why: the orphan-bucket cap is the simplest reading that makes S6's two-label-forms clause
+  true without inventing a second cap value nowhere named in SPEC.md; capping it is also
+  strictly safer than not (bounds the merge's own cost) and symmetric with every other bucket.
+  The live-recompute choice avoids adding a second, harder-to-keep-consistent cache alongside
+  `status`/`starred`'s existing one, at a cost (`recentRows` re-scans `m.docs` and re-derives
+  per-path Root coverage every render) the store's own `docStoreCap` (1000 records) keeps cheap
+  regardless — the same reasoning D75 already accepted for `filesStarredMarks`' full recompute.
