@@ -138,46 +138,46 @@ func TestFooterShowsPickerHintsWhileOpen(t *testing.T) {
 	}
 }
 
-// TestPaneHintsNameFocusAndRefreshFromEveryPane is C2a/M9.1's own sweep of
-// S6's global bindings: FocusRoots ("r"), FocusFiles ("f") and Refresh ("R")
-// are reachable from every pane (S6), so every pane's footer hints must name
-// all three, the same always-there treatment Edit/Navigator/Picker already
-// get. FocusDV1 ("dv1", C3/M1.3) joins them here — it is just as globally
-// applicable as FocusRoots/FocusFiles, unlike FocusDV2, which paneHints
-// deliberately omits everywhere (its own doc comment) since it is usually a
-// no-op with DV2 absent; TestPaneHintsOmitFocusDV2Everywhere checks that
-// half separately.
-func TestPaneHintsNameFocusAndRefreshFromEveryPane(t *testing.T) {
+// TestPaneHintsNameRefreshFromEveryPane is C2a/M9.1's own check: Refresh
+// ("R") is reachable from every pane (S6), so every pane's footer hints
+// must name it, the same always-there treatment Edit/Navigator/Picker
+// already get.
+func TestPaneHintsNameRefreshFromEveryPane(t *testing.T) {
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-		// 220, not 200 (M4.8): filesPane's own hint list grew by
-		// FilesMode/FilesScope, which now pushes "refresh" past 200 cols'
-		// truncation point (footer.go's paneHints — it drops from the end).
-		text := hintText(p, 220)
-		for _, want := range []string{"roots", "files", "dv1", "refresh"} {
-			if !strings.Contains(text, want) {
-				t.Errorf("pane %v: hint text = %q, want it to contain %q", p, text, want)
+		text := hintText(p, 200)
+		if !strings.Contains(text, "refresh") {
+			t.Errorf("pane %v: hint text = %q, want it to contain %q", p, text, "refresh")
+		}
+	}
+}
+
+// TestPaneHintsOmitEveryFocusBindingEverywhere is M7.2's own acceptance
+// check (S10): none of FocusRoots/FocusFiles/FocusDV1/FocusDV2 appear in any
+// pane's footer hints any more, from any pane — M7.1's per-pane title-row
+// badge ([r]/[f]/[o]/[^o]) replaced the footer as their discoverability
+// surface (footer.go's paneHints doc comment), so repeating them here would
+// just be redundant with something the pane itself already shows. FocusDV2
+// was never listed in the first place (it predates this task, C3/M1.3, for
+// the "usually a no-op with DV2 absent" reason paneHints' doc comment
+// gives); this folds its own former check
+// (TestPaneHintsOmitFocusDV2Everywhere) in alongside the other three so one
+// test covers the whole Focus* family. S12's help modal remains every
+// binding's discoverability backstop regardless
+// (TestHelpBindingsNameFocusDV1AndDV2FromEveryPane).
+func TestPaneHintsOmitEveryFocusBindingEverywhere(t *testing.T) {
+	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
+		text := hintText(p, 200)
+		for _, notWant := range []string{"roots", "files", "dv1", "dv2"} {
+			if strings.Contains(text, notWant) {
+				t.Errorf("pane %v: hint text = %q, unexpectedly names a Focus binding (%q)", p, text, notWant)
 			}
 		}
 	}
 }
 
-// TestPaneHintsOmitFocusDV2Everywhere is the other half of C3/M1.3's own
-// addition: FocusDV2 ("ctrl+o") never appears in the footer's terse hints, from
-// any pane — paneHints' doc comment gives the same "inapplicable binding is
-// worse than no hint" reasoning the viewer case already applies to
-// FindNext/FindPrevious/Cancel. S12's help modal is its discoverability
-// backstop instead (TestHelpBindingsNameFocusDV1AndDV2FromEveryPane).
-func TestPaneHintsOmitFocusDV2Everywhere(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-		if text := hintText(p, 200); strings.Contains(text, "dv2") {
-			t.Errorf("pane %v: hint text = %q, want it to omit FocusDV2", p, text)
-		}
-	}
-}
-
 // TestPaneHintsOmitCloseDV2Everywhere is CloseDV2's (S4, C3/M2.1) own half
-// of the same carve-out TestPaneHintsOmitFocusDV2Everywhere pins for
-// FocusDV2: also usually a no-op with DV2 absent, so paneHints omits it
+// of the same carve-out TestPaneHintsOmitEveryFocusBindingEverywhere pins
+// for FocusDV2: also usually a no-op with DV2 absent, so paneHints omits it
 // from every pane's terse footer hints too — the Help Modal is its
 // discoverability backstop instead
 // (TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane).
@@ -195,13 +195,11 @@ func TestPaneHintsOmitCloseDV2Everywhere(t *testing.T) {
 // inapplicable-binding-is-worse-than-no-hint reasoning paneHints already
 // gives for the viewer's own omissions.
 func TestPaneHintsNamePeekOnlyInFilesPane(t *testing.T) {
-	// 220, not 200 (M4.8): see TestPaneHintsNameFocusAndRefreshFromEveryPane's
-	// comment — filesPane's grown hint list now truncates "peek" away at 200.
-	if !strings.Contains(hintText(filesPane, 220), "peek") {
-		t.Errorf("filesPane hint text = %q, want it to contain %q", hintText(filesPane, 220), "peek")
+	if !strings.Contains(hintText(filesPane, 200), "peek") {
+		t.Errorf("filesPane hint text = %q, want it to contain %q", hintText(filesPane, 200), "peek")
 	}
 	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 220)
+		text := hintText(p, 200)
 		if strings.Contains(text, "peek") {
 			t.Errorf("pane %v: hint text = %q, unexpectedly names Peek (Files-Nav-only)", p, text)
 		}
@@ -214,10 +212,10 @@ func TestPaneHintsNamePeekOnlyInFilesPane(t *testing.T) {
 // hints name them, but rootsPane's and dv1Pane/dv2Pane's — which can never
 // trigger a Files-Nav-only cycle — do not.
 func TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane(t *testing.T) {
-	// 220, matching TestPaneHintsNamePeekOnlyInFilesPane: FilesMode/FilesScope
+	// Matching TestPaneHintsNamePeekOnlyInFilesPane: FilesMode/FilesScope
 	// sort earlier than Peek in paneHints' filesPane list, so any width wide
 	// enough to keep "peek" untruncated keeps these two too.
-	text := hintText(filesPane, 220)
+	text := hintText(filesPane, 200)
 	if !strings.Contains(text, "mode") {
 		t.Errorf("filesPane hint text = %q, want it to contain %q", text, "mode")
 	}
@@ -225,7 +223,7 @@ func TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane(t *testing.T) {
 		t.Errorf("filesPane hint text = %q, want it to contain %q", text, "scope")
 	}
 	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 220)
+		text := hintText(p, 200)
 		if strings.Contains(text, "mode") {
 			t.Errorf("pane %v: hint text = %q, unexpectedly names mode (Files-Nav-only)", p, text)
 		}
@@ -294,5 +292,46 @@ func TestCtrlPNamedOnlyByPeekDV2(t *testing.T) {
 	// FilesMode/FilesScope grew the full line past 260 too.
 	if text := hintText(filesPane, 270); !strings.Contains(text, "ctrl+p") {
 		t.Errorf("filesPane hint text = %q, want it to name ctrl+p (PeekDV2, D55)", text)
+	}
+}
+
+// TestFooterAtWideWidthOmitsFocusHintsButKeepsEverythingElse is M7.2's own
+// render-level acceptance check, going through model.renderFooter (the
+// frame's actual entry point) rather than the bare hintText helper the
+// tests above already cover: at a wide-enough width every pane's rendered
+// Footer still names Refresh, Help and Quit plus its own pane-local hints
+// (paneHints' doc comment), unchanged by M7.2's removal, and never a
+// Focus* binding — the M7.1 title-row badge is that discoverability
+// surface now instead. 200, not a wider width, deliberately: filesPane's
+// full hint list includes ActivateDV2's "open in dv2" (unrelated to
+// FocusDV2, S4/C3/M1.4), which would collide with a bare "dv2" substring
+// check at a width generous enough to keep it untruncated — 200 already
+// truncates it away (TestCtrlPNamedOnlyByPeekDV2's own comment), the same
+// width every other Focus-omission check in this file already uses.
+func TestFooterAtWideWidthOmitsFocusHintsButKeepsEverythingElse(t *testing.T) {
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)
+	m = m.withViewerFor(dv1Pane, openedFixture(t, 80, 24).dv1)
+	m = sized(t, m, 80, 24)
+
+	for _, want := range []struct {
+		pane     pane
+		haveWant []string
+	}{
+		{rootsPane, []string{"star", "refresh", "help", "quit"}},
+		{filesPane, []string{"expand", "collapse", "star", "refresh", "peek", "help", "quit"}},
+		{dv1Pane, []string{"page", "star", "refresh", "help", "quit"}},
+	} {
+		m.focus = want.pane
+		text := m.renderFooter(rect{width: 200, height: 1})
+		for _, h := range want.haveWant {
+			if !strings.Contains(text, h) {
+				t.Errorf("pane %v: footer = %q, want it to contain %q", want.pane, text, h)
+			}
+		}
+		for _, notWant := range []string{"roots", "files", "dv1", "dv2"} {
+			if strings.Contains(text, notWant) {
+				t.Errorf("pane %v: footer = %q, unexpectedly names a Focus binding (%q)", want.pane, text, notWant)
+			}
+		}
 	}
 }

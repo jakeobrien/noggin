@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M7.2
+Current task: M7.2 (done; cycle's last task)
 
 ## Handoff
 
@@ -67,7 +67,36 @@ test pinning the same boundary. `make check` and `make check-pty` both green (ch
 existing screens already show the new badges verbatim in PASS output, confirming no unrelated
 screen regressed). code-reviewer pass found only a doc-comment nit (fixed).
 
-Cursor moves to M7.2 (remove the Footer's focus-key hints, now redundant with the badges).
+M7.2 built: removed keys.FocusRoots/FocusFiles/FocusDV1 from all three `paneHints()` cases
+(footer.go) — FocusDV2 was never in the Footer to begin with (C3/M1.3's own "usually a no-op
+with DV2 absent" carve-out), so this is three removals for the plan's stated "no keys.Focus*
+in any Footer hint list" outcome. Refresh/Star/Expand-Collapse/FilesMode-FilesScope/Peek/
+ActivateDV2-PeekDV2/HistoryBack-Forward/page-nav/alwaysHints (Help, Quit) are all untouched.
+Reworded paneHints' doc comment to explain the two different reasons (M7.2 removal vs.
+pre-existing DV2 omission) and to point at M7.1's title-row badges as the replacement
+discoverability surface; help.go's helpBindings is unaffected (still lists all four
+unconditionally — the badges replace the footer hint only, not the Help Modal entry).
+
+Renamed/merged footer_test.go's Focus-hint tests to match: `TestPaneHintsNameRefreshFrom-
+EveryPane` (Refresh-only, split out) and `TestPaneHintsOmitEveryFocusBindingEverywhere` (all
+four Focus* bindings, folding the old FocusDV2-only test in). Dropped the now-stale 220/270
+width workarounds three tests needed only because the Focus hints used to push "refresh"/
+"peek"/"mode"/"scope" past 200 cols — verified empirically (a probe test) that 200 already
+shows them post-removal, so reverted those thresholds to the file's normal 200 baseline and
+fixed the comments explaining why (left `TestCtrlPNamedOnlyByPeekDV2`'s unrelated 270
+unchanged — that one is about FilesMode/FilesScope width, not Focus hints). Added
+`TestFooterAtWideWidthOmitsFocusHintsButKeepsEverythingElse`, the plan's explicit "Footer
+render test at a wide width" requirement, going through `model.renderFooter` rather than the
+bare `hintText` helper the other tests already cover — deliberately at width 200, not wider,
+since filesPane's ActivateDV2 hint text ("open in dv2") would otherwise collide with a bare
+"dv2" substring check. Updated help_test.go's one stale cross-reference to the renamed test.
+`make check` and `make check-pty` both green. code-reviewer pass found one comment-precision
+gap (fixed) and two low-severity pre-existing-pattern notes (no action: test-fragility note
+about substring-collision-avoidance already matching file convention, and a pre-existing
+lowercase-vs-glossary casing drift not introduced by this task).
+
+This was the plan's last task (M7, the final milestone) — the cycle is content-complete
+pending validation. No open TRIAGE items.
 
 ## Status
 
@@ -118,4 +147,4 @@ Cursor moves to M7.2 (remove the Footer's focus-key hints, now redundant with th
 | M6.3 | done   | -        | -         | replan: HistoryBack/Forward Footer/Help discoverability, TRIAGE T41; check-pty M5.3 viewer-block height widened 36→38 |
 | M6.4 | done   | -        | -         | replan: D91 re-Activate scroll-preserve regression test, TRIAGE T43; confirmed no bug, coverage gap only |
 | M7.1 | done   | 2026-08-11 | -         |                                        |
-| M7.2 | todo   | -        | -         |                                          |
+| M7.2 | done   | 2026-08-11 | -         |                                        |

@@ -12,19 +12,28 @@ import (
 // hintText drops from the end of this list first when the footer must
 // truncate, so put what a newcomer needs most up front.
 //
-// FocusRoots/FocusFiles/FocusDV1 (S5/S6) and Refresh (S2) (C2a/M9.1) are
+// FocusRoots/FocusFiles/FocusDV1/FocusDV2 (S5/S6) are absent from every case
+// below, but for two different reasons. FocusRoots/FocusFiles/FocusDV1 were
+// removed here (S10, M7.2): each pane's own title row now carries its own
+// focus-key badge instead (M7.1's right-aligned [r]/[f]/[o]/[^o]), a more
+// direct, always-visible discoverability surface than a footer hint that
+// would only ever compete with every other action for the same line — the
+// Footer no longer needs to repeat what the pane itself already shows.
+// FocusDV2 was never listed here in the first place (predates M7.2, C3/M1.3:
+// it is usually a no-op with DV2 absent, the same "inapplicable binding"
+// treatment CloseDV2 gets below) — M7.2 is three removals, not four, for the
+// same outcome ("no keys.Focus* binding in any Footer hint list"). help.go's
+// helpBindings still lists all four unconditionally, unaffected by either
+// reason: the badges replace the footer hint, not the Help Modal's own
+// entry.
+// Refresh (S2) (C2a/M9.1) is unaffected by the same change and stays
 // global — reachable from every one of these three panes, the same way
-// Edit/Navigator/Picker already are — so all three panes list them, same as
-// those. FocusDV2 (S5, C3/M1.3) is deliberately left out of all three: it is
-// a no-op whenever DV2 does not exist, which is every pane's common case
-// (DV2 is absent at launch, S1, and stays that way until something creates
-// it), so it gets the same "inapplicable binding" treatment as the viewer
-// case's FindNext/FindPrevious/Cancel below rather than FocusDV1's
-// unconditional one — S12's help modal is its discoverability backstop
-// instead (help.go's helpBindings does list it, always). CloseDV2 (S4,
-// C3/M2.1) gets the identical omission for the identical reason: also a
-// no-op whenever DV2 does not exist, also backstopped by the help modal
-// instead. Peek (S7) and
+// Edit/Navigator/Picker already are — so all three panes list it. CloseDV2
+// (S4, C3/M2.1) is a no-op whenever DV2 does not exist, which is every
+// pane's common case (DV2 is absent at launch, S1, and stays that way until
+// something creates it), so it gets the same "inapplicable binding"
+// treatment as the viewer case's FindNext/FindPrevious/Cancel below —
+// S12's help modal is its discoverability backstop instead. Peek (S7) and
 // C3/S3's two targeting modifiers, ActivateDV2/PeekDV2 (C3/M1.4), are
 // Files-Nav-only by design, so they appear only in filesPane's list, not the
 // other two — a hint for an inapplicable binding is worse than no hint, the
@@ -55,15 +64,15 @@ import (
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
-		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
+		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is
 		// worse than no hint (S12's help modal, M5.3, lists the full keymap
 		// regardless — that is the discoverability backstop for these).
-		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.Navigator, keys.Picker, keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.Refresh}
+		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh}
 	}
 }
 

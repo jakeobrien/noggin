@@ -326,9 +326,12 @@ func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
 }
 
 // TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane is C2a/M9.1's
-// help-modal half of the same S6/S4 sweep TestPaneHintsNameFocusAndRefreshFromEveryPane
-// checks for the footer: FocusRoots/FocusFiles/Refresh are global (S6), so
-// every pane's Help Modal must list them; ToggleHidden only does anything
+// help-modal half of the same S6/S4 sweep TestPaneHintsNameRefreshFromEveryPane/
+// TestPaneHintsOmitEveryFocusBindingEverywhere check for the footer:
+// FocusRoots/FocusFiles/Refresh are global (S6), so every pane's Help Modal
+// must list them (M7.2 removed Focus* from the footer's own hints in favor
+// of M7.1's title-row badges, but the Help Modal keeps listing all four
+// unconditionally — see helpBindings' own comment); ToggleHidden only does anything
 // once the Picker is open, but — like PickerUp/PickerDown/PickerMode/
 // PickerScope before it — these three panes are the only place Help is ever
 // reachable from to document it (see helpBindings' own comment). FocusDV1/
