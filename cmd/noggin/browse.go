@@ -92,7 +92,13 @@ func modeScopes(m browseMode) []browseScope {
 // open but empty); the caller here (filesNav.flatRowsView) only ever
 // reaches this while flatMode(), i.e. mode is Recent or Starred — this
 // func's own default case is unreachable in practice, just a defensive
-// fallback.
+// fallback. It returns emptyTreeText, not emptyFilesText (TRIAGE T34/D87):
+// emptyFilesText's "no Root open" case is already rowsView's own Tree
+// branch's concern (its f.root == nil check, well before any call into
+// this function could occur); a Tree-mode caller landing here regardless
+// would only be asking this func the flat modes' own question — "nothing
+// to show" — which is what emptyTreeText's "open but empty" wording
+// names.
 func flatEmptyText(mode browseMode, scope browseScope) string {
 	switch mode {
 	case recentBrowse:
@@ -110,6 +116,6 @@ func flatEmptyText(mode browseMode, scope browseScope) string {
 			return "No starred documents in this Root."
 		}
 	default:
-		return emptyFilesText
+		return emptyTreeText
 	}
 }

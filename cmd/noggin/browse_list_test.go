@@ -115,7 +115,11 @@ func TestRecencyAndStarredNameTiesBreakByPath(t *testing.T) {
 		dirB := mkdir(t, filepath.Join(dir, "b"))
 		// Same base name in two different Roots — starredRows' own name sort
 		// (filepath.Base) ties, so the tie-break must fall through to the
-		// full path, which sorts dirA's copy first ("a" < "b").
+		// full path, which sorts dirA's copy first ("a" < "b"). That ordering
+		// is guaranteed by the literal subdirectory names chosen below, not
+		// by t.TempDir()'s own naming: dirA and dirB share the same parent
+		// (dir), so the comparison reduces to "a" vs "b" regardless of what
+		// t.TempDir() names that shared parent.
 		docA := starredFixtureFile(t, dirA, "same.md")
 		docB := starredFixtureFile(t, dirB, "same.md")
 		docs := map[string]docRecord{

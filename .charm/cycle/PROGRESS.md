@@ -17,29 +17,27 @@
 
 ## Cursor
 
-Current task: M4.13
+Current task: M4.14
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M4.12 done (2026-08-12): strengthened `TestHelpModalListsThePaneOwnBindings`'s filesPane
-case with a count-based identity assertion on `helpBindings(filesPane)` — plain string
-matching against the rendered box can't tell `keys.FilesMode`/`keys.FilesScope` apart from
-`keys.PickerMode`/`keys.PickerScope`'s identical "tab"/"mode", "shift+tab"/"scope" text, so
-the check counts occurrences (want 2: the Files pair plus the always-present Picker pair) —
-dropping either takes the count to 1. Added `TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane`
-mirroring `TestPaneHintsNamePeekOnlyInFilesPane`'s shape (footer's `paneHints` doesn't share
-the Picker collision, so a plain `strings.Contains` suffices there). Verified both new
-assertions actually catch the regression (temporarily dropped FilesMode/FilesScope from both
-lists, confirmed both tests fail with the expected messages, restored, `make check` green
-again). `make check` passes.
+M4.13 done (2026-08-12): `flatEmptyText`'s unreachable `default` case (mode == treeBrowse,
+never actually hit — `flatRowsView` is only called via `flatMode()`, which excludes
+`treeBrowse`) now returns `emptyTreeText` instead of `emptyFilesText`, matching the doc
+comment's own reasoning: `emptyFilesText`'s "no Root open" case is already `rowsView`'s Tree
+branch's concern, so a hypothetical Tree-mode caller landing here would be asking this func's
+own "nothing to show" question, which `emptyTreeText` names. Comment expanded to state that
+reasoning inline rather than just calling the branch unreachable. Added a one-line comment to
+`TestRecencyAndStarredNameTiesBreakByPath`'s `starredRows` subtest noting the "a" < "b"
+tie-break holds because dirA/dirB share `t.TempDir()`'s parent and differ only in the literal
+subdirectory name, not because of `t.TempDir()`'s own naming. `make check` passes.
 
-Next: M4.13 (flatEmptyText's default-branch/comment mismatch, tie-break test comment), then
-M4.14 (flat-selection-clamp regression cases for cycleScope/setRoot's restore path), then
-back to M5.1 (Picker `Starred` scope, Grep-side pre-agreed cut 4) — neither remaining task
-blocks M5.1, they're just next in plan order.
+Next: M4.14 (flat-selection-clamp regression cases for cycleScope/setRoot's restore path),
+then back to M5.1 (Picker `Starred` scope, Grep-side pre-agreed cut 4) — M4.14 doesn't block
+M5.1, it's just next in plan order.
 
 ## Status
 
@@ -80,7 +78,7 @@ blocks M5.1, they're just next in plan order.
 | M4.10 | done  | 2026-08-12 | -       | replan: bundled test-coverage gaps, TRIAGE T25/T26/T29/T31 (D83); review: T36 |
 | M4.11 | done  | 2026-08-12 | -       | replan: comment-literal and citation fixes, TRIAGE T27/T28; review: T35 |
 | M4.12 | done  | -        | -         | replan: M4.8 test-coverage gaps, TRIAGE T32/T33 (D86)    |
-| M4.13 | todo  | -        | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87) |
+| M4.13 | done  | -        | -         | replan: flatEmptyText default branch + tie-break comment, TRIAGE T34/T36 (D87) |
 | M4.14 | todo  | -        | -         | replan: M4.7 acceptance-wording literal test gap, TRIAGE T37 (D88) |
 | M5.1 | todo   | -        | -         | Grep-side `Starred` is pre-agreed cut 4  |
 | M6.1 | todo   | -        | -         |                                          |
