@@ -52,7 +52,7 @@ the active root.
 ```
 -------------------------------------------------
 | Navigator     | Document Viewer                |
-|---------------|                                 |
+|---------------|           (DV1)                |
 | Roots Nav     |                                 |
 |---------------|                                 |
 | Files Nav     |                                 |
@@ -62,50 +62,84 @@ the active root.
 -------------------------------------------------------
 ```
 
+A second Document Viewer (DV2) can appear beside the first, splitting the
+right-hand region 50/50 — see [A second Document Viewer](#a-second-document-viewer)
+below:
+
+```
+-------------------------------------------------------------
+| Navigator     | Document Viewer  | Document Viewer          |
+|---------------|      (DV1)       |        (DV2)             |
+| Roots Nav     |                  |                           |
+|---------------|                  |                           |
+| Files Nav     |                  |                           |
+|               |                  |                           |
+-----------------------------------------------------------------
+| (staleness row, only while something is stale)                 |
+| Footer                                                          |
+--------------------------------------------------------------------
+```
+
 - **Roots Nav** — the list of roots in this session: the ad-hoc root (if any)
   first, then your starred roots. Each entry renders on two lines — the folder
   name in bold above its full path, unbold — so two same-named roots in
   different places stay distinguishable; moving up/down steps one whole entry
   at a time. Broken roots (path no longer exists) are marked and can't be
-  activated.
-- **Files Nav** — the file tree of the *active* root. Switching roots re-scopes
-  this pane but leaves whatever document you're reading untouched; each root's
-  expanded folders and selection are remembered independently for the rest of
-  the session, so switching back restores the tree exactly as you left it.
-  Files with uncommitted changes are marked `M` (modified) or `A` (new /
-  untracked) — see [Git status markers](#git-status-markers) below.
-- **Document Viewer** — the active document, rendered as styled markdown
-  (headings, tables, syntax-highlighted code fences, lists, blockquotes, rules,
-  emphasis) and wrapped to the pane width. Read-only: no cursor, no selection, no
-  copy — just scrolling.
+  activated. A starred root is marked `★`.
+- **Files Nav** — lists documents from the *active* root, in one of three
+  [Browse Modes](#browsing-tree-recent-starred): `Tree` (the file tree,
+  default), `Recent`, or `Starred`. Switching roots re-scopes this pane but
+  leaves whatever document you're reading untouched; each root's Tree
+  expansion/selection, Browse Mode and Browse Scope are remembered
+  independently for the rest of the session, so switching back restores it
+  exactly as you left it. Files with uncommitted changes are marked `M`
+  (modified) or `A` (new / untracked) — see [Git status markers](#git-status-markers)
+  below.
+- **Document Viewer** — a document, rendered as styled markdown (headings,
+  tables, syntax-highlighted code fences, lists, blockquotes, rules, emphasis)
+  and wrapped to the pane width. Read-only: no cursor, no selection, no copy —
+  just scrolling. A session always has one Document Viewer (DV1) and may have
+  a second (DV2) beside it — see [A second Document Viewer](#a-second-document-viewer).
 - **Footer** — key hints for whatever pane has focus, plus transient messages
   (a rejected launch path, a refused action). A message clears on your next
   keypress. Hints truncate gracefully on a narrow terminal, always keeping
   `help` and `quit`.
 
-Only one pane has focus at a time; most keys route to it.
+Only one pane has focus at a time; most keys route to it. Every pane shows
+the key that jumps focus to it, right-aligned on its own title row (e.g.
+`Files` ... `[f]`, DV2's `[^o]`) — dropped if the pane is too narrow to fit
+both. See [Focus](#focus) below.
 
 ## Keybindings
 
 Bindings are provisional (cheap to retune) but consistent across panes: movement
 is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 
-### Global (any pane)
+### Global (any non-modal pane)
 
 | Key | Action |
 |---|---|
-| `tab` / `shift+tab` | next / previous pane |
 | `?` | open the Help modal (full keybinding list for the focused pane) |
 | `ctrl+n` | toggle the Navigator (hide/restore the whole left sidebar) |
 | `r` | focus the Roots Nav (reveals the Navigator if hidden) |
 | `f` | focus the Files Nav (reveals the Navigator if hidden) |
-| `R` | refresh the Active Root's file tree and the Active Document from disk |
+| `o` | focus DV1 |
+| `ctrl+o` | focus DV2 (no-op if DV2 doesn't exist — a bare focus request never creates it) |
+| `ctrl+x` | close DV2, wherever focus is (no-op if DV2 doesn't exist); focus moves to DV1 if DV2 held it |
+| `R` | refresh the Active Root's file tree and every open Document Viewer's document from disk |
 | `e` | edit the active document in `$EDITOR` |
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
 | `space` | open the Picker (fuzzy find files or grep across files, see below) |
 | `q` / `ctrl+c` | quit |
 | `esc` | context-dependent cancel (dismiss find, close Help, close Picker) |
+
+There is no pane-cycling key: every pane is reached by a direct focus key
+(`r`/`f`/`o`/`ctrl+o`) instead — see [Focus](#focus).
+
+`e`, `/`, `n` and `N` are reachable from any pane, not just a Document
+Viewer's, but always act on DV1's document — unless focus is currently on
+DV2, in which case they act on DV2's.
 
 ### Roots Nav
 
@@ -120,12 +154,22 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | Key | Action |
 |---|---|
 | `j`/`k` or `↓`/`↑` | move selection |
-| `l`/`→` | expand the selected folder |
-| `h`/`←` | collapse the selected folder |
-| `enter` | open the selected file in the Document Viewer and move focus there |
-| `p` | peek at the selected file in the Document Viewer, without opening it or moving focus (press `p` again, or move the selection, to return) |
+| `l`/`→` | expand the selected folder (`Tree` mode) |
+| `h`/`←` | collapse the selected folder (`Tree` mode) |
+| `enter` | open the selected file into DV1 and move focus there |
+| `ctrl+enter` (fallback `ctrl+l`) | open the selected file into DV2 instead, creating it if needed, and move focus there |
+| `p` | peek at the selected file in DV1, without opening it or moving focus (press `p` again, or move the selection, to return) |
+| `ctrl+p` | peek at the selected file in DV2 instead, creating it if needed, without moving focus |
+| `s` | star / unstar the selected document |
+| `tab` | cycle Browse Mode: `Tree` → `Recent` → `Starred` → `Tree` … |
+| `shift+tab` | cycle the current mode's Browse Scope (no-op in `Tree`) |
 
-### Document Viewer
+See [Browsing: Tree, Recent, Starred](#browsing-tree-recent-starred).
+
+### Document Viewer (DV1 or DV2, whichever has focus)
+
+Each viewer acts on its own document only — scrolling, finding, starring,
+editing and history in DV1 never touch DV2, and vice versa.
 
 | Key | Action |
 |---|---|
@@ -133,6 +177,10 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `ctrl+u` / `ctrl+d` | half-page up / down |
 | `pgup`/`ctrl+b` , `pgdown`/`ctrl+f` | page up / down |
 | `g`/`home` , `G`/`end` | jump to top / bottom |
+| `s` | star / unstar this viewer's document |
+| `[` / `]` | step back / forward through this viewer's own Document History |
+
+See [Document history](#document-history).
 
 ### While finding (`/`)
 
@@ -152,25 +200,101 @@ leave. Everything else is on a non-printable key:
 | *(typing)* | updates the Results list live (once 3+ characters are typed) |
 | `↑` / `↓` | move the Results selection; the Preview follows it |
 | `tab` | switch mode: File ↔ Grep (the typed query carries over) |
-| `shift+tab` | switch Scope: Active Root ↔ All Roots (the typed query carries over) |
+| `shift+tab` | switch Scope: Active Root → All Roots → Starred (the typed query carries over) |
 | `alt+h` | toggle hiding dotfiles from the Results, for the rest of this session |
-| `enter` | activate the selected Result |
+| `alt+s` | star / unstar the selected Result |
+| `enter` | activate the selected Result into DV1 |
+| `ctrl+enter` (fallback `ctrl+l`) | activate the selected Result into DV2 instead, creating it if needed |
 | `esc` | dismiss the Picker — nothing about the session changes |
 
-## Starring roots
+## Focus
 
-Press `s` in the Roots Nav to star or unstar the selected root. Starred roots
-are what a plain `noggin` (no argument) opens next time. They're recorded, one
-absolute path per line, in a plain text file at:
+Exactly one pane has focus at a time, and every pane is reached by a direct
+key from anywhere non-modal: `r` (Roots Nav), `f` (Files Nav), `o` (DV1),
+`ctrl+o` (DV2 — a no-op if DV2 doesn't exist). `r`/`f` reveal the Navigator
+first if it's hidden; `o`/`ctrl+o` don't, since DV1/DV2 are never inside it.
+There's no Tab-cycling. Each pane's own focus key is shown right-aligned on
+its title row (`Files` ... `[f]`, DV2's `[^o]`), dropped if the pane is too
+narrow for both title and badge.
 
-- `$XDG_CONFIG_HOME/noggin/roots` (or the platform equivalent of
-  `os.UserConfigDir()`, e.g. `~/.config/noggin/roots` on Linux)
+Once a Document Viewer holds focus, its local commands — Find, Edit, star,
+scrolling, history — act on that viewer's own document only.
+
+## A second Document Viewer
+
+A session always has one Document Viewer, DV1, which takes the full width of
+the Document region alone. A second, DV2, can be created beside it — the
+region then splits 50/50, DV1 on the left — and closed again, without ever
+affecting DV1's own document, scroll position, find state or history:
+
+- From the Files Nav, `ctrl+enter` (fallback `ctrl+l`, for terminals that
+  can't distinguish it from plain `enter`) opens the selected file into DV2,
+  creating it first if needed, and moves focus there — the DV2 counterpart
+  of `enter`. `ctrl+p` peeks it into DV2 instead, the counterpart of `p`:
+  focus doesn't move.
+- From the Picker, the same `ctrl+enter`/`ctrl+l` activates the selected
+  Result into DV2 instead of DV1.
+- `ctrl+x`, from any non-modal pane's focus (including DV1 or DV2
+  themselves), closes DV2. A no-op if it doesn't exist. If DV2 held focus,
+  focus moves to DV1; from anywhere else, focus is unchanged.
+
+DV1 and DV2 are fully independent: separate Active Document, Peek, Find and
+scroll position each, and each walks its own [Document History](#document-history).
+DV2 is session-only — always absent at launch, never persisted.
+
+`R` (refresh) re-reads the Active Root's tree and both viewers' documents
+(whichever exist) in one action, regardless of which pane has focus. The
+[staleness indicator](#staleness-indicator) also now spans both viewers, not
+just one.
+
+## Starring roots and documents
+
+Both roots and individual documents can be starred, independently of each
+other — un-starring a root never touches the star on any document under it,
+and vice versa.
+
+**Roots:** press `s` in the Roots Nav to star or unstar the selected root.
+Starred roots are what a plain `noggin` (no argument) opens next time,
+marked `★` in the Roots Nav. They're recorded, one absolute path per line, in
+a plain text file at:
+
+- `$XDG_DATA_HOME/noggin/roots` (or the platform equivalent, e.g.
+  `~/.local/share/noggin/roots` on Linux, `~/Library/Application Support/noggin/roots`
+  on macOS)
 
 The file is deliberately hand-editable — `.gitignore`-style comments (`#`) and
 blank lines are fine, so you can fix a moved root by editing the path directly.
 A missing or unreadable file is treated as "no starred roots" rather than an
 error, and stale paths (root no longer exists) are kept, not silently pruned —
 they just show up broken in the Roots Nav.
+
+**Documents:** press `s` to star or unstar a document from the Files Nav
+(the selected file), from a focused Document Viewer (that viewer's own
+document — DV1 and DV2 can have different starred documents open at once),
+or `alt+s` in the Picker (the selected Result). A star shows as `★` on Files
+Nav rows (in every Browse Mode except `Starred`, where membership already
+says it), to the left of the document's title in a Document Viewer, and on
+Picker rows in either mode. A starred document survives un-starring its
+root, moving to a different root, or that root simply not being part of a
+later session — it's tracked by absolute path, not by root. A **broken
+starred document** (path no longer on disk) still shows up starred, marked
+`(missing)`, but can't be opened; it's reachable from the Files Nav's
+`Starred` mode and the Picker's `Starred` scope even when no open root
+covers it (see [Browsing](#browsing-tree-recent-starred)).
+
+Document stars, along with each document's last-viewed time (used by
+[Recent](#browsing-tree-recent-starred)), live in a second plain file
+alongside the roots file:
+
+- `$XDG_DATA_HOME/noggin/documents` (same directory as `roots` above)
+
+Each line is `<0 or 1>\t<RFC3339Nano timestamp or ->\t<absolute path>`
+(tab-separated); a starred entry is never evicted, only its timestamp is
+cleared, if the store grows past its internal cap.
+
+Note: both files live under noggin's *data* directory, not its config
+directory (`$XDG_CONFIG_HOME`) — a config-directory `roots` file from an
+older noggin is not read or migrated.
 
 ## What gets shown
 
@@ -191,13 +315,63 @@ or `.git/info/exclude`. `.git` itself is always excluded. Dotfiles and hidden
 directories otherwise *are* shown (e.g. `.github/`), since they often hold real
 notes.
 
+## Browsing: Tree, Recent, Starred
+
+The Files Nav has three Browse Modes, cycled with `tab` (Files Nav focused):
+`Tree` (the file tree, the default), `Recent`, and `Starred`. A status row
+below the pane's title always names the current mode and scope, e.g.
+`Tree · -`, `Recent · Active Root`, `Starred · All Starred` — costing the
+list one row of height in every mode.
+
+`shift+tab` cycles the current mode's Browse Scope (a no-op in `Tree`,
+which has none):
+
+- **Recent** — `Active Root` ↔ `All Roots`. Lists documents by when they were
+  last Activated (opened into a viewer) or sent to `$EDITOR`; peeking doesn't
+  count. `Active Root` shows at most 100 documents; `All Roots` merges every
+  Root's list by timestamp with no further cap.
+- **Starred** — `Active Root` → `All Starred` → `Orphans`. `All Starred` is
+  every starred document in the store, including ones under no current
+  Root; `Orphans` is exactly those documents — starred, but under no
+  session Root at all.
+
+`Recent` and `Starred` are flat lists, not trees: each row shows the file
+name on the left and, right-aligned, the base name of its Root — or, for an
+orphan, its left-truncated parent path. `Recent` rows carry the usual `★`
+star marker; `Starred` rows omit it (mode already implies it) and instead
+mark a broken starred document with `(missing)`. Any mode/scope combination
+with nothing to show says so directly (e.g. "No starred documents outside a
+session Root.").
+
+The current mode is remembered per Root, and the scope is remembered per
+(Root, mode) pair, for the rest of the session — returning to a Root restores
+what you last had there. Every session starts every Root on `Tree`.
+
+## Document History
+
+Each Document Viewer (DV1 and DV2 independently) keeps its own back/forward
+Document History of the documents opened into it, walked with `[`/`]` while that
+viewer has focus. It's browser-style: activating a new document after going
+back discards the forward entries, and the same document can appear more
+than once but never twice in a row. Going back or forward restores that
+document's own most recently used scroll position in that viewer (remembered
+per document, not per history entry).
+
+History can walk into documents under other Roots without ever changing the
+Active Root. The `$EDITOR` handoff and `R` (refresh) do not add history
+entries — both re-render the same document in place instead. History and its
+scroll memory are session-only for both viewers, dropped entirely when DV2
+is closed or noggin exits.
+
 ## Editing
 
-Press `e` on the active document to hand off to your editor: `$EDITOR` if set,
-otherwise `vi`. noggin releases the terminal for the editor and resumes when it
-exits, re-reading the file from disk so your edits show up immediately — there's
-no live file-watching, this is the one point where it re-reads. With no document
-open, `e` just reports that instead of doing nothing.
+Press `e` to hand off to your editor: `$EDITOR` if set, otherwise `vi`. `e` is
+reachable from any pane, and always acts on DV1's document unless focus is
+currently on DV2, in which case it acts on DV2's. noggin releases the
+terminal for the editor and resumes when it exits, re-reading the file from
+disk so your edits show up immediately — there's no live file-watching, this
+is the one point where it re-reads. With no document open in the targeted
+viewer, `e` just reports that instead of doing nothing.
 
 ## Help
 
@@ -217,14 +391,16 @@ noggin never watches the filesystem — everything on screen is a snapshot from
 when the root or document was last read.
 
 Press `R` from any pane to refresh: it re-reads the Active Root's file tree
-and the Active Document from disk in one pass. Files Nav expansion and
-selection are preserved (selection moves to the nearest surviving ancestor if
-its exact node is gone); the Document Viewer's scroll position is preserved,
-clamped to the end if the document shrank past it; an in-progress or
-committed find may be lost. If the Active Document no longer exists or can't
-be read, the Viewer goes empty. Nothing outside the Active Root's tree and
-the Active Document is touched — other roots, other documents, and Picker
-results are unaffected. Refresh also recomputes the git status markers below.
+and both DV1's and DV2's documents (whichever exist) from disk in one pass.
+Files Nav expansion and selection are preserved (selection moves to the
+nearest surviving ancestor if its exact node is gone); each viewer's own
+scroll position is preserved independently, clamped to the end if its
+document shrank past it; an in-progress or committed find may be lost in
+either viewer. If a viewer's document no longer exists or can't be read,
+that viewer goes empty. Nothing outside the Active Root's tree and the two
+viewers' documents is touched — other roots, other documents, and Picker
+results are unaffected. Refresh also recomputes the git status markers below,
+and doesn't add a [Document History](#document-history) entry.
 
 ### Git status markers
 
@@ -240,12 +416,14 @@ refresh — they are never kept live in between.
 
 ### Staleness indicator
 
-Every few seconds, noggin quietly checks whether the Active Document or
-anything under the Active Root's tree has changed on disk since it was last
-read. If so, the footer appends "something changed on disk; press R to
-refresh" to its hints. It never says *what* changed, and never refreshes or
-re-reads anything on your behalf — pressing `R` is the only way to act on it.
-The indicator clears the next time you refresh and stays cleared until
+Every few seconds, noggin quietly checks whether the Active Root's tree, DV1's
+document, or DV2's document (if it exists) has changed on disk since it was
+last read. If any has, a dedicated highlighted row appears just above the
+Footer reading "something changed on disk; press R to refresh" — it occupies
+no space at all while nothing is stale. It never says *what* changed, and
+never refreshes or re-reads anything on your behalf — pressing `R` is the
+only way to act on it. It's one combined signal across tree/DV1/DV2, not
+per-source; it clears the next time you refresh and stays cleared until
 another change is detected.
 
 ## Finding across files (the Picker)
@@ -267,10 +445,11 @@ you've typed:
   letter. One row per matching line, showing the file, its line number and
   the line's text, with the matched text highlighted.
 
-Either mode searches either **Active Root** or **All Roots**, switched in
-place with `shift+tab`; the title above the Prompt names both, e.g.
-`File · Active Root` or `Grep · All Roots`. All Roots silently skips any
-Broken root.
+Either mode searches one of three Scopes, cycled in place with `shift+tab`:
+**Active Root**, **All Roots**, or **Starred** (every starred document,
+including orphans — see [Browsing](#browsing-tree-recent-starred)). The title
+above the Prompt names both mode and scope, e.g. `File · Active Root` or
+`Grep · Starred`. All Roots silently skips any Broken root.
 
 A query shorter than 3 characters doesn't search at all ("type at least 3
 characters"); a query that matches nothing says "no results"; a result set
@@ -307,5 +486,4 @@ session-only — relaunching noggin resets it to showing dotfiles.
 ## Scope
 
 noggin does not create, rename, move or delete files or folders, and it isn't an
-editor — writing happens by handing off to `$EDITOR`. Multiple documents on
-screen at once and document history/recall are not part of this release.
+editor — writing happens by handing off to `$EDITOR`.
