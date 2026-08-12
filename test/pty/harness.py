@@ -132,6 +132,13 @@ class Screen:
     def clear(self):
         self.grid = [[" "] * self.cols for _ in range(self.rows)]
         self.x = self.y = 0
+        # DECSTBM scroll margin (0-based, inclusive), full screen by default.
+        # Alt-screen mode (bug fix) lets ultraviolet insert/delete a single
+        # row inside a pane's box with a scroll region + RI/IND instead of a
+        # full-box redraw — a real, standard terminal feature (any real
+        # terminal honours it) this emulator never needed to model until
+        # noggin actually took over the alt screen.
+        self.top, self.bottom = 0, self.rows - 1
 
     def _put(self, ch):
         if self.y < self.rows and self.x < self.cols:
@@ -166,12 +173,26 @@ class Screen:
                 # DCH once did (see pty-verification.md). No scroll-region
                 # bookkeeping, matching this harness's existing CUU/CUD
                 # clamp-not-scroll behaviour.
+                #
+                # Both now respect the DECSTBM scroll region (top/bottom):
+                # RI at the region's top margin scrolls the region down
+                # instead of clamping in place, and IND at the bottom margin
+                # scrolls it up — the same margin-aware behaviour a real
+                # terminal gives, needed once bubbletea started using
+                # DECSTBM+RI to insert/delete a single row inside a pane's
+                # box under alt screen.
                 if text[i:i + 2] == "\x1bM":
-                    self.y = max(self.y - 1, 0)
+                    if self.y <= self.top:
+                        self._scroll_region(-1)
+                    else:
+                        self.y -= 1
                     i += 2
                     continue
                 if text[i:i + 2] == "\x1bD":
-                    self.y = min(self.y + 1, self.rows - 1)
+                    if self.y >= self.bottom:
+                        self._scroll_region(1)
+                    else:
+                        self.y = min(self.y + 1, self.rows - 1)
                     i += 2
                     continue
                 m = re.match(r"\x1b[()][0-9A-Za-z]|\x1b[=><]", text[i:])
@@ -180,11 +201,10 @@ class Screen:
             if c == "\r":
                 self.x = 0
             elif c == "\n":
-                self.y += 1
-                if self.y >= self.rows:
-                    self.grid.pop(0)
-                    self.grid.append([" "] * self.cols)
-                    self.y = self.rows - 1
+                if self.y >= self.bottom:
+                    self._scroll_region(1)
+                else:
+                    self.y += 1
             elif c == "\b":
                 self.x = max(self.x - 1, 0)
             elif c == "\t":
@@ -192,6 +212,19 @@ class Screen:
             elif c >= " ":
                 self._put(c)
             i += 1
+
+    def _scroll_region(self, n):
+        """Scroll the DECSTBM region [top, bottom] by n rows: up (n > 0,
+        IND-driven growth past the bottom margin) or down (n < 0,
+        RI at the top margin). Rows outside the region are untouched, the
+        same as a real terminal's margin-scoped scroll."""
+        region = self.grid[self.top:self.bottom + 1]
+        blank = [" "] * self.cols
+        if n > 0:
+            region = region[n:] + [list(blank) for _ in range(n)]
+        elif n < 0:
+            region = [list(blank) for _ in range(-n)] + region[:n]
+        self.grid[self.top:self.bottom + 1] = region
 
     def _csi(self, params, final):
         if params[:1] in ("?", ">", "=", "<"):
@@ -202,6 +235,18 @@ class Screen:
             self.x = min(self.x + n, self.cols - 1)
         elif final == "D":
             self.x = max(self.x - n, 0)
+        elif final == "G":  # CHA: cursor to column n (1-based), row unchanged
+            self.x = min(max(n - 1, 0), self.cols - 1)
+        elif final == "d":  # VPA: cursor to row n (1-based), column unchanged
+            self.y = min(max(n - 1, 0), self.rows - 1)
+        elif final == "r":  # DECSTBM: set scroll margin to [ps[0], ps[1]] (1-based, inclusive), full screen if omitted; homes the cursor, as a real terminal does
+            top = ps[0] - 1 if ps and ps[0] else 0
+            bottom = ps[1] - 1 if len(ps) > 1 and ps[1] else self.rows - 1
+            if 0 <= top < bottom < self.rows:
+                self.top, self.bottom = top, bottom
+            else:
+                self.top, self.bottom = 0, self.rows - 1
+            self.x = self.y = 0
         elif final == "A":
             self.y = max(self.y - n, 0)
         elif final == "B":

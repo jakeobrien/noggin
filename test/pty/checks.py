@@ -105,6 +105,21 @@ for quit_key, label in [(KEY["Quit"], "q"), (KEY["QuitCtrlC"], "ctrl+c")]:
     check(f"M1.1 exits 0 on {label}", code == 0, f"exit {code}")
     check(f"M1.1 cursor restored after {label}", b"\x1b[?25h" in out)
     check(f"M1.1 bracketed paste disabled after {label}", b"\x1b[?2004l" in out)
+    # Bug fix: noggin used to leave every tea.View field zero, so it drew
+    # inline and never entered the alt screen buffer — nothing was left to
+    # restore on exit, so the frame stayed in the terminal's own scrollback
+    # after quitting. \x1b[?1049h/l is xterm's alt-screen enter/exit pair;
+    # both bytes on the wire is the end-to-end proof the fix actually reaches
+    # the terminal, not just that View() reports the field (mouse_test.go's
+    # TestViewTakesOverTheTerminal already covers that at the unit level).
+    check(f"M1.1 enters the alt screen buffer on start ({label} run)", b"\x1b[?1049h" in out)
+    check(f"M1.1 exits the alt screen buffer on {label}, restoring the terminal", b"\x1b[?1049l" in out)
+    # Mouse capture: MouseModeCellMotion's on-the-wire form is DECSET 1002
+    # (click/release/wheel/drag) plus 1006 (SGR extended coordinates,
+    # needed past column/row 223) — both enabled on start and disabled on
+    # exit, the same enable/disable pairing bracketed paste already gets.
+    check(f"M1.1 enables mouse capture on start ({label} run)", b"\x1b[?1002h" in out)
+    check(f"M1.1 disables mouse capture on {label}", b"\x1b[?1002l" in out)
 
 # --- M1.2: the frame, at two sizes, with focus and reflow -----------------
 

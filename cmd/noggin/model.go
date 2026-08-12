@@ -1235,6 +1235,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.applyStaleResult(msg)
 	case tea.WindowSizeMsg:
 		return m.resize(msg.Width, msg.Height, resizeCauseWindow), nil
+	// tea.MouseWheelMsg (bug fix, paired with MouseModeCellMotion in View):
+	// wheel scroll is aimed at whichever pane the cursor sits over — not
+	// necessarily the focused one — matching ordinary terminal-mouse
+	// expectations rather than requiring a click-to-focus first.
+	case tea.MouseWheelMsg:
+		return m.handleMouseWheel(msg), nil
 	case tea.KeyPressMsg:
 		// A transient message (D22) is displaced by the action it reports on;
 		// any keypress after that clears it (S11), whether or not this one
@@ -1400,6 +1406,82 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// paneAt returns the pane whose region contains the terminal cell (x, y) —
+// 0-based, (0,0) at the top-left, the same coordinate space tea.Mouse uses —
+// or false when the cell lands outside every pane (the stale row, the
+// footer, a collapsed Navigator's now-absent column, or off the frame
+// entirely). layout() only hands back each region's size, not its on-screen
+// offset, so the offsets are rebuilt here from the same pieces frame() joins
+// in the same order: the Navigator column (Roots Nav above Files Nav) at
+// x=0..navWidth, the Document Viewer (DV1, then DV2 if present) beside it —
+// both columns sharing the same body height, rows 0..l.viewer.height.
+func (m model) paneAt(x, y int) (pane, bool) {
+	if x < 0 || y < 0 || x >= m.width || y >= m.height {
+		return 0, false
+	}
+	l := m.layout()
+	navWidth := l.navigatorWidth()
+	if navWidth > 0 && x < navWidth {
+		if y < l.roots.height {
+			return rootsPane, true
+		}
+		if y < l.roots.height+l.files.height {
+			return filesPane, true
+		}
+		return 0, false
+	}
+	if y >= l.viewer.height {
+		return 0, false
+	}
+	dv1Rect, _ := l.splitViewer(m.dv2 != nil)
+	if m.dv2 != nil && x-navWidth >= dv1Rect.width {
+		return dv2Pane, true
+	}
+	return dv1Pane, true
+}
+
+// handleMouseWheel scrolls whichever pane the wheel event's cell lands over
+// (paneAt) by one row/line per tick — the same magnitude keys.LineUp/
+// LineDown already move, just aimed by cursor position instead of Focus. A
+// wheel event over the stale row, the footer, or outside the frame is a
+// no-op, the same as any other unbound input. Files Nav selection moving is
+// one of Peek's clearing triggers (S7), the same as LineUp/LineDown's own
+// handling in Update above, so a wheel scroll over the Files Nav clears Peek
+// too rather than leaving it stale against a selection the wheel just moved
+// past.
+func (m model) handleMouseWheel(msg tea.MouseWheelMsg) model {
+	mouse := msg.Mouse()
+	p, ok := m.paneAt(mouse.X, mouse.Y)
+	if !ok {
+		return m
+	}
+	var delta int
+	switch mouse.Button {
+	case tea.MouseWheelUp:
+		delta = -1
+	case tea.MouseWheelDown:
+		delta = 1
+	default:
+		return m
+	}
+	switch p {
+	case dv1Pane, dv2Pane:
+		v := m.viewerFor(p)
+		if delta < 0 {
+			v.vp.ScrollUp(1)
+		} else {
+			v.vp.ScrollDown(1)
+		}
+		return m.withViewerFor(p, v)
+	case filesPane:
+		m = m.clearPeek()
+		m.files = m.files.move(delta)
+	case rootsPane:
+		m.roots = m.roots.move(delta)
+	}
+	return m
 }
 
 // resizeCause names what drove a call to resize, so its dismissed/cleared
@@ -1576,11 +1658,22 @@ var (
 )
 
 // View returns the frame. Bubble Tea v2 derives terminal state (alt screen,
-// cursor, mouse mode, window title) from the returned View on every render, so
-// every field left at its zero value is a deliberate "off": noggin draws inline
-// with no cursor, exactly as it did under v1.
+// cursor, mouse mode, window title) from the returned View on every render.
+// AltScreen and MouseMode are set explicitly below (bug fix: noggin used to
+// leave both at their zero value, which meant it never took over the
+// terminal — nothing was left in the alt screen buffer to restore on exit,
+// and mouse wheel events were never captured, so they fell through to the
+// terminal's own native scrollback instead of scrolling a pane). Every other
+// field (cursor, window title, ...) stays at its zero value, unchanged from
+// before.
 func (m model) View() tea.View {
-	return tea.NewView(m.render())
+	v := tea.NewView(m.render())
+	v.AltScreen = true
+	// MouseModeCellMotion is enough for click/release/wheel events (which is
+	// all handleMouseWheel below uses) without also reporting motion when no
+	// button is pressed the way MouseModeAllMotion would.
+	v.MouseMode = tea.MouseModeCellMotion
+	return v
 }
 
 // render is the frame (frame()) plus, when the Help Modal or the Picker is
