@@ -115,7 +115,14 @@ func renderBox(style lipgloss.Style, r rect, styledTitle, content string) string
 	if r.empty() {
 		return ""
 	}
-	box := style.Width(r.width).Height(r.height)
+	// Height() alone is a floor, not a ceiling (lipgloss v2 pads content
+	// shorter than it, but passes taller content through unchanged); MaxHeight
+	// is the actual clamp. This is a structural backstop, not the fix for any
+	// specific pane's overflow — each pane's own renderer is responsible for
+	// never handing renderBox more than r.height lines in the first place —
+	// but it keeps a future regression from growing the whole frame and
+	// pushing panes above it off screen the way an unclamped Files Nav did.
+	box := style.Width(r.width).Height(r.height).MaxHeight(r.height)
 	if content == "" {
 		return box.Render(styledTitle)
 	}

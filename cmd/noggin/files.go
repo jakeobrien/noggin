@@ -744,6 +744,15 @@ func (f filesNav) renderFlatRow(r browseRow, selected bool) string {
 		pad = 0
 	}
 	line := left + strings.Repeat(" ", pad) + right
+	// rightBudget above already accounts for left's width when left fits, but
+	// when left alone exceeds f.width (an unbroken long file name), rightBudget
+	// clamps to 0 and line is still left's full length. Either way, line must
+	// be truncated to f.width here, before Render: lipgloss v2's Width()
+	// word-wraps content that's still too long instead of truncating it, and
+	// MaxWidth only trims each already-wrapped line afterwards, so an
+	// untruncated line silently grows this row to two physical lines instead
+	// of one (lipgloss-v2-row-rendering-gotchas.md).
+	line = rightTruncate(line, f.width)
 
 	style := lipgloss.NewStyle()
 	if broken {
@@ -788,6 +797,12 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 		star = "★ "
 	}
 	line := strings.Repeat("  ", r.depth) + marker + status + star + r.node.Name
+	// A long name (or deep nesting) can push line past f.width; truncate it
+	// here rather than let Width().Render() below word-wrap it into a second
+	// physical line (lipgloss-v2-row-rendering-gotchas.md) — an over-height
+	// Files Nav pane pushes the Roots Nav and Document Viewer panes' top rows
+	// off screen, since frame() has no outer viewport to clip it back down.
+	line = rightTruncate(line, f.width)
 
 	style := lipgloss.NewStyle()
 	if selected {

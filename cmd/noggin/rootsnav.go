@@ -216,6 +216,12 @@ func (r rootsNav) renderRow(idx int) []string {
 		suffix = " (missing)"
 	}
 	line1 := activeMark + starMark + filepath.Base(row.root.path) + suffix
+	// line2 is already protected by leftTruncate below; line1 needs the same
+	// guard — a long base name/suffix combination would otherwise word-wrap
+	// under Width().Render() instead of truncating
+	// (lipgloss-v2-row-rendering-gotchas.md), the same class of bug fixed in
+	// files.go's renderRow/renderFlatRow.
+	line1 = rightTruncate(line1, r.width)
 	line2 := leftTruncate(row.root.path, r.width)
 
 	style1, style2 := rootsNameStyle, rootsPathStyle
