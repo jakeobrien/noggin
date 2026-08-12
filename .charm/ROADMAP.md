@@ -25,7 +25,7 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 | C2  | find               | done    | Fuzzy filename find and literal grep with preview, scoped to Active Root or All Roots, ripgrep-backed | `archive/C2-2026-08-find/` |
 | C2a | polish             | done    | Install target, manual refresh, per-Root tree memory, dotfile Picker toggle, two-line Roots Nav, new bindings (r/f/R/p/space), Peek, per-file git markers, and a footer-width staleness-indicator fix | `archive/C2a-2026-08-polish/` |
 | C3  | compare            | done    | Second Document Viewer (DV2), ctrl+ targeting from Files Nav/Picker, four-way direct focus keys replacing Tab-cycling, ctrl+x close, dual-viewer refresh/staleness, session-only DV2 state | `archive/C3-2026-08-compare/` |
-| C4  | recall             | planned | noggin remembers: starred documents, recency, Files Nav browse modes, per-viewer document history (wiki-links carved out to Unscheduled) | - |
+| C4  | recall             | done    | Delivered all 10 spec'd deliverables (S1–S10) across 46 plan tasks; none of D63's four pre-agreed cuts were needed | `archive/C4-2026-08-recall/` |
 | C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
 
 ## Unscheduled
@@ -36,7 +36,6 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
   dual viewers make concurrent editing meaningful, still not delivered)
 - Multiple path arguments at launch; adding and removing roots in-session (from C1)
 - User-configurable keybindings (from C1; keymap is build-time-only for now)
-- Move the starred-roots store from config to a data location once it stops needing hand edits (from C1)
 - Browse-by-results: send Picker Results to the Files Nav (from C1)
 - Regex (or fuzzy) Grep Picker queries; C2 is literal-only (from C2, D29)
 - A rendered-markdown Preview pane instead of raw text (from C2, D30/D33)
