@@ -304,7 +304,6 @@
   than raw bytes. This round-trip only ever runs while the modal is open (`render()` skips it
   otherwise), so it cannot affect any other milestone's byte-exact frame comparisons.
 
-
 ## D27: Naming convention — "Find" is within a document, "Picker" is across files
 
 - Status: decided
@@ -468,7 +467,6 @@
   keystroke of every burst, i.e. the least useful query). 120ms is a build-time judgment call,
   not spec'd; S8's "no memory" is untouched because a generation count carries no information
   about mode, Scope or query.
-
 
 ## D42: An interstitial cycle is keyed C2a, not C6
 
@@ -757,7 +755,6 @@
 - Why: low-to-medium risk×value, all three are narrow implementation choices with an obvious
   "least surprising" answer and no real alternative reading of S9 — decided and logged rather
   than asked, per the effort-scaling rule.
-
 
 ## D61: Document memory is one global, path-keyed store — shadow Roots rejected
 

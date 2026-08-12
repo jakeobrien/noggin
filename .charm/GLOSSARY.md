@@ -40,15 +40,17 @@
   keys route to the focused pane. DV1 and DV2 are separately focusable panes (C3): once a
   Document Viewer holds Focus, its local commands (Find, Edit, scrolling) act on that
   viewer's Active Document only.
+- **Focus Badge** — the key that focuses a pane, shown right-aligned on that pane's title row
+  (`[f]`, `[^o]`). Dropped when the pane is too narrow (C4).
 - **Footer** — the persistent bottom bar: contextual key hints plus transient messages.
 - **Grep Picker** — the Picker whose Results are matching lines across files (C2).
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
   footer's help affordance and dismissible with one key.
-- **Focus Badge** — the key that focuses a pane, shown right-aligned on that pane's title row
-  (`[f]`, `[^o]`). Dropped when the pane is too narrow (C4).
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
   vim-oriented. Provisional, like all bindings.
 - **Navigator** — the left sidebar: Roots Nav above, Files Nav below. Hideable.
+- **Orphan** (orphaned star) — a Starred document that lies under no Root in the current
+  session. Reachable from the Picker's `Starred` scope and the Files Nav's `Orphans` scope (C4).
 - **Peek** — render the Files Nav's selected document in the targeted Document Viewer
   (DV1 by default, DV2 with the Targeting modifier) *without* making it that viewer's Active
   Document and without moving Focus. Transient and read-only: cannot be scrolled or
@@ -63,14 +65,12 @@
 - **Prompt** — a Picker's input field; Results update as it is typed (C2).
 - **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
   `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
+- **Recent** — documents ordered by when they were last viewed. Viewing means Activate or the
+  `$EDITOR` handoff; Peek does not count. Recency only, never frecency (C4).
 - **Refresh** — the on-demand re-read of the Active Root's file tree and, as of C3, every open
   Document Viewer's Active Document from disk in one action, preserving tree expansion,
   selection and each viewer's scroll position. Manual only; noggin never watches the
   filesystem (C2a).
-- **Orphan** (orphaned star) — a Starred document that lies under no Root in the current
-  session. Reachable from the Picker's `Starred` scope and the Files Nav's `Orphans` scope (C4).
-- **Recent** — documents ordered by when they were last viewed. Viewing means Activate or the
-  `$EDITOR` handoff; Peek does not count. Recency only, never frecency (C4).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
@@ -82,11 +82,11 @@
   or the Active Root's tree changed on disk. Reports only that *something* changed across
   those sources, and never refreshes on its own (C2a). Its own dedicated, highlighted row
   above the Footer, shown only while stale (C3) — not a Footer suffix.
+- **Starred** — bookmarked and persisted across sessions. Applies to Roots (C1) and to
+  documents (C4). Document stars are a single global collection of paths, independent of the
+  Root lifecycle: un-starring a Root never touches them.
 - **Targeting modifier** — the `ctrl+` prefix on Files Nav's Activate/Peek and the Picker's
   Activate that routes the action to DV2 instead of DV1, creating DV2 first if it doesn't
   already exist. Unmodified keys always target DV1. The same `ctrl+` prefix is also used by
   S5's focus-jump keys (`ctrl+o` jumps Focus to DV2) for consistency, though that is a
   distinct mechanism with no load/peek routing involved (C3; `shift+` before D55).
-- **Starred** — bookmarked and persisted across sessions. Applies to Roots (C1) and to
-  documents (C4). Document stars are a single global collection of paths, independent of the
-  Root lifecycle: un-starring a Root never touches them.

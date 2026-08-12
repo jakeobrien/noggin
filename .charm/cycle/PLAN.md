@@ -201,7 +201,6 @@ Delivers: S5, S6, S7 (and S2's Starred-list removal clause)
   `//` comments) and the wrong "scope.go" citation (should read browse.go) across
   `browse_list.go` and its test — done when: no comment contains a literal `\uXXXX` escape,
   both citations read `browse.go`, and `make check` is green — effort: 1 — from TRIAGE T27, T28.
-
 - **M4.12** — Close M4.8's undertested additions: strengthen
   `TestHelpModalListsThePaneOwnBindings`'s `filesPane` case with an identity-based assertion
   (matching `b.Help().Key`/`.Desc`, as `TestHelpBindingsListPickersOwnBindingsFromEveryPane`

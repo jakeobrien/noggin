@@ -7,4 +7,4 @@
      `.charm/knowledge/` tier, or archived with the cycle (the default). Durable knowledge
      for cross-cycle reading lives there, not here — see .charm/knowledge/INDEX.md. -->
 
-- `<topic>.md` — <one-line summary of what it covers and why it matters>
+(No findings files this cycle.)
