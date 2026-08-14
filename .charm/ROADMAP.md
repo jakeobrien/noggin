@@ -2,20 +2,36 @@
 
 ## North star
 
-Reduce friction to accessing and recording information. Several sources of notes and docs
-are live at once — personal notes, shared work notes, and the local docs of whatever
-projects are in flight. noggin makes all of them reachable in one keyboard-driven session:
-find it fast, read it well, compare across sources, hand off to `$EDITOR` when writing is
-the point.
+noggin is **a browser of document collections** — a thoughtspace for navigating,
+synthesizing and remembering knowledge drawn from several collections at once. Search,
+navigation and consumption; **never editing**, and never authoring. Light text input at
+most. It works *with* your editor and your other tools, not instead of them.
 
-Good looks like: `noggin .` and every relevant source is instantly in reach, including the
-cwd as an ad-hoc root; switching or comparing across sources costs a keystroke, not a
-context reload. Explicitly not an editor — the editor boundary is a deliberate, clean
-handoff.
+Collections are admitted for a specific value they carry, not accumulated on whim:
+
+| Collection | Value it carries |
+|---|---|
+| Notes | personally-relevant information; the **synthesis target** |
+| Wikipedia | authoritative, highly trustable reference |
+| Dictionary / thesaurus | the universal glossary — the medium everything else is written in |
+
+The value compounds through two cross-collection features: **starring** and
+**link-following** — connections and collections of your own that span sources.
+
+Good looks like: `noggin .` and every relevant collection is instantly in reach, including
+the cwd as an ad-hoc root; switching or comparing across collections costs a keystroke, not
+a context reload. Explicitly not an editor — the editor boundary is a deliberate, clean
+handoff, and the same boundary applies to anything that *creates* documents rather than
+serving them (LLM chat included: hand off to a chat TUI, read its saved transcripts back as
+an ordinary collection).
 
 Why not the incumbents: Obsidian is mouse-first, its vaults are heavy to switch and cannot
 sit side-by-side, and it has no ad-hoc source; Glow has no search, no side-by-side, no
 persisted sources; nvim renders markdown poorly and is unfocused for this task.
+
+<!-- North star dilated 2026-08-14 (C4a). The original — "reduce friction to accessing and
+     recording information" across note sources only — was a deliberately narrow hedge
+     against the value not materialising. See DECISIONS.md. -->
 
 ## Cycles
 
@@ -26,7 +42,13 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 | C2a | polish             | done    | Install target, manual refresh, per-Root tree memory, dotfile Picker toggle, two-line Roots Nav, new bindings (r/f/R/p/space), Peek, per-file git markers, and a footer-width staleness-indicator fix | `archive/C2a-2026-08-polish/` |
 | C3  | compare            | done    | Second Document Viewer (DV2), ctrl+ targeting from Files Nav/Picker, four-way direct focus keys replacing Tab-cycling, ctrl+x close, dual-viewer refresh/staleness, session-only DV2 state | `archive/C3-2026-08-compare/` |
 | C4  | recall             | done    | Delivered all 10 spec'd deliverables (S1–S10) across 46 plan tasks; none of D63's four pre-agreed cuts were needed | `archive/C4-2026-08-recall/` |
+| C4a | wikipedia-spike    | planned | Throwaway spike: can Wikipedia articles be converted to markdown that is genuinely worth reading in noggin? Ends in a go/no-go, not a feature | - |
 | C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
+| C6  | collections        | planned | Deliberately vague, and gated on C4a: what a *collection* is beyond a folder — what all collections share, where they diverge, and how starring spans them | - |
+
+<!-- C4a is a suffixed interstitial key per D42: C5 was already referenced by intent in
+     DECISIONS.md, knowledge/ and archived cycle docs ("Tags are C5"), so renumbering was
+     not available. Ledger order is independent of key order. -->
 
 ## Unscheduled
 
@@ -43,6 +65,11 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
   (from C2, D31)
 - File Picker matching against path components, not just the file name (from C2, D31)
 - Picker memory: last mode, last Scope, last query (from C2, D31; see repeat-last-search below)
+- Wikipedia as a real collection inside noggin — search, read, star, refresh (from C4a;
+  strictly gated on C4a's go/no-go, and shaped by C6)
+- A dictionary / thesaurus collection (from C4a)
+- Reading saved LLM-chat transcripts as an ordinary collection, plus a handoff key to a chat
+  TUI (from C4a; chat itself is deliberately *not* noggin's job)
 - Select mode + copy in the Document Viewer (from C1); **wiki-link and URL following** (from
   C4) — carved out of C4 because both need a notion of "which link is current", i.e. the
   document cursor C1/D4 refused. Revisit as one piece: whatever earns the cursor should pay for

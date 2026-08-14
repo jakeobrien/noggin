@@ -16,6 +16,10 @@
 - **Browse Scope** — what a Browse Mode is drawn from. `Tree` has none; `Recent` is Active Root
   or All Roots; `Starred` is Active Root, All Starred or Orphans. Remembered per (Root, Mode)
   for the session (C4). Distinct from a Picker's Scope.
+- **Collection** — a bounded source of documents noggin can browse and read. Today every
+  Collection is a Root (a folder on disk); the north star admits non-folder ones (Wikipedia,
+  a dictionary, saved chat transcripts). **Provisional**: what all Collections share and
+  where they diverge is deliberately undecided until C6 (C4a).
 - **Committed Find** — a Find query locked in with Activate, as distinct from one still being
   edited. Its match and indication persist until dismissed or the viewport is forced to
   re-render (e.g. a terminal resize or a Navigator toggle).

@@ -1061,3 +1061,117 @@
   today, matches the same "remembered per document" spirit the acceptance wording asks for,
   and is strictly a smaller surprise than the alternative (Activate keeps a reset-to-top
   special case that Back/Forward on the very same document does not).
+
+## D92: The north star dilates — noggin is a browser of document collections
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: C4a was pitched as a Wikipedia reader, which the existing north star ("several
+  sources of *notes and docs*") did not admit: Wikipedia is remote, read-only, unbounded and
+  pathless. The original framing was a deliberately narrow hedge against the value not
+  materialising; four delivered cycles have since made the value credible.
+- Decision: widen the north star to **a browser of document collections** — a thoughtspace
+  for navigating, synthesizing and remembering knowledge from several collections at once.
+  Collections are admitted for a specific value they carry (Notes = synthesis target and
+  personal information; Wikipedia = authoritative reference; Dictionary = the medium
+  everything else is written in), never as a clearinghouse. Starring and link-following are
+  the cross-collection features where value compounds.
+- Why: "everything I use to think" is messy and scales irregularly; "a browser of document
+  collections" is tightly scopeable feature-wise yet grows naturally to man pages, cheat
+  sheets, docsets and dictionaries. Consumption and navigation stay the whole job.
+
+## D93: LLM chat is cut from the vision — creating documents is outside noggin, like editing
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: A TUI LLM chat had been floated as a peer source alongside Notes and Wikipedia.
+  Interrogating it against the dilated north star showed chat is not a collection: it
+  *creates* documents rather than serving them, and needs create-new, model selection,
+  live-mutating content and an input field that owns the keyboard.
+- Decision: cut chat as a noggin feature. The same editor boundary applies — hand off to a
+  dedicated chat TUI, and read its saved transcripts back as an ordinary collection. A
+  handoff key plus transcript-reading sits on ROADMAP Unscheduled.
+- Why: chat is a solved problem with good existing TUIs; absorbing it would import an
+  authoring interaction model into a consumption-only product and break the Root abstraction.
+
+## D94: Wikipedia is modelled as a kind of Root, not as a new tab/channel layer — but the model itself is deferred
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: The pitch was a top-row tab bar selected by number keys (`1` Notes, `2` Wikipedia).
+  Against it: C1–C4 already provide almost the entire Wikipedia UI — Browse Modes Recent /
+  Starred for a non-tree source (C4), the Picker's debounced async search (C2), the Document
+  Viewer, DV2 side-by-side (C3), Document History (C4), Find, and a path-keyed Document Store
+  whose key could widen to a URI so starred articles join starred notes in one collection.
+  For it: a Wikipedia root looks identical to a Notes root yet diverges in ~6 places (no Tree,
+  no `e`, no Grep, no git markers, no staleness, `R` means refetch), i.e. a permanent
+  conditional-affordance tax that visible tabs would avoid. The dividing line was found to be
+  "does it yield documents read in the Document Viewer?" — which chat fails and every other
+  candidate source passes; with chat cut (D93), nothing left needs a channel layer.
+- Decision: no tab/channel navigation paradigm. Wikipedia is a Root-like collection. The
+  deeper question — whether a typed Root is just a different content source with conditional
+  UX, or needs a more distinct layer with a defined shared/divergent boundary — is
+  **deliberately left open** and scheduled as `C6 collections`.
+- Why: the paradigm was speculative chrome for a two-item list, and building it would have
+  answered the collections-model question in code before the question was ripe. The `tab` /
+  `channel` terminology is dropped with it (`tab` is also already bound in the Files Nav and
+  Picker, and C3 removed tab-cycling).
+
+## D95: C4a is a suffixed interstitial key; C5 organize is not renumbered
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: This cycle was inserted ahead of the already-slotted `C5 organize`. Renumbering was
+  briefly agreed in conversation, then withdrawn: C5 is already referenced by intent in
+  `DECISIONS.md` ("Tags are C5", twice), `knowledge/frontmatter-rendering.md` and two archived
+  cycle docs — and D42 already settled this exact situation for C2a.
+- Decision: allocate **C4a** and insert its row ahead of C5 in the ledger; C5 and C6 are
+  untouched, with `C6 collections` newly allocated.
+- Why: consistency with D42 and the never-renumber rule. Same accepted cost as D42: `C4a`
+  reads as a follow-on to `recall`, which it is not.
+
+## D96: C4a ships no feature — it is a spike whose deliverable is a verdict
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: Four strategies were weighed for de-risking Wikipedia: a standalone TUI prototype,
+  a temporary noggin "mode", roughing it in as a real Root while accepting destabilisation,
+  or something thinner. The only genuinely uncertain thing is **conversion fidelity** — does a
+  Wikipedia article survive REST HTML → cleanup → markdown and read like a document rather
+  than soup. That risk has zero dependency on noggin's model, panes, picker or root typing.
+- Decision: a throwaway command-line spike that writes `.md` files, judged by reading them in
+  noggin itself via a scratch root. No integration, no search (exact title only), nothing
+  reachable from the TUI. The cycle's deliverable is a go / no-go / retune-exhausted verdict
+  plus findings; a **no-go is a successful outcome**.
+- Why: writing files gets the real Glamour pipeline at real pane widths for free — a better
+  fidelity test than a hand-written viewer, with none of the code. Search is known-solvable
+  and proves nothing. In-place integration would have risked a half-integrated Wikipedia root
+  trusted by nobody and deleted by no one, in a codebase four clean cycles and a pty harness
+  deep. The conversion logic is model-agnostic and survives into whatever C6 decides.
+
+## D97: Does the C4a spike code survive the cycle?
+
+- Status: open
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: SPEC OQ1. If the verdict is *go*, the HTML→markdown conversion and its cleanup
+  selector list are the model-agnostic keeper; the command-line wrapper is not.
+- Open question: keep the conversion and drop the wrapper, or delete both and rebuild from
+  the findings record? Decide at `/charm-close`, with the verdict in hand.
+
+## D98: CC BY-SA attribution for rendered Wikipedia articles
+
+- Status: open
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: SPEC OQ2. Attribution obligations appear to attach to redistribution rather than
+  purely local personal use, so a spike writing files to the user's own disk is very likely
+  clear — but this was not confirmed against a citable source during brainstorm. Wikimedia's
+  descriptive User-Agent requirement is separate, accepted, and in scope as S8.
+- Open question: what attribution (source URL + licence line on each rendered article?) is
+  required before noggin is ever *distributed* with a Wikipedia feature. Not blocking C4a.
