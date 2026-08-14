@@ -1175,3 +1175,32 @@
   descriptive User-Agent requirement is separate, accepted, and in scope as S8.
 - Open question: what attribution (source URL + licence line on each rendered article?) is
   required before noggin is ever *distributed* with a Wikipedia feature. Not blocking C4a.
+
+## D99: Wikimedia domains needed allow-listing in the sandbox
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: Found while planning. `https://en.wikipedia.org/api/rest_v1/...` and
+  `https://api.wikimedia.org/...` both return `Blocked by network policy: no matching allow
+  rule`. The Go module proxy is reachable, so dependencies are not affected. Every task from
+  M1.2 onward needs a live article; nothing after M1.1 can be verified without it.
+- Decision: user allow-listed `en.wikipedia.org` on 2026-08-14. Verified: REST HTML returns
+  200 for all four S5 sample titles (including the `?` and parenthesised ones), and Go's
+  `net/http` reaches it through the sandbox proxy with no TLS workaround. M1.2 unblocked.
+- Why not routed around while blocked: hand-saved HTML fixtures would have made M1.2's
+  acceptance criterion a lie and would not have exercised the real API's output; per the
+  sandbox policy, ask rather than work around.
+
+## D100: The spike is a separate `main`, not a mode or flag of the noggin binary
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: S1 requires the spike be unreachable from the TUI and to not change noggin's
+  behaviour in any way. A hidden flag on `cmd/noggin` would put experimental code on the
+  shipped binary's path and make "does not change behaviour" an argument rather than a grep.
+- Decision: its own `main` package alongside `cmd/noggin`, with M1.1's acceptance criterion
+  being a mechanical no-reference check from `cmd/noggin/` and `internal/`.
+- Why: makes S1's isolation requirement machine-checkable, and makes OQ1's "drop the wrapper,
+  keep the conversion" a directory deletion rather than a disentangling job.

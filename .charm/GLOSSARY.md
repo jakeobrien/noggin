@@ -20,6 +20,9 @@
   Collection is a Root (a folder on disk); the north star admits non-folder ones (Wikipedia,
   a dictionary, saved chat transcripts). **Provisional**: what all Collections share and
   where they diverge is deliberately undecided until C6 (C4a).
+- **Chrome** — everything a fetched Wikipedia page carries that is not the article itself:
+  navboxes, infoboxes, edit-section links, citation superscripts, reference lists, metadata
+  tables, images. Stripped before conversion; content tables are not chrome (C4a).
 - **Committed Find** — a Find query locked in with Activate, as distinct from one still being
   edited. Its match and indication persist until dismissed or the viewport is forced to
   re-render (e.g. a terminal resize or a Navigator toggle).
@@ -75,17 +78,24 @@
   Document Viewer's Active Document from disk in one action, preserving tree expansion,
   selection and each viewer's scroll position. Manual only; noggin never watches the
   filesystem (C2a).
+- **Retune** — adjust what the conversion spike strips and re-judge the sample. Repeatable
+  within the cycle, but may never add new capability to buy quality (C4a).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
 - **Root** — a folder that bounds file visibility. Several exist per session; identified by
   exact path; may not nest inside another Root.
 - **Roots Nav** — the upper Navigator pane; the list of the session's Roots.
+- **Scratch root** — a throwaway Root, outside the repo, holding converted articles purely so
+  they can be read in noggin's own Document Viewer at real pane widths. A judging proxy, not
+  a feature (C4a).
 - **Scope** — what a Picker searches: the Active Root, or All Roots (C2).
 - **Staleness indicator** — a passive UI signal that an open Document Viewer's Active Document
   or the Active Root's tree changed on disk. Reports only that *something* changed across
   those sources, and never refreshes on its own (C2a). Its own dedicated, highlighted row
   above the Footer, shown only while stale (C3) — not a Footer suffix.
+- **Spike** — a throwaway experiment whose deliverable is an answer, not a feature. C4a is
+  one: its output is a go / no-go / retune-exhausted verdict plus findings.
 - **Starred** — bookmarked and persisted across sessions. Applies to Roots (C1) and to
   documents (C4). Document stars are a single global collection of paths, independent of the
   Root lifecycle: un-starring a Root never touches them.

@@ -17,19 +17,41 @@
 
 ## Cursor
 
-Current task: <key>
+Current task: M1.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-<current-state snapshot>
+Cycle just planned; no code written yet. Start at M1.1 (scaffold the spike `main`).
+
+Network is fine: `en.wikipedia.org` was allow-listed and verified end-to-end (D99) — REST
+HTML 200 for all four S5 titles, and Go's `net/http` reaches it through the sandbox proxy
+with no TLS special-casing. The Go module proxy is reachable too, so pulling `goquery` /
+`html-to-markdown` will work.
+
+Gotcha for M2.2: `wikipedia-to-markdown.md` at the repo root is a sketch, not a spec, and
+its selector list is written for *rendered* article HTML. The REST v1 endpoint serves
+**Parsoid** HTML, which differs — a Major Arcana probe found zero `.mw-editsection` and
+zero `.infobox`, refs as `sup.mw-ref[typeof^="mw:Extension/ref"]`, the reference list as
+`typeof="mw:Extension/references"`, images as `typeof^="mw:File"`, and navboxes as
+`div.navbox` wrapping `table.navbox-inner`. Content tables are `table.wikitable`. Prefer
+Parsoid's `typeof`/`rel` attributes over the sketch's class list.
 
 ## Status
 
-| Key  | Status      | Reviewed | Validated | Note                              |
-|------|-------------|----------|-----------|------------------------------------|
-| M1.1 | done        | -        | -         |                                    |
-| M1.2 | in-progress | -        | -         |                                    |
-| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |
+| Key  | Status  | Reviewed | Validated | Note                                        |
+|------|---------|----------|-----------|---------------------------------------------|
+| M1.1 | todo    | -        | -         |                                             |
+| M1.2 | todo    | -        | -         |                                             |
+| M2.1 | todo    | -        | -         |                                             |
+| M2.2 | todo    | -        | -         |                                             |
+| M2.3 | todo    | -        | -         |                                             |
+| M2.4 | todo    | -        | -         |                                             |
+| M3.1 | todo    | -        | -         |                                             |
+| M3.2 | todo    | -        | -         | user-judged                                 |
+| M3.3 | todo    | -        | -         | repeatable                                  |
+| M3.4 | todo    | -        | -         | optional (S6 exception)                     |
+| M4.1 | todo    | -        | -         |                                             |
+| M4.2 | todo    | -        | -         |                                             |
