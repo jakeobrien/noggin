@@ -17,27 +17,28 @@
 
 ## Cursor
 
-Current task: M1.2
+Current task: M2.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1 done: `cmd/wikispike/` is the spike's own `main` (`wikispike <title> <output path>`),
-header-commented as experimental/throwaway, with `main_test.go` covering the write and the
-argument guards. `make check` passes; `grep -rn wikispike cmd/noggin internal` is clean.
-`articleMarkdown()` in `main.go` is the seam M1.2 fills — it currently returns a placeholder
-document so the plumbing is provably end to end. `run()` mkdir -p's the output directory, for
-M3.1's scratch root.
+M1.1 and M1.2 done. `cmd/wikispike/` is the spike's own `main`
+(`wikispike <title> <output path>`), header-commented experimental; grep from `cmd/noggin/`
+and `internal/` is clean. `fetch.go` fetches Parsoid HTML from
+`https://en.wikipedia.org/api/rest_v1/page/html/<escaped title>` with a descriptive
+User-Agent (S8). All four S5 titles fetch live (158–570 KB each).
 
-Next: M1.2 — fetch real HTML from the Wikimedia REST API with a descriptive User-Agent (S8),
-asserted by a test.
+Seams for M2: `articleMarkdown(title)` in `main.go` currently returns the fetched HTML
+unconverted — strip + convert go there. `pipeline` is a package var so `run()`'s tests stay
+off the network. Live API test is opt-in (D101):
+`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`; keep `make check` hermetic.
+User-Agent contact is env-driven (D102, `WIKISPIKE_CONTACT`).
 
-Network is fine: `en.wikipedia.org` was allow-listed and verified end-to-end (D99) — REST
-HTML 200 for all four S5 titles, and Go's `net/http` reaches it through the sandbox proxy
-with no TLS special-casing. The Go module proxy is reachable too, so pulling `goquery` /
-`html-to-markdown` will work.
+Next: M2.1 — convert HTML to markdown incl. tables. Needs `goquery` +
+`JohannesKaufmann/html-to-markdown` v2 (module proxy is reachable). Fetched samples for
+offline iteration are in `/tmp/wikispike-m12/*.html` (regenerable, not committed).
 
 Gotcha for M2.2: `wikipedia-to-markdown.md` at the repo root is a sketch, not a spec, and
 its selector list is written for *rendered* article HTML. The REST v1 endpoint serves
@@ -52,7 +53,7 @@ Parsoid's `typeof`/`rel` attributes over the sketch's class list.
 | Key  | Status  | Reviewed | Validated | Note                                        |
 |------|---------|----------|-----------|---------------------------------------------|
 | M1.1 | done    | -        | -         | `cmd/wikispike/`                            |
-| M1.2 | todo    | -        | -         |                                             |
+| M1.2 | done    | -        | -         | live fetch verified, all four S5 titles     |
 | M2.1 | todo    | -        | -         |                                             |
 | M2.2 | todo    | -        | -         |                                             |
 | M2.3 | todo    | -        | -         |                                             |

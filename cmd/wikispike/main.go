@@ -51,7 +51,7 @@ func run(args []string, out io.Writer) error {
 		return errors.New("output path is empty")
 	}
 
-	markdown, err := articleMarkdown(title)
+	markdown, err := pipeline(title)
 	if err != nil {
 		return err
 	}
@@ -71,9 +71,17 @@ func run(args []string, out io.Writer) error {
 	return nil
 }
 
-// articleMarkdown is the spike's pipeline: fetch, strip, convert. M1.1 only
-// scaffolds it — fetching lands in M1.2 and conversion in M2 — so for now it
-// returns a placeholder document that proves the plumbing end to end.
+// pipeline is the conversion step run() invokes, indirected through a variable
+// so run()'s own test does not need the network.
+var pipeline = articleMarkdown
+
+// articleMarkdown is the spike's pipeline: fetch, strip, convert. M1.2 has the
+// fetch; stripping and conversion land in M2, so for now the fetched HTML is
+// passed through unconverted.
 func articleMarkdown(title string) (string, error) {
-	return fmt.Sprintf("# %s\n\n_wikispike scaffold: fetching not implemented yet (M1.2)._\n", title), nil
+	html, err := fetchArticleHTML(restBase, title)
+	if err != nil {
+		return "", err
+	}
+	return html, nil
 }

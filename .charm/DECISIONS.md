@@ -1204,3 +1204,30 @@
   being a mechanical no-reference check from `cmd/noggin/` and `internal/`.
 - Why: makes S1's isolation requirement machine-checkable, and makes OQ1's "drop the wrapper,
   keep the conversion" a directory deletion rather than a disentangling job.
+
+## D101: The live-API test is opt-in; `make check` stays hermetic
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: M1.2's acceptance criterion is a real fetch of all four S5 titles, but `make check`
+  is the per-change loop and must not depend on the network (or on D99's allow-list surviving).
+- Decision: `TestFetchLiveSampleTitles` skips unless `WIKISPIKE_LIVE=1`; the hermetic tests
+  cover the User-Agent (S8) and title escaping (S2) against an `httptest` server. Acceptance
+  is demonstrated by running the live test explicitly:
+  `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`.
+- Why: keeps the fast loop deterministic while still exercising the real API on demand; a
+  network-dependent `make check` would fail for reasons unrelated to the change under test.
+
+## D102: The spike's User-Agent contact is operator-supplied, not hard-coded
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: S8 requires a descriptive User-Agent per Wikimedia policy, which asks for a way to
+  contact whoever is running the tool. The repo carries no canonical contact or public URL,
+  and inventing one would be a false claim in a header sent to a third party.
+- Decision: `noggin-wikispike/0.1 (<contact>)`, where `<contact>` comes from
+  `WIKISPIKE_CONTACT` and defaults to "local experimental spike, not distributed".
+- Why: honest and policy-shaped either way, and it keeps the choice out of code for a tool
+  that S1 says is throwaway. Revisit if any Wikipedia capability is ever distributed (OQ2).

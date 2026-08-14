@@ -7,7 +7,17 @@ import (
 	"testing"
 )
 
+// stubPipeline keeps run()'s tests off the network; the real pipeline is
+// covered by fetch_test.go.
+func stubPipeline(t *testing.T) {
+	t.Helper()
+	prev := pipeline
+	pipeline = func(title string) (string, error) { return "# " + title + "\n", nil }
+	t.Cleanup(func() { pipeline = prev })
+}
+
 func TestRunWritesFile(t *testing.T) {
+	stubPipeline(t)
 	// A title with spaces and punctuation, and an output directory that does
 	// not exist yet — both are the normal case for this spike (S2, M3.1).
 	out := filepath.Join(t.TempDir(), "scratch", "why.md")
@@ -33,6 +43,7 @@ func TestRunWritesFile(t *testing.T) {
 }
 
 func TestRunRejectsWrongArgCount(t *testing.T) {
+	stubPipeline(t)
 	for name, args := range map[string][]string{
 		"none":     {},
 		"one":      {"Major Arcana"},
