@@ -17,45 +17,51 @@
 
 ## Cursor
 
-Current task: M2.3
+Current task: M2.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1, M1.2, M2.1 and M2.2 done. `cmd/wikispike/` is the spike's own `main`
+M1.1, M1.2, M2.1, M2.2 and M2.3 done. `cmd/wikispike/` is the spike's own `main`
 (`wikispike <title> <output path>`), header-commented experimental; grep from `cmd/noggin/`
 and `internal/` is clean. `fetch.go` fetches Parsoid HTML from
 `https://en.wikipedia.org/api/rest_v1/page/html/<escaped title>` with a descriptive
 User-Agent (S8). All four S5 titles fetch live (158–570 KB each).
 
-`convert.go`'s `htmlToMarkdown` (M2.1) wraps `JohannesKaufmann/html-to-markdown/v2` with the
-base, commonmark and table plugins (defaults, no options tuned yet). `strip.go`'s
-`stripChrome` (M2.2, goquery) runs first in `articleMarkdown` and removes: `div.navbox`,
-`table.infobox`/`.infobox`, `.mw-editsection` (defensive, never present in Parsoid),
-`sup[typeof*="mw:Extension/ref"]` (citation superscripts), the whole enclosing `<section>`
-of any `.mw-references-wrap`/`[typeof*="mw:Extension/references"]` (reference-list
-sections, so no empty "References"/"Notes" heading survives either), `table.metadata`/
+Pipeline order in `main.go`'s `articleMarkdown`: fetch → `stripChrome` (M2.2) →
+`stripLinks` (M2.3) → `htmlToMarkdown` (M2.1). `convert.go`'s `htmlToMarkdown` wraps
+`JohannesKaufmann/html-to-markdown/v2` with the base, commonmark and table plugins
+(defaults, no options tuned yet). `strip.go`'s `stripChrome` (goquery) removes:
+`div.navbox`, `table.infobox`/`.infobox`, `.mw-editsection` (defensive, never present in
+Parsoid), `sup[typeof*="mw:Extension/ref"]` (citation superscripts), the whole enclosing
+`<section>` of any `.mw-references-wrap`/`[typeof*="mw:Extension/references"]`
+(reference-list sections — the references typeof lands on the wrapping div for some
+articles and on the inner `<ol>` for others, so match the class too), `table.metadata`/
 `table.ambox`, and every image — `[typeof^="mw:File"]`, `[typeof="mw:Extension/math"]`
-(rendered formulae are also served as an `<img>`) and a final bare-`<img>` sweep. Gotcha:
-the references typeof lands on the wrapping div for some articles and on the inner `<ol>`
-for others — match on the class name too, not just the attribute. Verified live against all
-four S5 titles: no `[edit]`, no `## References`/`## Notes` heading, no `![`, no
-navbox/infobox leak, Major Arcana's wikitable content tables intact (24 `|` rows).
-`goquery` needed re-adding (`go mod tidy` had dropped it after M2.1 since it went unused).
-`pipeline` is a package var so `run()`'s tests stay off the network. Live API test is opt-in
-(D101): `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`; keep `make check` hermetic —
-`convert_test.go` and `strip_test.go` follow the same opt-in shape. Note: the live REST API
-rate-limited (429) under repeated back-to-back fetches during this session — space out live
-test runs or reuse one fetch across assertions rather than re-fetching per check. User-Agent
-contact is env-driven (D102, `WIKISPIKE_CONTACT`).
+(rendered formulae are also served as an `<img>`) and a final bare-`<img>` sweep.
+`links.go`'s `stripLinks` (goquery) unwraps every remaining `<a>` — `ReplaceWithHtml(inner)`
+replaces the anchor with its own inner HTML, keeping child markup (bold/italic) and text in
+place with no href. Verified live against all four S5 titles: no `[edit]`, no
+`## References`/`## Notes` heading, no `![`, no navbox/infobox leak, no `](` or bare
+`http(s)://`, Major Arcana's wikitable content tables intact with card names surviving as
+plain text (previously wikilinks in nearly every cell). `goquery` needed re-adding after
+M2.1 (`go mod tidy` had dropped it since it went unused then). `pipeline` is a package var
+so `run()`'s tests stay off the network. Live API test is opt-in (D101):
+`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`; keep `make check` hermetic —
+`convert_test.go`, `strip_test.go` and `links_test.go` follow the same opt-in shape.
 
-Next: M2.3 — strip link markup, keeping the link's text as ordinary prose. Current live
-output still carries full markdown link syntax throughout (e.g. Major Arcana's content table
-cells: `[The Fool](./The_Fool_%28tarot_card%29 "The Fool (tarot card)")`) — expected, M2.2
-didn't touch links. Fetched samples for offline iteration are in `/tmp/wikispike-m12/*.html`
-(regenerable, not committed).
+T1 (open, medium): the growing set of per-task live tests now trips the REST API's 429 when
+run together via `-run Live`; individual `-run <TestName>` passes. Space out live runs or
+run one test at a time until T1 is triaged — don't read this as a code regression.
+User-Agent contact is env-driven (D102, `WIKISPIKE_CONTACT`).
+
+Next: M2.4 — clean up the holes M2.2/M2.3 leave: orphaned captions, empty table
+rows/list items, dangling brackets/parens, runs of 3+ blank lines. Likely culprits already
+visible: emptied `<dd>`/`<li>` wrappers where a math-formula `<img>` was removed (M2.2), and
+any table cell that was purely a link with no other content. Fetched samples for offline
+iteration are in `/tmp/wikispike-m12/*.html` (regenerable, not committed).
 
 Gotcha carried from M2.2: `wikipedia-to-markdown.md` at the repo root is a sketch, not a
 spec, and its selector list is written for *rendered* article HTML, not Parsoid's. Prefer
@@ -69,7 +75,7 @@ Parsoid's `typeof`/`rel` attributes and stable class names over the sketch's cla
 | M1.2 | done    | -        | -         | live fetch verified, all four S5 titles     |
 | M2.1 | done    | -        | -         |                                             |
 | M2.2 | done    | -        | -         |                                             |
-| M2.3 | todo    | -        | -         |                                             |
+| M2.3 | done    | -        | -         |                                             |
 | M2.4 | todo    | -        | -         |                                             |
 | M3.1 | todo    | -        | -         |                                             |
 | M3.2 | todo    | -        | -         | user-judged                                 |
