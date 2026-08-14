@@ -76,12 +76,17 @@ func run(args []string, out io.Writer) error {
 var pipeline = articleMarkdown
 
 // articleMarkdown is the spike's pipeline: fetch, strip, convert. M1.2 has the
-// fetch and M2.1 the conversion; stripping non-article chrome before
-// conversion is M2.2/M2.3.
+// fetch, M2.1 the conversion and M2.2 the chrome-stripping; stripping link
+// markup (M2.3) and cleaning up the holes chrome removal leaves (M2.4) are
+// still ahead.
 func articleMarkdown(title string) (string, error) {
 	html, err := fetchArticleHTML(restBase, title)
 	if err != nil {
 		return "", err
 	}
-	return htmlToMarkdown(html)
+	stripped, err := stripChrome(html)
+	if err != nil {
+		return "", err
+	}
+	return htmlToMarkdown(stripped)
 }
