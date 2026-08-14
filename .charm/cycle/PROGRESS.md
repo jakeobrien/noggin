@@ -17,28 +17,35 @@
 
 ## Cursor
 
-Current task: M2.1
+Current task: M2.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1 and M1.2 done. `cmd/wikispike/` is the spike's own `main`
+M1.1, M1.2 and M2.1 done. `cmd/wikispike/` is the spike's own `main`
 (`wikispike <title> <output path>`), header-commented experimental; grep from `cmd/noggin/`
 and `internal/` is clean. `fetch.go` fetches Parsoid HTML from
 `https://en.wikipedia.org/api/rest_v1/page/html/<escaped title>` with a descriptive
 User-Agent (S8). All four S5 titles fetch live (158–570 KB each).
 
-Seams for M2: `articleMarkdown(title)` in `main.go` currently returns the fetched HTML
-unconverted — strip + convert go there. `pipeline` is a package var so `run()`'s tests stay
-off the network. Live API test is opt-in (D101):
-`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`; keep `make check` hermetic.
-User-Agent contact is env-driven (D102, `WIKISPIKE_CONTACT`).
+`convert.go`'s `htmlToMarkdown` (M2.1) wraps `JohannesKaufmann/html-to-markdown/v2` with the
+base, commonmark and table plugins (defaults, no options tuned yet) — `articleMarkdown` in
+`main.go` now fetches then converts. Verified against live Major Arcana: headings,
+paragraphs and wikitable content tables all render (`## Section`, prose, `| --- |` rows).
+`goquery` was added by `go get` while scoping M2.1 but never used, so `go mod tidy` dropped
+it — M2.2 is the task that will actually need it for element removal; re-add there, not now.
+`pipeline` is a package var so `run()`'s tests stay off the network. Live API test is opt-in
+(D101): `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`; keep `make check` hermetic —
+`convert_test.go` follows the same opt-in shape for its live conversion check. User-Agent
+contact is env-driven (D102, `WIKISPIKE_CONTACT`).
 
-Next: M2.1 — convert HTML to markdown incl. tables. Needs `goquery` +
-`JohannesKaufmann/html-to-markdown` v2 (module proxy is reachable). Fetched samples for
-offline iteration are in `/tmp/wikispike-m12/*.html` (regenerable, not committed).
+Next: M2.2 — strip non-article chrome (navboxes, infoboxes, edit-section links, ref
+superscripts/lists, images) before conversion. Current live output still carries all of
+these (see Major Arcana's raw ref-link markup in the table cells) — expected, M2.1 was
+conversion-only. Fetched samples for offline iteration are in `/tmp/wikispike-m12/*.html`
+(regenerable, not committed).
 
 Gotcha for M2.2: `wikipedia-to-markdown.md` at the repo root is a sketch, not a spec, and
 its selector list is written for *rendered* article HTML. The REST v1 endpoint serves
@@ -54,7 +61,7 @@ Parsoid's `typeof`/`rel` attributes over the sketch's class list.
 |------|---------|----------|-----------|---------------------------------------------|
 | M1.1 | done    | -        | -         | `cmd/wikispike/`                            |
 | M1.2 | done    | -        | -         | live fetch verified, all four S5 titles     |
-| M2.1 | todo    | -        | -         |                                             |
+| M2.1 | done    | -        | -         |                                             |
 | M2.2 | todo    | -        | -         |                                             |
 | M2.3 | todo    | -        | -         |                                             |
 | M2.4 | todo    | -        | -         |                                             |
