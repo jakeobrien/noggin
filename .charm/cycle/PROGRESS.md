@@ -17,14 +17,22 @@
 
 ## Cursor
 
-Current task: M1.1
+Current task: M1.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Cycle just planned; no code written yet. Start at M1.1 (scaffold the spike `main`).
+M1.1 done: `cmd/wikispike/` is the spike's own `main` (`wikispike <title> <output path>`),
+header-commented as experimental/throwaway, with `main_test.go` covering the write and the
+argument guards. `make check` passes; `grep -rn wikispike cmd/noggin internal` is clean.
+`articleMarkdown()` in `main.go` is the seam M1.2 fills — it currently returns a placeholder
+document so the plumbing is provably end to end. `run()` mkdir -p's the output directory, for
+M3.1's scratch root.
+
+Next: M1.2 — fetch real HTML from the Wikimedia REST API with a descriptive User-Agent (S8),
+asserted by a test.
 
 Network is fine: `en.wikipedia.org` was allow-listed and verified end-to-end (D99) — REST
 HTML 200 for all four S5 titles, and Go's `net/http` reaches it through the sandbox proxy
@@ -43,7 +51,7 @@ Parsoid's `typeof`/`rel` attributes over the sketch's class list.
 
 | Key  | Status  | Reviewed | Validated | Note                                        |
 |------|---------|----------|-----------|---------------------------------------------|
-| M1.1 | todo    | -        | -         |                                             |
+| M1.1 | done    | -        | -         | `cmd/wikispike/`                            |
 | M1.2 | todo    | -        | -         |                                             |
 | M2.1 | todo    | -        | -         |                                             |
 | M2.2 | todo    | -        | -         |                                             |
