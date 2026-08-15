@@ -1231,3 +1231,24 @@
   `WIKISPIKE_CONTACT` and defaults to "local experimental spike, not distributed".
 - Why: honest and policy-shaped either way, and it keeps the choice out of code for a tool
   that S1 says is throwaway. Revisit if any Wikipedia capability is ever distributed (OQ2).
+
+## D103: TRIAGE T1 (live-test 429s) promoted to a plan task rather than left ad hoc
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-08-14
+- Context: charm-replan triage of TRIAGE T1 — each of M1.2/M2.2/M2.3/M2.4 added its own
+  opt-in live test that independently re-fetches all four S5 titles; running the whole
+  `-run Live` suite together trips the REST API's 429 (individual `-run <TestName>` runs
+  pass, confirmed again during this cycle's M1/M2 validation pass). `make check` is
+  unaffected (D101 — live tests are opt-in and hermetic-excluded).
+- Decision: accepted as PLAN.md task M2.5 (consolidate to one shared per-title live
+  fixture), rather than left as an ad hoc fix-when-convenient or deferred to ROADMAP. Not
+  wontfix: M3.3 is explicitly a repeatable retune-and-re-judge task, and repeated live-test
+  runs during retuning are exactly what will keep re-tripping this.
+- Why: medium severity but directly reachable in the very work still ahead in this cycle
+  (M3.3's repetition), not a one-off inconvenience already behind us — worth a scoped task
+  now rather than risking it recur silently through every retune round. Not deferred beyond
+  the cycle: the fix is cheap (effort 2) and the underlying test code may not survive past
+  this cycle at all (OQ1/D97), so parking it on the roadmap for a future cycle to pick up
+  would likely never be acted on.

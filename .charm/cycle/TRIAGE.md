@@ -25,4 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T1 | build | medium | `cmd/wikispike/*_test.go` (all `TestXxxLive*` funcs) | Each M2.x task added its own opt-in live test that independently re-fetches all four S5 titles; running `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v` together now trips the REST API's 429 rate limit (seen during M2.2 and M2.3 builds; individual `-run <TestName>` runs pass). Recommend consolidating to one shared per-title live fetch (e.g. `TestMain`-cached or a single table-driven live test covering fetch+strip+links+convert per title) before M3 adds more. | open |
+
+<!-- T1 triaged 2026-08-14 (charm-replan): promoted to PLAN.md task M2.5 (needs M2.2-M2.4,
+     effort 2), ahead of M3.3's retune iterations which would otherwise keep re-tripping the
+     429. See DECISIONS.md D103. -->

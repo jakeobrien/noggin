@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.1
+Current task: M2.5
 
 ## Handoff
 
@@ -58,16 +58,22 @@ enclosing reference-list `<section>`, metadata tables, and every image (includin
 formulae, served as `<img>`/`typeof="mw:Extension/math"`). `links.go`'s `stripLinks`
 unwraps every remaining `<a>`, keeping its inner content in place with no href.
 
-T1 (open, medium, unchanged): the growing set of per-task live tests trips the REST API's
-429 when run together via `-run Live`; individual `-run <TestName>` passes — this session's
-new `TestPipelineLiveSamplesHaveNoStructuralHoles` was verified solo. Space out live runs
-until T1 is triaged. User-Agent contact is env-driven (D102, `WIKISPIKE_CONTACT`).
+M1.1, M1.2, M2.1–M2.4 independently validated this session (fresh-context `validator`
+subagent, real converted output for all four S5 titles, not test-name inference) — all
+pass; `Validated: 2026-08-14` stamped, no actionable discrepancies found.
 
-Next: M3.1 — convert the four S5 titles into a scratch root *outside* the repo (not
-`/tmp/wikispike-m12`, which is HTML fixtures, not the deliverable) for M3.2's noggin
-read-through. Gotcha carried forward: `wikipedia-to-markdown.md` at the repo root is a
-sketch for *rendered* HTML, not Parsoid's — keep preferring Parsoid's `typeof`/`rel`
-attributes and stable class names over its selector list.
+Replanned this session (charm-replan): TRIAGE T1 (per-task live tests trip the REST API's
+429 when run together via `-run Live`; individual `-run <TestName>` passes) promoted to a
+new plan task, **M2.5** — consolidate to one shared per-title live fixture — since M3.3's
+retune-and-re-judge loop will keep re-running live tests and re-tripping this otherwise.
+See DECISIONS.md D103. TRIAGE.md is now empty. User-Agent contact is env-driven (D102,
+`WIKISPIKE_CONTACT`).
+
+Next: M2.5 (consolidate live tests, effort 2), then M3.1 — convert the four S5 titles into
+a scratch root *outside* the repo (not `/tmp/wikispike-m12`, which is HTML fixtures, not the
+deliverable) for M3.2's noggin read-through. Gotcha carried forward: `wikipedia-to-markdown.md`
+at the repo root is a sketch for *rendered* HTML, not Parsoid's — keep preferring Parsoid's
+`typeof`/`rel` attributes and stable class names over its selector list.
 
 ## Status
 
@@ -79,6 +85,7 @@ attributes and stable class names over its selector list.
 | M2.2 | done    | -        | 2026-08-14 |                                             |
 | M2.3 | done    | -        | 2026-08-14 |                                             |
 | M2.4 | done    | -        | 2026-08-14 |                                             |
+| M2.5 | todo    | -        | -         | consolidate live tests (was TRIAGE T1)      |
 | M3.1 | todo    | -        | -         |                                             |
 | M3.2 | todo    | -        | -         | user-judged                                 |
 | M3.3 | todo    | -        | -         | repeatable                                  |

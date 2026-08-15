@@ -46,6 +46,13 @@ Delivers: S1 (conversion), S3, S4
   dangling brackets, or runs of blank lines — done when: no converted sample contains three
   or more consecutive blank lines, an empty list item, or an unmatched `[`/`(` left by a
   removal, checked mechanically over all four — effort: 3 (needs: M2.2, M2.3)
+- **M2.5** — Consolidate the per-task opt-in live tests (M1.2, M2.2, M2.3, M2.4 each added
+  their own, TRIAGE T1) into one shared per-title live fixture covering fetch+strip+links+
+  convert, so `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v` no longer trips the
+  REST API's 429 when run as a whole — done when: a single live test (or a shared fetch
+  cached across subtests) exercises all four S5 titles once each, the old per-task Live
+  tests are removed or reduced to assertions against its shared result, and a whole-suite
+  `-run Live` run passes without a 429 — effort: 2 (needs: M2.2, M2.3, M2.4)
 
 ## M3 — Read the sample in noggin and judge it
 
