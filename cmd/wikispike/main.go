@@ -75,10 +75,10 @@ func run(args []string, out io.Writer) error {
 // so run()'s own test does not need the network.
 var pipeline = articleMarkdown
 
-// articleMarkdown is the spike's pipeline: fetch, strip, convert. M1.2 has
-// the fetch, M2.1 the conversion, M2.2 the chrome-stripping and M2.3 the
-// link-stripping; cleaning up the holes chrome removal leaves (M2.4) is
-// still ahead.
+// articleMarkdown is the spike's pipeline: fetch, strip, convert, clean up.
+// M1.2 has the fetch, M2.1 the conversion, M2.2 the chrome-stripping, M2.3
+// the link-stripping and M2.4 the final cleanup pass that closes the holes
+// stripping leaves behind.
 func articleMarkdown(title string) (string, error) {
 	html, err := fetchArticleHTML(restBase, title)
 	if err != nil {
@@ -92,5 +92,9 @@ func articleMarkdown(title string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return htmlToMarkdown(delinked)
+	markdown, err := htmlToMarkdown(delinked)
+	if err != nil {
+		return "", err
+	}
+	return cleanupMarkdown(markdown), nil
 }

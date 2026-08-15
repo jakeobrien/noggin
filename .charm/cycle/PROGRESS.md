@@ -17,55 +17,57 @@
 
 ## Cursor
 
-Current task: M2.4
+Current task: M3.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1, M1.2, M2.1, M2.2 and M2.3 done. `cmd/wikispike/` is the spike's own `main`
-(`wikispike <title> <output path>`), header-commented experimental; grep from `cmd/noggin/`
-and `internal/` is clean. `fetch.go` fetches Parsoid HTML from
-`https://en.wikipedia.org/api/rest_v1/page/html/<escaped title>` with a descriptive
-User-Agent (S8). All four S5 titles fetch live (158–570 KB each).
+M1.1, M1.2, M2.1–M2.4 done — M2 (fetch-worthy markdown) is complete. `cmd/wikispike/` is
+the spike's own `main` (`wikispike <title> <output path>`), header-commented experimental;
+grep from `cmd/noggin/` and `internal/` is clean.
 
 Pipeline order in `main.go`'s `articleMarkdown`: fetch → `stripChrome` (M2.2) →
-`stripLinks` (M2.3) → `htmlToMarkdown` (M2.1). `convert.go`'s `htmlToMarkdown` wraps
-`JohannesKaufmann/html-to-markdown/v2` with the base, commonmark and table plugins
-(defaults, no options tuned yet). `strip.go`'s `stripChrome` (goquery) removes:
-`div.navbox`, `table.infobox`/`.infobox`, `.mw-editsection` (defensive, never present in
-Parsoid), `sup[typeof*="mw:Extension/ref"]` (citation superscripts), the whole enclosing
-`<section>` of any `.mw-references-wrap`/`[typeof*="mw:Extension/references"]`
-(reference-list sections — the references typeof lands on the wrapping div for some
-articles and on the inner `<ol>` for others, so match the class too), `table.metadata`/
-`table.ambox`, and every image — `[typeof^="mw:File"]`, `[typeof="mw:Extension/math"]`
-(rendered formulae are also served as an `<img>`) and a final bare-`<img>` sweep.
-`links.go`'s `stripLinks` (goquery) unwraps every remaining `<a>` — `ReplaceWithHtml(inner)`
-replaces the anchor with its own inner HTML, keeping child markup (bold/italic) and text in
-place with no href. Verified live against all four S5 titles: no `[edit]`, no
-`## References`/`## Notes` heading, no `![`, no navbox/infobox leak, no `](` or bare
-`http(s)://`, Major Arcana's wikitable content tables intact with card names surviving as
-plain text (previously wikilinks in nearly every cell). `goquery` needed re-adding after
-M2.1 (`go mod tidy` had dropped it since it went unused then). `pipeline` is a package var
-so `run()`'s tests stay off the network. Live API test is opt-in (D101):
-`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`; keep `make check` hermetic —
-`convert_test.go`, `strip_test.go` and `links_test.go` follow the same opt-in shape.
+`stripLinks` (M2.3) → `htmlToMarkdown` (M2.1) → `cleanupMarkdown` (M2.4, new this session).
+`cleanup.go`'s `cleanupMarkdown` runs last because the holes it closes are markdown-shaped,
+not DOM-shaped: by the time an element is gone, what's left is plain text on either side
+with no marker of what used to sit between them. It closes three things, confirmed against
+adversarial fixtures (a formula and a lone citation each alone inside parens; a vanished
+block leaving 3+ blank lines; an empty list-item marker) and re-verified live against all
+four S5 titles (`cleanup_test.go`'s `TestPipelineLiveSamplesHaveNoStructuralHoles`, opt-in):
+empty/whitespace-only parens and brackets (`()`/`[]`, e.g. "denoted () after" when the whole
+parenthetical was a removed formula or lone citation) with the resulting double-space/
+space-before-punctuation also collapsed, 3+ consecutive blank lines collapsed to one, and
+empty list-item lines dropped. It deliberately does *not* try to repair prose that merely
+reads awkwardly because a formula was dropped mid-sentence (e.g. "One has where is the...")
+— that's S6's problem, scoped to the optional M3.4, not this task.
 
-T1 (open, medium): the growing set of per-task live tests now trips the REST API's 429 when
-run together via `-run Live`; individual `-run <TestName>` passes. Space out live runs or
-run one test at a time until T1 is triaged — don't read this as a code regression.
-User-Agent contact is env-driven (D102, `WIKISPIKE_CONTACT`).
+Investigated first with an ad hoc debug harness against the M1.2-era cached samples in
+`/tmp/wikispike-m12/*.html` (regenerable, not committed): the *live* samples as fetched
+already passed all three mechanical checks with no cleanup code at all — the real holes
+only showed up once I hand-built adversarial fixtures (formula/citation alone in parens).
+Table cells that are empty after their sole citation was stripped (e.g. a wikitable "Note"
+column) are left as-is — a legitimately blank cell, not a hole; M2.4's acceptance criterion
+doesn't cover it and forcing every cell non-empty isn't the same problem.
 
-Next: M2.4 — clean up the holes M2.2/M2.3 leave: orphaned captions, empty table
-rows/list items, dangling brackets/parens, runs of 3+ blank lines. Likely culprits already
-visible: emptied `<dd>`/`<li>` wrappers where a math-formula `<img>` was removed (M2.2), and
-any table cell that was purely a link with no other content. Fetched samples for offline
-iteration are in `/tmp/wikispike-m12/*.html` (regenerable, not committed).
+`convert.go`'s `htmlToMarkdown` wraps `JohannesKaufmann/html-to-markdown/v2` with base,
+commonmark and table plugins (defaults). `strip.go`'s `stripChrome` (goquery) removes
+navboxes, infoboxes, edit-section links (defensive), citation superscripts, the whole
+enclosing reference-list `<section>`, metadata tables, and every image (including math
+formulae, served as `<img>`/`typeof="mw:Extension/math"`). `links.go`'s `stripLinks`
+unwraps every remaining `<a>`, keeping its inner content in place with no href.
 
-Gotcha carried from M2.2: `wikipedia-to-markdown.md` at the repo root is a sketch, not a
-spec, and its selector list is written for *rendered* article HTML, not Parsoid's. Prefer
-Parsoid's `typeof`/`rel` attributes and stable class names over the sketch's class list.
+T1 (open, medium, unchanged): the growing set of per-task live tests trips the REST API's
+429 when run together via `-run Live`; individual `-run <TestName>` passes — this session's
+new `TestPipelineLiveSamplesHaveNoStructuralHoles` was verified solo. Space out live runs
+until T1 is triaged. User-Agent contact is env-driven (D102, `WIKISPIKE_CONTACT`).
+
+Next: M3.1 — convert the four S5 titles into a scratch root *outside* the repo (not
+`/tmp/wikispike-m12`, which is HTML fixtures, not the deliverable) for M3.2's noggin
+read-through. Gotcha carried forward: `wikipedia-to-markdown.md` at the repo root is a
+sketch for *rendered* HTML, not Parsoid's — keep preferring Parsoid's `typeof`/`rel`
+attributes and stable class names over its selector list.
 
 ## Status
 
@@ -76,7 +78,7 @@ Parsoid's `typeof`/`rel` attributes and stable class names over the sketch's cla
 | M2.1 | done    | -        | -         |                                             |
 | M2.2 | done    | -        | -         |                                             |
 | M2.3 | done    | -        | -         |                                             |
-| M2.4 | todo    | -        | -         |                                             |
+| M2.4 | done    | -        | -         |                                             |
 | M3.1 | todo    | -        | -         |                                             |
 | M3.2 | todo    | -        | -         | user-judged                                 |
 | M3.3 | todo    | -        | -         | repeatable                                  |
