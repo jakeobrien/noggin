@@ -73,12 +73,12 @@ attributes and stable class names over its selector list.
 
 | Key  | Status  | Reviewed | Validated | Note                                        |
 |------|---------|----------|-----------|---------------------------------------------|
-| M1.1 | done    | -        | -         | `cmd/wikispike/`                            |
-| M1.2 | done    | -        | -         | live fetch verified, all four S5 titles     |
-| M2.1 | done    | -        | -         |                                             |
-| M2.2 | done    | -        | -         |                                             |
-| M2.3 | done    | -        | -         |                                             |
-| M2.4 | done    | -        | -         |                                             |
+| M1.1 | done    | -        | 2026-08-14 | `cmd/wikispike/`                            |
+| M1.2 | done    | -        | 2026-08-14 | live fetch verified, all four S5 titles     |
+| M2.1 | done    | -        | 2026-08-14 |                                             |
+| M2.2 | done    | -        | 2026-08-14 |                                             |
+| M2.3 | done    | -        | 2026-08-14 |                                             |
+| M2.4 | done    | -        | 2026-08-14 |                                             |
 | M3.1 | todo    | -        | -         |                                             |
 | M3.2 | todo    | -        | -         | user-judged                                 |
 | M3.3 | todo    | -        | -         | repeatable                                  |
