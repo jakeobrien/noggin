@@ -84,6 +84,16 @@ func articleMarkdown(title string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return articleMarkdownFromHTML(html)
+}
+
+// articleMarkdownFromHTML runs the pipeline's post-fetch stages (strip,
+// delink, convert, clean up) on already-fetched article HTML. Split out from
+// articleMarkdown so live tests can share one cached fetch across every
+// stage-specific check instead of each re-fetching the same four titles
+// (TRIAGE T1, PLAN M2.5) — the network call is the only part worth caching;
+// these stages are local and cheap to rerun.
+func articleMarkdownFromHTML(html string) (string, error) {
 	stripped, err := stripChrome(html)
 	if err != nil {
 		return "", err

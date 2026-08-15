@@ -17,63 +17,38 @@
 
 ## Cursor
 
-Current task: M2.5
+Current task: M3.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1, M1.2, M2.1–M2.4 done — M2 (fetch-worthy markdown) is complete. `cmd/wikispike/` is
-the spike's own `main` (`wikispike <title> <output path>`), header-commented experimental;
-grep from `cmd/noggin/` and `internal/` is clean.
+M1.1–M2.5 done. M2 (fetch-worthy markdown) is complete; M2.5 (this session) consolidated
+the five per-task opt-in live tests (TRIAGE T1) onto one shared fetch cache: new
+`live_test.go`'s `fetchLiveSample(t, title)` fetches each S5 title's HTML once (`sync.Once`
++ map) regardless of how many live tests need it; `liveMarkdown(t, title)` runs the full
+pipeline on top via a new `articleMarkdownFromHTML(html)`, extracted from `main.go`'s
+`articleMarkdown` (pure split, no logic change). All 5 live tests
+(`fetch/strip/convert/links/cleanup_test.go`) now use these plus a shared `skipUnlessLive`
+guard. Verified: `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v` — 20/20 subtests
+pass, 0.77s, no 429. `make check` clean.
 
-Pipeline order in `main.go`'s `articleMarkdown`: fetch → `stripChrome` (M2.2) →
-`stripLinks` (M2.3) → `htmlToMarkdown` (M2.1) → `cleanupMarkdown` (M2.4, new this session).
-`cleanup.go`'s `cleanupMarkdown` runs last because the holes it closes are markdown-shaped,
-not DOM-shaped: by the time an element is gone, what's left is plain text on either side
-with no marker of what used to sit between them. It closes three things, confirmed against
-adversarial fixtures (a formula and a lone citation each alone inside parens; a vanished
-block leaving 3+ blank lines; an empty list-item marker) and re-verified live against all
-four S5 titles (`cleanup_test.go`'s `TestPipelineLiveSamplesHaveNoStructuralHoles`, opt-in):
-empty/whitespace-only parens and brackets (`()`/`[]`, e.g. "denoted () after" when the whole
-parenthetical was a removed formula or lone citation) with the resulting double-space/
-space-before-punctuation also collapsed, 3+ consecutive blank lines collapsed to one, and
-empty list-item lines dropped. It deliberately does *not* try to repair prose that merely
-reads awkwardly because a formula was dropped mid-sentence (e.g. "One has where is the...")
-— that's S6's problem, scoped to the optional M3.4, not this task.
+Validated/Reviewed: M1.1/M1.2 stand at 2026-08-14 (fetch.go/isolation untouched this
+session). M2.1–M2.4's Validated cleared to `-` per the doc-map rule — their acceptance
+runs through the pipeline function this session's extraction touched (behavior unchanged,
+confirmed by the live run above, but a fresh-context validate, not the builder's own tests,
+is what the process counts). M2.5 itself has never been reviewed/validated. TRIAGE.md is
+empty.
 
-Investigated first with an ad hoc debug harness against the M1.2-era cached samples in
-`/tmp/wikispike-m12/*.html` (regenerable, not committed): the *live* samples as fetched
-already passed all three mechanical checks with no cleanup code at all — the real holes
-only showed up once I hand-built adversarial fixtures (formula/citation alone in parens).
-Table cells that are empty after their sole citation was stripped (e.g. a wikitable "Note"
-column) are left as-is — a legitimately blank cell, not a hole; M2.4's acceptance criterion
-doesn't cover it and forcing every cell non-empty isn't the same problem.
+Pipeline (`main.go`): fetch → `articleMarkdownFromHTML` = `stripChrome` (M2.2) →
+`stripLinks` (M2.3) → `htmlToMarkdown` (M2.1) → `cleanupMarkdown` (M2.4).
 
-`convert.go`'s `htmlToMarkdown` wraps `JohannesKaufmann/html-to-markdown/v2` with base,
-commonmark and table plugins (defaults). `strip.go`'s `stripChrome` (goquery) removes
-navboxes, infoboxes, edit-section links (defensive), citation superscripts, the whole
-enclosing reference-list `<section>`, metadata tables, and every image (including math
-formulae, served as `<img>`/`typeof="mw:Extension/math"`). `links.go`'s `stripLinks`
-unwraps every remaining `<a>`, keeping its inner content in place with no href.
-
-M1.1, M1.2, M2.1–M2.4 independently validated this session (fresh-context `validator`
-subagent, real converted output for all four S5 titles, not test-name inference) — all
-pass; `Validated: 2026-08-14` stamped, no actionable discrepancies found.
-
-Replanned this session (charm-replan): TRIAGE T1 (per-task live tests trip the REST API's
-429 when run together via `-run Live`; individual `-run <TestName>` passes) promoted to a
-new plan task, **M2.5** — consolidate to one shared per-title live fixture — since M3.3's
-retune-and-re-judge loop will keep re-running live tests and re-tripping this otherwise.
-See DECISIONS.md D103. TRIAGE.md is now empty. User-Agent contact is env-driven (D102,
-`WIKISPIKE_CONTACT`).
-
-Next: M2.5 (consolidate live tests, effort 2), then M3.1 — convert the four S5 titles into
-a scratch root *outside* the repo (not `/tmp/wikispike-m12`, which is HTML fixtures, not the
-deliverable) for M3.2's noggin read-through. Gotcha carried forward: `wikipedia-to-markdown.md`
-at the repo root is a sketch for *rendered* HTML, not Parsoid's — keep preferring Parsoid's
-`typeof`/`rel` attributes and stable class names over its selector list.
+Next: M3.1 — convert the four S5 titles into a scratch root *outside* the repo (not
+`/tmp/wikispike-m12`, which is HTML fixtures, not the deliverable) for M3.2's noggin
+read-through. Gotcha carried forward: `wikipedia-to-markdown.md` at the repo root sketches
+*rendered* HTML, not Parsoid's — keep preferring Parsoid's `typeof`/`rel` attributes and
+stable class names over its selector list.
 
 ## Status
 
@@ -81,11 +56,11 @@ at the repo root is a sketch for *rendered* HTML, not Parsoid's — keep preferr
 |------|---------|----------|-----------|---------------------------------------------|
 | M1.1 | done    | -        | 2026-08-14 | `cmd/wikispike/`                            |
 | M1.2 | done    | -        | 2026-08-14 | live fetch verified, all four S5 titles     |
-| M2.1 | done    | -        | 2026-08-14 |                                             |
-| M2.2 | done    | -        | 2026-08-14 |                                             |
-| M2.3 | done    | -        | 2026-08-14 |                                             |
-| M2.4 | done    | -        | 2026-08-14 |                                             |
-| M2.5 | todo    | -        | -         | consolidate live tests (was TRIAGE T1)      |
+| M2.1 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
+| M2.2 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
+| M2.3 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
+| M2.4 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
+| M2.5 | done    | -        | -         | consolidate live tests (was TRIAGE T1)      |
 | M3.1 | todo    | -        | -         |                                             |
 | M3.2 | todo    | -        | -         | user-judged                                 |
 | M3.3 | todo    | -        | -         | repeatable                                  |

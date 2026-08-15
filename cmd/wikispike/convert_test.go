@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -35,20 +34,15 @@ func TestHTMLToMarkdownRendersHeadingsParagraphsAndTables(t *testing.T) {
 }
 
 // TestHTMLToMarkdownLiveSamples runs the conversion step of the pipeline
-// against the four S5 sample titles fetched live, checking the same
-// heading/paragraph/table shape end to end. Opt-in like fetch.go's live test
-// so `make check` stays hermetic:
+// against the four S5 sample titles (shared live-fetch cache, M2.5), checking
+// the same heading/paragraph/table shape end to end. Opt-in like fetch.go's
+// live test so `make check` stays hermetic:
 // WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
 func TestHTMLToMarkdownLiveSamples(t *testing.T) {
-	if os.Getenv("WIKISPIKE_LIVE") == "" {
-		t.Skip("set WIKISPIKE_LIVE=1 to hit en.wikipedia.org")
-	}
+	skipUnlessLive(t)
 	for _, title := range sampleTitles {
 		t.Run(title, func(t *testing.T) {
-			html, err := fetchArticleHTML(restBase, title)
-			if err != nil {
-				t.Fatalf("fetchArticleHTML(%q): %v", title, err)
-			}
+			html := fetchLiveSample(t, title)
 			markdown, err := htmlToMarkdown(html)
 			if err != nil {
 				t.Fatalf("htmlToMarkdown(%q): %v", title, err)

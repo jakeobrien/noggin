@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -52,20 +51,15 @@ func TestStripLinksPreservesSurroundingProse(t *testing.T) {
 }
 
 // TestPipelineLiveSamplesHaveNoLinkSyntax is M2.3's acceptance check against
-// the four S5 sample titles fetched live: no markdown link syntax and no
-// bare URL syntax, with previously-linked phrases still present as prose.
-// Opt-in like the other live tests so `make check` stays hermetic:
-// WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// the four S5 sample titles (shared live-fetch cache, M2.5): no markdown
+// link syntax and no bare URL syntax, with previously-linked phrases still
+// present as prose. Opt-in like the other live tests so `make check` stays
+// hermetic: WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
 func TestPipelineLiveSamplesHaveNoLinkSyntax(t *testing.T) {
-	if os.Getenv("WIKISPIKE_LIVE") == "" {
-		t.Skip("set WIKISPIKE_LIVE=1 to hit en.wikipedia.org")
-	}
+	skipUnlessLive(t)
 	for _, title := range sampleTitles {
 		t.Run(title, func(t *testing.T) {
-			markdown, err := articleMarkdown(title)
-			if err != nil {
-				t.Fatalf("articleMarkdown(%q): %v", title, err)
-			}
+			markdown := liveMarkdown(t, title)
 			if strings.Contains(markdown, "](") {
 				t.Errorf("%q: markdown link syntax survived", title)
 			}
@@ -79,11 +73,9 @@ func TestPipelineLiveSamplesHaveNoLinkSyntax(t *testing.T) {
 	}
 	// Major Arcana's content table is the sharpest test: its cells are
 	// almost entirely wikilinks (card names). Confirm the card names
-	// themselves are still there as plain text once delinked.
-	markdown, err := articleMarkdown("Major Arcana")
-	if err != nil {
-		t.Fatalf("articleMarkdown(Major Arcana): %v", err)
-	}
+	// themselves are still there as plain text once delinked. Reuses the
+	// shared cache — no extra fetch beyond the loop above's.
+	markdown := liveMarkdown(t, "Major Arcana")
 	for _, name := range []string{"The Fool", "The Magician", "The High Priestess"} {
 		if !strings.Contains(markdown, name) {
 			t.Errorf("Major Arcana: delinked table lost %q", name)

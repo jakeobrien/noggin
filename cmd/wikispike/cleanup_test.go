@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -93,22 +92,18 @@ func TestCleanupMarkdownFullPipelineFixture(t *testing.T) {
 }
 
 // TestPipelineLiveSamplesHaveNoStructuralHoles is M2.4's acceptance check
-// against the four S5 sample titles fetched live: no run of 3+ consecutive
-// blank lines, no empty list item, and no empty/whitespace-only parens or
-// brackets left by a removal. Opt-in like the other live tests so `make
-// check` stays hermetic: WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// against the four S5 sample titles (shared live-fetch cache, M2.5): no run
+// of 3+ consecutive blank lines, no empty list item, and no empty/
+// whitespace-only parens or brackets left by a removal. Opt-in like the
+// other live tests so `make check` stays hermetic:
+// WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
 func TestPipelineLiveSamplesHaveNoStructuralHoles(t *testing.T) {
-	if os.Getenv("WIKISPIKE_LIVE") == "" {
-		t.Skip("set WIKISPIKE_LIVE=1 to hit en.wikipedia.org")
-	}
+	skipUnlessLive(t)
 	blankRun := regexp.MustCompile(`\n{3,}`)
 	emptyListItem := regexp.MustCompile(`(?m)^[-*+]\s*$|^\d+\.\s*$`)
 	for _, title := range sampleTitles {
 		t.Run(title, func(t *testing.T) {
-			markdown, err := articleMarkdown(title)
-			if err != nil {
-				t.Fatalf("articleMarkdown(%q): %v", title, err)
-			}
+			markdown := liveMarkdown(t, title)
 			if m := blankRun.FindString(markdown); m != "" {
 				t.Errorf("%q: a run of 3+ consecutive blank lines survived", title)
 			}

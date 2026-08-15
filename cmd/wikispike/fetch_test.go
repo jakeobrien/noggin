@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 )
@@ -79,19 +78,14 @@ func TestFetchReportsNon200(t *testing.T) {
 	}
 }
 
-// TestFetchLiveSampleTitles is M1.2's acceptance check against the real API. It
-// needs the network, so `make check` must stay hermetic: run it with
-// WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// TestFetchLiveSampleTitles is M1.2's acceptance check against the real API,
+// via the shared live-fetch cache (M2.5, live_test.go) so this contributes
+// none of its own extra requests when run alongside the other live tests.
 func TestFetchLiveSampleTitles(t *testing.T) {
-	if os.Getenv("WIKISPIKE_LIVE") == "" {
-		t.Skip("set WIKISPIKE_LIVE=1 to hit en.wikipedia.org")
-	}
+	skipUnlessLive(t)
 	for _, title := range sampleTitles {
 		t.Run(title, func(t *testing.T) {
-			html, err := fetchArticleHTML(restBase, title)
-			if err != nil {
-				t.Fatalf("fetchArticleHTML(%q): %v", title, err)
-			}
+			html := fetchLiveSample(t, title)
 			if len(html) < 1000 {
 				t.Errorf("%q: suspiciously short response (%d bytes)", title, len(html))
 			}

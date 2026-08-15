@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -50,21 +49,16 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 }
 
 // TestStripChromeLiveSamples runs the strip step against the four S5 sample
-// titles fetched live and checks M2.2's plan-stated acceptance shape: no
-// "[edit]", no reference-list section, no image markup, no infobox/navbox
-// table, while Major Arcana's content tables survive. Opt-in like the other
-// live tests so `make check` stays hermetic:
+// titles (shared live-fetch cache, M2.5) and checks M2.2's plan-stated
+// acceptance shape: no "[edit]", no reference-list section, no image markup,
+// no infobox/navbox table, while Major Arcana's content tables survive.
+// Opt-in like the other live tests so `make check` stays hermetic:
 // WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
 func TestStripChromeLiveSamples(t *testing.T) {
-	if os.Getenv("WIKISPIKE_LIVE") == "" {
-		t.Skip("set WIKISPIKE_LIVE=1 to hit en.wikipedia.org")
-	}
+	skipUnlessLive(t)
 	for _, title := range sampleTitles {
 		t.Run(title, func(t *testing.T) {
-			html, err := fetchArticleHTML(restBase, title)
-			if err != nil {
-				t.Fatalf("fetchArticleHTML(%q): %v", title, err)
-			}
+			html := fetchLiveSample(t, title)
 			stripped, err := stripChrome(html)
 			if err != nil {
 				t.Fatalf("stripChrome(%q): %v", title, err)
