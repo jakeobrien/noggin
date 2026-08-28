@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 	"os"
 	"regexp"
@@ -78,6 +79,27 @@ var markdownStyle = sync.OnceValue(func() string {
 	return styles.LightStyle
 })
 
+// customStyleFiles embeds noggin's own Glamour stylesheets — copies of
+// Glamour's dark and light JSON styles (charm.land/glamour/v2/styles) that
+// live in the repo so they can be hand-edited without touching the
+// dependency. They are seed content, not a fork: diverge them from upstream by
+// editing the ansi.StyleConfig fields (see charm.land/glamour/v2/ansi) to taste.
+//
+// There is deliberately no notty.json: the no-TTY case (below) keeps using
+// Glamour's own NoTTYStyle so `go test`'s colourless output is untouched
+// (viewer_test.go's fixtureStructure assertions rely on that).
+//
+//go:embed styles/dark.json styles/light.json
+var customStyleFiles embed.FS
+
+// customStylePaths maps a markdownStyle() result to its embedded stylesheet.
+// Only dark and light have a custom file; notty falls through to
+// glamour.WithStandardStyle in renderMarkdown.
+var customStylePaths = map[string]string{
+	styles.DarkStyle:  "styles/dark.json",
+	styles.LightStyle: "styles/light.json",
+}
+
 // tabStop is the column interval tabs are expanded to. Four is CommonMark's
 // own figure for how far a tab advances when it determines block structure, and
 // also lipgloss v2's default Style.TabWidth, so the two agree on where a tab
@@ -127,7 +149,20 @@ func expandTabs(src []byte) []byte {
 // Frontmatter is stripped first (D5). Width is the number of cells the result
 // may occupy; a non-positive width renders unwrapped.
 func renderMarkdown(src []byte, width int) (string, error) {
-	options := []glamour.TermRendererOption{glamour.WithStandardStyle(markdownStyle())}
+	style := markdownStyle()
+	var styleOption glamour.TermRendererOption
+	if path, ok := customStylePaths[style]; ok {
+		jsonBytes, err := customStyleFiles.ReadFile(path)
+		if err != nil {
+			// Only reachable if an embed path above is a typo — the file is
+			// compiled in, not read at runtime.
+			return "", fmt.Errorf("markdown renderer: embedded style %s: %w", path, err)
+		}
+		styleOption = glamour.WithStylesFromJSONBytes(jsonBytes)
+	} else {
+		styleOption = glamour.WithStandardStyle(style)
+	}
+	options := []glamour.TermRendererOption{styleOption}
 	if width > 0 {
 		options = append(options, glamour.WithWordWrap(width))
 	}
