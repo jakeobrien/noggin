@@ -18,6 +18,11 @@ as a deliberately repeatable task, not a milestone of its own.
      S3a/S6a/S7a, widening the retune budget to two costed experiments (maths, images).
      M3.4 rewritten, M3.5 added, M4.1 widened. See DECISIONS.md D104. -->
 
+<!-- Reconciled 2026-09-02, later same day (charm-replan) draining TRIAGE T2-T7: added
+     M2.4a (T3), M3.3a (T2), M3.6 (T5/T6/T7); M4.1 widened for T4 and re-dependencied on all
+     three. See DECISIONS.md D105, D106. T4/T5/T6/T7 needed no decision entry (low severity,
+     mechanical fixes with an obvious answer). -->
+
 ## M1 — Fetch an article
 
 Delivers: S1 (entry point), S2, S8
@@ -58,6 +63,13 @@ S3a is M3.5's costed experiment, not this milestone), S4
   cached across subtests) exercises all four S5 titles once each, the old per-task Live
   tests are removed or reduced to assertions against its shared result, and a whole-suite
   `-run Live` run passes without a 429 — effort: 2 (needs: M2.2, M2.3, M2.4)
+- **M2.4a** — *Fix-up on M2.4 (TRIAGE T3, charm-replan 2026-09-02):* `cleanupProse`'s
+  bracket-balance handling only catches literal empty pairs (`reEmptyParens`), not a real
+  dangling `)`/`(` left after a removal — `tmp/wikispike-tests-1/list_languages.md` has one
+  (386 `(` vs 388 `)`). Give `cleanupProse` a real paren/bracket-depth pass, or a targeted
+  fix for the specific removal that orphans it — done when: all four current converted
+  samples have balanced `(`/`)` and `[`/`]` counts, checked mechanically, and M2.4's
+  PROGRESS.md note no longer needs qualifying against this gap — effort: 2 (needs: M2.4)
 
 ## M3 — Read the sample in noggin and judge it
 
@@ -93,6 +105,25 @@ Delivers: S5, S6a
   the image was, or the attempt is abandoned as not-low-effort and recorded — effort: 3
   (needs: M3.3)
 
+- **M3.3a** — *Fix-up on M2.2 (TRIAGE T2, charm-replan 2026-09-02):* `stripChrome` doesn't
+  match Wikipedia's portal-bar (`div.portal-bar`) or sister-project side-box
+  (`div.sistersitebox`) chrome, both navigational, not article content — discovered via
+  M3.5, previously masked because their icon images vanished without a trace, now visible as
+  leaked list items / `[Image: icon]` placeholders (`why_anything.md`'s
+  Philosophy/Physics/Astronomy/Religion/Science line; `e_math.md`/`major_arcana.md`'s
+  Wikimedia Commons/Wikiquote lines) — done when: `stripChrome` also removes both selectors
+  and none of the four current converted samples shows a leaked portal-bar or
+  sister-project line — effort: 2 (needs: M2.2, M3.5)
+- **M3.6** — *Housekeeping pass (TRIAGE T5/T6/T7, charm-replan 2026-09-02):* low-severity
+  code-review findings bundled into one pass — (T5) fix the stale doc comment on
+  `TestStripLinksPreservesSurroundingProse` (`links_test.go:33-36`, still names the old
+  identifier); (T6) factor the duplicated goquery parse/re-serialize boilerplate
+  (`strip.go`, `links.go`, `math.go`, `images.go`) into one shared helper, and give the
+  `mw:File`/`mw:Extension/math` `typeof` prefixes a shared constant instead of parallel
+  string literals; (T7) fix the "placeheld" typo in `images.go`'s error message to
+  "placeholder" — done when: all three are addressed and `make check`/`go test ./...` stay
+  clean — effort: 2 (needs: M3.4, M3.5)
+
 ## M4 — Record the verdict
 
 Delivers: S7a
@@ -101,10 +132,13 @@ Delivers: S7a
   fixed within the retune budget, and the selector/cleanup list as it ended up — plus, for
   each of S6a's two experiments (maths M3.4, images M3.5): what was tried and in what order,
   effort actually spent, any dependency added, resulting quality by eye, and a recommendation
-  on whether it is worth carrying into a future real Wikipedia feature — done when: a cited
-  findings file exists, indexed in `findings/INDEX.md`, covering all of the above, with
-  enough detail that a later cycle need not re-run the experiment — effort: 3 (needs: M3.3,
-  M3.4, M3.5)
+  on whether it is worth carrying into a future real Wikipedia feature. Also (TRIAGE T4):
+  cite/regenerate the current scratch-root samples the findings are based on and remove or
+  replace any stale root-level sample copies predating the M2.2/M3.4/M3.5 fix-ups, so a later
+  reader doesn't diff against them by accident — done when: a cited findings file exists,
+  indexed in `findings/INDEX.md`, covering all of the above, with enough detail that a later
+  cycle need not re-run the experiment, and no stale sample copy remains uncited or
+  unreplaced — effort: 3 (needs: M2.4a, M3.3, M3.3a, M3.4, M3.5, M3.6)
 - **M4.2** — Log the explicit go / no-go / retune-exhausted verdict — done when:
   `DECISIONS.md` carries a `decided` entry stating one of the three verdicts, referencing
   M4.1's findings and the roadmap entries it gates — effort: 1 (needs: M4.1)
