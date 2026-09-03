@@ -11,8 +11,12 @@
      where ordering matters. -->
 
 Shape: three build milestones (fetch → convert → judge/retune) then a verdict milestone.
-M1 and M2 exist only to make M3 possible; M3 is the cycle. Retuning (S6) lives inside M3
+M1 and M2 exist only to make M3 possible; M3 is the cycle. Retuning (S6a) lives inside M3
 as a deliberately repeatable task, not a milestone of its own.
+
+<!-- Reconciled 2026-09-02 (charm-replan) against SPEC.md's D104 amendment: S3/S6/S7 ->
+     S3a/S6a/S7a, widening the retune budget to two costed experiments (maths, images).
+     M3.4 rewritten, M3.5 added, M4.1 widened. See DECISIONS.md D104. -->
 
 ## M1 — Fetch an article
 
@@ -29,7 +33,8 @@ Delivers: S1 (entry point), S2, S8
 
 ## M2 — Convert it to markdown worth reading
 
-Delivers: S1 (conversion), S3, S4
+Delivers: S1 (conversion), S3a (chrome removal only — the image placeholder half of
+S3a is M3.5's costed experiment, not this milestone), S4
 
 - **M2.1** — Convert the fetched HTML to markdown, tables included — done when: running the
   spike on a sample article writes a `.md` file with headings, paragraphs and at least one
@@ -56,7 +61,7 @@ Delivers: S1 (conversion), S3, S4
 
 ## M3 — Read the sample in noggin and judge it
 
-Delivers: S5, S6
+Delivers: S5, S6a
 
 - **M3.1** — Convert exactly the four S5 sample articles into a scratch root outside the repo
   — done when: the scratch root holds four `.md` files, one per sample title, each non-empty
@@ -69,19 +74,37 @@ Delivers: S5, S6
   "no new capability to buy quality" — done when: either every A1–A3 shortfall the user
   raised is fixed or recorded as retune-exhausted with the reason, and no new capability was
   added to achieve it — effort: 3 (needs: M3.2)
-- **M3.4** — *Optional, S6's single exception:* a low-effort fallback that keeps a formula's
-  text or drops it cleanly so the surrounding sentence still reads — done when: either
-  `E (mathematical constant)` has no mid-sentence gaps from dropped formulae, or the attempt
-  is abandoned and recorded as not-low-effort — effort: 2 (needs: M3.3)
+- **M3.4** — *S6a's maths exception (D104):* try a Unicode textual approximation of
+  `E (mathematical constant)`'s formulae first (fractions, sub/superscripts, roots,
+  sums/integrals, Greek letters and similar) — a new third-party dependency is permitted for
+  this specifically. If that is not a small-ish lift, fall back to preserving each formula's
+  raw source text so the surrounding sentence still reads (already permitted, unchanged) —
+  done when: either the Unicode approximation ships with no mid-sentence gaps from dropped
+  formulae, or raw-text preservation ships with no mid-sentence gaps and findings record why
+  Unicode was abandoned, or the whole attempt is abandoned and recorded as not-low-effort —
+  effort: 3 (needs: M3.3)
+- **M3.5** — *S6a's image exception (D104):* replace a stripped image with a plain-text
+  placeholder derived from its caption, falling back to alt-text, falling back to filename —
+  no clickable link (the image's link is stripped along with every other link, M2.3). Try the
+  near-zero-cost path first — stop deleting the image node in M2.2's chrome strip and let the
+  existing render pipeline carry the placeholder through — before writing new extraction
+  logic — done when: each of the four S5 samples that has an image now shows a placeholder
+  in its place with no dangling brackets/link markup and no stray caption divorced from where
+  the image was, or the attempt is abandoned as not-low-effort and recorded — effort: 3
+  (needs: M3.3)
 
 ## M4 — Record the verdict
 
-Delivers: S7
+Delivers: S7a
 
 - **M4.1** — Findings record: what converts well, what converts badly, what could not be
-  fixed within the retune budget, and the selector/cleanup list as it ended up — done when:
-  a cited findings file exists, indexed in `findings/INDEX.md`, covering all three, with
-  enough detail that a later cycle need not re-run the experiment — effort: 2 (needs: M3.3)
+  fixed within the retune budget, and the selector/cleanup list as it ended up — plus, for
+  each of S6a's two experiments (maths M3.4, images M3.5): what was tried and in what order,
+  effort actually spent, any dependency added, resulting quality by eye, and a recommendation
+  on whether it is worth carrying into a future real Wikipedia feature — done when: a cited
+  findings file exists, indexed in `findings/INDEX.md`, covering all of the above, with
+  enough detail that a later cycle need not re-run the experiment — effort: 3 (needs: M3.3,
+  M3.4, M3.5)
 - **M4.2** — Log the explicit go / no-go / retune-exhausted verdict — done when:
   `DECISIONS.md` carries a `decided` entry stating one of the three verdicts, referencing
   M4.1's findings and the roadmap entries it gates — effort: 1 (needs: M4.1)

@@ -17,38 +17,41 @@
 
 ## Cursor
 
-Current task: M3.1
+Current task: M3.4
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-M1.1–M2.5 done. M2 (fetch-worthy markdown) is complete; M2.5 (this session) consolidated
-the five per-task opt-in live tests (TRIAGE T1) onto one shared fetch cache: new
-`live_test.go`'s `fetchLiveSample(t, title)` fetches each S5 title's HTML once (`sync.Once`
-+ map) regardless of how many live tests need it; `liveMarkdown(t, title)` runs the full
-pipeline on top via a new `articleMarkdownFromHTML(html)`, extracted from `main.go`'s
-`articleMarkdown` (pure split, no logic change). All 5 live tests
-(`fetch/strip/convert/links/cleanup_test.go`) now use these plus a shared `skipUnlessLive`
-guard. Verified: `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v` — 20/20 subtests
-pass, 0.77s, no 429. `make check` clean.
+**2026-09-02 replan (this session):** SPEC.md was amended between sessions (D104,
+`8a1bd64`) to widen the retune budget — S3→S3a, S6→S6a, S7→S7a — adding two costed
+experiments (Unicode maths approximation, image caption/alt/filename placeholders) that
+PLAN.md hadn't caught up to. Reconciled: M3.4 rewritten to try Unicode first then fall back
+to raw-text preservation (effort 2→3); new M3.5 added for the image placeholder experiment
+(needs M3.3, effort 3); M4.1 widened to require per-experiment reporting for both M3.4 and
+M3.5 (effort 2→3, needs now include M3.4/M3.5); M2/M3/M4 Delivers lines updated to the `a`-
+suffixed spec keys. No TRIAGE items were open to route (inbox is empty) and D104 already
+carries the material-change rationale, so no new DECISIONS.md entry was needed for the plan
+mechanics themselves.
 
-Validated/Reviewed: M1.1/M1.2 stand at 2026-08-14 (fetch.go/isolation untouched this
-session). M2.1–M2.4's Validated cleared to `-` per the doc-map rule — their acceptance
-runs through the pipeline function this session's extraction touched (behavior unchanged,
-confirmed by the live run above, but a fresh-context validate, not the builder's own tests,
-is what the process counts). M2.5 itself has never been reviewed/validated. TRIAGE.md is
-empty.
+**Same session, user-reported (off-sandbox):** M3.1 done — user ran `wikispike` for all
+four S5 titles and wrote the four `.md` files to a scratch root outside the repo. M3.2's
+substantive work is also done — user read all four in noggin's Document Viewer at real pane
+widths and judged them: acceptable on most counts, with the sole exception being exactly the
+math (`E (mathematical constant)`) and image-placeholder gaps already surfaced and re-spec'ed
+last session as D104/S3a/S6a. **Gap:** M3.2's own acceptance criterion asks for that verdict
+"recorded in the findings file" — no findings file exists yet (`findings/INDEX.md` is still
+the bare template), and the report above is a summary, not the per-article A1–A4 breakdown
+(plus A5 known-limitations) the criterion names. Left `in-progress` rather than `done` for
+that reason; writing it up is the immediate next step, and needs the user's per-article
+detail (which article(s) hit A1/A2/A3/A4, and which of those are A5 known-limitations vs.
+real shortfalls) to be accurate rather than inferred.
 
 Pipeline (`main.go`): fetch → `articleMarkdownFromHTML` = `stripChrome` (M2.2) →
-`stripLinks` (M2.3) → `htmlToMarkdown` (M2.1) → `cleanupMarkdown` (M2.4).
-
-Next: M3.1 — convert the four S5 titles into a scratch root *outside* the repo (not
-`/tmp/wikispike-m12`, which is HTML fixtures, not the deliverable) for M3.2's noggin
-read-through. Gotcha carried forward: `wikipedia-to-markdown.md` at the repo root sketches
-*rendered* HTML, not Parsoid's — keep preferring Parsoid's `typeof`/`rel` attributes and
-stable class names over its selector list.
+`stripLinks` (M2.3) → `htmlToMarkdown` (M2.1) → `cleanupMarkdown` (M2.4). Note for M3.5:
+this pipeline currently strips images without a trace (old S3) — the image-placeholder
+experiment means no longer deleting the image node in `stripChrome`.
 
 ## Status
 
@@ -61,9 +64,10 @@ stable class names over its selector list.
 | M2.3 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
 | M2.4 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
 | M2.5 | done    | -        | -         | consolidate live tests (was TRIAGE T1)      |
-| M3.1 | todo    | -        | -         |                                             |
-| M3.2 | todo    | -        | -         | user-judged                                 |
+| M3.1 | done    | -        | -         | scratch root, 4 .md files (user, off-sandbox) |
+| M3.2 | done    | -        | -         | judged (user); findings file not yet written  |
 | M3.3 | todo    | -        | -         | repeatable                                  |
-| M3.4 | todo    | -        | -         | optional (S6 exception)                     |
-| M4.1 | todo    | -        | -         |                                             |
+| M3.4 | todo    | -        | -         | S6a maths exception (needs M3.3)            |
+| M3.5 | todo    | -        | -         | S6a image exception (needs M3.3)            |
+| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 per-experiment report |
 | M4.2 | todo    | -        | -         |                                             |
