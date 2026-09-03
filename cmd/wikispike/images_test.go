@@ -83,6 +83,28 @@ func TestRenderImagesFlattensCaptionMarkup(t *testing.T) {
 	}
 }
 
+// TestRenderImagesStripsCitationSuperscriptFromCaption covers M3.5a
+// (TRIAGE T11): a figcaption carrying a citation superscript after it
+// (Parsoid's real shape, e.g. "Parmenides (c. 515 BC).<sup>[1]</sup><sup>[2]</sup>")
+// must not leak the ref-marker digits into the placeholder — renderImages
+// runs before stripChrome's own citation-superscript removal, so it has to
+// strip them itself.
+func TestRenderImagesStripsCitationSuperscriptFromCaption(t *testing.T) {
+	input := `<figure typeof="mw:File/Thumb"><a href="./File:Example.png"><img resource="./File:Example.png"/></a>` +
+		`<figcaption>Parmenides (c. 515 BC).<sup typeof="mw:Extension/ref">[1]</sup><sup typeof="mw:Extension/ref">[2]</sup></figcaption></figure>`
+
+	got, err := renderImages(input)
+	if err != nil {
+		t.Fatalf("renderImages: %v", err)
+	}
+	if !strings.Contains(got, "[Image: Parmenides (c. 515 BC).]") {
+		t.Errorf("expected the ref-marker-free placeholder, got:\n%s", got)
+	}
+	if strings.Contains(got, "[1]") || strings.Contains(got, "[2]") {
+		t.Errorf("did not expect a leaked ref-marker digit in the placeholder, got:\n%s", got)
+	}
+}
+
 // TestRenderImagesLeavesUnrecoverableNodeForStripChrome covers the edge
 // case where an image node has no caption, no alt-text and no recoverable
 // filename at all: renderImages makes no substitution, so it is left for

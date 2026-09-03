@@ -16,15 +16,21 @@ import (
 const (
 	typeofFilePrefix    = "mw:File"
 	typeofMathExtension = "mw:Extension/math"
+	typeofRefExtension  = "mw:Extension/ref"
 )
 
-// selectorFilePrefix and selectorMathExtension are the goquery CSS selectors
-// built from the constants above — "starts with" for the file typeof
-// (Parsoid suffixes it, e.g. "mw:File/Thumb"), exact match for the math
-// extension typeof (Parsoid never suffixes it).
+// selectorFilePrefix, selectorMathExtension and selectorCitationSup are the
+// goquery CSS selectors built from the constants above — "starts with" for
+// the file typeof (Parsoid suffixes it, e.g. "mw:File/Thumb"), exact match
+// for the math extension typeof (Parsoid never suffixes it), and a
+// sup-scoped substring match for the citation-superscript typeof
+// (stripChrome's own selector, reused by renderImages, M3.5a, so it can
+// strip a leaked ref-marker digit out of a caption/alt before stripChrome
+// removes the sup elsewhere in the document).
 var (
 	selectorFilePrefix    = fmt.Sprintf(`[typeof^=%q]`, typeofFilePrefix)
 	selectorMathExtension = fmt.Sprintf(`[typeof=%q]`, typeofMathExtension)
+	selectorCitationSup   = fmt.Sprintf(`sup[typeof*=%q]`, typeofRefExtension)
 )
 
 // transformHTML parses html into a goquery document, lets mutate rewrite it

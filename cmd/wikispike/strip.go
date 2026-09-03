@@ -110,8 +110,11 @@ func stripChromeInPlace(doc *goquery.Document) {
 	// Parsoid HTML, but harmless to also look for.
 	doc.Find(".mw-editsection").Remove()
 
-	// Citation superscripts, e.g. the "[12]" after a claim.
-	doc.Find(`sup[typeof*="mw:Extension/ref"]`).Remove()
+	// Citation superscripts, e.g. the "[12]" after a claim. renderImages
+	// (M3.5a) already strips these out of any image caption/alt it read
+	// before this stage runs; this is the general sweep over the rest of
+	// the document.
+	doc.Find(selectorCitationSup).Remove()
 
 	// Reference-list sections (both the unqualified "References" list and
 	// named groups like "Notes") wrap their list inside their own <section>.

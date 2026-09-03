@@ -17,29 +17,31 @@
 
 ## Cursor
 
-Current task: M3.5a
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later same day (charm-build) — M3.3b done: broadened chrome-strip heuristic
-fixes the Major Arcana leak, cursor moves to M3.5a.**
-Root cause: Major Arcana's leak is a Commons category-inline template rendered as a bare
-`<li>` in External links (sibling `<span>`/`<a>` sharing one Parsoid `about` id, no wrapping
-div/table for a CSS selector) — confirmed via a live HTML dump. Fixed with a text-pattern
-heuristic (`sisterProjectInlineLine`, `strip.go`) matching the whole trimmed text of any
-`<li>`/`<p>` against known sister-project phrasings, so passing mentions survive. Gotcha:
-Parsoid inlines the template's `<style data-mw-deduplicate=...>` CSS as a text-node sibling
-in the same `<li>`; goquery's `.Text()` doesn't skip style/script like the pipeline's own
-html-to-markdown step does, so a naive call broke the whole-string anchor match — fixed with
-`elementText` (clone, strip style/script, then read text); unit fixture extended to cover
-this trap without a live fetch. T12 folded in: `TestStripChromeLiveSamples` now asserts on
-Major Arcana specifically. Verified: `make check`/`go vet` clean; full opt-in live suite
-passes including the new assertion; fresh `go run` regen shows `## External links` ending
-cleanly, content table intact. Next step: charm-build picks up M3.5a (T11's citation-marker
-leak in image placeholders), then M4.1 can proceed — its `needs:` list is now satisfiable.
+**2026-09-03, later same day (charm-build) — M3.5a done: renderImages now strips citation
+superscripts from captions before reading them, cursor moves to M4.1.**
+Root cause: `renderImages` (M3.5) read `figcaption.Text()` before `stripChrome`'s citation-
+superscript removal ran (pipeline order: math → images → strip), so a ref marker sitting
+inside a caption (e.g. Parmenides' "(c. 515 BC).[1][2]" on `why_anything.md`) leaked straight
+into the placeholder text. Fixed by having `renderImages` remove `sup[typeof*="mw:Extension/
+ref"]` from the image node itself (mutating the live node, not a clone — it is either about
+to be replaced wholesale or left for stripChrome to remove outright, so the mutation is
+harmless either way) before computing the placeholder description. Factored the selector
+out to `htmldoc.go` (`selectorCitationSup`/`typeofRefExtension`) alongside the existing
+file/math constants so `stripChrome`'s own removal reuses the same selector instead of a
+parallel string literal. Added `TestRenderImagesStripsCitationSuperscriptFromCaption`
+(unit, no live fetch) plus a fresh live regen of all four S5 titles confirming no `[Image:
+...]` placeholder — or anywhere else in any sample — carries a leftover `[<digit>]`
+ref-marker pattern (`grep -nE '\[[0-9]+\]' *.md` on a fresh /tmp scratch regen: no matches).
+Verified: `make check` clean, full opt-in live suite (`WIKISPIKE_LIVE=1 go test ./cmd/
+wikispike -run Live -v`) passes. Next step: charm-build picks up M4.1, now unblocked — all
+of its `needs:` are done (M2.4a, M3.3, M3.3a, M3.3b, M3.4, M3.5, M3.5a, M3.6).
 
 ## Status
 
@@ -61,6 +63,6 @@ leak in image placeholders), then M4.1 can proceed — its `needs:` list is now 
 | M3.3a | done    | -        | -         | unblocked: M3.3b's broadened heuristic fixes the cited leak (fresh live regen confirmed); Reviewed/Validated cleared, `strip.go` changed since the 2026-09-03 validation — needs re-covering |
 | M3.6  | done   | 2026-09-03 | 2026-09-03 | doc-comment, `transformHTML`, and "placeheld" typo fix all confirmed |
 | M3.3b | done    | -        | -         | fix-up on M3.3a (TRIAGE T10/T12): text-pattern heuristic (`sisterProjectInlineLine`) over `<li>`/`<p>` whole-text catches the inline Commons-category leak; `TestStripChromeLiveSamples` now checks Major Arcana specifically |
-| M3.5a | todo    | -        | -         | fix-up on M3.5 (TRIAGE T11): strip ref-superscripts before `renderImages` reads captions |
-| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, and now M3.3b/M3.5a |
+| M3.5a | done    | -        | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere |
+| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, and now M3.3b/M3.5a; all `needs:` now done |
 | M4.2 | todo    | -        | -         |                                             |
