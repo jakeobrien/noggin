@@ -17,27 +17,31 @@
 
 ## Cursor
 
-Current task: M3.7
+Current task: M3.8
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later still (charm-replan) — drained TRIAGE T1-T7 (code review of M3.3b/
-M3.5a); cursor moves back from M4.1 to M3.7.**
-T1 (high) is a real regression in already-`done` M3.3b work: removing the sole `<li>` in
-Major Arcana's External-links section leaves `## External links` as a dangling, empty
-heading through EOF — violates S3a/A2, uncaught by any existing mechanical check. T3
-(missing safety-property test for `sisterProjectInlineLine`) folded into the same new task,
-M3.7 (needs: M3.3b). T4/T5/T6/T7 (low-severity, mechanical — doc comments, a helper-reuse
-gap, a glossary update) bundled into M3.8 (needs: M3.3b, M3.5a), no decision entry needed,
-same precedent as M3.6's own T5/T6/T7 batch. T2 (sisterProjectInlineLine's whole-document
-scan scope vs. M3.3b's task text) decided as an accepted broadening, not a bug — see
-DECISIONS.md D109/D110. M4.1 re-dependencied on M3.7 and M3.8; both are real gaps in
-already-`done` work that M4.1's findings would otherwise have to cite or caveat around, so
-they block M4.1 rather than being deferred past it. TRIAGE.md is empty again. Next step:
-charm-build picks up M3.7 (needs: M3.3b, already done).
+**2026-09-03, later still (charm-build) — M3.7 done; cursor moves to M3.8.**
+Fixed T1 (real regression in `done` M3.3b work): added `dropEmptyHeadings` to
+`cleanup.go`, a fixed-point pass that removes any ATX heading with no non-blank content
+before the next same-or-higher-level heading or EOF, run last in `cleanupMarkdown` after the
+existing per-chunk repair pass. Extracted the fence-carving loop shared by that pass and a
+new post-heading-drop blank-run re-collapse into `mapProseChunks` (was about to be
+duplicated otherwise). `dropEmptyHeadingsPass` tracks fence state itself so a future
+math-fallback renderer emitting a literal "# word" inside fenced ASCII art can't be misread
+as a heading boundary (raised in code review, fixed same session). Fixed T3: added
+`TestSisterProjectInlineLineIgnoresMidSentenceMentions` asserting ordinary prose mentioning
+Commons/Wikiquote/Wiktionary in passing survives `stripChrome` untouched. Verified: fresh
+live regen of `major_arcana.md` ends at `## See also` with real content, no `## External
+links` heading anywhere; `WIKISPIKE_LIVE=1 go test -run Live` passes including a new
+Major-Arcana-specific dangling-heading check and a generic per-title `dropEmptyHeadings`
+idempotency check; `make check` clean. code-reviewer pass found no high/medium issues and
+three low ones (doc-comment gap, the fence-awareness hardening above, a low-value test
+assertion) — all fixed in this same session, not routed to TRIAGE. Next step: charm-build
+picks up M3.8 (needs: M3.3b, M3.5a, both already done).
 
 ## Status
 
@@ -60,7 +64,7 @@ charm-build picks up M3.7 (needs: M3.3b, already done).
 | M3.6  | done   | 2026-09-03 | 2026-09-03 | doc-comment, `transformHTML`, and "placeheld" typo fix all confirmed |
 | M3.3b | done    | 2026-09-03 | -         | fix-up on M3.3a (TRIAGE T10/T12): text-pattern heuristic (`sisterProjectInlineLine`) over `<li>`/`<p>` whole-text catches the inline Commons-category leak; `TestStripChromeLiveSamples` now checks Major Arcana specifically; review found a new regression (T1, empty `## External links` heading) plus T2/T3/T5/T6/T7 — T1/T3 now M3.7, T2 decided (D110), T4/T5/T6/T7 now M3.8 |
 | M3.5a | done    | 2026-09-03 | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere; review confirmed independently, filed T4 (minor doc-comment overstatement) — T4 now folded into M3.8 |
-| M3.7 | todo    | -        | -         | fix-up on M3.3b (TRIAGE T1/T3, charm-replan 2026-09-03): drop the emptied External-links heading, add the missing safety-property test |
+| M3.7 | done    | 2026-09-03 | 2026-09-03 | fix-up on M3.3b (TRIAGE T1/T3): `dropEmptyHeadings` drops any section heading emptied by chrome removal; fresh live regen confirms `major_arcana.md` no longer dangles `## External links`; sister-project mid-sentence-survival fixture added |
 | M3.8 | todo    | -        | -         | housekeeping pass 2 (TRIAGE T4/T5/T6/T7, charm-replan 2026-09-03) |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, then M3.3b/M3.5a, and now M3.7/M3.8; blocked on both |
 | M4.2 | todo    | -        | -         |                                             |

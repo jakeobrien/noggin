@@ -18,24 +18,58 @@ import (
 // arises...") — that is S6's mid-sentence-gap problem, scoped to M3.4, not
 // this task. What it removes is markup residue: empty/whitespace-only
 // parens or brackets, unmatched dangling closers left after that (M2.4a),
-// empty list items, and 3+ consecutive blank lines.
+// empty list items, 3+ consecutive blank lines, and a section heading left
+// with nothing under it by a removal (M3.7).
 //
 // Fenced code blocks (``` ... ```) are carved out and left completely
-// untouched — not just by the per-line whitespace-collapse pass, but by
-// every pass below (empty-parens/brackets, blank-run collapsing too):
+// untouched by every whole-string pass below — see mapProseChunks' doc
+// comment for why (M3.4's ASCII-art math formulae depend on exact
+// whitespace/parens/blank-line layout).
+func cleanupMarkdown(markdown string) string {
+	cleaned := mapProseChunks(markdown, cleanupProse)
+
+	// A section heading that chrome removal left with nothing under it
+	// (M3.7, TRIAGE T1) is a DOM-agnostic, whole-document hole — it needs
+	// the final heading structure, not a single fenced/prose chunk, so it
+	// runs once, last, over the fully reassembled markdown rather than as
+	// another cleanupProse pass. Heading lines never occur inside a fence
+	// (see reHeadingLine's doc comment), so it is safe to run over the
+	// whole reassembled string rather than chunk by chunk.
+	cleaned = dropEmptyHeadings(cleaned)
+
+	// Dropping a heading line can leave its surrounding blank lines forming
+	// a fresh 3+ run (e.g. a blank line before the heading meeting the blank
+	// line that used to separate it from the next section). Unlike
+	// dropEmptyHeadings, this pass must stay fence-aware — a naive
+	// whole-string reBlankRun pass here would re-collapse the same
+	// intentional blank rows inside M3.4's ASCII-art fences that
+	// mapProseChunks was carving around in the first place — so it goes
+	// through mapProseChunks again rather than a direct regexp call.
+	return mapProseChunks(cleaned, func(chunk string) string {
+		return reBlankRun.ReplaceAllString(chunk, "\n\n")
+	})
+}
+
+// mapProseChunks carves markdown's fenced code blocks out and applies f to
+// each non-fenced chunk in turn; fence delimiter lines and everything
+// between them pass through untouched. Shared by cleanupMarkdown's two
+// whole-string passes (the main cleanupProse repair pass, and the
+// blank-run re-collapse after dropEmptyHeadings) so the fence-carving rule
+// — and its rationale, below — is written once.
+//
 // M3.4's display-formula path (renderMath) renders multi-line Unicode math
 // as ASCII-art whose alignment depends on runs of 2+ spaces (box-drawing
 // fraction bars, aligned exponents), on literal "()" (e.g. a formula
 // containing "exp(1)"), and potentially on blank-ish rows within the art;
 // running any whole-string pass over fence content risked corrupting it the
 // same way the multi-space collapse originally did. Fence delimiter lines
-// are matched by cleanupMarkdown's own fence regexp, which assumes
-// htmlToMarkdown's default "```" style and well-formed (always-closed)
-// fences — both true of every fence this pipeline currently produces
-// (commonmark's renderBlockCode always emits a matching open/close pair);
-// an unclosed trailing fence is treated as fence content through end of
-// document rather than silently reverting to prose cleanup.
-func cleanupMarkdown(markdown string) string {
+// are matched by reFenceLine, which assumes htmlToMarkdown's default "```"
+// style and well-formed (always-closed) fences — both true of every fence
+// this pipeline currently produces (commonmark's renderBlockCode always
+// emits a matching open/close pair); an unclosed trailing fence is treated
+// as fence content through end of document rather than silently reverting
+// to prose cleanup.
+func mapProseChunks(markdown string, f func(string) string) string {
 	var out []string
 	var prose []string
 	inFence := false
@@ -43,7 +77,7 @@ func cleanupMarkdown(markdown string) string {
 		if len(prose) == 0 {
 			return
 		}
-		out = append(out, cleanupProse(strings.Join(prose, "\n")))
+		out = append(out, f(strings.Join(prose, "\n")))
 		prose = nil
 	}
 
@@ -67,10 +101,105 @@ func cleanupMarkdown(markdown string) string {
 	return strings.Join(out, "\n")
 }
 
+// reHeadingLine matches an ATX heading line well enough for
+// dropEmptyHeadings' purposes: 1-6 leading "#"s, a space, then some text.
+// dropEmptyHeadingsPass tracks fence state itself before applying this (a
+// future math-rendering fallback is not guaranteed to avoid "# word" inside
+// fenced ASCII art the way today's renderer happens to), so this pattern
+// only ever needs to be correct against real prose, not defensive about
+// fence content.
+var reHeadingLine = regexp.MustCompile(`^(#{1,6})\s+\S`)
+
+// dropEmptyHeadings removes any heading line that ends up with nothing
+// under it: no non-blank line before the next heading of the same or
+// higher level (fewer or equal "#"s), or end of document (M3.7, TRIAGE T1).
+// M3.3b's sister-project-inline removal can delete the sole <li> in a short
+// External-links section, leaving "## External links" as a dangling heading
+// through EOF — a visible hole M2.4's existing mechanical checks (blank-line
+// runs, empty list items, unmatched brackets) don't catch, because none of
+// them look at heading structure.
+//
+// Runs to a fixed point: dropping an outer heading can itself turn an inner
+// one that was its only content (e.g. "## External links" whose sole child
+// was an already-empty "### See also") newly empty by the same rule, so a
+// pass repeats until nothing more is removed.
+func dropEmptyHeadings(markdown string) string {
+	for {
+		next := dropEmptyHeadingsPass(markdown)
+		if next == markdown {
+			return markdown
+		}
+		markdown = next
+	}
+}
+
+// dropEmptyHeadingsPass runs one dropEmptyHeadings sweep: find every heading
+// line outside a fenced code block, decide which have no non-blank content
+// before the next same-or-higher-level heading (or EOF), and remove exactly
+// those lines.
+func dropEmptyHeadingsPass(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+
+	type heading struct {
+		index int
+		level int
+	}
+	var headings []heading
+	inFence := false
+	for i, line := range lines {
+		if reFenceLine.MatchString(strings.TrimSpace(line)) {
+			inFence = !inFence
+			continue
+		}
+		if inFence {
+			continue
+		}
+		if m := reHeadingLine.FindStringSubmatch(line); m != nil {
+			headings = append(headings, heading{index: i, level: len(m[1])})
+		}
+	}
+	if len(headings) == 0 {
+		return markdown
+	}
+
+	drop := make(map[int]bool, len(headings))
+	for hi, h := range headings {
+		end := len(lines)
+		for _, other := range headings[hi+1:] {
+			if other.level <= h.level {
+				end = other.index
+				break
+			}
+		}
+		empty := true
+		for i := h.index + 1; i < end; i++ {
+			if strings.TrimSpace(lines[i]) != "" {
+				empty = false
+				break
+			}
+		}
+		if empty {
+			drop[h.index] = true
+		}
+	}
+	if len(drop) == 0 {
+		return markdown
+	}
+
+	out := make([]string, 0, len(lines)-len(drop))
+	for i, line := range lines {
+		if drop[i] {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
 // cleanupProse runs cleanupMarkdown's actual repair passes — empty/
 // whitespace-only parens or brackets, per-line whitespace collapse, empty
 // list items, and 3+ consecutive blank lines — on one non-fenced chunk of
-// markdown. Split out so cleanupMarkdown can carve fenced code out first and
+// markdown. Split out so mapProseChunks can carve fenced code out first and
 // call this only on the prose around it.
 func cleanupProse(chunk string) string {
 	// Empty/whitespace-only parens or brackets: what is left when the whole

@@ -59,6 +59,37 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 	}
 }
 
+// TestSisterProjectInlineLineIgnoresMidSentenceMentions is M3.7's safety-
+// property test for sisterProjectInlineLine (TRIAGE T3): ordinary prose that
+// merely mentions a sister project in passing, rather than rendering one of
+// the whole-line sister-project-inline templates, must survive stripChrome
+// untouched. Only the removal path (Major Arcana's Commons category-inline)
+// had a test before this; the survival half of the same regex's contract
+// (anchored `^...$`, not a substring search) was never independently
+// exercised.
+func TestSisterProjectInlineLineIgnoresMidSentenceMentions(t *testing.T) {
+	const input = `<html><body><section>
+<p>The photograph was later donated to Wikimedia Commons by the photographer.</p>
+<li>Wikiquote is a sister project that collects quotations, not covered here.</li>
+<p>See also the Wiktionary entry, which the author consulted while drafting this passage.</p>
+</section></body></html>`
+
+	got, err := stripChrome(input)
+	if err != nil {
+		t.Fatalf("stripChrome: %v", err)
+	}
+
+	for _, want := range []string{
+		"later donated to Wikimedia Commons by the photographer",
+		"Wikiquote is a sister project that collects quotations",
+		"the Wiktionary entry, which the author consulted",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("stripChrome removed a mid-sentence sister-project mention %q:\n%s", want, got)
+		}
+	}
+}
+
 // TestStripChromeLiveSamples runs the strip step against the four S5 sample
 // titles (shared live-fetch cache, M2.5) and checks M2.2's plan-stated
 // acceptance shape: no "[edit]", no reference-list section, no image markup,
@@ -125,6 +156,16 @@ func TestStripChromeLiveSamples(t *testing.T) {
 			// this live regression guard has actually exercised Major Arcana.
 			if strings.Contains(markdown, "Media related to") || strings.Contains(markdown, "at Wikimedia Commons") {
 				t.Errorf("%q: markdown leaks the inline sister-project link", title)
+			}
+			// Regression guard for M3.7 (TRIAGE T1): removing that inline
+			// link used to leave "## External links" as a dangling,
+			// content-free heading through EOF. This subtest only runs
+			// stripChrome+htmlToMarkdown (not the full pipeline, so not
+			// cleanupMarkdown's dropEmptyHeadings), so the check is against
+			// the full pipeline's output instead, reusing this subtest's
+			// cached fetch.
+			if full := liveMarkdown(t, title); dropEmptyHeadings(full) != full {
+				t.Errorf("%q: full pipeline still leaves a heading emptied by stripping:\n%s", title, full)
 			}
 			// Major Arcana's content tables (table.wikitable) must survive
 			// stripping — checked here, reusing this subtest's single fetch,

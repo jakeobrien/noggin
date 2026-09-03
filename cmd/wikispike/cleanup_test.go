@@ -190,6 +190,96 @@ func TestCleanupMarkdownHandlesUnclosedFence(t *testing.T) {
 	}
 }
 
+// TestCleanupMarkdownDropsEmptyHeadings is M3.7's unit test (TRIAGE T1) for
+// the regression found reviewing M3.3b: a section heading that chrome
+// removal left with nothing under it must be dropped, not left dangling to
+// EOF or the next same-or-higher-level heading. A heading with real content,
+// and a heading followed only by an equally-empty deeper heading (both
+// dropped, fixed-point), are both covered.
+func TestCleanupMarkdownDropsEmptyHeadings(t *testing.T) {
+	const input = `# Article Title
+
+Real intro prose.
+
+## Section With Content
+
+Some real prose here.
+
+## External links
+
+## References
+
+Some reference text survives here.
+
+## Trailing Empty Section With A Nested Empty Heading
+
+### Nested Empty Heading
+`
+	got := cleanupMarkdown(input)
+
+	for _, want := range []string{
+		"# Article Title",
+		"Real intro prose.",
+		"## Section With Content",
+		"Some real prose here.",
+		"## References",
+		"Some reference text survives here.",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("cleanup lost content %q:\n%s", want, got)
+		}
+	}
+	for _, unwanted := range []string{
+		"## External links",
+		"## Trailing Empty Section With A Nested Empty Heading",
+		"### Nested Empty Heading",
+	} {
+		if strings.Contains(got, unwanted) {
+			t.Errorf("cleanup left an emptied heading %q:\n%s", unwanted, got)
+		}
+	}
+}
+
+// TestDropEmptyHeadingsLeavesRealHeadingsAlone is a narrower unit test
+// directly against dropEmptyHeadings (rather than the full cleanupMarkdown
+// pipeline above), covering the same-level boundary precisely: a heading
+// immediately followed by another heading of the *same* level with no
+// content between them is empty and dropped, but one followed by a *deeper*
+// heading that itself has content is not.
+func TestDropEmptyHeadingsLeavesRealHeadingsAlone(t *testing.T) {
+	const input = "## Empty\n## Has Content\n\nProse.\n\n## Has A Subsection\n\n### Subsection\n\nSubsection prose.\n"
+	got := dropEmptyHeadings(input)
+
+	if strings.Contains(got, "## Empty") {
+		t.Errorf("expected the empty heading dropped, got:\n%s", got)
+	}
+	for _, want := range []string{"## Has Content", "Prose.", "## Has A Subsection", "### Subsection", "Subsection prose."} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected %q kept, got:\n%s", want, got)
+		}
+	}
+	// A single sweep is enough on this fixture (no nested-empty-heading
+	// cascade here, unlike TestCleanupMarkdownDropsEmptyHeadings) — confirms
+	// dropEmptyHeadingsPass alone already reaches the fixed point, rather
+	// than only re-checking dropEmptyHeadings' own internal loop.
+	if pass := dropEmptyHeadingsPass(input); pass != got {
+		t.Errorf("expected one dropEmptyHeadingsPass sweep to match dropEmptyHeadings, got:\n%s\nwant:\n%s", pass, got)
+	}
+}
+
+// TestDropEmptyHeadingsIgnoresFencedHashLines guards the fence-awareness
+// dropEmptyHeadingsPass added on top of the M3.7 review: a "#" line inside a
+// fenced code block must never be mistaken for a real heading boundary or
+// removed as one, even though none of this pipeline's current renderers
+// (M3.4's ASCII-art math included) happen to emit that shape today.
+func TestDropEmptyHeadingsIgnoresFencedHashLines(t *testing.T) {
+	const input = "## Real Heading\n\n```\n# not a heading\n```\n"
+	got := dropEmptyHeadings(input)
+	if got != input {
+		t.Errorf("expected fenced \"#\" line left untouched and heading kept (it has fence content under it), got:\n%s", got)
+	}
+}
+
 // TestPipelineLiveSamplesHaveNoStructuralHoles is M2.4's acceptance check
 // against the four S5 sample titles (shared live-fetch cache, M2.5): no run
 // of 3+ consecutive blank lines, no empty list item, no empty/
@@ -223,6 +313,13 @@ func TestPipelineLiveSamplesHaveNoStructuralHoles(t *testing.T) {
 			}
 			if open, close := strings.Count(markdown, "["), strings.Count(markdown, "]"); open != close {
 				t.Errorf("%q: unbalanced brackets: %d %q vs %d %q", title, open, "[", close, "]")
+			}
+			// M3.7 (TRIAGE T1): no section heading should have been left
+			// dangling with nothing under it through the next
+			// same-or-higher-level heading or EOF. dropEmptyHeadings is
+			// idempotent once none remain, so a no-op re-run is the check.
+			if cleaned := dropEmptyHeadings(markdown); cleaned != markdown {
+				t.Errorf("%q: markdown still contains a heading emptied by stripping", title)
 			}
 		})
 	}
