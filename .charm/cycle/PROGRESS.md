@@ -17,30 +17,35 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M4.2
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later still (charm-build) — M3.8 done; cursor moves to M4.1.**
-Housekeeping pass 2 (TRIAGE T4/T5/T6/T7): T4 dropped `selectorCitationSup`'s doc-comment
-claim that a nested `<sup>` could leak via an image's `alt` attribute (alt is a plain string,
-can't carry it — only the figcaption path is real). T5 factored M3.3b's regex-based removal
-step out of `stripChromeInPlace` into its own named helper, `removeSisterProjectInlineLines`
-(strip.go), with `stripChromeInPlace`'s doc comment now flagging it as the one text-pattern
-step among otherwise CSS-selector removals. T6 switched `imagePlaceholderText`'s figcaption
-read to `elementText` (already used by M3.3b for the same style/script-leak class), added
-`TestRenderImagesCaptionExcludesInlinedStyle` to demonstrate it. T7 updated GLOSSARY.md's
-"Chrome" entry to name portal-bar/sister-project-box/inline-sister-project-link. Verified:
-`make check` and `WIKISPIKE_LIVE=1 go test -run Live` both clean. code-reviewer pass found no
-spec-fidelity issues; three low standards nits (an awkward sentence, an unverified-looking
-glossary detail that turned out accurate on recheck, a missing T6 test) — the sentence and
-missing test were fixed in-session; the glossary detail was checked against strip.go's own
-"icon images" wording and left as-is. M4.1's full dependency set (M2.4a, M3.3, M3.3a, M3.3b,
-M3.4, M3.5, M3.5a, M3.6, M3.7, M3.8) is now all `done`. Next step: charm-build picks up M4.1
-(the findings-record milestone — likely worth a research/writing subagent given its size).
+**2026-09-03, later still (charm-build) — M4.1 done; cursor moves to M4.2.**
+Wrote the consolidated findings record (`cycle/findings/m4.1-conversion-record.md`):
+what converts well/badly, the final selector/cleanup list (`stripChromeInPlace`'s ten steps,
+link stripping, `cleanupMarkdown`'s three passes), an S6a experiment summary table citing
+`maths-experiment.md`/`images-experiment.md` in full, and retune-exhaustion history pulled
+from PROGRESS's own Status table. Regenerated all four S5 samples fresh (post-M3.8) into
+`/tmp/s5scratch`, replacing its stale Sep-3-10:59 contents; mechanical re-check (balanced
+brackets, no blank-line runs/empty items, no leaked chrome, no dangling headings) all clean,
+`make check` clean. TRIAGE T4's stale-sample-copy cleanup: deleted four untracked stale
+`.md` copies sitting in the repo root (`e_math-2.md`, `e_math-3.md`, `major_arcana.md`,
+`why_anything.md`, all predating M3.7/M3.8) and the repo's own `tmp/wikispike-tests-1/`
+(same staleness); `git status --porcelain` now shows none. Eyeballing the fresh regen
+surfaced a genuinely new, previously-uncaught leak: Wikipedia's maintenance-template family
+(`{{citation needed}}`, `{{clarification needed}}`, `{{dubious}}`, `{{disputed}}`,
+`{{rp|<page>}}`) renders as `typeof="mw:Transclusion"`, not the `mw:Extension/ref`
+`stripChrome` already matches, so it leaks as literal text in 3/4 samples (visible in
+`major_arcana.md`, `list_languages.md`, `why_anything.md`) without failing any mechanical
+check. Filed as TRIAGE T1 rather than fixed here — M4.1 is a findings task, and the fix
+needs a replan call (another retune round vs. roadmap deferral). Next step: charm-build
+picks up M4.2 (log the go/no-go/retune-exhausted verdict in DECISIONS.md, citing M4.1's
+findings) — first check TRIAGE's one open item per the gate-check step, since a
+summary-level read shows one low-severity item now open.
 
 ## Status
 
@@ -65,5 +70,5 @@ M3.4, M3.5, M3.5a, M3.6, M3.7, M3.8) is now all `done`. Next step: charm-build p
 | M3.5a | done    | 2026-09-03 | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere; review confirmed independently, filed T4 (minor doc-comment overstatement) — T4 now folded into M3.8 |
 | M3.7 | done    | 2026-09-03 | 2026-09-03 | fix-up on M3.3b (TRIAGE T1/T3): `dropEmptyHeadings` drops any section heading emptied by chrome removal; fresh live regen confirms `major_arcana.md` no longer dangles `## External links`; sister-project mid-sentence-survival fixture added |
 | M3.8 | done    | 2026-09-03 | 2026-09-03 | housekeeping pass 2 (TRIAGE T4/T5/T6/T7): doc-comment fix, `removeSisterProjectInlineLines` extracted, `elementText` reused in `imagePlaceholderText`, GLOSSARY.md Chrome entry updated |
-| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, then M3.3b/M3.5a, and now M3.7/M3.8; blocked on both |
+| M4.1 | done    | -        | -         | consolidated findings record + fresh S5 regen + TRIAGE T4 stale-copy cleanup; surfaced new TRIAGE T1 (maintenance-template leak, not fixed here) |
 | M4.2 | todo    | -        | -         |                                             |

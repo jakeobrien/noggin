@@ -25,6 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T1 | build | low | `cmd/wikispike/strip.go` (`selectorCitationSup`) | `stripChrome` only matches `typeof*="mw:Extension/ref"` citation superscripts; Wikipedia's maintenance-template family rendered as a `typeof="mw:Transclusion"` `<sup>` (`{{citation needed}}`, `{{clarification needed}}`, `{{dubious}}`, `{{disputed}}`, `{{rp\|<page>}}`) is a distinct template mechanism and leaks as literal text — found live in 3/4 S5 samples during M4.1's fresh regen: `major_arcana.md` (`[*clarification needed*]`, `[*dubious – discuss*]`), `list_languages.md` (`[*citation needed*]`), `why_anything.md` (a bare `: 17 ` from `{{rp\|17}}`, no brackets at all). Doesn't fail any mechanical check (brackets stay balanced, since these templates carry their own literal `[`/`]` text or none). See `.charm/cycle/findings/m4.1-conversion-record.md` for detail. | open |
 
 <!-- Emptied 2026-09-03 by charm-replan: T8/T9 -> DECISIONS.md D108 (wontfix-for-this-cycle);
      T10/T12 -> PLAN.md M3.3b; T11 -> PLAN.md M3.5a. See PROGRESS.md handoff and PLAN.md's

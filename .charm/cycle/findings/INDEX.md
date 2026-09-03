@@ -17,3 +17,8 @@
   results across all four S5 titles, a pre-existing chrome-stripping gap it surfaced
   (portal bars, sister-project boxes — routed to TRIAGE, not fixed here), and a
   recommendation for a future cycle.
+- `m4.1-conversion-record.md` — M4.1's consolidated verdict record: what converts well/badly
+  across a fresh post-M3.8 regen (cites `/tmp/s5scratch`, stale repo-root/`tmp/` sample
+  copies removed), the final selector/cleanup list, an S6a experiment summary table citing
+  `maths-experiment.md`/`images-experiment.md`, and a newly-discovered maintenance-template
+  citation leak (TRIAGE T1) not yet fixed.
