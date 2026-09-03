@@ -33,16 +33,17 @@ import (
 func renderImages(html string) (string, error) {
 	return transformHTML(html, "render images", func(doc *goquery.Document) {
 		doc.Find(selectorFilePrefix).Each(func(_ int, s *goquery.Selection) {
-			// A citation superscript (e.g. the "[1][2]" after a caption's
-			// closing parenthesis) can sit inside a figcaption; stripChrome's
+			// A citation-like superscript (e.g. the "[1][2]" after a caption's
+			// closing parenthesis, or a maintenance-template/page-locator
+			// marker, TRIAGE T1/M3.9) can sit inside a figcaption; stripChrome's
 			// own removal of these (strip.go) runs after renderImages, so
-			// without this the ref-marker digits leak straight into the
-			// placeholder text below (M3.5a, TRIAGE T11). Removed from the
-			// live node, not a clone: this image node is either about to be
-			// replaced wholesale with the placeholder, or left for
+			// without this the leaked marker text ends up straight in the
+			// placeholder text below (M3.5a, TRIAGE T11; widened M3.9). Removed
+			// from the live node, not a clone: this image node is either about
+			// to be replaced wholesale with the placeholder, or left for
 			// stripChrome to remove outright — either way the mutation is
 			// harmless beyond this pass.
-			s.Find(selectorCitationSup).Remove()
+			s.Find(selectorCitationLikeSup).Remove()
 			desc := imagePlaceholderText(s)
 			if desc == "" {
 				// No usable description at all (vanishingly rare — even a

@@ -17,27 +17,40 @@
 
 ## Cursor
 
-Current task: M3.9
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later still yet (charm-replan) — triaged TRIAGE T1; cursor moves to M3.9.**
-Routed the sole open TRIAGE item (T1, the `mw:Transclusion` maintenance-template citation
-leak M4.1's own fresh regen surfaced) to a new PLAN.md fix-up task, M3.9 (needs M3.3a,
-effort 2), rather than a roadmap deferral or wontfix — it's the same category of fix as
-M3.3a/M3.3b's chrome-selector widenings (extending `selectorCitationSup`'s coverage, not
-new capability), affects 3/4 of the judging sample, and is cheap. Logged as DECISIONS.md
-D111. Since M4.1's own findings text currently records the leak as an unfixed known gap,
-M4.1 is re-dependencied on M3.9 and reopened (`done` → `todo`) — its Reviewed/Validated
-cells were already `-`, so nothing to clear. M4.2 is untouched (still gated on M4.1).
-Next step: charm-build picks up M3.9 — extend the citation-superscript
-selector/removal to also match the maintenance-template family, add a regression fixture,
-fresh-regen all four S5 samples to confirm no leak remains, then update
-`cycle/findings/m4.1-conversion-record.md`'s "known gap" language before M4.1 can be
-re-closed and M4.2 picked up after it.
+**2026-09-03, later still yet again (charm-build) — M3.9 done; cursor moves to M4.1.**
+Fixed TRIAGE T1 (D111): `cmd/wikispike/htmldoc.go` gained `selectorCitationLikeSup`,
+unioning the pre-existing `selectorCitationSup` (`sup[typeof*="mw:Extension/ref"]`) with two
+new selectors discovered by fetching the live Parsoid HTML directly and inspecting the
+actual nodes: `sup.Inline-Template` for the maintenance-template family (`{{citation
+needed}}`, `{{clarification needed}}`, `{{dubious}}`, `{{disputed}}` — these carry *no*
+`typeof` on the visible sup at all; Parsoid's `typeof="mw:Transclusion"` marker lands on a
+preceding invisible `<link rel="mw:PageProp/Category">` sharing the same `about` id instead)
+and `sup[typeof="mw:Transclusion"]` exact-match for the `{{rp|<page>}}` page-locator
+template (whose own sup *does* carry that typeof directly; a real citation ref's typeof is
+always the compound `"mw:Transclusion mw:Extension/ref"` so this exact match never
+double-fires). `strip.go`'s main removal and `images.go`'s M3.5a caption-cleanup call both
+switched to the combined selector. Added a unit fixture (`strip_test.go`) plus live
+regression guards in `TestStripChromeLiveSamples` for the three affected titles (Major
+Arcana, List of programming languages by type, Why is there anything at all?). Fresh live
+regen of all four S5 samples to `/tmp/s5scratch` confirms: no `citation needed`/
+`clarification needed`/`dubious`/`disputed` text anywhere, no bare `{{rp}}` remnant (checked
+with a `[^0-9]: [0-9]+ ` pattern), balanced `(`/`)` and `[`/`]` counts on all four, no 3+
+blank-line runs, no empty list items, and the surrounding prose reads cleanly across each
+removal point (spot-checked, e.g. Major Arcana's "...firmly established in the minds of
+occult practitioners."). `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v` and
+`make check` both clean. Updated `cycle/findings/m4.1-conversion-record.md`'s "known gap"
+language (the leak entry, the selector-list line, and the "open items for replan" line) and
+`findings/INDEX.md`'s summary line to reflect the fix, per M3.9's own acceptance criterion.
+Next step: charm-build picks up M4.1 (re-opened by charm-replan, D111) — it needs a fresh
+regen citation reflecting this fix (the current text still narrates the M3.8-era regen that
+predates M3.9) before it can close again and hand off to M4.2.
 
 ## Status
 
@@ -62,6 +75,6 @@ re-closed and M4.2 picked up after it.
 | M3.5a | done    | 2026-09-03 | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere; review confirmed independently, filed T4 (minor doc-comment overstatement) — T4 now folded into M3.8 |
 | M3.7 | done    | 2026-09-03 | 2026-09-03 | fix-up on M3.3b (TRIAGE T1/T3): `dropEmptyHeadings` drops any section heading emptied by chrome removal; fresh live regen confirms `major_arcana.md` no longer dangles `## External links`; sister-project mid-sentence-survival fixture added |
 | M3.8 | done    | 2026-09-03 | 2026-09-03 | housekeeping pass 2 (TRIAGE T4/T5/T6/T7): doc-comment fix, `removeSisterProjectInlineLines` extracted, `elementText` reused in `imagePlaceholderText`, GLOSSARY.md Chrome entry updated |
-| M3.9 | todo    | -        | -         | fix-up on M2.2/M3.3a (TRIAGE T1, D111): maintenance-template citation leak |
-| M4.1 | todo    | -        | -         | re-opened (was done): findings record needs updating once M3.9 lands (was: consolidated findings record + fresh S5 regen + TRIAGE T4 stale-copy cleanup; surfaced new TRIAGE T1) |
+| M3.9 | done    | -        | -         | fix-up on M2.2/M3.3a (TRIAGE T1, D111): `selectorCitationLikeSup` now also matches the maintenance-template family and the `{{rp}}` page-locator template; fresh regen of all four S5 samples clean |
+| M4.1 | todo    | -        | -         | re-opened (was done): needs a fresh regen citation reflecting M3.9's fix (was: consolidated findings record + fresh S5 regen + TRIAGE T4 stale-copy cleanup; surfaced TRIAGE T1, now fixed) |
 | M4.2 | todo    | -        | -         |                                             |

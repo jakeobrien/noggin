@@ -20,5 +20,6 @@
 - `m4.1-conversion-record.md` — M4.1's consolidated verdict record: what converts well/badly
   across a fresh post-M3.8 regen (cites `/tmp/s5scratch`, stale repo-root/`tmp/` sample
   copies removed), the final selector/cleanup list, an S6a experiment summary table citing
-  `maths-experiment.md`/`images-experiment.md`, and a newly-discovered maintenance-template
-  citation leak (TRIAGE T1) not yet fixed.
+  `maths-experiment.md`/`images-experiment.md`, and a maintenance-template citation leak
+  (TRIAGE T1) found during this task and fixed post-M4.1 as M3.9 (D111) — record updated in
+  place to reflect the fix; M4.1 itself is re-opened pending a fresh regen citation.

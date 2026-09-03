@@ -1,6 +1,7 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -11,7 +12,8 @@ import (
 // gone; the content table and article prose survive.
 func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 	const input = `<html><body>
-<section data-mw-section-id="0"><p>Intro prose with a claim<sup typeof="mw:Extension/ref" class="mw-ref"><a href="#cite_note-1">[1]</a></sup>.</p></section>
+<section data-mw-section-id="0"><p>Intro prose with a claim<sup typeof="mw:Extension/ref" class="mw-ref"><a href="#cite_note-1">[1]</a></sup>.</p>
+<p>A dubious claim<sup class="noprint Inline-Template Template-Fact"><span typeof="mw:Entity">[</span><a href="./Wikipedia:Citation_needed">citation needed</a><span typeof="mw:Entity">]</span></sup> and a page-referenced one<sup class="reference nowrap" typeof="mw:Transclusion" data-mw='{"parts":[{"template":{"target":{"wt":"rp"}}}]}'><span>: 25</span></sup>.</p></section>
 <table class="infobox"><tr><td>Born</td><td>1900</td></tr></table>
 <section data-mw-section-id="1"><h2>Data</h2>
 <table class="sidebar nomobile nowraplinks hlist"><tr><td>Part of a series on widgets</td></tr></table>
@@ -36,13 +38,14 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 		t.Fatalf("stripChrome: %v", err)
 	}
 
-	for _, want := range []string{"Intro prose with a claim", "Col A", "wikitable", "Real section prose follows the sidebar"} {
+	for _, want := range []string{"Intro prose with a claim", "A dubious claim", "and a page-referenced one", "Col A", "wikitable", "Real section prose follows the sidebar"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("stripped output lost article content %q:\n%s", want, got)
 		}
 	}
 	for _, unwanted := range []string{
 		"cite_note-1", "[1]", // citation superscript
+		"citation needed", ": 25", // maintenance-template / page-locator sup (TRIAGE T1, M3.9)
 		"Born", "1900", // infobox
 		"See also links", "navbox", // navbox
 		"Part of a series on widgets", // sidebar, sitting between the heading and this section's real prose, same placement as the live bug
@@ -89,6 +92,14 @@ func TestSisterProjectInlineLineIgnoresMidSentenceMentions(t *testing.T) {
 		}
 	}
 }
+
+// rpRemnant matches the {{rp|<page>}} page-locator template's leaked
+// output (e.g. ": 25 ") once its surrounding citation-superscript brackets
+// are gone — a bare colon-space-digits run with no digit immediately
+// before or after (so it doesn't false-match an ordinary "12:30" or similar
+// in article prose), used by TestStripChromeLiveSamples's M3.9 regression
+// guard.
+var rpRemnant = regexp.MustCompile(`[^0-9]: [0-9]+ `)
 
 // TestStripChromeLiveSamples runs the strip step against the four S5 sample
 // titles (shared live-fetch cache, M2.5) and checks M2.2's plan-stated
@@ -144,6 +155,22 @@ func TestStripChromeLiveSamples(t *testing.T) {
 			}
 			if title == "E (mathematical constant)" && strings.Contains(markdown, "Wikimedia Commons has media related to") {
 				t.Errorf("%q: markdown leaks the sister-project side-box", title)
+			}
+			// Regression guards for M3.9 (TRIAGE T1): the maintenance-template
+			// family and the {{rp}} page-locator template used to leak as
+			// literal bracketed (or, for {{rp}}, unbracketed) text since
+			// neither carries the typeof="mw:Extension/ref" the pre-M3.9
+			// selector matched — found live in these exact three samples
+			// during M4.1's fresh regen.
+			if title == "Major Arcana" || title == "List of programming languages by type" {
+				for _, leak := range []string{"citation needed", "clarification needed", "dubious", "disputed"} {
+					if strings.Contains(markdown, leak) {
+						t.Errorf("%q: markdown leaks a maintenance-template marker (%q)", title, leak)
+					}
+				}
+			}
+			if title == "Why is there anything at all?" && rpRemnant.MatchString(markdown) {
+				t.Errorf("%q: markdown leaks a {{rp}} page-locator remnant", title)
 			}
 			if title != "Major Arcana" {
 				return

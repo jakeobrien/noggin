@@ -102,11 +102,15 @@ func stripChromeInPlace(doc *goquery.Document) {
 	// Parsoid HTML, but harmless to also look for.
 	doc.Find(".mw-editsection").Remove()
 
-	// Citation superscripts, e.g. the "[12]" after a claim. renderImages
-	// (M3.5a) already strips these out of any image caption/alt it read
-	// before this stage runs; this is the general sweep over the rest of
-	// the document.
-	doc.Find(selectorCitationSup).Remove()
+	// Citation-like superscripts: real reference markers (e.g. the "[12]"
+	// after a claim), the maintenance-template family (e.g. "[citation
+	// needed]", "[dubious – discuss]") and the page-locator template (e.g.
+	// a bare ": 25" after a citation) — see selectorCitationLikeSup's own
+	// doc comment for why these need three different selector shapes
+	// (TRIAGE T1, M3.9). renderImages (M3.5a) already strips these out of
+	// any image caption/alt it read before this stage runs; this is the
+	// general sweep over the rest of the document.
+	doc.Find(selectorCitationLikeSup).Remove()
 
 	// Reference-list sections (both the unqualified "References" list and
 	// named groups like "Notes") wrap their list inside their own <section>.
