@@ -24,8 +24,21 @@ Current task: M4.1
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-02, this session (fix-up on M3.4, done, ad hoc, cursor stayed on M4.1) — display
-formulas now get their own line.** User flagged raw TeX still visible in `e_math.md`;
+**2026-09-02, this session (fix-up on M2.2, done, ad hoc, cursor stayed on M4.1) —
+sidebars now stripped.** User flagged `e_math.md`'s History section opening with a
+disjointed run of paragraphs/lists (Wikipedia's "Part of a series of articles on e" box)
+ahead of the section's real prose. Root cause: Wikipedia's `<table class="sidebar">`
+template (a second, distinct navigation-box class from `div.navbox`, already stripped)
+wasn't matched by `stripChrome` (M2.2) — same category of gap as TRIAGE T2's
+portal-bar/sister-box discovery, but a different selector, so fixed directly rather than
+added to T2. `strip.go` now also removes `table.sidebar`; `strip_test.go` gained a nested
+unit fixture matching the live structural placement plus a live-sample regression check
+(`WIKISPIKE_LIVE=1`, verified passing against the real article). GLOSSARY's Chrome entry
+updated. `make check`/`go test ./...` clean; all four S5 `.md` samples regenerated (only
+`e_math.md` and `list_languages.md` changed size — both had a sidebar template).
+
+**2026-09-02, earlier this session (fix-up on M3.4, done, ad hoc, cursor stayed on M4.1) —
+display formulas now get their own line.** User flagged raw TeX still visible in `e_math.md`;
 turned out Parsoid marks a formula display/block-style (`data-mw.attrs.display=="block"`,
 `mwe-math-element-block` class) and Wikipedia gives it its own line visually even though
 the span stays nested in the same `<p>`. `renderMath` now wraps display formulas in
@@ -78,7 +91,7 @@ the cycle closes.
 | M1.1 | done    | -        | 2026-08-14 | `cmd/wikispike/`                            |
 | M1.2 | done    | -        | 2026-08-14 | live fetch verified, all four S5 titles     |
 | M2.1 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
-| M2.2 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
+| M2.2 | done    | -        | -         | reopened post-M2.5 for table.sidebar (user-directed fix-up); re-verify |
 | M2.3 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
 | M2.4 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
 | M2.5 | done    | -        | -         | consolidate live tests (was TRIAGE T1)      |

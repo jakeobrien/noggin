@@ -8,12 +8,12 @@ import (
 )
 
 // stripChrome removes everything from Parsoid article HTML that is not the
-// article proper (M2.2): navboxes, infoboxes, citation superscripts,
-// reference-list sections, metadata tables and images. Edit-section links
-// (.mw-editsection) are included defensively even though Parsoid's REST HTML
-// never carries them — see .charm/cycle/PROGRESS.md's handoff. Content tables
-// (table.wikitable) are untouched; link stripping is M2.3, blank-line/orphan
-// cleanup is M2.4.
+// article proper (M2.2): navboxes, sidebars, infoboxes, citation
+// superscripts, reference-list sections, metadata tables and images.
+// Edit-section links (.mw-editsection) are included defensively even though
+// Parsoid's REST HTML never carries them — see .charm/cycle/PROGRESS.md's
+// handoff. Content tables (table.wikitable) are untouched; link stripping is
+// M2.3, blank-line/orphan cleanup is M2.4.
 func stripChrome(html string) (string, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
@@ -23,6 +23,22 @@ func stripChrome(html string) (string, error) {
 	// Navboxes and infoboxes: navigation/summary tables, not article prose.
 	doc.Find("div.navbox").Remove()
 	doc.Find("table.infobox, .infobox").Remove()
+
+	// Sidebars: a second, distinct navigation-box template Wikipedia floats
+	// beside prose (e.g. "Part of a series of articles on ..." on
+	// `E (mathematical constant)`) — CSS class "sidebar", not "navbox", so
+	// the selector above misses it. Parsoid leaves the whole <table> sitting
+	// as an ordinary child of the section it decorates (right after the
+	// heading, before the section's real prose), with no structural marker
+	// of the floated/boxed layout it renders as on the web — converted
+	// as-is it reads as a disjointed run of paragraphs and lists ahead of
+	// the section's actual content, not as a box. Dropped entirely, same as
+	// a navbox, on the same M2.2 chrome-vs-content basis (S3a): what a
+	// sidebar links to almost always exists in the article body too
+	// (it is a summary/navigation aid, not a unique source), same
+	// assumption already accepted for navbox and not separately re-verified
+	// here.
+	doc.Find("table.sidebar").Remove()
 
 	// Edit-section links: a skin-rendered-page feature, not present in
 	// Parsoid HTML, but harmless to also look for.

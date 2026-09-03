@@ -6,14 +6,16 @@ import (
 )
 
 // TestStripChromeRemovesNonArticleElements is M2.2's acceptance check on a
-// minimal Parsoid-shaped fixture: navboxes, infoboxes, citation superscripts,
-// reference-list sections, metadata tables and images are gone; the content
-// table and article prose survive.
+// minimal Parsoid-shaped fixture: navboxes, sidebars, infoboxes, citation
+// superscripts, reference-list sections, metadata tables and images are
+// gone; the content table and article prose survive.
 func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 	const input = `<html><body>
 <section data-mw-section-id="0"><p>Intro prose with a claim<sup typeof="mw:Extension/ref" class="mw-ref"><a href="#cite_note-1">[1]</a></sup>.</p></section>
 <table class="infobox"><tr><td>Born</td><td>1900</td></tr></table>
 <section data-mw-section-id="1"><h2>Data</h2>
+<table class="sidebar nomobile nowraplinks hlist"><tr><td>Part of a series on widgets</td></tr></table>
+<p>Real section prose follows the sidebar.</p>
 <table class="wikitable"><tr><th>Col A</th></tr><tr><td>1</td></tr></table>
 </section>
 <div role="navigation" class="navbox"><table class="navbox-inner"><tr><td>See also links</td></tr></table></div>
@@ -29,7 +31,7 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 		t.Fatalf("stripChrome: %v", err)
 	}
 
-	for _, want := range []string{"Intro prose with a claim", "Col A", "wikitable"} {
+	for _, want := range []string{"Intro prose with a claim", "Col A", "wikitable", "Real section prose follows the sidebar"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("stripped output lost article content %q:\n%s", want, got)
 		}
@@ -38,8 +40,9 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 		"cite_note-1", "[1]", // citation superscript
 		"Born", "1900", // infobox
 		"See also links", "navbox", // navbox
-		"maintenance box",      // metadata table
-		"img src", "A caption", // image
+		"Part of a series on widgets", // sidebar, sitting between the heading and this section's real prose, same placement as the live bug
+		"maintenance box",             // metadata table
+		"img src", "A caption",        // image
 		"References", "Some citation text", // reference-list section
 	} {
 		if strings.Contains(got, unwanted) {
@@ -80,6 +83,13 @@ func TestStripChromeLiveSamples(t *testing.T) {
 			}
 			if strings.Contains(strings.ToLower(markdown), "navbox") || strings.Contains(strings.ToLower(markdown), "infobox") {
 				t.Errorf("%q: markdown leaks a navbox/infobox artifact", title)
+			}
+			// Regression guard for the live sidebar bug the sibling unit
+			// fixture reproduces: `E (mathematical constant)`'s History
+			// section used to open with this exact sidebar template's caption
+			// text ("Part of a series of articles on") ahead of its real prose.
+			if title == "E (mathematical constant)" && strings.Contains(markdown, "Part of a series of articles on") {
+				t.Errorf("%q: markdown leaks the sidebar template", title)
 			}
 			if title != "Major Arcana" {
 				return

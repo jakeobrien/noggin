@@ -21,7 +21,8 @@
   a dictionary, saved chat transcripts). **Provisional**: what all Collections share and
   where they diverge is deliberately undecided until C6 (C4a).
 - **Chrome** — everything a fetched Wikipedia page carries that is not the article itself:
-  navboxes, infoboxes, edit-section links, citation superscripts, reference lists, metadata
+  navboxes, sidebars (e.g. "Part of a series on X" boxes; CSS class `sidebar`, distinct from
+  navbox), infoboxes, edit-section links, citation superscripts, reference lists, metadata
   tables, images. Stripped before conversion; content tables are not chrome. Images are
   chrome too, but as of C4a's amendment (D104) leave a text placeholder — caption, falling
   back to alt-text, falling back to filename — rather than vanishing without trace (C4a).
