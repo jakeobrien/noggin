@@ -17,31 +17,27 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M3.7
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later same day (charm-build) — M3.5a done: renderImages now strips citation
-superscripts from captions before reading them, cursor moves to M4.1.**
-Root cause: `renderImages` (M3.5) read `figcaption.Text()` before `stripChrome`'s citation-
-superscript removal ran (pipeline order: math → images → strip), so a ref marker sitting
-inside a caption (e.g. Parmenides' "(c. 515 BC).[1][2]" on `why_anything.md`) leaked straight
-into the placeholder text. Fixed by having `renderImages` remove `sup[typeof*="mw:Extension/
-ref"]` from the image node itself (mutating the live node, not a clone — it is either about
-to be replaced wholesale or left for stripChrome to remove outright, so the mutation is
-harmless either way) before computing the placeholder description. Factored the selector
-out to `htmldoc.go` (`selectorCitationSup`/`typeofRefExtension`) alongside the existing
-file/math constants so `stripChrome`'s own removal reuses the same selector instead of a
-parallel string literal. Added `TestRenderImagesStripsCitationSuperscriptFromCaption`
-(unit, no live fetch) plus a fresh live regen of all four S5 titles confirming no `[Image:
-...]` placeholder — or anywhere else in any sample — carries a leftover `[<digit>]`
-ref-marker pattern (`grep -nE '\[[0-9]+\]' *.md` on a fresh /tmp scratch regen: no matches).
-Verified: `make check` clean, full opt-in live suite (`WIKISPIKE_LIVE=1 go test ./cmd/
-wikispike -run Live -v`) passes. Next step: charm-build picks up M4.1, now unblocked — all
-of its `needs:` are done (M2.4a, M3.3, M3.3a, M3.3b, M3.4, M3.5, M3.5a, M3.6).
+**2026-09-03, later still (charm-replan) — drained TRIAGE T1-T7 (code review of M3.3b/
+M3.5a); cursor moves back from M4.1 to M3.7.**
+T1 (high) is a real regression in already-`done` M3.3b work: removing the sole `<li>` in
+Major Arcana's External-links section leaves `## External links` as a dangling, empty
+heading through EOF — violates S3a/A2, uncaught by any existing mechanical check. T3
+(missing safety-property test for `sisterProjectInlineLine`) folded into the same new task,
+M3.7 (needs: M3.3b). T4/T5/T6/T7 (low-severity, mechanical — doc comments, a helper-reuse
+gap, a glossary update) bundled into M3.8 (needs: M3.3b, M3.5a), no decision entry needed,
+same precedent as M3.6's own T5/T6/T7 batch. T2 (sisterProjectInlineLine's whole-document
+scan scope vs. M3.3b's task text) decided as an accepted broadening, not a bug — see
+DECISIONS.md D109/D110. M4.1 re-dependencied on M3.7 and M3.8; both are real gaps in
+already-`done` work that M4.1's findings would otherwise have to cite or caveat around, so
+they block M4.1 rather than being deferred past it. TRIAGE.md is empty again. Next step:
+charm-build picks up M3.7 (needs: M3.3b, already done).
 
 ## Status
 
@@ -62,7 +58,9 @@ of its `needs:` are done (M2.4a, M3.3, M3.3a, M3.3b, M3.4, M3.5, M3.5a, M3.6).
 | M2.4a | done   | 2026-09-03 | 2026-09-03 | fresh regen: list_languages.md now 386/386 `(`/`)`, 3/3 `[`/`]`; T8/T9 (cross-paragraph masking) remain open, distinct known limitation |
 | M3.3a | done    | 2026-09-03 | -         | re-reviewed post-M3.3b fix-up; portal-bar/sistersitebox selectors confirmed clean on fresh regen of all four samples; T1/T2/T3/T5/T6/T7 filed against the surrounding strip.go changes |
 | M3.6  | done   | 2026-09-03 | 2026-09-03 | doc-comment, `transformHTML`, and "placeheld" typo fix all confirmed |
-| M3.3b | done    | 2026-09-03 | -         | fix-up on M3.3a (TRIAGE T10/T12): text-pattern heuristic (`sisterProjectInlineLine`) over `<li>`/`<p>` whole-text catches the inline Commons-category leak; `TestStripChromeLiveSamples` now checks Major Arcana specifically; review found a new regression (T1, empty `## External links` heading) plus T2/T3/T5/T6/T7 |
-| M3.5a | done    | 2026-09-03 | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere; review confirmed independently, filed T4 (minor doc-comment overstatement) |
-| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, and now M3.3b/M3.5a; all `needs:` now done |
+| M3.3b | done    | 2026-09-03 | -         | fix-up on M3.3a (TRIAGE T10/T12): text-pattern heuristic (`sisterProjectInlineLine`) over `<li>`/`<p>` whole-text catches the inline Commons-category leak; `TestStripChromeLiveSamples` now checks Major Arcana specifically; review found a new regression (T1, empty `## External links` heading) plus T2/T3/T5/T6/T7 — T1/T3 now M3.7, T2 decided (D110), T4/T5/T6/T7 now M3.8 |
+| M3.5a | done    | 2026-09-03 | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere; review confirmed independently, filed T4 (minor doc-comment overstatement) — T4 now folded into M3.8 |
+| M3.7 | todo    | -        | -         | fix-up on M3.3b (TRIAGE T1/T3, charm-replan 2026-09-03): drop the emptied External-links heading, add the missing safety-property test |
+| M3.8 | todo    | -        | -         | housekeeping pass 2 (TRIAGE T4/T5/T6/T7, charm-replan 2026-09-03) |
+| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, then M3.3b/M3.5a, and now M3.7/M3.8; blocked on both |
 | M4.2 | todo    | -        | -         |                                             |

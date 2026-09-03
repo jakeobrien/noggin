@@ -1357,6 +1357,52 @@
   test) with the smaller, more conservative of the two viable fixes; keeps M4.1's findings
   accurate about root cause (an upstream source quirk, not solely a pipeline artifact).
 
+## D109: TRIAGE T1/T3 (M3.3b's own regression: emptied External-links heading, missing safety-property test) promoted to task M3.7
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-03
+- Context: code review of M3.3b found (T1, high) that its own inline-sister-project removal
+  deletes the sole `<li>` in Major Arcana's External-links section, leaving `## External
+  links` as a dangling, content-free heading through EOF — verified by fresh live regen.
+  This contradicts M3.3b's own "done when" wording ("no leaked... line", implicitly not "a
+  new hole instead") and directly violates S3a ("removal must not leave visible holes") and
+  A2 (headings/sections legible and parsable); neither M2.4's mechanical hole checks nor
+  M3.3b's own regression test look for an emptied section heading. Separately (T3, medium),
+  no test exercises `sisterProjectInlineLine`'s own stated safety property — that an
+  ordinary sentence merely mentioning a sister project in passing survives untouched — only
+  the removal path is tested.
+- Decision: accepted as PLAN.md task M3.7 (needs M3.3b; effort 2) rather than requalifying
+  M3.3b's done note and moving on — drop a section heading left with no content before the
+  next same-or-higher-level heading/EOF (scoped to whatever `stripChrome` empties, not just
+  External links), and add the missing safety-property fixture.
+- Why: T1 is a real defect in already-`done` work that contradicts the cycle's own
+  acceptance bar (S3a, A2) — the same category and remedy as D106's dangling-paren gap, not
+  a matter of judgment. Cheap (effort 2) and directly reachable by M4.1's own findings,
+  which should not have to cite or caveat around a known-broken sample. T3 is bundled in
+  since it is the same code area and a natural companion assertion, not because it alone
+  would warrant a task.
+
+## D110: TRIAGE T2 (sisterProjectInlineLine's whole-document scope) — decided, not a bug
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-03
+- Context: code review found M3.3b's `sisterProjectInlineLine` scan runs over every
+  `<li>`/`<p>` in the whole document, not scoped to the External-links section the way
+  PLAN.md's M3.3b task text describes ("a text-pattern heuristic over External-links list
+  items") — a silent scope widening versus the task wording, though likely harmless in
+  practice since the match is a full-line anchor.
+- Decision: keep the whole-document scope as shipped; it is not a defect. PLAN.md's task
+  history is left unedited (never rewrite plan history) — this entry is the record of what
+  actually shipped and why it's accepted.
+- Why: low risk in practice (a full-line anchor rarely false-matches ordinary prose, and T3
+  above adds a regression test for exactly that safety property) and actually the more
+  robust choice — sister-project mentions are not guaranteed to sit only in an
+  External-links section across arbitrary articles, and scoping the `Find` to that section
+  would need its own heading-boundary detection logic for no clear benefit. Narrower than
+  medium value to fix, so decided rather than turned into a task.
+
 ## D108: TRIAGE T8/T9 (dropUnmatchedClosers cross-paragraph masking) — wontfix for this cycle
 
 - Status: decided

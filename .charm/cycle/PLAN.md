@@ -30,6 +30,14 @@ as a deliberately repeatable task, not a milestone of its own.
      plan task — not observed in any S5 sample, and the spike's own survival past this cycle
      is still open (OQ1). See DECISIONS.md D108. -->
 
+<!-- Reconciled 2026-09-03, later still (charm-replan) draining TRIAGE T1-T7 (code review of
+     M3.3b/M3.5a): added M3.7 (T1/T3, a real regression in already-"done" M3.3b work plus a
+     test-coverage gap) and M3.8 (T4/T5/T6/T7, mechanical/low-effort, no decision needed —
+     same precedent as M3.6's own T5/T6/T7 batch); M4.1 re-dependencied on both. T2
+     (sisterProjectInlineLine's whole-document scope vs. M3.3b's task text naming
+     "External-links list items") decided as an accepted broadening, not a bug. See
+     DECISIONS.md D109, D110. -->
+
 ## M1 — Fetch an article
 
 Delivers: S1 (entry point), S2, S8
@@ -149,6 +157,34 @@ Delivers: S5, S6a
   string literals; (T7) fix the "placeheld" typo in `images.go`'s error message to
   "placeholder" — done when: all three are addressed and `make check`/`go test ./...` stay
   clean — effort: 2 (needs: M3.4, M3.5)
+- **M3.7** — *Fix-up on M3.3b (TRIAGE T1/T3, charm-replan 2026-09-03):* two regression gaps
+  found reviewing M3.3b's inline-sister-project removal. (T1, high) removing the sole `<li>`
+  in Major Arcana's External-links section leaves `## External links` as a dangling heading
+  with zero content through EOF — verified by fresh live regen (`## External links` is the
+  last line of the regenerated `major_arcana.md`) — violating S3a ("removal must not leave
+  visible holes") and A2 (headings/sections legible and parsable); not caught by M2.4's
+  mechanical hole checks (blank-line runs, empty list items, unmatched brackets — not an
+  emptied section heading) nor M3.3b's own regression test (checks leaked text and table
+  survival, not section structure). (T3, medium) no test exercises `sisterProjectInlineLine`'s
+  own stated safety property — that ordinary prose merely mentioning a sister project in
+  passing (not a whole-line template match) survives untouched — only the removal path is
+  tested — done when: a section heading emptied by chrome removal (External links or any
+  other) is itself dropped before the next same-or-higher-level heading/EOF,
+  `major_arcana.md`'s live-regenerated sample carries no dangling empty heading, and a
+  fixture asserting a mid-sentence sister-project mention is *not* removed exists and
+  passes — effort: 2 (needs: M3.3b)
+- **M3.8** — *Housekeeping pass 2 (TRIAGE T4/T5/T6/T7, charm-replan 2026-09-03):* four
+  low-severity review findings bundled into one pass — (T4) drop the inaccurate "/alt" claim
+  from `htmldoc.go`'s `selectorCitationSup` doc comment (alt is a plain string attribute,
+  cannot carry a nested `<sup>`; only the figcaption case is real); (T5) update
+  `stripChromeInPlace`'s doc comment (or factor M3.3b's regex-based removal step into its own
+  named helper) now that it does more than CSS-selector removal; (T6) reuse `elementText`
+  (added by M3.3b to skip inlined `<style>`/`<script>` content) in `imagePlaceholderText`'s
+  caption extraction instead of a raw `.Text()` call, closing the same failure class M3.3b
+  just fixed elsewhere; (T7) update GLOSSARY.md's "Chrome" entry to reflect the portal-bar /
+  sister-project-box / inline-sister-project-link categories M3.3a/M3.3b introduced — done
+  when: all four are addressed and `make check`/`go test ./...` stay clean — effort: 2
+  (needs: M3.3b, M3.5a)
 
 ## M4 — Record the verdict
 
@@ -164,7 +200,8 @@ Delivers: S7a
   reader doesn't diff against them by accident — done when: a cited findings file exists,
   indexed in `findings/INDEX.md`, covering all of the above, with enough detail that a later
   cycle need not re-run the experiment, and no stale sample copy remains uncited or
-  unreplaced — effort: 3 (needs: M2.4a, M3.3, M3.3a, M3.3b, M3.4, M3.5, M3.5a, M3.6)
+  unreplaced — effort: 3 (needs: M2.4a, M3.3, M3.3a, M3.3b, M3.4, M3.5, M3.5a, M3.6, M3.7,
+  M3.8)
 - **M4.2** — Log the explicit go / no-go / retune-exhausted verdict — done when:
   `DECISIONS.md` carries a `decided` entry stating one of the three verdicts, referencing
   M4.1's findings and the roadmap entries it gates — effort: 1 (needs: M4.1)
