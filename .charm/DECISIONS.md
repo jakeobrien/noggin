@@ -1403,6 +1403,35 @@
   would need its own heading-boundary detection logic for no clear benefit. Narrower than
   medium value to fix, so decided rather than turned into a task.
 
+## D111: TRIAGE T1 (mw:Transclusion maintenance-template citation leak) promoted to task M3.9
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-03
+- Context: M4.1's own fresh regen (a findings task, not a fix-up) surfaced a new leak:
+  `selectorCitationSup` (`sup[typeof*="mw:Extension/ref"]`) matches reference-citation
+  superscripts but not Wikipedia's separate maintenance-template family — `{{citation
+  needed}}`, `{{clarification needed}}`, `{{dubious}}`, `{{disputed}}`, and the page-locator
+  `{{rp|<page>}}` — which renders as a distinct `typeof="mw:Transclusion"` `<sup>`. Leaks as
+  literal bracketed text (or, for `{{rp}}`, an unbracketed page number) in 3 of the 4 S5
+  judging samples (`major_arcana.md`, `list_languages.md`, `why_anything.md`). Doesn't fail
+  any mechanical check (brackets stay balanced), which is why it survived every prior
+  mechanical re-check and was only caught by eyeball during M4.1.
+- Decision: accepted as PLAN.md task M3.9 (needs M3.3a; effort 2) rather than a roadmap
+  deferral or a documented known limitation — extend the citation-superscript
+  selector/removal to also match the maintenance-template family, add a regression fixture,
+  and update `m4.1-conversion-record.md`'s "known gap" language once fixed. M4.1 is
+  re-dependencied on M3.9 and reopened (`done` → `todo`) since its findings text currently
+  describes the leak as unfixed.
+- Why: this is the same category and remedy as D105/D106/D109's chrome-selector
+  widenings — extending coverage of a citation-superscript removal S3a already commits to,
+  not new capability, so it stays inside S6a's retune budget. Unlike D108's cross-paragraph
+  masking (synthetic-only, medium severity, more invasive fix), this is observed live in 3
+  of the 4 samples the verdict (M4.2) is about to judge, and the fix is cheap (extend an
+  existing selector, same shape as M3.3a). Fixing it before the verdict is recorded keeps
+  M4.1's findings honest about the sample it cites rather than caveating around a known,
+  fixable leak in the very evidence the go/no-go call rests on.
+
 ## D108: TRIAGE T8/T9 (dropUnmatchedClosers cross-paragraph masking) — wontfix for this cycle
 
 - Status: decided

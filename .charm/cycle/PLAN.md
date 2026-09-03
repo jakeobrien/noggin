@@ -38,6 +38,12 @@ as a deliberately repeatable task, not a milestone of its own.
      "External-links list items") decided as an accepted broadening, not a bug. See
      DECISIONS.md D109, D110. -->
 
+<!-- Reconciled 2026-09-03, later still yet (charm-replan) draining the sole TRIAGE item
+     surfaced by M4.1 itself: added M3.9 (T1, maintenance-template citation leak) as a
+     fix-up on the already-done selectorCitationSup coverage; M4.1 re-opened (todo) and
+     re-dependencied on it since its findings text currently records the leak as an unfixed
+     known gap; M4.2 unaffected (still gated on M4.1). See DECISIONS.md D111. -->
+
 ## M1 — Fetch an article
 
 Delivers: S1 (entry point), S2, S8
@@ -186,6 +192,21 @@ Delivers: S5, S6a
   when: all four are addressed and `make check`/`go test ./...` stay clean — effort: 2
   (needs: M3.3b, M3.5a)
 
+- **M3.9** — *Fix-up on M2.2/M3.3a (TRIAGE T1, charm-replan 2026-09-03, surfaced by M4.1's own
+  fresh regen):* `selectorCitationSup` (`sup[typeof*="mw:Extension/ref"]`) only matches the
+  reference-citation superscript, not Wikipedia's distinct maintenance-template family
+  (`{{citation needed}}`, `{{clarification needed}}`, `{{dubious}}`, `{{disputed}}`, the
+  page-locator `{{rp|<page>}}`), which renders as a `typeof="mw:Transclusion"` `<sup>` and
+  leaks as literal bracketed (or, for `{{rp}}`, unbracketed) text — found live in 3/4 S5
+  samples (`major_arcana.md`, `list_languages.md`, `why_anything.md`). Extend the existing
+  citation-superscript selector/removal to also match this template family — same category
+  of fix as M3.3a/M3.3b's chrome-selector widenings, not new capability — done when: a fresh
+  live regen of all four S5 samples shows no bracketed maintenance-tag text
+  (`[citation needed]`, `[clarification needed]`, `[dubious – discuss]`,
+  `[disputed – discuss]`) and no bare `{{rp}}` page-locator remnant, a regression fixture
+  covers the pattern, and `cycle/findings/m4.1-conversion-record.md`'s "known gap" language
+  is updated to reflect the fix — effort: 2 (needs: M3.3a)
+
 ## M4 — Record the verdict
 
 Delivers: S7a
@@ -201,7 +222,7 @@ Delivers: S7a
   indexed in `findings/INDEX.md`, covering all of the above, with enough detail that a later
   cycle need not re-run the experiment, and no stale sample copy remains uncited or
   unreplaced — effort: 3 (needs: M2.4a, M3.3, M3.3a, M3.3b, M3.4, M3.5, M3.5a, M3.6, M3.7,
-  M3.8)
+  M3.8, M3.9)
 - **M4.2** — Log the explicit go / no-go / retune-exhausted verdict — done when:
   `DECISIONS.md` carries a `decided` entry stating one of the three verdicts, referencing
   M4.1's findings and the roadmap entries it gates — effort: 1 (needs: M4.1)

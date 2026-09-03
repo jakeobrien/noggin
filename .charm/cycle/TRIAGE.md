@@ -25,7 +25,6 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T1 | build | low | `cmd/wikispike/strip.go` (`selectorCitationSup`) | `stripChrome` only matches `typeof*="mw:Extension/ref"` citation superscripts; Wikipedia's maintenance-template family rendered as a `typeof="mw:Transclusion"` `<sup>` (`{{citation needed}}`, `{{clarification needed}}`, `{{dubious}}`, `{{disputed}}`, `{{rp\|<page>}}`) is a distinct template mechanism and leaks as literal text — found live in 3/4 S5 samples during M4.1's fresh regen: `major_arcana.md` (`[*clarification needed*]`, `[*dubious – discuss*]`), `list_languages.md` (`[*citation needed*]`), `why_anything.md` (a bare `: 17 ` from `{{rp\|17}}`, no brackets at all). Doesn't fail any mechanical check (brackets stay balanced, since these templates carry their own literal `[`/`]` text or none). See `.charm/cycle/findings/m4.1-conversion-record.md` for detail. | open |
 
 <!-- Emptied 2026-09-03 by charm-replan: T8/T9 -> DECISIONS.md D108 (wontfix-for-this-cycle);
      T10/T12 -> PLAN.md M3.3b; T11 -> PLAN.md M3.5a. See PROGRESS.md handoff and PLAN.md's
@@ -35,5 +34,10 @@
      D109); T2 -> DECISIONS.md D110 (decided, not a bug); T4/T5/T6/T7 -> PLAN.md M3.8 (no
      decision entry needed, same precedent as M3.6's own T5/T6/T7 batch). See PLAN.md's
      2026-09-03, later still reconciliation note for detail. -->
+
+<!-- Emptied 2026-09-03, later still yet, by charm-replan: T1 (maintenance-template
+     citation leak, surfaced by M4.1's own findings task) -> PLAN.md M3.9 (DECISIONS.md
+     D111). See PLAN.md's and PROGRESS.md's 2026-09-03, later still yet reconciliation
+     notes for detail. -->
 
 

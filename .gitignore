@@ -2,3 +2,4 @@
 /noggin
 /cmd/noggin/noggin
 __pycache__/
+.DS_Store

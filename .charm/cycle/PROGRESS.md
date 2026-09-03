@@ -17,35 +17,27 @@
 
 ## Cursor
 
-Current task: M4.2
+Current task: M3.9
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later still (charm-build) — M4.1 done; cursor moves to M4.2.**
-Wrote the consolidated findings record (`cycle/findings/m4.1-conversion-record.md`):
-what converts well/badly, the final selector/cleanup list (`stripChromeInPlace`'s ten steps,
-link stripping, `cleanupMarkdown`'s three passes), an S6a experiment summary table citing
-`maths-experiment.md`/`images-experiment.md` in full, and retune-exhaustion history pulled
-from PROGRESS's own Status table. Regenerated all four S5 samples fresh (post-M3.8) into
-`/tmp/s5scratch`, replacing its stale Sep-3-10:59 contents; mechanical re-check (balanced
-brackets, no blank-line runs/empty items, no leaked chrome, no dangling headings) all clean,
-`make check` clean. TRIAGE T4's stale-sample-copy cleanup: deleted four untracked stale
-`.md` copies sitting in the repo root (`e_math-2.md`, `e_math-3.md`, `major_arcana.md`,
-`why_anything.md`, all predating M3.7/M3.8) and the repo's own `tmp/wikispike-tests-1/`
-(same staleness); `git status --porcelain` now shows none. Eyeballing the fresh regen
-surfaced a genuinely new, previously-uncaught leak: Wikipedia's maintenance-template family
-(`{{citation needed}}`, `{{clarification needed}}`, `{{dubious}}`, `{{disputed}}`,
-`{{rp|<page>}}`) renders as `typeof="mw:Transclusion"`, not the `mw:Extension/ref`
-`stripChrome` already matches, so it leaks as literal text in 3/4 samples (visible in
-`major_arcana.md`, `list_languages.md`, `why_anything.md`) without failing any mechanical
-check. Filed as TRIAGE T1 rather than fixed here — M4.1 is a findings task, and the fix
-needs a replan call (another retune round vs. roadmap deferral). Next step: charm-build
-picks up M4.2 (log the go/no-go/retune-exhausted verdict in DECISIONS.md, citing M4.1's
-findings) — first check TRIAGE's one open item per the gate-check step, since a
-summary-level read shows one low-severity item now open.
+**2026-09-03, later still yet (charm-replan) — triaged TRIAGE T1; cursor moves to M3.9.**
+Routed the sole open TRIAGE item (T1, the `mw:Transclusion` maintenance-template citation
+leak M4.1's own fresh regen surfaced) to a new PLAN.md fix-up task, M3.9 (needs M3.3a,
+effort 2), rather than a roadmap deferral or wontfix — it's the same category of fix as
+M3.3a/M3.3b's chrome-selector widenings (extending `selectorCitationSup`'s coverage, not
+new capability), affects 3/4 of the judging sample, and is cheap. Logged as DECISIONS.md
+D111. Since M4.1's own findings text currently records the leak as an unfixed known gap,
+M4.1 is re-dependencied on M3.9 and reopened (`done` → `todo`) — its Reviewed/Validated
+cells were already `-`, so nothing to clear. M4.2 is untouched (still gated on M4.1).
+Next step: charm-build picks up M3.9 — extend the citation-superscript
+selector/removal to also match the maintenance-template family, add a regression fixture,
+fresh-regen all four S5 samples to confirm no leak remains, then update
+`cycle/findings/m4.1-conversion-record.md`'s "known gap" language before M4.1 can be
+re-closed and M4.2 picked up after it.
 
 ## Status
 
@@ -70,5 +62,6 @@ summary-level read shows one low-severity item now open.
 | M3.5a | done    | 2026-09-03 | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere; review confirmed independently, filed T4 (minor doc-comment overstatement) — T4 now folded into M3.8 |
 | M3.7 | done    | 2026-09-03 | 2026-09-03 | fix-up on M3.3b (TRIAGE T1/T3): `dropEmptyHeadings` drops any section heading emptied by chrome removal; fresh live regen confirms `major_arcana.md` no longer dangles `## External links`; sister-project mid-sentence-survival fixture added |
 | M3.8 | done    | 2026-09-03 | 2026-09-03 | housekeeping pass 2 (TRIAGE T4/T5/T6/T7): doc-comment fix, `removeSisterProjectInlineLines` extracted, `elementText` reused in `imagePlaceholderText`, GLOSSARY.md Chrome entry updated |
-| M4.1 | done    | -        | -         | consolidated findings record + fresh S5 regen + TRIAGE T4 stale-copy cleanup; surfaced new TRIAGE T1 (maintenance-template leak, not fixed here) |
+| M3.9 | todo    | -        | -         | fix-up on M2.2/M3.3a (TRIAGE T1, D111): maintenance-template citation leak |
+| M4.1 | todo    | -        | -         | re-opened (was done): findings record needs updating once M3.9 lands (was: consolidated findings record + fresh S5 regen + TRIAGE T4 stale-copy cleanup; surfaced new TRIAGE T1) |
 | M4.2 | todo    | -        | -         |                                             |
