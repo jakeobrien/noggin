@@ -24,45 +24,47 @@ Current task: M4.1
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, this session (charm-build) — M3.6 done, cursor moved to M4.1.**
-Housekeeping pass (TRIAGE T5/T6/T7), all three addressed:
-- T5: fixed `links_test.go`'s stale doc comment on `TestStripLinksPreservesSurroundingProse`
-  (used to name a non-existent identifier, `TestArticleMarkdownHasNoLinkSyntax`).
-- T6: new `cmd/wikispike/htmldoc.go` holds `transformHTML` (shared
-  parse/mutate/re-serialize helper) plus `selectorFilePrefix`/`selectorMathExtension`
-  (built from `typeofFilePrefix`/`typeofMathExtension` constants, replacing parallel
-  `mw:File`/`mw:Extension/math` string literals in `strip.go`/`math.go`/`images.go`).
-  `strip.go`, `links.go`, `math.go`, `images.go` all now delegate to `transformHTML`;
-  `strip.go` factored its selectors into `stripChromeInPlace`. Removed now-unused `fmt`
-  imports from `images.go`/`math.go`/`links.go`.
-- T7: the "placeheld" typo in `images.go`'s error message no longer exists — folded into
-  `transformHTML`'s generic re-serialize error message during the T6 refactor (confirmed:
-  `grep -ri placeheld cmd/wikispike` is empty).
-Fresh-context code-reviewer subagent ran a two-pass review (standards, spec fidelity):
-all three PASS, no functional regressions, only low-severity nits (no action needed).
-`make check`, `go vet ./...`, and the full opt-in live suite
-(`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) all pass. All of M2.4a, M3.3,
-M3.3a, M3.4, M3.5, M3.6 are now done — M4.1's dependencies are satisfied.
-Next step: work M4.1 (findings record + TRIAGE T4 stale-sample cleanup), then M4.2.
+**2026-09-03, later same day (charm-validate, fresh-context subagent) — M3.3a FAILS re-verification; M4.1 blocked.**
+Ran a deep functional validation (deterministic checks + live re-exercise of the spike
+against all four S5 titles, fresh output, not stale samples) over every task claimed
+`done`: M1.1, M1.2, M2.1–M2.5, M2.4a, M3.1–M3.6, M3.3a. `make check`, `go vet`, `go test ./...`,
+and the full opt-in live suite all pass; M1.1/M1.2/M2.1–M2.5/M2.4a/M3.4/M3.5/M3.6 all PASS
+on fresh live evidence (see Status table for per-task citations). M3.1–M3.3 are corroborated
+(the human eyeball-judgment step can't be independently replayed by an agent).
+**M3.3a FAILS**: its own cited case still leaks. A fresh live regen of `major_arcana.md`
+still shows a sister-project line (`Media related to Major Arcana at Wikimedia Commons`)
+under `## External links` — Wikipedia renders this instance as an inline `Commons category`
+template inside a plain `<li>`, not `div.portal-bar`/`div.sistersitebox`, so `strip.go`'s
+M3.3a selectors don't catch it. `strip_test.go`'s M3.3a regression guard never actually
+checks Major Arcana (only the other two titles), so this shipped with a green test suite.
+Filed as TRIAGE T10 (the leak itself, medium) + T12 (the test-coverage gap that let it
+ship, low) — needs a new fix-up task via replan before M4.1 proceeds, since M4.1 depends
+on M3.3a. Also found and filed T11 (low): image placeholders can leak citation-marker
+digits (`[1][2]`) from figcaptions because `renderImages` runs before ref-superscript
+stripping — doesn't fail any mechanical check but conflicts with S3a's intent.
+Status table: M3.3a flipped from `done` to `blocked` (on T10); Validated column stamped
+2026-09-03 for every task this pass covered (all except M4.1/M4.2, not yet built).
+Next step: charm-replan drains T10/T11/T12 (and pre-existing T8/T9) into a fix-up task
+(e.g. M3.3b) before M4.1 can proceed — M4.1's `needs:` list still cites M3.3a as done.
 
 ## Status
 
 | Key  | Status  | Reviewed | Validated | Note                                        |
 |------|---------|----------|-----------|---------------------------------------------|
-| M1.1 | done    | 2026-09-03 | 2026-08-14 | `cmd/wikispike/`                            |
-| M1.2 | done    | 2026-09-03 | 2026-08-14 | live fetch verified, all four S5 titles     |
-| M2.1 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction   |
-| M2.2 | done    | 2026-09-03 | -         | reopened post-M2.5 for table.sidebar (user-directed fix-up); re-verify |
-| M2.3 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction   |
-| M2.4 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction; review found T3 (dangling paren, done-when not fully met) — fix tracked as M2.4a, D106 |
-| M2.5 | done    | 2026-09-03 | -         | consolidate live tests (was TRIAGE T1)      |
-| M3.1 | done    | 2026-09-03 | -         | scratch root, 4 .md files (user, off-sandbox) |
-| M3.2 | done    | 2026-09-03 | -         | `findings/sample-judging.md`; only E fails A3 |
-| M3.3 | done    | 2026-09-03 | -         | nothing to retune beyond M3.4's carve-out   |
-| M3.4 | done    | 2026-09-03 | -         | `math.go`, termtex dep; findings recorded   |
-| M3.5 | done    | 2026-09-03 | -         | `images.go`; no new dep; findings recorded  |
-| M2.4a | done   | -        | -         | fix-up (TRIAGE T3): dangling-paren gap; see D107 |
-| M3.3a | done   | -        | -         | fix-up (TRIAGE T2): portal-bar/sistersitebox |
-| M3.6  | done   | 2026-09-03 | -       | housekeeping (TRIAGE T5/T6/T7)              |
+| M1.1 | done    | 2026-09-03 | 2026-09-03 | `cmd/wikispike/`; re-verified post-refactor, no leakage into noggin |
+| M1.2 | done    | 2026-09-03 | 2026-09-03 | live fetch verified, all four S5 titles, fresh re-run |
+| M2.1 | done    | 2026-09-03 | 2026-09-03 | fresh regen: headings/prose/table present   |
+| M2.2 | done    | 2026-09-03 | 2026-09-03 | fresh regen clean except the leak now tracked under M3.3a/T10 |
+| M2.3 | done    | 2026-09-03 | 2026-09-03 | fresh regen: no link syntax/URLs on any of the four |
+| M2.4 | done    | 2026-09-03 | 2026-09-03 | fresh regen: no 3+ blank-line runs, no empty list items; done-when's dangling-paren gap closed by M2.4a |
+| M2.5 | done    | 2026-09-03 | 2026-09-03 | shared live fixture confirmed, whole-suite `-run Live` passes without 429 |
+| M3.1 | done    | 2026-09-03 | 2026-09-03 | original scratch root off-sandbox, user-attested; independently reproduced equivalent at /tmp/s5scratch |
+| M3.2 | done    | 2026-09-03 | 2026-09-03 | human eyeball-judgment step corroborated, not independently re-playable |
+| M3.3 | done    | 2026-09-03 | 2026-09-03 | corroborated: nothing to retune beyond M3.4's carve-out |
+| M3.4 | done    | 2026-09-03 | 2026-09-03 | fresh live regen: Unicode + raw-TeX fallback both present, no mid-sentence gaps |
+| M3.5 | done    | 2026-09-03 | 2026-09-03 | fresh regen: placeholders at every image position, balanced brackets; T11 filed (citation-marker leak, doesn't fail this criterion) |
+| M2.4a | done   | 2026-09-03 | 2026-09-03 | fresh regen: list_languages.md now 386/386 `(`/`)`, 3/3 `[`/`]`; T8/T9 (cross-paragraph masking) remain open, distinct known limitation |
+| M3.3a | blocked | 2026-09-03 | 2026-09-03 | FAILS re-verification: major_arcana.md still leaks a sister-project line via an inline-template variant the fix's selectors miss — see TRIAGE T10/T12 |
+| M3.6  | done   | 2026-09-03 | 2026-09-03 | doc-comment, `transformHTML`, and "placeheld" typo fix all confirmed |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4    |
 | M4.2 | todo    | -        | -         |                                             |
