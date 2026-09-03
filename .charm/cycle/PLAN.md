@@ -23,6 +23,13 @@ as a deliberately repeatable task, not a milestone of its own.
      three. See DECISIONS.md D105, D106. T4/T5/T6/T7 needed no decision entry (low severity,
      mechanical fixes with an obvious answer). -->
 
+<!-- Reconciled 2026-09-03 (charm-replan) draining TRIAGE T8-T12 after charm-validate flipped
+     M3.3a to blocked: added M3.3b (T10, folds in T12's coverage gap) and M3.5a (T11); M4.1
+     re-dependencied on both. T8/T9 (dropUnmatchedClosers cross-paragraph masking, and D107's
+     writeup not covering it) routed to DECISIONS.md as wontfix-for-this-cycle rather than a
+     plan task — not observed in any S5 sample, and the spike's own survival past this cycle
+     is still open (OQ1). See DECISIONS.md D108. -->
+
 ## M1 — Fetch an article
 
 Delivers: S1 (entry point), S2, S8
@@ -114,6 +121,25 @@ Delivers: S5, S6a
   Wikimedia Commons/Wikiquote lines) — done when: `stripChrome` also removes both selectors
   and none of the four current converted samples shows a leaked portal-bar or
   sister-project line — effort: 2 (needs: M2.2, M3.5)
+- **M3.3b** — *Fix-up on M3.3a (TRIAGE T10/T12, charm-validate + charm-replan 2026-09-03):*
+  M3.3a's own selectors (`div.portal-bar`/`div.sistersitebox`) miss a distinct leak in the
+  exact sample PLAN.md cited as motivating: `major_arcana.md`'s
+  "Media related to Major Arcana at Wikimedia Commons" line is an inline `Commons category`
+  template inside a plain `<li>` in the External-links list, not a boxed template — confirmed
+  absent from the live Parsoid HTML as either selector. Fix needs a broader selector or a
+  text-pattern heuristic over External-links list items ("Media related to ... at
+  Wikimedia Commons"/"... at Wikiquote" and similar), not just a CSS selector addition. Also
+  folds in T12: the M3.3a regression guard (`strip_test.go:98-112`) never actually checked
+  Major Arcana — done when: `major_arcana.md`'s live-regenerated sample no longer shows the
+  cited leak, and the regression guard exercises Major Arcana (not just the other two
+  titles) — effort: 2 (needs: M3.3a)
+- **M3.5a** — *Fix-up on M3.5 (TRIAGE T11, charm-validate 2026-09-03):* `renderImages` reads
+  `figcaption.Text()` before citation-superscript stripping runs, so an image placeholder can
+  leak ref-marker digits (e.g. `[Image: ... Parmenides (c. 515 BC).[1][2]]`, `why_anything.md`)
+  — doesn't fail any mechanical check (brackets stay balanced) but conflicts with S3a's
+  "citation superscripts removed" intent — done when: no converted sample's image
+  placeholder contains a ref-marker digit pattern left over from an uncaptured superscript,
+  checked mechanically over all four — effort: 1 (needs: M3.5, M2.2)
 - **M3.6** — *Housekeeping pass (TRIAGE T5/T6/T7, charm-replan 2026-09-02):* low-severity
   code-review findings bundled into one pass — (T5) fix the stale doc comment on
   `TestStripLinksPreservesSurroundingProse` (`links_test.go:33-36`, still names the old
@@ -138,7 +164,7 @@ Delivers: S7a
   reader doesn't diff against them by accident — done when: a cited findings file exists,
   indexed in `findings/INDEX.md`, covering all of the above, with enough detail that a later
   cycle need not re-run the experiment, and no stale sample copy remains uncited or
-  unreplaced — effort: 3 (needs: M2.4a, M3.3, M3.3a, M3.4, M3.5, M3.6)
+  unreplaced — effort: 3 (needs: M2.4a, M3.3, M3.3a, M3.3b, M3.4, M3.5, M3.5a, M3.6)
 - **M4.2** — Log the explicit go / no-go / retune-exhausted verdict — done when:
   `DECISIONS.md` carries a `decided` entry stating one of the three verdicts, referencing
   M4.1's findings and the roadmap entries it gates — effort: 1 (needs: M4.1)

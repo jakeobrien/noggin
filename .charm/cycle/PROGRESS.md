@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M3.3b
 
 ## Handoff
 
@@ -47,6 +47,24 @@ Status table: M3.3a flipped from `done` to `blocked` (on T10); Validated column 
 Next step: charm-replan drains T10/T11/T12 (and pre-existing T8/T9) into a fix-up task
 (e.g. M3.3b) before M4.1 can proceed — M4.1's `needs:` list still cites M3.3a as done.
 
+**2026-09-03, later same day (charm-replan) — TRIAGE T8-T12 drained; M3.3b/M3.5a added,
+M4.1 re-dependencied, cursor moves to M3.3b.**
+Routed per the escalation matrix: T10 (M3.3a's own selectors miss the real Major Arcana
+leak — an inline `Commons category` template inside a plain `<li>`, not a boxed template)
+and T12 (the regression guard never checked Major Arcana) folded into one new fix-up task,
+M3.3b (needs M3.3a), since T12 is a coverage gap in exactly the test T10's fix must add to.
+T11 (image placeholders can leak citation-marker digits because `renderImages` runs before
+ref-superscript stripping) became M3.5a (needs M3.5), kept separate since it's a different
+file/pipeline stage than T10/T12. Both are low/medium severity, cheap, mechanical fixes with
+an obvious answer — no DECISIONS.md entry needed, same precedent as T4-T7/M3.6. T8
+(`dropUnmatchedClosers` cross-paragraph masking, a design limitation of M2.4a's fix) and T9
+(D107's writeup not covering it) routed to DECISIONS.md as D108, wontfix-for-this-cycle:
+not observed in any S5 sample (only demonstrated synthetically), and fixing a throwaway
+spike's edge case that may not survive the cycle (OQ1) isn't worth the risk of a
+more-invasive rewrite this late. M4.1's `needs:` widened to add M3.3b and M3.5a. TRIAGE.md
+is now empty. Next step: charm-build picks up M3.3b (then M3.5a), re-verifying against a
+fresh live regen of `major_arcana.md`/`why_anything.md` before M4.1 proceeds.
+
 ## Status
 
 | Key  | Status  | Reviewed | Validated | Note                                        |
@@ -64,7 +82,9 @@ Next step: charm-replan drains T10/T11/T12 (and pre-existing T8/T9) into a fix-u
 | M3.4 | done    | 2026-09-03 | 2026-09-03 | fresh live regen: Unicode + raw-TeX fallback both present, no mid-sentence gaps |
 | M3.5 | done    | 2026-09-03 | 2026-09-03 | fresh regen: placeholders at every image position, balanced brackets; T11 filed (citation-marker leak, doesn't fail this criterion) |
 | M2.4a | done   | 2026-09-03 | 2026-09-03 | fresh regen: list_languages.md now 386/386 `(`/`)`, 3/3 `[`/`]`; T8/T9 (cross-paragraph masking) remain open, distinct known limitation |
-| M3.3a | blocked | 2026-09-03 | 2026-09-03 | FAILS re-verification: major_arcana.md still leaks a sister-project line via an inline-template variant the fix's selectors miss — see TRIAGE T10/T12 |
+| M3.3a | blocked | 2026-09-03 | 2026-09-03 | FAILS re-verification: major_arcana.md still leaks a sister-project line via an inline-template variant the fix's selectors miss — fix-up is M3.3b |
 | M3.6  | done   | 2026-09-03 | 2026-09-03 | doc-comment, `transformHTML`, and "placeheld" typo fix all confirmed |
-| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4    |
+| M3.3b | todo    | -        | -         | fix-up on M3.3a (TRIAGE T10/T12): broaden selector/heuristic for Major Arcana's inline Commons-category leak, extend regression guard |
+| M3.5a | todo    | -        | -         | fix-up on M3.5 (TRIAGE T11): strip ref-superscripts before `renderImages` reads captions |
+| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, and now M3.3b/M3.5a |
 | M4.2 | todo    | -        | -         |                                             |

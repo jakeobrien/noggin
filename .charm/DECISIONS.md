@@ -1356,3 +1356,28 @@
   `(`/`)` and `[`/`]` counts — verified via a live regenerate + count, and via a new live
   test) with the smaller, more conservative of the two viable fixes; keeps M4.1's findings
   accurate about root cause (an upstream source quirk, not solely a pipeline artifact).
+
+## D108: TRIAGE T8/T9 (dropUnmatchedClosers cross-paragraph masking) — wontfix for this cycle
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-03
+- Context: code review (TRIAGE T8) found that `dropUnmatchedClosers` (M2.4a/D107) tracks
+  paren/bracket depth across the whole flushed prose chunk, not per paragraph — an unmatched
+  opener anywhere earlier in a chunk permanently raises the depth baseline, silently masking
+  a later genuinely-dangling closer instead of dropping it, demonstrated with a synthetic
+  two-paragraph example. T9 separately noted D107's known-limitation writeup covers only the
+  half-open-interval case (`[0, 1)`), not this one. Neither is observed in any of the four
+  live S5 samples — only reproduced synthetically.
+- Decision: not fixed this cycle. `dropUnmatchedClosers` keeps its current whole-chunk depth
+  scope, documented as a second known limitation alongside D107's half-open-interval case:
+  an earlier unmatched opener in the same flushed chunk can mask a later genuinely-dangling
+  closer, and the mechanical balanced-count acceptance check cannot detect it since a masked
+  pair still nets out balanced. T8/T9 are dropped from TRIAGE without a PLAN.md task.
+- Why: medium severity per the reporter, but risk × value is low in practice — not observed
+  in any sample this cycle's S5 set actually produces, only in a hand-constructed synthetic
+  case, and the fix (narrowing chunk scope to per-paragraph) is more invasive than M2.4a's
+  own conservative asymmetric design (D107) chose to be, for a spike whose own survival past
+  this cycle is still an open question (OQ1). Revisit if a future cycle keeps the conversion
+  logic and a real sample surfaces this pattern; until then, the documented limitation is a
+  cheaper and more honest outcome than either a rushed fix or leaving it undocumented.
