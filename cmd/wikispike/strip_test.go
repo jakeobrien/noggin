@@ -23,6 +23,9 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 <figure typeof="mw:File/Thumb"><img src="x.png"/><figcaption>A caption</figcaption></figure>
 <div class="portal-bar noprint"><ul><li><a href="#">Philosophy</a></li><li><a href="#">Physics</a></li></ul></div>
 <div class="sistersitebox"><a href="#"><img src="commons.png"/>Wikimedia Commons has media related to Widgets.</a></div>
+<section data-mw-section-id="3"><h2 id="External_links">External links</h2>
+<ul><li id="mwA3c"><style data-mw-deduplicate="TemplateStyles:r1" typeof="mw:Extension/templatestyles mw:Transclusion" about="#mwt99">.sister-inline-image{display:inline}</style><span class="noviewer sister-inline-image" typeof="mw:File" about="#mwt99"><a href="./File:Commons-logo.svg" class="mw-file-description"><img src="commons2.png" alt="Wikimedia Commons logo"/></a></span><span about="#mwt99"> Media related to </span><a rel="mw:WikiLink/Interwiki" href="https://commons.wikimedia.org/wiki/Category:Widgets" about="#mwt99">Widgets</a><span about="#mwt99"> at Wikimedia Commons</span></li></ul>
+</section>
 <section data-mw-section-id="2"><h2 id="References">References</h2>
 <div class="mw-references-wrap" typeof="mw:Extension/references"><ol><li>Some citation text</li></ol></div>
 </section>
@@ -48,6 +51,7 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 		"References", "Some citation text", // reference-list section
 		"Philosophy", "Physics", // portal bar (M3.3a)
 		"Wikimedia Commons has media related to Widgets", // sister-project side-box (M3.3a)
+		"Media related to", "at Wikimedia Commons", // inline sister-project link, e.g. Commons category-inline (M3.3b)
 	} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("stripped output still contains chrome %q:\n%s", unwanted, got)
@@ -112,6 +116,15 @@ func TestStripChromeLiveSamples(t *testing.T) {
 			}
 			if title != "Major Arcana" {
 				return
+			}
+			// Regression guard for M3.3b (TRIAGE T10/T12): this is the exact
+			// sample PLAN.md cited as motivating the fix-up — a Commons
+			// category-inline template rendered as a bare <li> in External
+			// links, which M3.3a's div.portal-bar/div.sistersitebox selectors
+			// never matched. T12 is folded in here: this is the first time
+			// this live regression guard has actually exercised Major Arcana.
+			if strings.Contains(markdown, "Media related to") || strings.Contains(markdown, "at Wikimedia Commons") {
+				t.Errorf("%q: markdown leaks the inline sister-project link", title)
 			}
 			// Major Arcana's content tables (table.wikitable) must survive
 			// stripping — checked here, reusing this subtest's single fetch,

@@ -17,53 +17,29 @@
 
 ## Cursor
 
-Current task: M3.3b
+Current task: M3.5a
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later same day (charm-validate, fresh-context subagent) — M3.3a FAILS re-verification; M4.1 blocked.**
-Ran a deep functional validation (deterministic checks + live re-exercise of the spike
-against all four S5 titles, fresh output, not stale samples) over every task claimed
-`done`: M1.1, M1.2, M2.1–M2.5, M2.4a, M3.1–M3.6, M3.3a. `make check`, `go vet`, `go test ./...`,
-and the full opt-in live suite all pass; M1.1/M1.2/M2.1–M2.5/M2.4a/M3.4/M3.5/M3.6 all PASS
-on fresh live evidence (see Status table for per-task citations). M3.1–M3.3 are corroborated
-(the human eyeball-judgment step can't be independently replayed by an agent).
-**M3.3a FAILS**: its own cited case still leaks. A fresh live regen of `major_arcana.md`
-still shows a sister-project line (`Media related to Major Arcana at Wikimedia Commons`)
-under `## External links` — Wikipedia renders this instance as an inline `Commons category`
-template inside a plain `<li>`, not `div.portal-bar`/`div.sistersitebox`, so `strip.go`'s
-M3.3a selectors don't catch it. `strip_test.go`'s M3.3a regression guard never actually
-checks Major Arcana (only the other two titles), so this shipped with a green test suite.
-Filed as TRIAGE T10 (the leak itself, medium) + T12 (the test-coverage gap that let it
-ship, low) — needs a new fix-up task via replan before M4.1 proceeds, since M4.1 depends
-on M3.3a. Also found and filed T11 (low): image placeholders can leak citation-marker
-digits (`[1][2]`) from figcaptions because `renderImages` runs before ref-superscript
-stripping — doesn't fail any mechanical check but conflicts with S3a's intent.
-Status table: M3.3a flipped from `done` to `blocked` (on T10); Validated column stamped
-2026-09-03 for every task this pass covered (all except M4.1/M4.2, not yet built).
-Next step: charm-replan drains T10/T11/T12 (and pre-existing T8/T9) into a fix-up task
-(e.g. M3.3b) before M4.1 can proceed — M4.1's `needs:` list still cites M3.3a as done.
-
-**2026-09-03, later same day (charm-replan) — TRIAGE T8-T12 drained; M3.3b/M3.5a added,
-M4.1 re-dependencied, cursor moves to M3.3b.**
-Routed per the escalation matrix: T10 (M3.3a's own selectors miss the real Major Arcana
-leak — an inline `Commons category` template inside a plain `<li>`, not a boxed template)
-and T12 (the regression guard never checked Major Arcana) folded into one new fix-up task,
-M3.3b (needs M3.3a), since T12 is a coverage gap in exactly the test T10's fix must add to.
-T11 (image placeholders can leak citation-marker digits because `renderImages` runs before
-ref-superscript stripping) became M3.5a (needs M3.5), kept separate since it's a different
-file/pipeline stage than T10/T12. Both are low/medium severity, cheap, mechanical fixes with
-an obvious answer — no DECISIONS.md entry needed, same precedent as T4-T7/M3.6. T8
-(`dropUnmatchedClosers` cross-paragraph masking, a design limitation of M2.4a's fix) and T9
-(D107's writeup not covering it) routed to DECISIONS.md as D108, wontfix-for-this-cycle:
-not observed in any S5 sample (only demonstrated synthetically), and fixing a throwaway
-spike's edge case that may not survive the cycle (OQ1) isn't worth the risk of a
-more-invasive rewrite this late. M4.1's `needs:` widened to add M3.3b and M3.5a. TRIAGE.md
-is now empty. Next step: charm-build picks up M3.3b (then M3.5a), re-verifying against a
-fresh live regen of `major_arcana.md`/`why_anything.md` before M4.1 proceeds.
+**2026-09-03, later same day (charm-build) — M3.3b done: broadened chrome-strip heuristic
+fixes the Major Arcana leak, cursor moves to M3.5a.**
+Root cause: Major Arcana's leak is a Commons category-inline template rendered as a bare
+`<li>` in External links (sibling `<span>`/`<a>` sharing one Parsoid `about` id, no wrapping
+div/table for a CSS selector) — confirmed via a live HTML dump. Fixed with a text-pattern
+heuristic (`sisterProjectInlineLine`, `strip.go`) matching the whole trimmed text of any
+`<li>`/`<p>` against known sister-project phrasings, so passing mentions survive. Gotcha:
+Parsoid inlines the template's `<style data-mw-deduplicate=...>` CSS as a text-node sibling
+in the same `<li>`; goquery's `.Text()` doesn't skip style/script like the pipeline's own
+html-to-markdown step does, so a naive call broke the whole-string anchor match — fixed with
+`elementText` (clone, strip style/script, then read text); unit fixture extended to cover
+this trap without a live fetch. T12 folded in: `TestStripChromeLiveSamples` now asserts on
+Major Arcana specifically. Verified: `make check`/`go vet` clean; full opt-in live suite
+passes including the new assertion; fresh `go run` regen shows `## External links` ending
+cleanly, content table intact. Next step: charm-build picks up M3.5a (T11's citation-marker
+leak in image placeholders), then M4.1 can proceed — its `needs:` list is now satisfiable.
 
 ## Status
 
@@ -82,9 +58,9 @@ fresh live regen of `major_arcana.md`/`why_anything.md` before M4.1 proceeds.
 | M3.4 | done    | 2026-09-03 | 2026-09-03 | fresh live regen: Unicode + raw-TeX fallback both present, no mid-sentence gaps |
 | M3.5 | done    | 2026-09-03 | 2026-09-03 | fresh regen: placeholders at every image position, balanced brackets; T11 filed (citation-marker leak, doesn't fail this criterion) |
 | M2.4a | done   | 2026-09-03 | 2026-09-03 | fresh regen: list_languages.md now 386/386 `(`/`)`, 3/3 `[`/`]`; T8/T9 (cross-paragraph masking) remain open, distinct known limitation |
-| M3.3a | blocked | 2026-09-03 | 2026-09-03 | FAILS re-verification: major_arcana.md still leaks a sister-project line via an inline-template variant the fix's selectors miss — fix-up is M3.3b |
+| M3.3a | done    | -        | -         | unblocked: M3.3b's broadened heuristic fixes the cited leak (fresh live regen confirmed); Reviewed/Validated cleared, `strip.go` changed since the 2026-09-03 validation — needs re-covering |
 | M3.6  | done   | 2026-09-03 | 2026-09-03 | doc-comment, `transformHTML`, and "placeheld" typo fix all confirmed |
-| M3.3b | todo    | -        | -         | fix-up on M3.3a (TRIAGE T10/T12): broaden selector/heuristic for Major Arcana's inline Commons-category leak, extend regression guard |
+| M3.3b | done    | -        | -         | fix-up on M3.3a (TRIAGE T10/T12): text-pattern heuristic (`sisterProjectInlineLine`) over `<li>`/`<p>` whole-text catches the inline Commons-category leak; `TestStripChromeLiveSamples` now checks Major Arcana specifically |
 | M3.5a | todo    | -        | -         | fix-up on M3.5 (TRIAGE T11): strip ref-superscripts before `renderImages` reads captions |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, and now M3.3b/M3.5a |
 | M4.2 | todo    | -        | -         |                                             |
