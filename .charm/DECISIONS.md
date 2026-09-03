@@ -1432,6 +1432,48 @@
   M4.1's findings honest about the sample it cites rather than caveating around a known,
   fixable leak in the very evidence the go/no-go call rests on.
 
+## D112: C4a spike verdict — GO, with a known limitation
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-03
+- Context: SPEC S7a's cycle-ending obligation — an explicit go/no-go/retune-exhausted
+  verdict against the user's A1–A5 readability bar, informed by M3.2's per-article A1–A4
+  read, S6a's two costed experiments (maths M3.4, images M3.5), and every retune task since
+  (M3.3a, M3.3b, M2.4a, M3.5a, M3.7, M3.8, M3.9). Full detail:
+  `cycle/findings/m4.1-conversion-record.md` (consolidated verdict record, re-verified
+  post-M3.9), `cycle/findings/sample-judging.md` (M3.2's per-article A1–A4 verdict),
+  `cycle/findings/maths-experiment.md`, `cycle/findings/images-experiment.md`.
+- Decision: **GO — with a known limitation.** All four S5 samples clear A1 (readable), A2
+  (headings/structure) and A4 (tables); three of four clear A3 (no gaps/artifacts) outright.
+  `E (mathematical constant)`'s residual A3 shortfall — 39% of its formulae fall back to
+  raw-TeX source text sitting mid-sentence, per `maths-experiment.md` — is confined to that
+  one article and falls squarely within A5's own worked example (SPEC.md: "if
+  `E (mathematical constant)` reads as swiss cheese while the other three clear A1–A3, that
+  is a *go with a known limitation*, not a no-go"). The user's own bar ("I would read this
+  here instead of opening a browser") is cleared. This gates `ROADMAP.md`'s "Wikipedia as a
+  real collection inside noggin" and "A dictionary / thesaurus collection" Unscheduled
+  entries and cycle `C6` (collections) — all three may now proceed to their own specs. This
+  decision commits to none of their shape: per S6a/S7a, "nothing decided here fixes the
+  shape of the eventual real feature; a later cycle with its own agreed spec decides whether
+  and how either ships," and that stance extends to the whole verdict, not just the two named
+  experiments.
+- Why: the retune budget closed on legitimate diminishing returns, not on running out of
+  cycle — M3.2's single-pass A1–A4 read found exactly one shortfall (E's maths gaps, carved
+  into its own experiment), and every subsequent shortfall discovered mid-experiment or
+  mid-review was fixed in its own task except three accepted known limitations (D107's
+  half-open-interval gap, D108's cross-paragraph closer-masking, D110's sister-project
+  scope-widening — none observed in any S5 sample) and one that was fixed one task later
+  than the rest (M3.9, the maintenance-template/`{{rp}}` leak, D111). Both S6a experiments
+  independently recommend carrying their approach forward (`maths-experiment.md`,
+  `images-experiment.md`), so the swiss-cheese risk that originally widened this cycle's
+  scope (D104) is substantially addressed rather than merely documented. A *go* verdict
+  fixes nothing about C6's eventual shape (root/pane/key/search/collections model, per
+  SPEC's own Out-of-scope list) — it only certifies that the underlying conversion quality
+  clears the bar worth building on. OQ1/D97 (whether the spike's conversion code itself
+  survives the cycle) is unblocked by this verdict but still decided at `/charm-close`, per
+  its own entry, not here.
+
 ## D108: TRIAGE T8/T9 (dropUnmatchedClosers cross-paragraph masking) — wontfix for this cycle
 
 - Status: decided

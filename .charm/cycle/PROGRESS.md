@@ -17,34 +17,30 @@
 
 ## Cursor
 
-Current task: M4.2
+Current task: none — PLAN.md has no open task; cycle ready for `/charm-close`
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later still yet again (charm-build) — M4.1 re-closed; cursor moves to M4.2.**
-M4.1 was re-opened by charm-replan (D111) after M3.9 fixed the maintenance-template/`{{rp}}`
-leak M4.1's own first pass had surfaced but left open (TRIAGE T1). Re-verified and updated
-`cycle/findings/m4.1-conversion-record.md` throughout: header note and "Sample provenance"
-now cite a fresh post-M3.9 regen (`/tmp/s5scratch`, same command/paths as before) instead of
-the stale M3.8-era one; the mechanical re-check list now explicitly confirms no
-maintenance-template marker or `{{rp}}` remnant anywhere; the fixed leak moved from "What
-converts badly" into "What converts well" (a new "Citation-like superscripts" bullet,
-keeping the Parsoid quirk detail — the maintenance-template family's visible `<sup>` carries
-no `typeof` at all, unlike every other chrome category here — for a future cycle); the
-selector-list entry, "Retune-exhaustion" narrative, and "Open items for replan" line were
-all brought current (TRIAGE T1 marked closed, nothing left to route). Independently
-re-verified rather than trusting M3.9's own report: regenerated all four S5 samples fresh,
-grepped for every leak pattern (`citation needed`/`clarification needed`/`dubious`/
-`disputed`, and a `[^0-9]: [0-9]+ ` rp-remnant pattern) with none found, checked balanced
-`(`/`)`/`[`/`]` counts and no 3+ blank-line runs/empty items on all four, confirmed no
-dangling `## External links`-style emptied heading on Major Arcana (M3.7's fix still holds),
-and reran `make check` plus `WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v` — all
-clean. `findings/INDEX.md`'s summary line updated to match. Next step: charm-build picks up
-M4.2 — log the go/no-go/retune-exhausted verdict in `DECISIONS.md`, citing M4.1's now-current
-findings. TRIAGE.md is empty; no blockers.
+**2026-09-03, later still yet again (charm-build) — M4.2 done; cycle's plan is complete.**
+Logged the cycle's verdict as `DECISIONS.md` D112: **GO, with a known limitation**
+(directly per the user's own call this session — "the spike is a go"). Cited M4.1's
+now-current findings record plus `sample-judging.md`/`maths-experiment.md`/
+`images-experiment.md`; recorded why: all four S5 samples clear A1/A2/A4, three of four
+clear A3, and `E (mathematical constant)`'s residual maths-gap shortfall is exactly A5's own
+worked "known limitation" example, not a no-go trigger. Named the roadmap entries this
+gates — `ROADMAP.md`'s "Wikipedia as a real collection inside noggin" and "A dictionary /
+thesaurus collection" Unscheduled entries, plus cycle `C6` (collections) — and was explicit
+that the verdict commits to none of their shape (S6a/S7a's own stance, extended to the whole
+verdict). Noted OQ1/D97 (does the spike's conversion code itself survive the cycle) is now
+unblocked but still deferred to `/charm-close`, per its own entry, not decided here. No code
+changes this task (a pure logging task, effort 1); `make check` untouched/still clean from
+M4.1's last run. Every M4.x task is now `done` and PLAN.md has no open task. Next step: this
+cycle is ready for `/charm-close` — among other things, close needs to resolve OQ1/D97 (keep
+the conversion, drop the wrapper, or delete both) and OQ2/D98 (CC BY-SA attribution) stays
+open, not blocking, per its own entry. TRIAGE.md is empty; no blockers.
 
 ## Status
 
@@ -71,4 +67,4 @@ findings. TRIAGE.md is empty; no blockers.
 | M3.8 | done    | 2026-09-03 | 2026-09-03 | housekeeping pass 2 (TRIAGE T4/T5/T6/T7): doc-comment fix, `removeSisterProjectInlineLines` extracted, `elementText` reused in `imagePlaceholderText`, GLOSSARY.md Chrome entry updated |
 | M3.9 | done    | -        | -         | fix-up on M2.2/M3.3a (TRIAGE T1, D111): `selectorCitationLikeSup` now also matches the maintenance-template family and the `{{rp}}` page-locator template; fresh regen of all four S5 samples clean |
 | M4.1 | done    | -        | -         | re-closed post-M3.9: findings record updated + independently re-verified against a fresh regen; TRIAGE T1 fixed and confirmed gone |
-| M4.2 | todo    | -        | -         |                                             |
+| M4.2 | done    | -        | -         | verdict logged as DECISIONS.md D112: GO, with a known limitation (user's call) |
