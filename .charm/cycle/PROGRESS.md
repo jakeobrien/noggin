@@ -17,31 +17,30 @@
 
 ## Cursor
 
-Current task: M3.3a
+Current task: M3.6
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, this session (charm-build) — M2.4a done, cursor moved to M3.3a.**
-`cleanupProse` gained `dropUnmatchedClosers` (`cleanup.go`), a depth-based pass that drops
-a dangling `)`/`]` with no matching opener; parens and brackets tracked independently,
-closers-only (asymmetric — an unmatched opener is left alone), see DECISIONS D107.
-Re-investigated D106's premise while building: the `list_languages.md` dangling `)` isn't
-from a removal at all — both instances (`Scala (into JVM bytecode))`, `RUNCOM (...) CTSS)
-programs)`) are already unbalanced in the live article's own wikitext, pre-dating this
-pipeline. D106's other option (a real depth pass) covers it regardless of root cause.
-Verified mechanically: regenerated all four current `tmp/wikispike-tests-1/*.md` samples
-with `bin/wikispike` — all four now have equal `(`/`)` and `[`/`]` counts (previously
-list_languages.md was 386/388). Added a live-test check for the same (`cleanup_test.go`'s
-`TestPipelineLiveSamplesHaveNoStructuralHoles`, extended) plus two unit tests
-(`TestCleanupMarkdownDropsDanglingClosers`,
-`TestDropUnmatchedClosersLeavesUnmatchedOpenersAlone`). `make check` and the full opt-in
-live suite (`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) both pass. Root-level
-stray sample copies (`why_anything.md`, `major_arcana.md`, `e_math-2.md`, `e_math-3.md`) at
-repo root were left untouched — that's M4.1's TRIAGE-T4-derived done-when, not this task.
-Next step: work M3.3a (portal-bar/sistersitebox chrome), then M3.6, then resume M4.1/M4.2.
+**2026-09-03, this session (charm-build) — M3.3a done, cursor moved to M3.6.**
+`stripChrome` (`strip.go`) now also removes `div.portal-bar` and `div.sistersitebox` —
+the two navigational chrome boxes M3.5's findings surfaced (their icon images used to
+vanish silently; M3.5's placeholders made the underlying leak visible as bare list items
+or `[Image: icon]` lines). Same navbox/sidebar rationale: navigational links, not unique
+article content. Added a fixture case to `TestStripChromeRemovesNonArticleElements`
+(`strip_test.go`) plus two live regression guards in `TestStripChromeLiveSamples` (the
+`why_anything.md` portal-bar trailing list, the `e_math.md`/`major_arcana.md` sister-project
+line). Verified mechanically: regenerated all four current `tmp/wikispike-tests-1/*.md`
+samples with `bin/wikispike` against live fetches — grepping for the exact leaked strings
+from M3.5's findings (`Portals:`, `Wikimedia Commons has media related to`, `Wikiquote has
+quotations related to`) returns nothing across all four, and `(`/`)`/`[`/`]` counts stay
+balanced (list_languages.md's M2.4a fix holds). `make check` and the full opt-in live suite
+(`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) both pass. Root-level stray
+sample copies (`why_anything.md`, `major_arcana.md`, `e_math-2.md`, `e_math-3.md`) at repo
+root were left untouched — still M4.1's TRIAGE-T4-derived done-when, not this task.
+Next step: work M3.6 (housekeeping: T5/T6/T7), then resume M4.1/M4.2.
 
 ## Status
 
@@ -60,7 +59,7 @@ Next step: work M3.3a (portal-bar/sistersitebox chrome), then M3.6, then resume 
 | M3.4 | done    | 2026-09-03 | -         | `math.go`, termtex dep; findings recorded   |
 | M3.5 | done    | 2026-09-03 | -         | `images.go`; no new dep; findings recorded  |
 | M2.4a | done   | -        | -         | fix-up (TRIAGE T3): dangling-paren gap; see D107 |
-| M3.3a | todo   | -        | -         | fix-up (TRIAGE T2): portal-bar/sistersitebox |
+| M3.3a | done   | -        | -         | fix-up (TRIAGE T2): portal-bar/sistersitebox |
 | M3.6  | todo   | -        | -         | housekeeping (TRIAGE T5/T6/T7)              |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4    |
 | M4.2 | todo    | -        | -         |                                             |

@@ -21,6 +21,8 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 <div role="navigation" class="navbox"><table class="navbox-inner"><tr><td>See also links</td></tr></table></div>
 <table class="metadata"><tr><td>maintenance box</td></tr></table>
 <figure typeof="mw:File/Thumb"><img src="x.png"/><figcaption>A caption</figcaption></figure>
+<div class="portal-bar noprint"><ul><li><a href="#">Philosophy</a></li><li><a href="#">Physics</a></li></ul></div>
+<div class="sistersitebox"><a href="#"><img src="commons.png"/>Wikimedia Commons has media related to Widgets.</a></div>
 <section data-mw-section-id="2"><h2 id="References">References</h2>
 <div class="mw-references-wrap" typeof="mw:Extension/references"><ol><li>Some citation text</li></ol></div>
 </section>
@@ -44,6 +46,8 @@ func TestStripChromeRemovesNonArticleElements(t *testing.T) {
 		"maintenance box",             // metadata table
 		"img src", "A caption",        // image
 		"References", "Some citation text", // reference-list section
+		"Philosophy", "Physics", // portal bar (M3.3a)
+		"Wikimedia Commons has media related to Widgets", // sister-project side-box (M3.3a)
 	} {
 		if strings.Contains(got, unwanted) {
 			t.Errorf("stripped output still contains chrome %q:\n%s", unwanted, got)
@@ -90,6 +94,21 @@ func TestStripChromeLiveSamples(t *testing.T) {
 			// text ("Part of a series of articles on") ahead of its real prose.
 			if title == "E (mathematical constant)" && strings.Contains(markdown, "Part of a series of articles on") {
 				t.Errorf("%q: markdown leaks the sidebar template", title)
+			}
+			// Regression guards for M3.3a's portal-bar/sister-project fix:
+			// live samples that carried these boxes used to leak their link
+			// text (or, post-M3.5, an [Image: ...] placeholder for their
+			// icon) ahead of/after the article's real content.
+			if title == "Why is there anything at all?" {
+				if strings.Contains(markdown, "Portals:") {
+					t.Errorf("%q: markdown leaks the portal-bar template", title)
+				}
+				if strings.Contains(markdown, "[Image: icon]") {
+					t.Errorf("%q: markdown leaks a portal-bar icon placeholder", title)
+				}
+			}
+			if title == "E (mathematical constant)" && strings.Contains(markdown, "Wikimedia Commons has media related to") {
+				t.Errorf("%q: markdown leaks the sister-project side-box", title)
 			}
 			if title != "Major Arcana" {
 				return

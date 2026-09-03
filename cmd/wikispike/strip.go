@@ -40,6 +40,17 @@ func stripChrome(html string) (string, error) {
 	// here.
 	doc.Find("table.sidebar").Remove()
 
+	// Portal bar / sister-project side-box: two more navigational chrome
+	// boxes (TRIAGE T2, M3.3a) that predate this fix but were only visible
+	// once M3.5's renderImages started replacing their icon images with
+	// placeholders instead of silently deleting them — e.g. a trailing
+	// "Philosophy"/"Physics"/"Astronomy"/"Religion"/"Science" list
+	// (div.portal-bar) or a "Wikimedia Commons"/"Wikiquote" line
+	// (div.sistersitebox). Same navbox/sidebar basis: navigational links to
+	// content that exists (or is findable) elsewhere, not unique article
+	// prose.
+	doc.Find("div.portal-bar, div.sistersitebox").Remove()
+
 	// Edit-section links: a skin-rendered-page feature, not present in
 	// Parsoid HTML, but harmless to also look for.
 	doc.Find(".mw-editsection").Remove()
