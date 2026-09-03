@@ -105,6 +105,30 @@ func TestRenderImagesStripsCitationSuperscriptFromCaption(t *testing.T) {
 	}
 }
 
+// TestRenderImagesCaptionExcludesInlinedStyle covers M3.8 (TRIAGE T6):
+// imagePlaceholderText reads a figcaption through elementText (strip.go,
+// M3.3b), which excludes inlined <style>/<script> descendants before
+// reading text, rather than a raw .Text() call. Parsoid can inline a
+// templatestyles <style> tag's raw CSS as a text child of the same element
+// a caption's real wording lives in (the same failure class M3.3b fixed for
+// sisterProjectInlineLine) — a naive .Text() call here would prepend that
+// CSS to the placeholder.
+func TestRenderImagesCaptionExcludesInlinedStyle(t *testing.T) {
+	input := `<figure typeof="mw:File/Thumb"><a href="./File:Example.png"><img resource="./File:Example.png"/></a>` +
+		`<figcaption><style data-mw-deduplicate="TemplateStyles:r1" typeof="mw:Extension/templatestyles">.foo{display:inline}</style>The real caption text</figcaption></figure>`
+
+	got, err := renderImages(input)
+	if err != nil {
+		t.Fatalf("renderImages: %v", err)
+	}
+	if !strings.Contains(got, "[Image: The real caption text]") {
+		t.Errorf("expected the style-free placeholder, got:\n%s", got)
+	}
+	if strings.Contains(got, "display:inline") {
+		t.Errorf("did not expect the inlined <style> CSS to leak into the placeholder, got:\n%s", got)
+	}
+}
+
 // TestRenderImagesLeavesUnrecoverableNodeForStripChrome covers the edge
 // case where an image node has no caption, no alt-text and no recoverable
 // filename at all: renderImages makes no substitution, so it is left for

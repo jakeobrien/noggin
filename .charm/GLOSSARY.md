@@ -23,9 +23,14 @@
 - **Chrome** — everything a fetched Wikipedia page carries that is not the article itself:
   navboxes, sidebars (e.g. "Part of a series on X" boxes; CSS class `sidebar`, distinct from
   navbox), infoboxes, edit-section links, citation superscripts, reference lists, metadata
-  tables, images. Stripped before conversion; content tables are not chrome. Images are
-  chrome too, but as of C4a's amendment (D104) leave a text placeholder — caption, falling
-  back to alt-text, falling back to filename — rather than vanishing without trace (C4a).
+  tables, images, portal bars (a trailing list of linked subject-area icons, CSS class
+  `portal-bar`), sister-project side-boxes (a boxed "Wikimedia Commons has media related
+  to..."-style template, CSS class `sistersitebox`), and inline sister-project links (the
+  same family of template rendered as a bare `<li>`/`<p>` with no wrapping box element,
+  matched on wording rather than a selector). Stripped before conversion; content tables are
+  not chrome. Images are chrome too, but as of C4a's amendment (D104) leave a text
+  placeholder — caption, falling back to alt-text, falling back to filename — rather than
+  vanishing without trace (C4a).
 - **Committed Find** — a Find query locked in with Activate, as distinct from one still being
   edited. Its match and indication persist until dismissed or the viewport is forced to
   re-render (e.g. a terminal resize or a Navigator toggle).

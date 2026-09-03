@@ -25,8 +25,10 @@ const (
 // for the math extension typeof (Parsoid never suffixes it), and a
 // sup-scoped substring match for the citation-superscript typeof
 // (stripChrome's own selector, reused by renderImages, M3.5a, so it can
-// strip a leaked ref-marker digit out of a caption/alt before stripChrome
-// removes the sup elsewhere in the document).
+// strip a leaked ref-marker digit out of a figcaption before stripChrome
+// removes the sup elsewhere in the document — alt is a plain string
+// attribute and can never carry a nested <sup> to begin with, so only the
+// figcaption case is real).
 var (
 	selectorFilePrefix    = fmt.Sprintf(`[typeof^=%q]`, typeofFilePrefix)
 	selectorMathExtension = fmt.Sprintf(`[typeof=%q]`, typeofMathExtension)

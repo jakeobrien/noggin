@@ -58,8 +58,12 @@ func stripChrome(html string) (string, error) {
 	})
 }
 
-// stripChromeInPlace holds stripChrome's actual selectors, factored out so
-// transformHTML (TRIAGE T6, M3.6) owns the parse/re-serialize boilerplate.
+// stripChromeInPlace holds stripChrome's actual removal steps, factored out
+// so transformHTML (TRIAGE T6, M3.6) owns the parse/re-serialize
+// boilerplate. Most steps are plain CSS-selector removal, but one
+// (removeSisterProjectInlineLines, TRIAGE T5/M3.8) is a text-pattern match
+// instead, because the chrome it targets has no selector to key on — see
+// that function's own doc comment.
 func stripChromeInPlace(doc *goquery.Document) {
 	// Navboxes and infoboxes: navigation/summary tables, not article prose.
 	doc.Find("div.navbox").Remove()
@@ -92,19 +96,7 @@ func stripChromeInPlace(doc *goquery.Document) {
 	// prose.
 	doc.Find("div.portal-bar, div.sistersitebox").Remove()
 
-	// Inline sister-project links (M3.3b, TRIAGE T10/T12): the boxed
-	// variants above don't catch this one, confirmed absent from the live
-	// Parsoid HTML as either div.portal-bar or div.sistersitebox — the
-	// whole line is inline content strung across sibling spans/an <a>
-	// inside a plain <li>, with no structural marker except the wording
-	// itself, so this matches on the rendered text of each list
-	// item/paragraph as a whole (see sisterProjectInlineLine) instead of a
-	// selector.
-	doc.Find("li, p").Each(func(_ int, s *goquery.Selection) {
-		if sisterProjectInlineLine.MatchString(strings.TrimSpace(elementText(s))) {
-			s.Remove()
-		}
-	})
+	removeSisterProjectInlineLines(doc)
 
 	// Edit-section links: a skin-rendered-page feature, not present in
 	// Parsoid HTML, but harmless to also look for.
@@ -149,4 +141,23 @@ func stripChromeInPlace(doc *goquery.Document) {
 	// rare leftover renderMath couldn't handle (missing/unparseable data-mw).
 	doc.Find(selectorFilePrefix + ", " + selectorMathExtension).Remove()
 	doc.Find("img").Remove()
+}
+
+// removeSisterProjectInlineLines removes Wikipedia's "-inline" sister-
+// project template family (Commons category-inline, Wiktionary-inline,
+// Wikiquote-inline and similar, M3.3b, TRIAGE T10/T12). The boxed variants
+// that stripChromeInPlace's div.portal-bar and div.sistersitebox selectors
+// catch, above, don't catch this one — confirmed absent from the live
+// Parsoid HTML as either selector. That is because the whole line here is
+// inline content strung across sibling spans/an <a> inside a plain <li>
+// (or <p>), with no structural marker except the wording itself, so this
+// is a text-pattern match against each list item/paragraph's whole
+// rendered text (see sisterProjectInlineLine) instead of a CSS selector
+// like every other step in stripChromeInPlace.
+func removeSisterProjectInlineLines(doc *goquery.Document) {
+	doc.Find("li, p").Each(func(_ int, s *goquery.Selection) {
+		if sisterProjectInlineLine.MatchString(strings.TrimSpace(elementText(s))) {
+			s.Remove()
+		}
+	})
 }

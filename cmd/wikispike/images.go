@@ -60,7 +60,12 @@ func renderImages(html string) (string, error) {
 // SPEC S3a's priority order: caption, then alt-text, then filename. Returns
 // "" only if all three are unavailable.
 func imagePlaceholderText(s *goquery.Selection) string {
-	if caption := strings.TrimSpace(s.Find("figcaption").First().Text()); caption != "" {
+	// elementText (strip.go, M3.3b) excludes inlined <style>/<script>
+	// descendants before reading text — the same templatestyles-CSS-leak
+	// failure class M3.3b fixed for sisterProjectInlineLine can just as
+	// easily land inside a figcaption (TRIAGE T6), so a raw .Text() call
+	// here would risk the same CSS-prepended-to-wording corruption.
+	if caption := strings.TrimSpace(elementText(s.Find("figcaption").First())); caption != "" {
 		return caption
 	}
 

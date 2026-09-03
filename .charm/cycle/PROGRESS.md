@@ -17,31 +17,30 @@
 
 ## Cursor
 
-Current task: M3.8
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, later still (charm-build) — M3.7 done; cursor moves to M3.8.**
-Fixed T1 (real regression in `done` M3.3b work): added `dropEmptyHeadings` to
-`cleanup.go`, a fixed-point pass that removes any ATX heading with no non-blank content
-before the next same-or-higher-level heading or EOF, run last in `cleanupMarkdown` after the
-existing per-chunk repair pass. Extracted the fence-carving loop shared by that pass and a
-new post-heading-drop blank-run re-collapse into `mapProseChunks` (was about to be
-duplicated otherwise). `dropEmptyHeadingsPass` tracks fence state itself so a future
-math-fallback renderer emitting a literal "# word" inside fenced ASCII art can't be misread
-as a heading boundary (raised in code review, fixed same session). Fixed T3: added
-`TestSisterProjectInlineLineIgnoresMidSentenceMentions` asserting ordinary prose mentioning
-Commons/Wikiquote/Wiktionary in passing survives `stripChrome` untouched. Verified: fresh
-live regen of `major_arcana.md` ends at `## See also` with real content, no `## External
-links` heading anywhere; `WIKISPIKE_LIVE=1 go test -run Live` passes including a new
-Major-Arcana-specific dangling-heading check and a generic per-title `dropEmptyHeadings`
-idempotency check; `make check` clean. code-reviewer pass found no high/medium issues and
-three low ones (doc-comment gap, the fence-awareness hardening above, a low-value test
-assertion) — all fixed in this same session, not routed to TRIAGE. Next step: charm-build
-picks up M3.8 (needs: M3.3b, M3.5a, both already done).
+**2026-09-03, later still (charm-build) — M3.8 done; cursor moves to M4.1.**
+Housekeeping pass 2 (TRIAGE T4/T5/T6/T7): T4 dropped `selectorCitationSup`'s doc-comment
+claim that a nested `<sup>` could leak via an image's `alt` attribute (alt is a plain string,
+can't carry it — only the figcaption path is real). T5 factored M3.3b's regex-based removal
+step out of `stripChromeInPlace` into its own named helper, `removeSisterProjectInlineLines`
+(strip.go), with `stripChromeInPlace`'s doc comment now flagging it as the one text-pattern
+step among otherwise CSS-selector removals. T6 switched `imagePlaceholderText`'s figcaption
+read to `elementText` (already used by M3.3b for the same style/script-leak class), added
+`TestRenderImagesCaptionExcludesInlinedStyle` to demonstrate it. T7 updated GLOSSARY.md's
+"Chrome" entry to name portal-bar/sister-project-box/inline-sister-project-link. Verified:
+`make check` and `WIKISPIKE_LIVE=1 go test -run Live` both clean. code-reviewer pass found no
+spec-fidelity issues; three low standards nits (an awkward sentence, an unverified-looking
+glossary detail that turned out accurate on recheck, a missing T6 test) — the sentence and
+missing test were fixed in-session; the glossary detail was checked against strip.go's own
+"icon images" wording and left as-is. M4.1's full dependency set (M2.4a, M3.3, M3.3a, M3.3b,
+M3.4, M3.5, M3.5a, M3.6, M3.7, M3.8) is now all `done`. Next step: charm-build picks up M4.1
+(the findings-record milestone — likely worth a research/writing subagent given its size).
 
 ## Status
 
@@ -65,6 +64,6 @@ picks up M3.8 (needs: M3.3b, M3.5a, both already done).
 | M3.3b | done    | 2026-09-03 | -         | fix-up on M3.3a (TRIAGE T10/T12): text-pattern heuristic (`sisterProjectInlineLine`) over `<li>`/`<p>` whole-text catches the inline Commons-category leak; `TestStripChromeLiveSamples` now checks Major Arcana specifically; review found a new regression (T1, empty `## External links` heading) plus T2/T3/T5/T6/T7 — T1/T3 now M3.7, T2 decided (D110), T4/T5/T6/T7 now M3.8 |
 | M3.5a | done    | 2026-09-03 | -         | fix-up on M3.5 (TRIAGE T11): `renderImages` strips `sup[typeof*="mw:Extension/ref"]` from an image node before reading its caption; fresh live regen of all four S5 titles shows no `[<digit>]` ref-marker pattern anywhere; review confirmed independently, filed T4 (minor doc-comment overstatement) — T4 now folded into M3.8 |
 | M3.7 | done    | 2026-09-03 | 2026-09-03 | fix-up on M3.3b (TRIAGE T1/T3): `dropEmptyHeadings` drops any section heading emptied by chrome removal; fresh live regen confirms `major_arcana.md` no longer dangles `## External links`; sister-project mid-sentence-survival fixture added |
-| M3.8 | todo    | -        | -         | housekeeping pass 2 (TRIAGE T4/T5/T6/T7, charm-replan 2026-09-03) |
+| M3.8 | done    | 2026-09-03 | 2026-09-03 | housekeeping pass 2 (TRIAGE T4/T5/T6/T7): doc-comment fix, `removeSisterProjectInlineLines` extracted, `elementText` reused in `imagePlaceholderText`, GLOSSARY.md Chrome entry updated |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4, then M3.3b/M3.5a, and now M3.7/M3.8; blocked on both |
 | M4.2 | todo    | -        | -         |                                             |
