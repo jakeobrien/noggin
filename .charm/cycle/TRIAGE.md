@@ -25,6 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T2 | build | medium | `cmd/wikispike/strip.go` `stripChrome`; found via M3.5, `.charm/cycle/findings/images-experiment.md` | `stripChrome` (M2.2) doesn't match Wikipedia's portal-bar (`div.portal-bar`) or sister-project side-box (`div.sistersitebox`) chrome — both navigational, not article content. Pre-existing (predates M3.5); was silently masked because their icon images vanished without a trace, now visible as leaked list items/`[Image: icon]` placeholders (`why_anything.md`'s Philosophy/Physics/Astronomy/Religion/Science line, `e_math.md`/`major_arcana.md`'s Wikimedia Commons/Wikiquote lines). Not fixed as part of M3.5 (out of scope: chrome selection is M2.2's/M3.3's job). | open |
 
 <!-- T1 triaged 2026-08-14 (charm-replan): promoted to PLAN.md task M2.5 (needs M2.2-M2.4,
      effort 2), ahead of M3.3's retune iterations which would otherwise keep re-tripping the

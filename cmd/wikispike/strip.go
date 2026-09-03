@@ -50,7 +50,11 @@ func stripChrome(html string) (string, error) {
 	doc.Find("table.metadata, table.ambox").Remove()
 
 	// Images: figures, thumbnails and inline file references all carry a
-	// typeof starting with "mw:File". A final bare-<img> sweep catches
+	// typeof starting with "mw:File". By the time stripChrome runs,
+	// renderImages (M3.5, D104) has already replaced every image it could
+	// derive a caption/alt/filename description for with a plain-text
+	// placeholder — this selector only catches the rare leftover
+	// renderImages couldn't handle. A final bare-<img> sweep catches
 	// anything else that slipped through.
 	//
 	// Rendered math formulae are also served as an <img> (an SVG render)

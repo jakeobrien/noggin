@@ -1,0 +1,95 @@
+package main
+
+import (
+	"fmt"
+	stdhtml "html"
+	"path"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+)
+
+// renderImages replaces each Wikipedia image (any element whose typeof
+// starts with "mw:File" — figures, thumbnails, inline file references) with
+// a plain-text placeholder, so the image survives the pipeline as a short
+// textual hint instead of vanishing without a trace when stripChrome would
+// otherwise remove it — the S6a image exception (D104, M3.5).
+//
+// SPEC S3a's priority order, applied per image: the figure's caption,
+// falling back to the img's alt-text, falling back to a filename derived
+// from the file reference. All three are already present on Parsoid's HTML
+// for free — no OCR, no extra fetch — so this is the same near-zero-cost
+// shape M3.4's renderMath established: compute a plain-text replacement per
+// matched node and leave every other pipeline stage untouched. No image is
+// fetched, decoded or rendered; the placeholder is wrapped in square
+// brackets so it reads as a placeholder rather than body prose, and carries
+// no link (stripLinks, M2.3, would have stripped any link anyway — this
+// just never gives it one).
+func renderImages(html string) (string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return "", fmt.Errorf("parsing HTML to render images: %w", err)
+	}
+
+	doc.Find(`[typeof^="mw:File"]`).Each(func(_ int, s *goquery.Selection) {
+		desc := imagePlaceholderText(s)
+		if desc == "" {
+			// No usable description at all (vanishingly rare — even a bare
+			// filename should be recoverable): leave the node in place for
+			// stripChrome's own image selector to remove, same as before
+			// this experiment existed.
+			return
+		}
+		s.ReplaceWithHtml(stdhtml.EscapeString("[Image: " + desc + "]"))
+	})
+
+	out, err := doc.Html()
+	if err != nil {
+		return "", fmt.Errorf("rendering image-placeheld HTML: %w", err)
+	}
+	return out, nil
+}
+
+// imagePlaceholderText picks an image's best available description, in
+// SPEC S3a's priority order: caption, then alt-text, then filename. Returns
+// "" only if all three are unavailable.
+func imagePlaceholderText(s *goquery.Selection) string {
+	if caption := strings.TrimSpace(s.Find("figcaption").First().Text()); caption != "" {
+		return caption
+	}
+
+	img := s
+	if !s.Is("img") {
+		img = s.Find("img").First()
+	}
+
+	if alt, ok := img.Attr("alt"); ok {
+		if alt = strings.TrimSpace(alt); alt != "" {
+			return alt
+		}
+	}
+
+	return imageFilename(s, img)
+}
+
+// imageFilename recovers a human-readable filename from whichever attribute
+// carries it: the img's resource attribute first (present on every Parsoid
+// file image), falling back to the wrapping link's href. Both are shaped
+// "./File:Some_name.ext" or "File:Some_name.ext"; this strips the "File:"
+// prefix, the extension, and turns underscores back into spaces (the
+// reverse of Wikipedia's title-to-URL convention, cmd/wikispike/fetch.go's
+// articleURL).
+func imageFilename(s *goquery.Selection, img *goquery.Selection) string {
+	raw, ok := img.Attr("resource")
+	if !ok || raw == "" {
+		raw, ok = s.Find("a[href]").First().Attr("href")
+		if !ok || raw == "" {
+			return ""
+		}
+	}
+	name := strings.TrimPrefix(raw, "./")
+	name = strings.TrimPrefix(name, "File:")
+	name = strings.TrimSuffix(name, path.Ext(name))
+	name = strings.ReplaceAll(name, "_", " ")
+	return strings.TrimSpace(name)
+}

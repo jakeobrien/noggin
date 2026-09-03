@@ -12,3 +12,8 @@
 - `maths-experiment.md` — M3.4's Unicode-vs-raw-text maths experiment (D104/S6a): the
   `github.com/doug/termtex` dependency, the per-formula single-line-or-fallback rule, the
   61%/39% Unicode/raw-text tally on a live fetch, and a recommendation for a future cycle.
+- `images-experiment.md` — M3.5's caption/alt/filename placeholder experiment (D104/S6a): no
+  new dependency, the `renderImages` pipeline stage and its fallback order, live-sample
+  results across all four S5 titles, a pre-existing chrome-stripping gap it surfaced
+  (portal bars, sister-project boxes — routed to TRIAGE, not fixed here), and a
+  recommendation for a future cycle.
