@@ -24,7 +24,22 @@ Current task: M4.1
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-02, this session — M3.5 (images) done.** New pipeline stage `renderImages`
+**2026-09-02, this session (fix-up on M3.4, done, ad hoc, cursor stayed on M4.1) — display
+formulas now get their own line.** User flagged raw TeX still visible in `e_math.md`;
+turned out Parsoid marks a formula display/block-style (`data-mw.attrs.display=="block"`,
+`mwe-math-element-block` class) and Wikipedia gives it its own line visually even though
+the span stays nested in the same `<p>`. `renderMath` now wraps display formulas in
+`<pre>` (auto-splits the paragraph when htmlToMarkdown re-parses; keeps full multi-line
+termtex Unicode instead of falling back to raw TeX). Found and fixed in the same session,
+via code-reviewer: `cleanupMarkdown`'s empty-parens/brackets/blank-run/whitespace passes
+ran over the whole string, corrupting fenced ASCII-art math — fixed by carving fenced
+regions out before any pass runs (`cleanupProse` helper), with tests reproducing the
+corruption first. `make check`/`go test ./...` clean; all four S5 `.md` samples
+regenerated and re-checked. Detail + why this reopens M3.4's "deliberately did not build"
+call: `cycle/findings/maths-experiment.md`'s Addendum. Not run through charm-replan (small,
+session-scoped, user-directed) — flagging here so M4.1's findings write-up accounts for it.
+
+**2026-09-02, earlier this session — M3.5 (images) done.** New pipeline stage `renderImages`
 (`cmd/wikispike/images.go` + `images_test.go`), same shape as M3.4's `renderMath`: a
 goquery pass over `[typeof^="mw:File"]` nodes before `stripChrome`, replacing each with a
 plain-text `[Image: <description>]` placeholder — caption (flattened via `.Text()`) → img

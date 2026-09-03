@@ -91,6 +91,63 @@ func TestCleanupMarkdownFullPipelineFixture(t *testing.T) {
 	}
 }
 
+// TestCleanupMarkdownLeavesFencedCodeAlignmentAlone covers the interaction
+// with renderMath's display-formula path: a fenced code block holding
+// termtex's multi-line ASCII-art (box-drawing fraction bars, aligned
+// exponents) depends on runs of 2+ spaces for its alignment. cleanupMarkdown
+// still collapses that whitespace in ordinary prose around the fence.
+func TestCleanupMarkdownLeavesFencedCodeAlignmentAlone(t *testing.T) {
+	const input = "Prose  with   double  spaces.\n\n```\n     n\nlim   1 + ---\n```\n\nMore  prose.\n"
+	got := cleanupMarkdown(input)
+
+	if !strings.Contains(got, "     n\nlim   1 + ---") {
+		t.Errorf("expected the fenced block's alignment untouched, got:\n%s", got)
+	}
+	if !strings.Contains(got, "Prose with double spaces.") {
+		t.Errorf("expected prose whitespace still collapsed, got:\n%s", got)
+	}
+	if !strings.Contains(got, "More prose.") {
+		t.Errorf("expected prose whitespace still collapsed, got:\n%s", got)
+	}
+}
+
+// TestCleanupMarkdownLeavesFencedParensBracketsAndBlanksAlone covers what
+// TestCleanupMarkdownLeavesFencedCodeAlignmentAlone's whitespace-only check
+// missed: the empty-parens/brackets and blank-run passes ran on the whole
+// string, not per-line, so a naive fence guard around only the whitespace
+// pass still let them corrupt fence content (e.g. a formula containing
+// literal "exp()" stripped to "exp", or blank rows inside ASCII-art
+// collapsed) — found in review. cleanupMarkdown now carves fenced regions
+// out before running any whole-string pass, so both are preserved exactly.
+func TestCleanupMarkdownLeavesFencedParensBracketsAndBlanksAlone(t *testing.T) {
+	const input = "Some prose () continues.\n\n```\nexp()  [top]\n\n\n\nrow two\n```\n\nMore prose () here.\n"
+	got := cleanupMarkdown(input)
+
+	if !strings.Contains(got, "exp()  [top]\n\n\n\nrow two") {
+		t.Errorf("expected fence content's parens/brackets/blank rows untouched, got:\n%s", got)
+	}
+	if !strings.Contains(got, "Some prose continues.") || !strings.Contains(got, "More prose here.") {
+		t.Errorf("expected prose empty-parens still stripped outside the fence, got:\n%s", got)
+	}
+}
+
+// TestCleanupMarkdownHandlesUnclosedFence covers the degenerate case of an
+// odd number of fence delimiter lines: rather than reverting to prose
+// cleanup partway through (which would then apply whitespace/parens
+// collapsing to what the writer intended as code), everything from the
+// unmatched opening fence to end of document is treated as fence content.
+func TestCleanupMarkdownHandlesUnclosedFence(t *testing.T) {
+	const input = "Prose  before.\n\n```\nfence  content ()\nProse-shaped  line after an unclosed fence.\n"
+	got := cleanupMarkdown(input)
+
+	if !strings.Contains(got, "Prose before.") {
+		t.Errorf("expected prose before the fence collapsed as usual, got:\n%s", got)
+	}
+	if !strings.Contains(got, "fence  content ()\nProse-shaped  line after an unclosed fence.") {
+		t.Errorf("expected everything after the unmatched fence left untouched, got:\n%s", got)
+	}
+}
+
 // TestPipelineLiveSamplesHaveNoStructuralHoles is M2.4's acceptance check
 // against the four S5 sample titles (shared live-fetch cache, M2.5): no run
 // of 3+ consecutive blank lines, no empty list item, and no empty/

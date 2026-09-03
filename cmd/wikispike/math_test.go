@@ -11,6 +11,12 @@ func mathSpan(extsrc string) string {
 	return `<span typeof="mw:Extension/math" data-mw='{"name":"math","body":{"extsrc":"` + extsrc + `"}}'></span>`
 }
 
+// displayMathSpan builds a Parsoid-shaped display/block math span, matching
+// the real shape (class mwe-math-element-block, data-mw.attrs.display).
+func displayMathSpan(extsrc string) string {
+	return `<span class="mwe-math-element mwe-math-element-block" typeof="mw:Extension/math" data-mw='{"name":"math","attrs":{"display":"block"},"body":{"extsrc":"` + extsrc + `"}}'></span>`
+}
+
 // TestRenderMathUsesUnicodeWhenSingleLine covers M3.4's preferred path: a
 // formula whose termtex rendering fits on one line (a lone Greek letter
 // here) is substituted as that Unicode text, not its raw TeX source.
@@ -57,6 +63,76 @@ func TestRenderMathLeavesUnrecoverableSpanForStripChrome(t *testing.T) {
 	}
 	if !strings.Contains(got, `typeof="mw:Extension/math"`) {
 		t.Errorf("expected the untouched span to survive renderMath for stripChrome to remove, got:\n%s", got)
+	}
+}
+
+// TestRenderMathGivesDisplayFormulasTheirOwnLine covers the display/block
+// path: Wikipedia itself renders a formula Parsoid marks display/block-style
+// on its own line (CSS `display: block`), even though the span sits inside
+// the same running <p> as the surrounding prose. renderMath follows suit —
+// wrapping the formula in a <pre> so the paragraph splits around it when
+// later converted to markdown — and, since the formula now owns its line,
+// keeps termtex's multi-line Unicode output rather than falling back to raw
+// TeX source the way an inline formula would.
+func TestRenderMathGivesDisplayFormulasTheirOwnLine(t *testing.T) {
+	input := `<p>The limit ` + displayMathSpan(`\\frac{1}{2}`) + ` follows.</p>`
+
+	got, err := renderMath(input)
+	if err != nil {
+		t.Fatalf("renderMath: %v", err)
+	}
+	if !strings.Contains(got, "<pre>") {
+		t.Errorf("expected the display formula wrapped in <pre>, got:\n%s", got)
+	}
+	if strings.Contains(got, `\frac{1}{2}`) {
+		t.Errorf("expected the Unicode rendering, not raw TeX, got:\n%s", got)
+	}
+
+	md, err := htmlToMarkdown(got)
+	if err != nil {
+		t.Fatalf("htmlToMarkdown: %v", err)
+	}
+	if !strings.Contains(md, "```") {
+		t.Errorf("expected the display formula on its own fenced line in markdown, got:\n%s", md)
+	}
+}
+
+// TestIsDisplayMathRecognizesEitherSignalAlone covers isDisplayMath's stated
+// contract: a span carrying only data-mw's attrs.display=="block", or only
+// the mwe-math-element-block class, still resolves as display math — not
+// just when both signals (as displayMathSpan always sets) are present.
+func TestIsDisplayMathRecognizesEitherSignalAlone(t *testing.T) {
+	input := `<p>` +
+		`<span class="mwe-math-element-block" typeof="mw:Extension/math" data-mw='{"body":{"extsrc":"a"}}'></span>` +
+		`<span typeof="mw:Extension/math" data-mw='{"attrs":{"display":"block"},"body":{"extsrc":"b"}}'></span>` +
+		`</p>`
+
+	got, err := renderMath(input)
+	if err != nil {
+		t.Fatalf("renderMath: %v", err)
+	}
+	if strings.Count(got, "<pre>") != 2 {
+		t.Errorf("expected both class-only and attrs-only spans wrapped in <pre>, got:\n%s", got)
+	}
+}
+
+// TestRenderMathDisplayFormulaFallsBackToRawSourceOnTermtexError covers a
+// display formula termtex cannot render at all (unsupported command):
+// mathReplacementText's block path still needs a fallback, not an empty
+// substitution, and it must still land inside <pre> so it keeps its own
+// line rather than reverting to inline treatment.
+func TestRenderMathDisplayFormulaFallsBackToRawSourceOnTermtexError(t *testing.T) {
+	input := `<p>given by ` + displayMathSpan(`\\binom{n}{k}`) + ` here</p>`
+
+	got, err := renderMath(input)
+	if err != nil {
+		t.Fatalf("renderMath: %v", err)
+	}
+	if !strings.Contains(got, "<pre>") {
+		t.Errorf("expected the fallback still wrapped in <pre>, got:\n%s", got)
+	}
+	if !strings.Contains(got, `binom`) {
+		t.Errorf("expected the raw TeX source as fallback, got:\n%s", got)
 	}
 }
 

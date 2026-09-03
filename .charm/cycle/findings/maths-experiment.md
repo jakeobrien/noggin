@@ -70,3 +70,32 @@ output for formulas Parsoid *does* place on their own line (a `<dl>/<dd>` block,
 article's samples never used, but other articles may), rendered as a fenced code block —
 which this cycle deliberately did not build (out of scope for a "small-ish lift" spike; the
 uniform single-line-or-fallback rule was chosen specifically to avoid that added complexity).
+
+## Addendum — display/block formulas do get their own line after all (post-M4.1 fix-up)
+
+The premise above ("Parsoid never places these on their own line") was checked only
+structurally (no `<dl>/<dd>` wrapper) — it missed that Parsoid *does* mark a formula
+display/block-style with `data-mw.attrs.display == "block"` and a
+`mwe-math-element-block` class (vs. `mwe-math-element-inline`), and that Wikipedia's own
+rendering gives that formula its own line visually (CSS `display: block`) even while the
+Parsoid span stays nested inside the same running `<p>`. Raised directly by the user
+against the regenerated `e_math.md` sample, which still showed raw TeX (`\lim_{n\to
+\infty}...`) for exactly the formulas this signal identifies.
+
+`renderMath` now branches on that signal: display/block formulas are wrapped in a `<pre>`
+element (invalid nesting inside the source `<p>`, but exactly what makes the html-to-markdown
+converter's own HTML5 parser auto-split the paragraph around it on its next parse — the same
+mechanism a browser uses to give the formula a line of its own) and keep termtex's full,
+possibly multi-line Unicode rendering rather than falling back to raw TeX, since there is no
+sentence left to tear apart. Inline formulas are unchanged from the original M3.4 rule. A
+companion fix was needed in `cleanupMarkdown` (M2.4): its empty-parens/brackets/blank-run and
+whitespace-collapse passes ran over the whole markdown string, which would corrupt the new
+fenced ASCII-art (misaligned box-drawing, stripped literal `"()"` inside a formula like
+`exp()`, collapsed blank rows) — fixed by carving fenced regions out before any of those
+passes run, verified with tests reproducing the exact corruption first (`cleanup_test.go`).
+
+All four S5 samples regenerated and re-checked (fence balance, no blank-line runs, no empty
+parens/brackets); `make check` and full `go test ./...` clean. This reopens what this
+document previously called out-of-scope for M3.4 — logged here rather than silently amended
+into the original verdict above, which is left as written for the record of what the spike
+initially shipped and why.

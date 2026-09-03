@@ -15,27 +15,31 @@ import (
 // pipeline as ordinary prose instead of silently vanishing when stripChrome
 // drops image/math markup — the S6a maths exception (D104, M3.4).
 //
-// Two paths, per formula, cheapest first:
+// Parsoid marks a formula as display/block-style two ways, checked against a
+// live fetch of `E (mathematical constant)`: the span carries
+// `data-mw.attrs.display == "block"` and a `mwe-math-element-block` class
+// (`mwe-math-element-inline` otherwise). That's exactly the signal Wikipedia
+// itself uses to give a formula its own line visually (CSS `display: block`)
+// even though Parsoid still nests the span inside the same running <p> as
+// its surrounding prose — so this rewrite follows suit, per formula:
 //
-//   - Unicode approximation via termtex, kept only if the rendered result
-//     stays on one line. termtex's layout for fractions, multi-glyph
-//     superscripts without a single Unicode codepoint, \sum, \begin{align}
-//     and similar produces a multi-row ASCII-art block (box-drawing
-//     characters stacked over several lines) — fine for a formula that owns
-//     its own line, but Parsoid's HTML puts these spans mid-sentence even
-//     when marked "display: block" (checked against a live fetch of
-//     `E (mathematical constant)`: none of that article's block-style
-//     formulas sit inside their own <dl>/<dd> line), so a multi-line result
-//     would tear the sentence apart rather than read as prose. Restricting
-//     to single-line output keeps every substitution safely inline.
-//   - Otherwise (termtex errors, or its result is multi-line, or there is no
-//     usable source at all): fall back to the formula's raw TeX source
-//     (already permitted, unchanged) so the sentence still reads, just with
-//     LaTeX-flavoured text where the rendered formula used to be.
+//   - Display/block formulas get their own line, not folded into the
+//     sentence: rendered to a <pre> element. `<pre>` inside a `<p>` is not
+//     valid nesting, so when the html-to-markdown converter's own parser
+//     re-parses the serialized HTML, HTML5 parsing rules auto-close the
+//     surrounding paragraph around it — the same mechanism that gives it a
+//     line of its own in a browser. Rendering to `<pre>` also lifts M3.4's
+//     single-line restriction: termtex's multi-line Unicode layout (stacked
+//     fractions, sums, box-drawing) is fine once the formula is not fighting
+//     a sentence for a line, so this path prefers Unicode even when
+//     multi-line, falling back to raw TeX source only if termtex errors.
+//   - Inline formulas keep M3.4's original two-path rule unchanged: Unicode
+//     kept only if it stays on one line (otherwise it would tear the
+//     sentence apart), else the raw TeX source as prose.
 //
 // Empirically, against a live fetch of all four S5 titles: see
-// cycle/findings/maths-experiment.md for the per-title tally this rule
-// produces.
+// cycle/findings/maths-experiment.md for the per-title tally the original
+// inline-only rule produced.
 func renderMath(html string) (string, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
@@ -43,14 +47,19 @@ func renderMath(html string) (string, error) {
 	}
 
 	doc.Find(`[typeof="mw:Extension/math"]`).Each(func(_ int, s *goquery.Selection) {
-		text := mathReplacementText(s)
+		text, isBlock := mathReplacementText(s)
 		if text == "" {
 			// No usable source (missing/unparseable data-mw): leave the
 			// span in place for stripChrome's own math selector to remove,
 			// same as before this experiment existed.
 			return
 		}
-		s.ReplaceWithHtml(stdhtml.EscapeString(text))
+		escaped := stdhtml.EscapeString(text)
+		if isBlock {
+			s.ReplaceWithHtml("<pre>" + escaped + "</pre>")
+			return
+		}
+		s.ReplaceWithHtml(escaped)
 	})
 
 	out, err := doc.Html()
@@ -61,35 +70,59 @@ func renderMath(html string) (string, error) {
 }
 
 // mathDataMW is the slice of Parsoid's data-mw JSON this needs: the
-// formula's raw TeX source, under body.extsrc — present for every
+// formula's raw TeX source, under body.extsrc, and whether Parsoid marked it
+// display/block-style, under attrs.display — both present for every
 // mw:Extension/math span Parsoid emits, with no OCR or extra fetch required
 // (D104).
 type mathDataMW struct {
+	Attrs struct {
+		Display string `json:"display"`
+	} `json:"attrs"`
 	Body struct {
 		Extsrc string `json:"extsrc"`
 	} `json:"body"`
 }
 
-// mathReplacementText picks a formula's replacement text per renderMath's
-// two-path rule. Returns "" if no source could be recovered at all.
-func mathReplacementText(s *goquery.Selection) string {
+// isDisplayMath reports whether Parsoid marked this formula's span as
+// display/block-style, checking both signals it uses (data-mw's declared
+// attrs.display and the class Parsoid's own CSS keys "own line" rendering
+// off) so a span missing one still resolves correctly off the other.
+func isDisplayMath(s *goquery.Selection, data mathDataMW) bool {
+	if data.Attrs.Display == "block" {
+		return true
+	}
+	class, _ := s.Attr("class")
+	return strings.Contains(class, "mwe-math-element-block")
+}
+
+// mathReplacementText picks a formula's replacement text and whether it
+// should get its own line (display/block) or stay inline, per renderMath's
+// rule. Returns ("", false) if no source could be recovered at all.
+func mathReplacementText(s *goquery.Selection) (string, bool) {
 	raw, ok := s.Attr("data-mw")
 	if !ok {
-		return ""
+		return "", false
 	}
 	var data mathDataMW
 	if err := json.Unmarshal([]byte(raw), &data); err != nil {
-		return ""
+		return "", false
 	}
 	src := strings.TrimSpace(data.Body.Extsrc)
 	if src == "" {
-		return ""
+		return "", false
 	}
+	isBlock := isDisplayMath(s, data)
 
-	if rendered, err := termtex.Render(src, termtex.Style{}); err == nil {
-		if trimmed := strings.TrimRight(rendered, "\n"); !strings.Contains(trimmed, "\n") {
-			return trimmed
-		}
+	rendered, err := termtex.Render(src, termtex.Style{})
+	if err != nil {
+		return src, isBlock
 	}
-	return src
+	trimmed := strings.TrimRight(rendered, "\n")
+	if isBlock || !strings.Contains(trimmed, "\n") {
+		// Display formulas may keep multi-line Unicode output — they get
+		// their own line via <pre>, so there is no sentence to tear apart.
+		// Inline formulas keep M3.4's single-line-only restriction.
+		return trimmed, isBlock
+	}
+	return src, isBlock
 }
