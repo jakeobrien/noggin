@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	stdhtml "html"
 	"path"
 	"strings"
@@ -32,28 +31,19 @@ import (
 // escaping if a caption/alt/filename itself contains a backtick, instead of
 // this code having to reimplement that.
 func renderImages(html string) (string, error) {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return "", fmt.Errorf("parsing HTML to render images: %w", err)
-	}
-
-	doc.Find(`[typeof^="mw:File"]`).Each(func(_ int, s *goquery.Selection) {
-		desc := imagePlaceholderText(s)
-		if desc == "" {
-			// No usable description at all (vanishingly rare — even a bare
-			// filename should be recoverable): leave the node in place for
-			// stripChrome's own image selector to remove, same as before
-			// this experiment existed.
-			return
-		}
-		s.ReplaceWithHtml("<code>" + stdhtml.EscapeString("[Image: "+desc+"]") + "</code>")
+	return transformHTML(html, "render images", func(doc *goquery.Document) {
+		doc.Find(selectorFilePrefix).Each(func(_ int, s *goquery.Selection) {
+			desc := imagePlaceholderText(s)
+			if desc == "" {
+				// No usable description at all (vanishingly rare — even a
+				// bare filename should be recoverable): leave the node in
+				// place for stripChrome's own image selector to remove,
+				// same as before this experiment existed.
+				return
+			}
+			s.ReplaceWithHtml("<code>" + stdhtml.EscapeString("[Image: "+desc+"]") + "</code>")
+		})
 	})
-
-	out, err := doc.Html()
-	if err != nil {
-		return "", fmt.Errorf("rendering image-placeheld HTML: %w", err)
-	}
-	return out, nil
 }
 
 // imagePlaceholderText picks an image's best available description, in

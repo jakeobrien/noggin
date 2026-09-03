@@ -30,10 +30,10 @@ func TestStripLinksKeepsTextDropsMarkup(t *testing.T) {
 	}
 }
 
-// TestArticleMarkdownHasNoLinkSyntax runs the full pipeline's HTML stages
-// (strip, delink) but not conversion, on a fixture shaped like a Major Arcana
-// table row, confirming the surrounding sentence still reads once the link
-// is gone.
+// TestStripLinksPreservesSurroundingProse runs stripLinks then
+// htmlToMarkdown on a small fixture, confirming the surrounding sentence
+// still reads once the link is gone (T5, M3.6: this comment used to name a
+// stale identifier, TestArticleMarkdownHasNoLinkSyntax).
 func TestStripLinksPreservesSurroundingProse(t *testing.T) {
 	const input = `<p>See <a href="./Tarot_de_Marseille">Tarot de Marseille</a> for the older naming.</p>`
 	got, err := stripLinks(input)

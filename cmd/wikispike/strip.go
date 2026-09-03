@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/PuerkitoBio/goquery"
 )
 
@@ -15,11 +12,14 @@ import (
 // handoff. Content tables (table.wikitable) are untouched; link stripping is
 // M2.3, blank-line/orphan cleanup is M2.4.
 func stripChrome(html string) (string, error) {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return "", fmt.Errorf("parsing HTML to strip chrome: %w", err)
-	}
+	return transformHTML(html, "strip chrome", func(doc *goquery.Document) {
+		stripChromeInPlace(doc)
+	})
+}
 
+// stripChromeInPlace holds stripChrome's actual selectors, factored out so
+// transformHTML (TRIAGE T6, M3.6) owns the parse/re-serialize boilerplate.
+func stripChromeInPlace(doc *goquery.Document) {
 	// Navboxes and infoboxes: navigation/summary tables, not article prose.
 	doc.Find("div.navbox").Remove()
 	doc.Find("table.infobox, .infobox").Remove()
@@ -89,12 +89,6 @@ func stripChrome(html string) (string, error) {
 	// renderMath (M3.4, D104) has already replaced every formula it could
 	// recover a source for with plain text — this selector only catches the
 	// rare leftover renderMath couldn't handle (missing/unparseable data-mw).
-	doc.Find(`[typeof^="mw:File"], [typeof="mw:Extension/math"]`).Remove()
+	doc.Find(selectorFilePrefix + ", " + selectorMathExtension).Remove()
 	doc.Find("img").Remove()
-
-	out, err := doc.Html()
-	if err != nil {
-		return "", fmt.Errorf("rendering stripped HTML: %w", err)
-	}
-	return out, nil
 }

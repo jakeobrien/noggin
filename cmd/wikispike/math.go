@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	stdhtml "html"
 	"strings"
 
@@ -41,32 +40,23 @@ import (
 // cycle/findings/maths-experiment.md for the per-title tally the original
 // inline-only rule produced.
 func renderMath(html string) (string, error) {
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return "", fmt.Errorf("parsing HTML to render maths: %w", err)
-	}
-
-	doc.Find(`[typeof="mw:Extension/math"]`).Each(func(_ int, s *goquery.Selection) {
-		text, isBlock := mathReplacementText(s)
-		if text == "" {
-			// No usable source (missing/unparseable data-mw): leave the
-			// span in place for stripChrome's own math selector to remove,
-			// same as before this experiment existed.
-			return
-		}
-		escaped := stdhtml.EscapeString(text)
-		if isBlock {
-			s.ReplaceWithHtml("<pre>" + escaped + "</pre>")
-			return
-		}
-		s.ReplaceWithHtml(escaped)
+	return transformHTML(html, "render maths", func(doc *goquery.Document) {
+		doc.Find(selectorMathExtension).Each(func(_ int, s *goquery.Selection) {
+			text, isBlock := mathReplacementText(s)
+			if text == "" {
+				// No usable source (missing/unparseable data-mw): leave
+				// the span in place for stripChrome's own math selector
+				// to remove, same as before this experiment existed.
+				return
+			}
+			escaped := stdhtml.EscapeString(text)
+			if isBlock {
+				s.ReplaceWithHtml("<pre>" + escaped + "</pre>")
+				return
+			}
+			s.ReplaceWithHtml(escaped)
+		})
 	})
-
-	out, err := doc.Html()
-	if err != nil {
-		return "", fmt.Errorf("rendering maths-replaced HTML: %w", err)
-	}
-	return out, nil
 }
 
 // mathDataMW is the slice of Parsoid's data-mw JSON this needs: the

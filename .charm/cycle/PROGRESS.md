@@ -17,30 +17,33 @@
 
 ## Cursor
 
-Current task: M3.6
+Current task: M4.1
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-03, this session (charm-build) — M3.3a done, cursor moved to M3.6.**
-`stripChrome` (`strip.go`) now also removes `div.portal-bar` and `div.sistersitebox` —
-the two navigational chrome boxes M3.5's findings surfaced (their icon images used to
-vanish silently; M3.5's placeholders made the underlying leak visible as bare list items
-or `[Image: icon]` lines). Same navbox/sidebar rationale: navigational links, not unique
-article content. Added a fixture case to `TestStripChromeRemovesNonArticleElements`
-(`strip_test.go`) plus two live regression guards in `TestStripChromeLiveSamples` (the
-`why_anything.md` portal-bar trailing list, the `e_math.md`/`major_arcana.md` sister-project
-line). Verified mechanically: regenerated all four current `tmp/wikispike-tests-1/*.md`
-samples with `bin/wikispike` against live fetches — grepping for the exact leaked strings
-from M3.5's findings (`Portals:`, `Wikimedia Commons has media related to`, `Wikiquote has
-quotations related to`) returns nothing across all four, and `(`/`)`/`[`/`]` counts stay
-balanced (list_languages.md's M2.4a fix holds). `make check` and the full opt-in live suite
-(`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) both pass. Root-level stray
-sample copies (`why_anything.md`, `major_arcana.md`, `e_math-2.md`, `e_math-3.md`) at repo
-root were left untouched — still M4.1's TRIAGE-T4-derived done-when, not this task.
-Next step: work M3.6 (housekeeping: T5/T6/T7), then resume M4.1/M4.2.
+**2026-09-03, this session (charm-build) — M3.6 done, cursor moved to M4.1.**
+Housekeeping pass (TRIAGE T5/T6/T7), all three addressed:
+- T5: fixed `links_test.go`'s stale doc comment on `TestStripLinksPreservesSurroundingProse`
+  (used to name a non-existent identifier, `TestArticleMarkdownHasNoLinkSyntax`).
+- T6: new `cmd/wikispike/htmldoc.go` holds `transformHTML` (shared
+  parse/mutate/re-serialize helper) plus `selectorFilePrefix`/`selectorMathExtension`
+  (built from `typeofFilePrefix`/`typeofMathExtension` constants, replacing parallel
+  `mw:File`/`mw:Extension/math` string literals in `strip.go`/`math.go`/`images.go`).
+  `strip.go`, `links.go`, `math.go`, `images.go` all now delegate to `transformHTML`;
+  `strip.go` factored its selectors into `stripChromeInPlace`. Removed now-unused `fmt`
+  imports from `images.go`/`math.go`/`links.go`.
+- T7: the "placeheld" typo in `images.go`'s error message no longer exists — folded into
+  `transformHTML`'s generic re-serialize error message during the T6 refactor (confirmed:
+  `grep -ri placeheld cmd/wikispike` is empty).
+Fresh-context code-reviewer subagent ran a two-pass review (standards, spec fidelity):
+all three PASS, no functional regressions, only low-severity nits (no action needed).
+`make check`, `go vet ./...`, and the full opt-in live suite
+(`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) all pass. All of M2.4a, M3.3,
+M3.3a, M3.4, M3.5, M3.6 are now done — M4.1's dependencies are satisfied.
+Next step: work M4.1 (findings record + TRIAGE T4 stale-sample cleanup), then M4.2.
 
 ## Status
 
@@ -60,6 +63,6 @@ Next step: work M3.6 (housekeeping: T5/T6/T7), then resume M4.1/M4.2.
 | M3.5 | done    | 2026-09-03 | -         | `images.go`; no new dep; findings recorded  |
 | M2.4a | done   | -        | -         | fix-up (TRIAGE T3): dangling-paren gap; see D107 |
 | M3.3a | done   | -        | -         | fix-up (TRIAGE T2): portal-bar/sistersitebox |
-| M3.6  | todo   | -        | -         | housekeeping (TRIAGE T5/T6/T7)              |
+| M3.6  | done   | 2026-09-03 | -       | housekeeping (TRIAGE T5/T6/T7)              |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4    |
 | M4.2 | todo    | -        | -         |                                             |
