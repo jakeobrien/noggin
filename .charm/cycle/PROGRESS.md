@@ -98,17 +98,17 @@ the cycle closes.
 
 | Key  | Status  | Reviewed | Validated | Note                                        |
 |------|---------|----------|-----------|---------------------------------------------|
-| M1.1 | done    | -        | 2026-08-14 | `cmd/wikispike/`                            |
-| M1.2 | done    | -        | 2026-08-14 | live fetch verified, all four S5 titles     |
-| M2.1 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
-| M2.2 | done    | -        | -         | reopened post-M2.5 for table.sidebar (user-directed fix-up); re-verify |
-| M2.3 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
-| M2.4 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
-| M2.5 | done    | -        | -         | consolidate live tests (was TRIAGE T1)      |
-| M3.1 | done    | -        | -         | scratch root, 4 .md files (user, off-sandbox) |
-| M3.2 | done    | -        | -         | `findings/sample-judging.md`; only E fails A3 |
-| M3.3 | done    | -        | -         | nothing to retune beyond M3.4's carve-out   |
-| M3.4 | done    | -        | -         | `math.go`, termtex dep; findings recorded   |
-| M3.5 | done    | -        | -         | `images.go`; no new dep; findings recorded  |
+| M1.1 | done    | 2026-09-03 | 2026-08-14 | `cmd/wikispike/`                            |
+| M1.2 | done    | 2026-09-03 | 2026-08-14 | live fetch verified, all four S5 titles     |
+| M2.1 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction   |
+| M2.2 | done    | 2026-09-03 | -         | reopened post-M2.5 for table.sidebar (user-directed fix-up); re-verify |
+| M2.3 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction   |
+| M2.4 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction; review found T3 (unfixed dangling paren, done-when not fully met) |
+| M2.5 | done    | 2026-09-03 | -         | consolidate live tests (was TRIAGE T1)      |
+| M3.1 | done    | 2026-09-03 | -         | scratch root, 4 .md files (user, off-sandbox) |
+| M3.2 | done    | 2026-09-03 | -         | `findings/sample-judging.md`; only E fails A3 |
+| M3.3 | done    | 2026-09-03 | -         | nothing to retune beyond M3.4's carve-out   |
+| M3.4 | done    | 2026-09-03 | -         | `math.go`, termtex dep; findings recorded   |
+| M3.5 | done    | 2026-09-03 | -         | `images.go`; no new dep; findings recorded  |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 per-experiment report |
 | M4.2 | todo    | -        | -         |                                             |
