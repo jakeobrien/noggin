@@ -24,7 +24,17 @@ Current task: M4.1
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-02, this session (fix-up on M2.2, done, ad hoc, cursor stayed on M4.1) —
+**2026-09-02, this session (fix-up on M3.5, done, ad hoc, cursor stayed on M4.1) — image
+placeholders now backtick-wrapped.** User asked for the `[Image: ...]` placeholder to read
+as visually distinct from prose. `renderImages` now wraps the placeholder in a `<code>`
+element (not literal backtick characters — lets the html-to-markdown converter handle
+escaping if a caption/alt/filename itself contains a backtick) so it renders as inline
+code, e.g. `` `[Image: ...]` ``. Tests updated to check for the backtick-wrapped form;
+`make check`, full `go test ./...`, and the opt-in live tests
+(`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) all pass. All four S5 `.md`
+samples regenerated.
+
+**2026-09-02, earlier this session (fix-up on M2.2, done, ad hoc, cursor stayed on M4.1) —
 sidebars now stripped.** User flagged `e_math.md`'s History section opening with a
 disjointed run of paragraphs/lists (Wikipedia's "Part of a series of articles on e" box)
 ahead of the section's real prose. Root cause: Wikipedia's `<table class="sidebar">`

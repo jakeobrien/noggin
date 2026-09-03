@@ -24,7 +24,13 @@ import (
 // fetched, decoded or rendered; the placeholder is wrapped in square
 // brackets so it reads as a placeholder rather than body prose, and carries
 // no link (stripLinks, M2.3, would have stripped any link anyway — this
-// just never gives it one).
+// just never gives it one). It is also wrapped in a <code> element so it
+// renders as inline code (backtick-delimited) rather than plain prose —
+// visually distinct from surrounding text, same reasoning as the square
+// brackets, one layer further. Using an actual <code> element rather than
+// literal backtick characters lets the html-to-markdown converter handle
+// escaping if a caption/alt/filename itself contains a backtick, instead of
+// this code having to reimplement that.
 func renderImages(html string) (string, error) {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
@@ -40,7 +46,7 @@ func renderImages(html string) (string, error) {
 			// this experiment existed.
 			return
 		}
-		s.ReplaceWithHtml(stdhtml.EscapeString("[Image: " + desc + "]"))
+		s.ReplaceWithHtml("<code>" + stdhtml.EscapeString("[Image: "+desc+"]") + "</code>")
 	})
 
 	out, err := doc.Html()

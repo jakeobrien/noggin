@@ -101,9 +101,10 @@ func TestRenderImagesLeavesUnrecoverableNodeForStripChrome(t *testing.T) {
 
 // TestArticleMarkdownFromHTMLKeepsImagePlaceholder is the full-pipeline
 // check: an image that used to vanish without a trace (pre-D104) now
-// survives as a bracketed placeholder next to its original position, with
-// no dangling brackets or link markup, through fetch's real successor
-// stages (render maths, render images, strip, delink, convert, clean up).
+// survives as a backtick-wrapped, bracketed placeholder next to its
+// original position, with no dangling brackets or link markup, through
+// fetch's real successor stages (render maths, render images, strip,
+// delink, convert, clean up).
 func TestArticleMarkdownFromHTMLKeepsImagePlaceholder(t *testing.T) {
 	input := `<html><body><section>
 <p>Intro prose.</p>
@@ -115,8 +116,8 @@ func TestArticleMarkdownFromHTMLKeepsImagePlaceholder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("articleMarkdownFromHTML: %v", err)
 	}
-	if !strings.Contains(got, "[Image: A caption about the figure]") {
-		t.Errorf("expected the caption placeholder in the final markdown, got:\n%s", got)
+	if !strings.Contains(got, "`[Image: A caption about the figure]`") {
+		t.Errorf("expected the caption placeholder wrapped in backticks in the final markdown, got:\n%s", got)
 	}
 	if !strings.Contains(got, "Intro prose.") || !strings.Contains(got, "More prose follows.") {
 		t.Errorf("expected the surrounding prose to survive intact, got:\n%s", got)
@@ -134,10 +135,10 @@ func TestArticleMarkdownFromHTMLKeepsImagePlaceholder(t *testing.T) {
 // every sample that carries at least one genuine content image (a
 // <figure typeof="mw:File/Thumb">, distinct from a chrome icon such as an
 // ambox's <span typeof="mw:File"> maintenance-box image, which stripChrome
-// removes wholesale regardless of any placeholder) now shows a bracketed
-// placeholder in the final markdown, not markdown image syntax, and no
-// dangling empty-bracket gap is left behind. Opt-in like the other live
-// tests so `make check` stays hermetic:
+// removes wholesale regardless of any placeholder) now shows a
+// backtick-wrapped, bracketed placeholder in the final markdown, not
+// markdown image syntax, and no dangling empty-bracket gap is left behind.
+// Opt-in like the other live tests so `make check` stays hermetic:
 // WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
 func TestArticleMarkdownLiveSamplesShowImagePlaceholders(t *testing.T) {
 	skipUnlessLive(t)
@@ -148,8 +149,8 @@ func TestArticleMarkdownLiveSamplesShowImagePlaceholders(t *testing.T) {
 				t.Skipf("%q: raw fetch carries no content <figure> image, nothing to place a placeholder for", title)
 			}
 			markdown := liveMarkdown(t, title)
-			if !strings.Contains(markdown, "[Image: ") {
-				t.Errorf("%q: expected at least one [Image: ...] placeholder, got none", title)
+			if !strings.Contains(markdown, "`[Image: ") {
+				t.Errorf("%q: expected at least one backtick-wrapped [Image: ...] placeholder, got none", title)
 			}
 			if strings.Contains(markdown, "![") {
 				t.Errorf("%q: markdown image syntax survived instead of a text placeholder", title)
