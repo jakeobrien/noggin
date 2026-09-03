@@ -75,10 +75,12 @@ func run(args []string, out io.Writer) error {
 // so run()'s own test does not need the network.
 var pipeline = articleMarkdown
 
-// articleMarkdown is the spike's pipeline: fetch, strip, convert, clean up.
-// M1.2 has the fetch, M2.1 the conversion, M2.2 the chrome-stripping, M2.3
-// the link-stripping and M2.4 the final cleanup pass that closes the holes
-// stripping leaves behind.
+// articleMarkdown is the spike's pipeline: fetch, render maths, strip,
+// convert, clean up. M1.2 has the fetch, M2.1 the conversion, M2.2 the
+// chrome-stripping, M2.3 the link-stripping, M2.4 the final cleanup pass
+// that closes the holes stripping leaves behind, and M3.4 the maths-as-text
+// substitution (D104) that runs before stripChrome would otherwise remove
+// formula markup without a trace.
 func articleMarkdown(title string) (string, error) {
 	html, err := fetchArticleHTML(restBase, title)
 	if err != nil {
@@ -87,14 +89,18 @@ func articleMarkdown(title string) (string, error) {
 	return articleMarkdownFromHTML(html)
 }
 
-// articleMarkdownFromHTML runs the pipeline's post-fetch stages (strip,
-// delink, convert, clean up) on already-fetched article HTML. Split out from
-// articleMarkdown so live tests can share one cached fetch across every
-// stage-specific check instead of each re-fetching the same four titles
-// (TRIAGE T1, PLAN M2.5) — the network call is the only part worth caching;
-// these stages are local and cheap to rerun.
+// articleMarkdownFromHTML runs the pipeline's post-fetch stages (render
+// maths, strip, delink, convert, clean up) on already-fetched article HTML.
+// Split out from articleMarkdown so live tests can share one cached fetch
+// across every stage-specific check instead of each re-fetching the same
+// four titles (TRIAGE T1, PLAN M2.5) — the network call is the only part
+// worth caching; these stages are local and cheap to rerun.
 func articleMarkdownFromHTML(html string) (string, error) {
-	stripped, err := stripChrome(html)
+	mathed, err := renderMath(html)
+	if err != nil {
+		return "", err
+	}
+	stripped, err := stripChrome(mathed)
 	if err != nil {
 		return "", err
 	}

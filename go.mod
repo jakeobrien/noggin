@@ -10,6 +10,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.2
 	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/charmbracelet/x/ansi v0.11.7
+	github.com/doug/termtex v0.0.0-20260626010055-e3e21f41b38e
 	github.com/sahilm/fuzzy v0.1.3
 	golang.org/x/term v0.43.0
 )

@@ -17,41 +17,53 @@
 
 ## Cursor
 
-Current task: M3.4
+Current task: M3.5
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-02 replan (this session):** SPEC.md was amended between sessions (D104,
-`8a1bd64`) to widen the retune budget — S3→S3a, S6→S6a, S7→S7a — adding two costed
-experiments (Unicode maths approximation, image caption/alt/filename placeholders) that
-PLAN.md hadn't caught up to. Reconciled: M3.4 rewritten to try Unicode first then fall back
-to raw-text preservation (effort 2→3); new M3.5 added for the image placeholder experiment
-(needs M3.3, effort 3); M4.1 widened to require per-experiment reporting for both M3.4 and
-M3.5 (effort 2→3, needs now include M3.4/M3.5); M2/M3/M4 Delivers lines updated to the `a`-
-suffixed spec keys. No TRIAGE items were open to route (inbox is empty) and D104 already
-carries the material-change rationale, so no new DECISIONS.md entry was needed for the plan
-mechanics themselves.
+**2026-09-02, this session:** Closed out the M3.2 gap flagged by the prior session — got
+the user's per-article A1–A4 breakdown and wrote it up as
+`cycle/findings/sample-judging.md`: all four pass A1/A2/A4; only `E (mathematical
+constant)` fails A3 (stripped maths leaves visible gaps), which is exactly A5's named
+known-limitation case (go with a known limitation, not a no-go). The earlier handoff's
+mention of an "image-placeholder gap" doesn't reproduce in this structured pass — noted in
+the findings file as a discrepancy, doesn't change M3.5's scope since D104 commits to that
+experiment regardless. Fixed the Status-table/Handoff contradiction the prior session left
+(table said M3.2 `done`, handoff said it should be `in-progress`) — now genuinely `done`.
+M3.3 (generic retune) had nothing left to retune beyond the one shortfall already carved
+into its own task, so recorded `done` too, citing the findings file.
 
-**Same session, user-reported (off-sandbox):** M3.1 done — user ran `wikispike` for all
-four S5 titles and wrote the four `.md` files to a scratch root outside the repo. M3.2's
-substantive work is also done — user read all four in noggin's Document Viewer at real pane
-widths and judged them: acceptable on most counts, with the sole exception being exactly the
-math (`E (mathematical constant)`) and image-placeholder gaps already surfaced and re-spec'ed
-last session as D104/S3a/S6a. **Gap:** M3.2's own acceptance criterion asks for that verdict
-"recorded in the findings file" — no findings file exists yet (`findings/INDEX.md` is still
-the bare template), and the report above is a summary, not the per-article A1–A4 breakdown
-(plus A5 known-limitations) the criterion names. Left `in-progress` rather than `done` for
-that reason; writing it up is the immediate next step, and needs the user's per-article
-detail (which article(s) hit A1/A2/A3/A4, and which of those are A5 known-limitations vs.
-real shortfalls) to be accurate rather than inferred.
+**M3.4 (maths) done.** New file `cmd/wikispike/math.go` (+ `math_test.go`); new pipeline
+stage `renderMath` runs before `stripChrome` in `articleMarkdownFromHTML`
+(`cmd/wikispike/main.go`). Per formula: try `github.com/doug/termtex` (new dependency,
+permitted by D104) for a Unicode approximation, keep it only if single-line, else fall back
+to the raw TeX source Parsoid already exposes in `data-mw`'s `body.extsrc` — both paths
+guarantee no mid-sentence gap. Verified against a live fetch of `E (mathematical constant)`:
+every previously-orphaned sentence now reads complete; 63/104 (61%) formulas got Unicode,
+41/104 raw-text fallback; `make check` and a mechanical re-check (blank-line runs, empty
+list items, bracket balance) clean across all four S5 samples. Findings:
+`cycle/findings/maths-experiment.md`. `strip.go`'s math-removal comment updated to reflect
+it now only catches the rare span `renderMath` couldn't recover a source for.
 
-Pipeline (`main.go`): fetch → `articleMarkdownFromHTML` = `stripChrome` (M2.2) →
+Five `.md` conversion outputs sit untracked at the repo root (`e_math.md`,
+`list_languages.md`, `major_arcana.md`, `multi_paradigm.md`, `why_anything.md`) — left in
+place at the user's request, for their reference/comparison (predate M3.4, so don't reflect
+the maths fix — regenerate via `go run ./cmd/wikispike "<title>" <path>` for an up-to-date
+comparison). Note `multi_paradigm.md` is a conversion of a *different* article ("Comparison
+of multi-paradigm programming languages"), not the S5 title ("List of programming languages
+by type", which is `list_languages.md`) — harmless, just don't mistake it for a fifth
+sample.
+
+Pipeline (`main.go`) is now: fetch → `renderMath` (M3.4) → `stripChrome` (M2.2) →
 `stripLinks` (M2.3) → `htmlToMarkdown` (M2.1) → `cleanupMarkdown` (M2.4). Note for M3.5:
-this pipeline currently strips images without a trace (old S3) — the image-placeholder
-experiment means no longer deleting the image node in `stripChrome`.
+this pipeline still strips images without a trace (old S3) — the image-placeholder
+experiment means no longer deleting the image node in `stripChrome`, likely following the
+same "new pipeline stage before `stripChrome`" shape `renderMath` just established.
+
+**Next step:** implement M3.5 — image caption/alt/filename placeholder experiment.
 
 ## Status
 
@@ -65,9 +77,9 @@ experiment means no longer deleting the image node in `stripChrome`.
 | M2.4 | done    | -        | -         | re-verify after M2.5's main.go extraction   |
 | M2.5 | done    | -        | -         | consolidate live tests (was TRIAGE T1)      |
 | M3.1 | done    | -        | -         | scratch root, 4 .md files (user, off-sandbox) |
-| M3.2 | done    | -        | -         | judged (user); findings file not yet written  |
-| M3.3 | todo    | -        | -         | repeatable                                  |
-| M3.4 | todo    | -        | -         | S6a maths exception (needs M3.3)            |
+| M3.2 | done    | -        | -         | `findings/sample-judging.md`; only E fails A3 |
+| M3.3 | done    | -        | -         | nothing to retune beyond M3.4's carve-out   |
+| M3.4 | done    | -        | -         | `math.go`, termtex dep; findings recorded   |
 | M3.5 | todo    | -        | -         | S6a image exception (needs M3.3)            |
 | M4.1 | todo    | -        | -         | widened for M3.4/M3.5 per-experiment report |
 | M4.2 | todo    | -        | -         |                                             |

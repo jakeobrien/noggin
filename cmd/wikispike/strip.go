@@ -50,11 +50,14 @@ func stripChrome(html string) (string, error) {
 	doc.Find("table.metadata, table.ambox").Remove()
 
 	// Images: figures, thumbnails and inline file references all carry a
-	// typeof starting with "mw:File"; rendered math formulae are also served
-	// as an <img> (an SVG render) under typeof="mw:Extension/math" — S6
-	// treats formula-as-prose as a separate, optional problem (M3.4), but
-	// "no image markup" is unconditional here, so both go. A final bare-<img>
-	// sweep catches anything else that slipped through.
+	// typeof starting with "mw:File". A final bare-<img> sweep catches
+	// anything else that slipped through.
+	//
+	// Rendered math formulae are also served as an <img> (an SVG render)
+	// under typeof="mw:Extension/math", but by the time stripChrome runs,
+	// renderMath (M3.4, D104) has already replaced every formula it could
+	// recover a source for with plain text — this selector only catches the
+	// rare leftover renderMath couldn't handle (missing/unparseable data-mw).
 	doc.Find(`[typeof^="mw:File"], [typeof="mw:Extension/math"]`).Remove()
 	doc.Find("img").Remove()
 
