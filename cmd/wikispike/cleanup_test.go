@@ -54,6 +54,48 @@ Paragraph after a blank-line pileup.
 	}
 }
 
+// TestCleanupMarkdownDropsDanglingClosers is M2.4a's fix for TRIAGE T3: a
+// dangling closer with no matching opener, found on the live "List of
+// programming languages by type" sample in two shapes — a stray extra ")"
+// already present in the source article's own wikitext ("Scala (into JVM
+// bytecode))"), and the same shape after a longer parenthetical
+// ("RUNCOM (scripting language for running CTSS) programs)"). Neither is a
+// literal empty "()" pair, so reEmptyParens can't see them.
+func TestCleanupMarkdownDropsDanglingClosers(t *testing.T) {
+	const input = `- Scala (into JVM bytecode))
+- RUNCOM (scripting language for running CTSS) programs)
+- Balanced (still fine) here
+`
+	got := cleanupMarkdown(input)
+
+	if strings.Count(got, "(") != strings.Count(got, ")") {
+		t.Errorf("parens still unbalanced after cleanup:\n%s", got)
+	}
+	for _, want := range []string{
+		"- Scala (into JVM bytecode)",
+		"- RUNCOM (scripting language for running CTSS) programs",
+		"- Balanced (still fine) here",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("cleanup lost or mangled %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "))") {
+		t.Errorf("a dangling closer survived cleanup:\n%s", got)
+	}
+}
+
+// TestDropUnmatchedClosersLeavesUnmatchedOpenersAlone documents
+// dropUnmatchedClosers's deliberately asymmetric behaviour: it repairs an
+// excess closer but never removes an opener left unmatched at the end of
+// the chunk (see its doc comment for why).
+func TestDropUnmatchedClosersLeavesUnmatchedOpenersAlone(t *testing.T) {
+	got := dropUnmatchedClosers("an (unmatched opener", '(', ')')
+	if got != "an (unmatched opener" {
+		t.Errorf("expected the unmatched opener left alone, got %q", got)
+	}
+}
+
 // TestCleanupMarkdownFullPipelineFixture runs the whole HTML->markdown
 // pipeline (strip, delink, convert, clean up) on a fixture shaped like the
 // adversarial cases found in real articles: a formula and a lone citation
@@ -150,8 +192,11 @@ func TestCleanupMarkdownHandlesUnclosedFence(t *testing.T) {
 
 // TestPipelineLiveSamplesHaveNoStructuralHoles is M2.4's acceptance check
 // against the four S5 sample titles (shared live-fetch cache, M2.5): no run
-// of 3+ consecutive blank lines, no empty list item, and no empty/
-// whitespace-only parens or brackets left by a removal. Opt-in like the
+// of 3+ consecutive blank lines, no empty list item, no empty/
+// whitespace-only parens or brackets left by a removal, and (M2.4a,
+// widened for TRIAGE T3) balanced (/) and [/] counts overall — catching a
+// dangling closer even when nothing sits between it and its non-existent
+// partner, which the empty-pair checks above can't see. Opt-in like the
 // other live tests so `make check` stays hermetic:
 // WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
 func TestPipelineLiveSamplesHaveNoStructuralHoles(t *testing.T) {
@@ -172,6 +217,12 @@ func TestPipelineLiveSamplesHaveNoStructuralHoles(t *testing.T) {
 			}
 			if strings.Contains(markdown, "[]") {
 				t.Errorf("%q: empty brackets survived", title)
+			}
+			if open, close := strings.Count(markdown, "("), strings.Count(markdown, ")"); open != close {
+				t.Errorf("%q: unbalanced parens: %d %q vs %d %q", title, open, "(", close, ")")
+			}
+			if open, close := strings.Count(markdown, "["), strings.Count(markdown, "]"); open != close {
+				t.Errorf("%q: unbalanced brackets: %d %q vs %d %q", title, open, "[", close, "]")
 			}
 		})
 	}

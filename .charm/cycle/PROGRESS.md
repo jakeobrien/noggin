@@ -17,82 +17,31 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M3.3a
 
 ## Handoff
 
 <!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
      state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-**2026-09-02, this session (fix-up on M3.5, done, ad hoc, cursor stayed on M4.1) — image
-placeholders now backtick-wrapped.** User asked for the `[Image: ...]` placeholder to read
-as visually distinct from prose. `renderImages` now wraps the placeholder in a `<code>`
-element (not literal backtick characters — lets the html-to-markdown converter handle
-escaping if a caption/alt/filename itself contains a backtick) so it renders as inline
-code, e.g. `` `[Image: ...]` ``. Tests updated to check for the backtick-wrapped form;
-`make check`, full `go test ./...`, and the opt-in live tests
-(`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) all pass. All four S5 `.md`
-samples regenerated.
-
-**2026-09-02, earlier this session (fix-up on M2.2, done, ad hoc, cursor stayed on M4.1) —
-sidebars now stripped.** User flagged `e_math.md`'s History section opening with a
-disjointed run of paragraphs/lists (Wikipedia's "Part of a series of articles on e" box)
-ahead of the section's real prose. Root cause: Wikipedia's `<table class="sidebar">`
-template (a second, distinct navigation-box class from `div.navbox`, already stripped)
-wasn't matched by `stripChrome` (M2.2) — same category of gap as TRIAGE T2's
-portal-bar/sister-box discovery, but a different selector, so fixed directly rather than
-added to T2. `strip.go` now also removes `table.sidebar`; `strip_test.go` gained a nested
-unit fixture matching the live structural placement plus a live-sample regression check
-(`WIKISPIKE_LIVE=1`, verified passing against the real article). GLOSSARY's Chrome entry
-updated. `make check`/`go test ./...` clean; all four S5 `.md` samples regenerated (only
-`e_math.md` and `list_languages.md` changed size — both had a sidebar template).
-
-**2026-09-02, earlier this session (fix-up on M3.4, done, ad hoc, cursor stayed on M4.1) —
-display formulas now get their own line.** User flagged raw TeX still visible in `e_math.md`;
-turned out Parsoid marks a formula display/block-style (`data-mw.attrs.display=="block"`,
-`mwe-math-element-block` class) and Wikipedia gives it its own line visually even though
-the span stays nested in the same `<p>`. `renderMath` now wraps display formulas in
-`<pre>` (auto-splits the paragraph when htmlToMarkdown re-parses; keeps full multi-line
-termtex Unicode instead of falling back to raw TeX). Found and fixed in the same session,
-via code-reviewer: `cleanupMarkdown`'s empty-parens/brackets/blank-run/whitespace passes
-ran over the whole string, corrupting fenced ASCII-art math — fixed by carving fenced
-regions out before any pass runs (`cleanupProse` helper), with tests reproducing the
-corruption first. `make check`/`go test ./...` clean; all four S5 `.md` samples
-regenerated and re-checked. Detail + why this reopens M3.4's "deliberately did not build"
-call: `cycle/findings/maths-experiment.md`'s Addendum. Not run through charm-replan (small,
-session-scoped, user-directed) — flagging here so M4.1's findings write-up accounts for it.
-
-**2026-09-02, earlier this session — M3.5 (images) done.** New pipeline stage `renderImages`
-(`cmd/wikispike/images.go` + `images_test.go`), same shape as M3.4's `renderMath`: a
-goquery pass over `[typeof^="mw:File"]` nodes before `stripChrome`, replacing each with a
-plain-text `[Image: <description>]` placeholder — caption (flattened via `.Text()`) → img
-`alt` → filename from `resource`/`href` (File: prefix/extension stripped, underscores back
-to spaces). No new dependency. `stripChrome`'s image selector is now the fallback for
-whatever `renderImages` can't recover a description for (same relationship it already had
-with `renderMath`). Pipeline: fetch → `renderMath` (M3.4) → `renderImages` (M3.5) →
-`stripChrome` → `stripLinks` → `htmlToMarkdown` → `cleanupMarkdown`.
-
-Verified against live fetches of all four S5 titles: every content figure that used to
-vanish now shows its caption in place (none needed the alt/filename fallback live; that
-path is covered by unit tests instead). Mechanical re-check (blank lines, empty list
-items, bracket balance) and `make check`/`go test ./...` clean; new opt-in live test
-`TestArticleMarkdownLiveSamplesShowImagePlaceholders`. Findings:
-`cycle/findings/images-experiment.md`. Regenerated the four S5 root `.md` reference files
-(`why_anything.md`, `e_math.md`, `list_languages.md`, `major_arcana.md` — still
-untracked/off-sandbox per the user's request; `multi_paradigm.md` untouched, not an S5
-title).
-
-**Discovery routed to TRIAGE, not fixed:** regenerating surfaced a pre-existing
-chrome-stripping gap (M2.2, not this experiment) — `stripChrome` doesn't match Wikipedia's
-portal-bar or sister-project side-box chrome, so those boxes' list items were already
-leaking as bare text; now visible as `[Image: icon]` etc. instead of silent. Logged as
-TRIAGE T2.
-
-**Next step:** M4.1 — write the cycle's consolidated findings record (what converts
-well/badly, retune outcome, both S6a experiments' summaries — `maths-experiment.md` and
-`images-experiment.md` already exist and can be cited/condensed). TRIAGE has one open item
-(T2, medium, non-blocking) — doesn't block M4.1/M4.2, but drain it via charm-replan before
-the cycle closes.
+**2026-09-03, this session (charm-build) — M2.4a done, cursor moved to M3.3a.**
+`cleanupProse` gained `dropUnmatchedClosers` (`cleanup.go`), a depth-based pass that drops
+a dangling `)`/`]` with no matching opener; parens and brackets tracked independently,
+closers-only (asymmetric — an unmatched opener is left alone), see DECISIONS D107.
+Re-investigated D106's premise while building: the `list_languages.md` dangling `)` isn't
+from a removal at all — both instances (`Scala (into JVM bytecode))`, `RUNCOM (...) CTSS)
+programs)`) are already unbalanced in the live article's own wikitext, pre-dating this
+pipeline. D106's other option (a real depth pass) covers it regardless of root cause.
+Verified mechanically: regenerated all four current `tmp/wikispike-tests-1/*.md` samples
+with `bin/wikispike` — all four now have equal `(`/`)` and `[`/`]` counts (previously
+list_languages.md was 386/388). Added a live-test check for the same (`cleanup_test.go`'s
+`TestPipelineLiveSamplesHaveNoStructuralHoles`, extended) plus two unit tests
+(`TestCleanupMarkdownDropsDanglingClosers`,
+`TestDropUnmatchedClosersLeavesUnmatchedOpenersAlone`). `make check` and the full opt-in
+live suite (`WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v`) both pass. Root-level
+stray sample copies (`why_anything.md`, `major_arcana.md`, `e_math-2.md`, `e_math-3.md`) at
+repo root were left untouched — that's M4.1's TRIAGE-T4-derived done-when, not this task.
+Next step: work M3.3a (portal-bar/sistersitebox chrome), then M3.6, then resume M4.1/M4.2.
 
 ## Status
 
@@ -103,12 +52,15 @@ the cycle closes.
 | M2.1 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction   |
 | M2.2 | done    | 2026-09-03 | -         | reopened post-M2.5 for table.sidebar (user-directed fix-up); re-verify |
 | M2.3 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction   |
-| M2.4 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction; review found T3 (unfixed dangling paren, done-when not fully met) |
+| M2.4 | done    | 2026-09-03 | -         | re-verify after M2.5's main.go extraction; review found T3 (dangling paren, done-when not fully met) — fix tracked as M2.4a, D106 |
 | M2.5 | done    | 2026-09-03 | -         | consolidate live tests (was TRIAGE T1)      |
 | M3.1 | done    | 2026-09-03 | -         | scratch root, 4 .md files (user, off-sandbox) |
 | M3.2 | done    | 2026-09-03 | -         | `findings/sample-judging.md`; only E fails A3 |
 | M3.3 | done    | 2026-09-03 | -         | nothing to retune beyond M3.4's carve-out   |
 | M3.4 | done    | 2026-09-03 | -         | `math.go`, termtex dep; findings recorded   |
 | M3.5 | done    | 2026-09-03 | -         | `images.go`; no new dep; findings recorded  |
-| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 per-experiment report |
+| M2.4a | done   | -        | -         | fix-up (TRIAGE T3): dangling-paren gap; see D107 |
+| M3.3a | todo   | -        | -         | fix-up (TRIAGE T2): portal-bar/sistersitebox |
+| M3.6  | todo   | -        | -         | housekeeping (TRIAGE T5/T6/T7)              |
+| M4.1 | todo    | -        | -         | widened for M3.4/M3.5 report + TRIAGE T4    |
 | M4.2 | todo    | -        | -         |                                             |

@@ -17,7 +17,8 @@ import (
 // because a formula was dropped (e.g. "is the limit an expression that
 // arises...") — that is S6's mid-sentence-gap problem, scoped to M3.4, not
 // this task. What it removes is markup residue: empty/whitespace-only
-// parens or brackets, empty list items, and 3+ consecutive blank lines.
+// parens or brackets, unmatched dangling closers left after that (M2.4a),
+// empty list items, and 3+ consecutive blank lines.
 //
 // Fenced code blocks (``` ... ```) are carved out and left completely
 // untouched — not just by the per-line whitespace-collapse pass, but by
@@ -78,6 +79,18 @@ func cleanupProse(chunk string) string {
 	chunk = reEmptyParens.ReplaceAllString(chunk, "")
 	chunk = reEmptyBrackets.ReplaceAllString(chunk, "")
 
+	// Dangling closers left by a removal, or (found on the live "List of
+	// programming languages by type" sample, TRIAGE T3/M2.4a) already
+	// mismatched in the source article's own wikitext (e.g. "(into JVM
+	// bytecode))" — a stray extra ")" that predates this pipeline
+	// touching the article at all). A literal-empty-pair regex like the one
+	// above can't see either case, since there is nothing between the
+	// dangling closer and its non-existent partner. See
+	// dropUnmatchedClosers's doc comment for what this deliberately does
+	// not attempt to fix.
+	chunk = dropUnmatchedClosers(chunk, '(', ')')
+	chunk = dropUnmatchedClosers(chunk, '[', ']')
+
 	lines := strings.Split(chunk, "\n")
 	for i, line := range lines {
 		trimmedRight := strings.TrimRight(line, " \t")
@@ -106,6 +119,44 @@ func cleanupProse(chunk string) string {
 	chunk = reBlankRun.ReplaceAllString(chunk, "\n\n")
 
 	return chunk
+}
+
+// dropUnmatchedClosers removes any occurrence of closer that has no
+// preceding, still-open opener to its left within chunk (tracked as a
+// single depth counter for this pair only — parens and brackets are
+// repaired independently by two separate calls, so a mismatched paren
+// can't be "fixed" by pairing it against an unrelated bracket).
+//
+// It deliberately only drops excess closers, never touches an opener left
+// unmatched at the end of chunk. That is the conservative half of the
+// fix: the two real-world cases found so far (a removal that orphans a
+// closer; an upstream double-closing-paren typo) are both excess closers,
+// and leaving a lone unmatched opener as plain text is a visible, honest
+// artifact rather than a silently deleted character. The known cost of
+// this choice: a legitimate mixed-bracket idiom like a half-open interval
+// "[0, 1)" reads, to this depth counter, as an unmatched "[" and an
+// unmatched ")" — the ")" would be dropped. No sample seen in this cycle
+// contains that idiom (checked across all four S5 titles); if a future
+// article does, this function's dropped closer would need reviewing.
+func dropUnmatchedClosers(chunk string, opener, closer rune) string {
+	var b strings.Builder
+	depth := 0
+	for _, r := range chunk {
+		switch r {
+		case opener:
+			depth++
+			b.WriteRune(r)
+		case closer:
+			if depth > 0 {
+				depth--
+				b.WriteRune(r)
+			}
+			// depth == 0: dangling closer, drop it.
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 var (

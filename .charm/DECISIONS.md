@@ -1286,3 +1286,73 @@
   the cycle: the fix is cheap (effort 2) and the underlying test code may not survive past
   this cycle at all (OQ1/D97), so parking it on the roadmap for a future cycle to pick up
   would likely never be acted on.
+
+## D105: TRIAGE T2 (stripChrome misses portal-bar/sistersitebox) promoted to task M3.3a
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-02
+- Context: charm-replan triage of TRIAGE T2 — M3.5's live regeneration surfaced a
+  pre-existing M2.2 gap: `stripChrome` doesn't match Wikipedia's portal-bar
+  (`div.portal-bar`) or sister-project side-box (`div.sistersitebox`) chrome. Both are
+  navigational, not article content, and were already leaking as bare text before M3.5;
+  M3.5's own image-placeholder work made the leak visible (`[Image: icon]` lines) instead
+  of silent, but the root cause predates and is unrelated to M3.5.
+- Decision: accepted as PLAN.md task M3.3a (needs M2.2, M3.5; effort 2) rather than left ad
+  hoc or deferred to ROADMAP — the same category of fix as the sidebar gap already
+  fixed directly this session (M2.2's `table.sidebar`), but routed through TRIAGE/replan
+  since it was already filed rather than caught in the moment.
+- Why: medium severity and directly relevant to A3 ("no large gaps or artifacts") — the
+  leaked lines are visible defects in the very samples M4.1's findings will cite. Cheap
+  (effort 2, same selector-list pattern as the existing sidebar fix) and the underlying
+  code may not survive the cycle (OQ1/D97) — worth fixing now rather than parking it where
+  a future cycle would need to rediscover it. Not wontfix: it directly contradicts S3a's
+  "removal must not leave visible holes" contract.
+
+## D106: TRIAGE T3 (M2.4's dangling-paren gap) promoted to task M2.4a
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-02
+- Context: charm-replan triage of TRIAGE T3 — a code-review pass found a genuine dangling
+  `)` in `tmp/wikispike-tests-1/list_languages.md` (386 `(` vs 388 `)`) that M2.4's own
+  done-when ("no unmatched `[`/`(` left by a removal, checked mechanically over all four")
+  claims does not occur. Root cause: `cleanupProse`'s `reEmptyParens` only catches literal
+  empty pairs, not a real orphaned bracket left after a removal. Known to the builder
+  (mentioned in two findings docs) but never routed through triage until this session, and
+  PROGRESS.md's M2.4 row is marked `done` unqualified.
+- Decision: accepted as PLAN.md task M2.4a (needs M2.4; effort 2) — give `cleanupProse` a
+  real paren/bracket-depth pass (or a targeted fix for the specific removal that orphans
+  it) rather than requalify M2.4's done note and move on. M2.4's PROGRESS.md row stays
+  `done` (the milestone shipped) but this fix-up must land before M4.1's findings are
+  written, since findings should describe the pipeline's actual current behavior.
+- Why: medium severity, a real defect in already-`done` work that contradicts that task's
+  own machine-checkable acceptance criterion — not a matter of judgment, a bug. Cheap
+  (effort 2) and directly reachable by M4.1's own mechanical re-check; fixing now avoids
+  M4.1 either citing a known-broken sample or having to caveat around it.
+
+## D107: M2.4a — depth-based dangling-closer pass, asymmetric (closers only)
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-03
+- Context: building M2.4a, re-investigated D106's root cause. Neither `list_languages.md`
+  dangling `)` traces to a removal — both are already present in the live article's own
+  wikitext (`Scala (into JVM bytecode))`, `RUNCOM (... CTSS) programs)`), pre-dating this
+  pipeline touching the article at all. D106's "targeted fix for the specific removal that
+  orphans it" option therefore doesn't apply; its other option ("a real paren/bracket-
+  depth pass") does and is what shipped, as `dropUnmatchedClosers` (`cleanup.go`).
+- Decision: the pass tracks parens and brackets as two independent depth counters and
+  drops a closer when its counter is already at zero, but deliberately never removes an
+  opener left unmatched at end-of-chunk — asymmetric by design. Accepted trade-off: a
+  legitimate mixed-bracket idiom like a half-open interval "[0, 1)" would read as an
+  unmatched `[` and an unmatched `)` and lose the `)`; no sample in this cycle's S5 set
+  contains that idiom (verified). Documented in `dropUnmatchedClosers`'s doc comment, not
+  filed to TRIAGE — hypothetical, not observed, and the low-risk asymmetric choice is
+  preferable to the alternative (also removing unmatched openers, which would silently
+  delete more real text on the one shape actually observed: a stray opener is a visible,
+  honest artifact rather than a deleted character).
+- Why: meets M2.4a's mechanical done-when (all four current S5 samples now have balanced
+  `(`/`)` and `[`/`]` counts — verified via a live regenerate + count, and via a new live
+  test) with the smaller, more conservative of the two viable fixes; keeps M4.1's findings
+  accurate about root cause (an upstream source quirk, not solely a pipeline artifact).
