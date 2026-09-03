@@ -14,6 +14,7 @@ There's no published binary yet. Build from source:
 git clone <this repo>
 cd noggin
 make build      # -> bin/noggin
+make install    # -> 
 ```
 
 or run without building:

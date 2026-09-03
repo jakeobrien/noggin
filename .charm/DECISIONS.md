@@ -1232,6 +1232,40 @@
 - Why: honest and policy-shaped either way, and it keeps the choice out of code for a tool
   that S1 says is throwaway. Revisit if any Wikipedia capability is ever distributed (OQ2).
 
+## D104: The C4a retune budget grows to include two costed experiments — maths Unicode, image placeholders
+
+- Status: decided
+- Cycle: C4a
+- Date: 2026-09-02
+- Context: reading the four sample articles surfaced a "swiss-cheese" effect from missing
+  maths and images — exactly the risk A5 anticipates as a known limitation, not an automatic
+  no-go, but real enough that the user wants it addressed before recording the verdict.
+  Wikimedia's Parsoid HTML already exposes an image's caption/alt/filename and a formula's raw
+  TeX source for free (no OCR, no new fetch); and glamour, noggin's existing render pipeline,
+  already turns `![alt](src)` into a styled text placeholder — so both experiments turned out
+  to be far cheaper than the original spec's blanket exclusions assumed.
+- Decision: two experiments added to the retune budget (S6a, superseding S6), scoped as
+  research/costing, not committed feature work — a later cycle with its own agreed spec still
+  decides what ships:
+  - **Maths**: try a Unicode textual approximation first (new dependency permitted), falling
+    back to the already-permitted raw-TeX text preservation if Unicode conversion is not a
+    small-ish lift.
+  - **Images**: replace the stripped image with a plain-text placeholder derived from its
+    caption, falling back to alt-text, falling back to filename; no clickable link (S3a,
+    superseding S3). Try the near-zero-cost path (stop deleting the image node, let the
+    existing render pipeline carry it) before writing new extraction logic.
+  Findings (S7a, superseding S7) must record what was tried, effort spent, any dependency
+  added, resulting quality, and a carry-forward recommendation for each. Out of scope's
+  "rendering images"/"rendering maths" — not wanted lines are superseded accordingly; full
+  visual/graphical rendering of either remains excluded.
+- Why: this is genuinely new capability being added mid-cycle, not a relocated one — flagged
+  explicitly rather than absorbed quietly as "just a retune", per the amend process. The user
+  chose to keep it in this cycle (not defer to the roadmap) because it converts the cycle's
+  deliverable from a bare verdict into "a verdict plus a costed feature set", material input
+  for whichever future cycle actually builds Wikipedia support. Both experiments stay
+  bounded by the existing retune budget's cheapest-path-first order and builder's-judgement
+  stop rule (S6/OQ4), now explicitly extended to cover them.
+
 ## D103: TRIAGE T1 (live-test 429s) promoted to a plan task rather than left ad hoc
 
 - Status: decided

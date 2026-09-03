@@ -7,7 +7,7 @@
      charm-replan then reconciles the plan. Keys are scoped to this cycle — durable docs
      referencing them qualify with the cycle key (C3/S2). -->
 
-Status: agreed 2026-08-14
+Status: agreed 2026-09-02 (originally 2026-08-14; amended per D104)
 
 ## Intent
 
@@ -18,6 +18,15 @@ throwaway command-line spike, four converted articles judged by eye, a findings 
 
 Everything about how Wikipedia would *fit* noggin — roots, panes, keys, search, starring — is
 deliberately unanswered here. If the answer to the question above is "no", none of it matters.
+
+**Amendment (2026-09-02):** reading the sample articles surfaced a "swiss-cheese" effect —
+missing maths and images leave visible holes that make otherwise-readable articles feel
+broken, precisely the risk A5 anticipates as a known limitation rather than an automatic
+no-go. Rather than accept that limitation as final, the cycle now also runs two small, costed
+experiments — a Unicode approximation for maths, and a caption-derived placeholder for
+images — before the verdict is recorded, so the verdict and findings both reflect the
+higher-resolution result. This is new capability being added to the contract, not a
+relocated one — see D104.
 
 ## Deliverables
 
@@ -32,11 +41,19 @@ deliberately unanswered here. If the answer to the question above is "no", none 
   autocompletion, no link resolution, no redirect or disambiguation handling beyond whatever
   the API does for free.
 
-- **S3 — The article, and nothing but the article.** Chrome that is not article content is
-  removed before conversion: navigation boxes, infoboxes, edit-section links, citation
-  superscripts, reference lists, metadata tables, and images. Content tables are kept.
-  Removal must not leave visible holes — no stray captions, empty rows, orphaned brackets or
-  runs of blank lines where something was cut.
+- ~~**S3**~~ — *Superseded by S3a (2026-09-02): images no longer removed without trace.*
+
+- **S3a — The article, and nothing but the article — images excepted.** Chrome that is not
+  article content is removed before conversion: navigation boxes, infoboxes, edit-section
+  links, citation superscripts, reference lists, metadata tables. Content tables are kept.
+  Images are removed from their position but leave a plain-text placeholder in their place,
+  carrying the best available description — the figure's caption, falling back to its
+  alt-text, falling back to its filename, in that priority — so a reader can tell an image
+  existed and get a hint of its relevance. No image is fetched, decoded or rendered visually;
+  the placeholder is text only, and any link the image carried is stripped along with every
+  other link (S4) — not left clickable. Removal (of chrome and of the image itself) must not
+  leave visible holes — no stray captions divorced from their image, empty rows, orphaned
+  brackets or runs of blank lines where something was cut.
 
 - **S4 — Links as plain text.** Link markup is stripped entirely; the link's text survives as
   ordinary prose. No URLs, no brackets, no styling. Following links is out of scope.
@@ -51,18 +68,44 @@ deliberately unanswered here. If the answer to the question above is "no", none 
   Their converted markdown is read **in noggin's own Document Viewer**, at real pane widths,
   by placing the files in a scratch root. Judgement is by eye, by the user.
 
-- **S6 — A retune budget.** A "close — can it be a bit better?" verdict is an expected
-  outcome, not a failure. Adjusting what gets stripped, and re-judging, is in scope and may
-  be repeated. It is bounded by the cycle: no new capability may be added to buy quality
-  (no image handling, no link resolution, no per-article special-casing). **One exception:**
-  a *low-effort* fallback that keeps a formula's text, or drops a formula cleanly so the
-  surrounding sentence still reads, is permitted — rendering maths is not. "Low-effort" is
-  the builder's judgement call; the moment it stops being low-effort, stop and record it.
+- ~~**S6**~~ — *Superseded by S6a (2026-09-02): image handling and a bounded form of maths
+  approximation are now explicitly permitted, not excluded.*
 
-- **S7 — A recorded verdict.** The cycle ends with an explicit **go / no-go / retune-exhausted**
-  decision logged in `DECISIONS.md`, plus a findings record of what converts well, what
-  converts badly, and what could not be fixed within the retune budget — enough that a later
-  cycle can act on it without re-running the experiment.
+- **S6a — A retune budget, widened for two costed experiments.** A "close — can it be a bit
+  better?" verdict is an expected outcome, not a failure. Adjusting what gets stripped, and
+  re-judging, is in scope and may be repeated. It remains bounded by the cycle: no new
+  capability may be added to buy quality beyond the two named exceptions below, and no link
+  resolution or per-article special-casing.
+
+  Two named exceptions, both **exploratory and costed, not committed** — nothing decided here
+  fixes the shape of the eventual real feature; a later cycle with its own agreed spec decides
+  whether and how either ships:
+
+  - **Maths.** Preferred approach: a Unicode textual approximation of formulae (fractions,
+    sub/superscripts, roots, sums/integrals, Greek letters and similar), via a textual
+    conversion step — this counts as "text", not "rendering", for this spec's purposes. A new
+    third-party dependency is permitted for this specifically. If it is not a small-ish lift,
+    fall back to preserving the formula's raw source text (already permitted, unchanged) and
+    record why in findings (S7a) — do not chase the Unicode path past that point.
+  - **Images.** Covered by S3a: a caption/alt/filename-derived placeholder in place of the
+    stripped image, no clickable link. Try the near-zero-cost path first (stop deleting the
+    image node; let the existing pipeline carry the placeholder through) before writing new
+    extraction logic.
+
+  Both experiments use the same cheapest-path-first order, and the same builder's-judgement
+  stop rule as the rest of this budget: "low-effort" is the builder's call; the moment either
+  experiment stops being low-effort, stop and record it in findings (S7a) rather than push on.
+  Full visual/graphical rendering of maths or images remains excluded (see Out of scope).
+
+- ~~**S7**~~ — *Superseded by S7a (2026-09-02): findings must also cover S6a's two experiments.*
+
+- **S7a — A recorded verdict, plus two costed experiments.** The cycle ends with an explicit
+  **go / no-go / retune-exhausted** decision logged in `DECISIONS.md`, plus a findings record
+  of what converts well, what converts badly, and what could not be fixed within the retune
+  budget — enough that a later cycle can act on it without re-running the experiment. The
+  findings record additionally covers, for each of S6a's two experiments: what was tried, in
+  what order; the effort actually spent; any dependency added; the resulting quality by eye;
+  and a recommendation on whether it is worth carrying into a future real Wikipedia feature.
 
 - **S8 — Polite by default.** The spike identifies itself to Wikimedia with a descriptive
   User-Agent, per their published policy.
@@ -75,9 +118,16 @@ deliberately unanswered here. If the answer to the question above is "no", none 
 - Search of any kind, including title completion. *(Same roadmap entry.)*
 - Starring articles; anything that spans collections. *(Roadmap: `C6 collections`.)*
 - Following links, wiki-links or URLs. *(Roadmap Unscheduled, existing entry.)*
-- Rendering images. Not deferred — not wanted.
-- Rendering maths. Formulae Wikipedia serves as images will not survive. A low-effort
-  textual fallback is allowed under S6; building maths rendering is not.
+- ~~Rendering images. Not deferred — not wanted.~~ *Superseded by S3a/S6a (2026-09-02):
+  image placeholder text is now in scope as a costed experiment. Visual/graphical image
+  rendering remains out — no image is ever fetched, decoded or displayed.*
+- ~~Rendering maths. Formulae Wikipedia serves as images will not survive. A low-effort
+  textual fallback is allowed under S6; building maths rendering is not.~~ *Superseded by
+  S6a (2026-09-02): Unicode textual approximation is now the preferred approach, as a
+  costed experiment. Full visual/graphical maths rendering remains out.*
+- A live/clickable link on the image placeholder (or any other stripped link). Stripped, not
+  rendered, this cycle — surfacing it is future work, alongside link-following generally.
+  *(Same roadmap entry as "Following links, wiki-links or URLs".)*
 - Caching, offline reading, refresh semantics, rate limiting beyond politeness.
 - Error and edge-case handling: no network, missing article, disambiguation page, redirects.
 - Attribution / licence text on rendered articles. Nothing is distributed this cycle.

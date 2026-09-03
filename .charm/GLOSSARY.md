@@ -22,7 +22,9 @@
   where they diverge is deliberately undecided until C6 (C4a).
 - **Chrome** — everything a fetched Wikipedia page carries that is not the article itself:
   navboxes, infoboxes, edit-section links, citation superscripts, reference lists, metadata
-  tables, images. Stripped before conversion; content tables are not chrome (C4a).
+  tables, images. Stripped before conversion; content tables are not chrome. Images are
+  chrome too, but as of C4a's amendment (D104) leave a text placeholder — caption, falling
+  back to alt-text, falling back to filename — rather than vanishing without trace (C4a).
 - **Committed Find** — a Find query locked in with Activate, as distinct from one still being
   edited. Its match and indication persist until dismissed or the viewport is forced to
   re-render (e.g. a terminal resize or a Navigator toggle).
@@ -79,7 +81,9 @@
   selection and each viewer's scroll position. Manual only; noggin never watches the
   filesystem (C2a).
 - **Retune** — adjust what the conversion spike strips and re-judge the sample. Repeatable
-  within the cycle, but may never add new capability to buy quality (C4a).
+  within the cycle; new capability may not be added to buy quality except the two named,
+  costed exceptions carved out by C4a's amended retune budget (S6a): a Unicode
+  approximation of maths, and a caption/alt/filename-derived image placeholder (C4a, D104).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
