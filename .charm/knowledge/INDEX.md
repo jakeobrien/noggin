@@ -43,3 +43,15 @@
   `ESC M`/`ESC D` (RI/IND), which any redraw repositioning the cursor by exactly one row (e.g.
   two-line rows) provokes; symptom is indistinguishable from a real rendering bug. Reread
   before adding pty coverage for such a redraw. (as of C2a)
+- `sandbox-network-allowlist.md` — Wikimedia domains needed explicit sandbox allow-listing
+  before any live fetch worked; re-check if the sandbox resets. (as of C4a)
+- `wikipedia-math-conversion.md` — termtex's Unicode-vs-raw-TeX rule for Wikipedia formulae,
+  Parsoid's inline-vs-display-block signal, and the cleanup pass's fence-carving fix; cited
+  by `cmd/wikispike/math.go`. Reread before extending Wikipedia maths handling. (as of C4a)
+- `wikipedia-image-placeholders.md` — the caption/alt/filename fallback for Wikipedia images,
+  the citation-superscript-before-caption-read ordering gotcha, and why a placeholder step
+  makes chrome-selector gaps visible; cited by `cmd/wikispike/images.go`. (as of C4a)
+- `wikipedia-conversion-recipe.md` — the full chrome-selector and cleanup-pass list a
+  Wikipedia→markdown spike arrived at, what converts well/badly, and known limitations;
+  cited by `cmd/wikispike/strip.go`. Reread before extending or rebuilding Wikipedia
+  conversion. (as of C4a)

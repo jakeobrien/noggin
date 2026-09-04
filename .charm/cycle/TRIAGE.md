@@ -1,4 +1,4 @@
-# Triage — C4a wikipedia-spike
+# Triage — C5 organize
 
 <!-- Per-cycle triage INBOX for actionable items surfaced out-of-band: code-review and
      validate findings, bugs / in-scope issues discovered during build that were not
@@ -25,19 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-
-<!-- Emptied 2026-09-03 by charm-replan: T8/T9 -> DECISIONS.md D108 (wontfix-for-this-cycle);
-     T10/T12 -> PLAN.md M3.3b; T11 -> PLAN.md M3.5a. See PROGRESS.md handoff and PLAN.md's
-     2026-09-03 reconciliation note for detail. -->
-
-<!-- Emptied 2026-09-03, later still, by charm-replan: T1/T3 -> PLAN.md M3.7 (DECISIONS.md
-     D109); T2 -> DECISIONS.md D110 (decided, not a bug); T4/T5/T6/T7 -> PLAN.md M3.8 (no
-     decision entry needed, same precedent as M3.6's own T5/T6/T7 batch). See PLAN.md's
-     2026-09-03, later still reconciliation note for detail. -->
-
-<!-- Emptied 2026-09-03, later still yet, by charm-replan: T1 (maintenance-template
-     citation leak, surfaced by M4.1's own findings task) -> PLAN.md M3.9 (DECISIONS.md
-     D111). See PLAN.md's and PROGRESS.md's 2026-09-03, later still yet reconciliation
-     notes for detail. -->
-
-
+| T1 | review | high | `src/foo.ts:42` | <one-line description + concrete recommendation> | open |

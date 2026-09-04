@@ -42,7 +42,7 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 | C2a | polish             | done    | Install target, manual refresh, per-Root tree memory, dotfile Picker toggle, two-line Roots Nav, new bindings (r/f/R/p/space), Peek, per-file git markers, and a footer-width staleness-indicator fix | `archive/C2a-2026-08-polish/` |
 | C3  | compare            | done    | Second Document Viewer (DV2), ctrl+ targeting from Files Nav/Picker, four-way direct focus keys replacing Tab-cycling, ctrl+x close, dual-viewer refresh/staleness, session-only DV2 state | `archive/C3-2026-08-compare/` |
 | C4  | recall             | done    | Delivered all 10 spec'd deliverables (S1–S10) across 46 plan tasks; none of D63's four pre-agreed cuts were needed | `archive/C4-2026-08-recall/` |
-| C4a | wikipedia-spike    | planned | Throwaway spike: can Wikipedia articles be converted to markdown that is genuinely worth reading in noggin? Ends in a go/no-go, not a feature | - |
+| C4a | wikipedia-spike    | done    | GO, with a known limitation (D112): conversion quality clears the reading bar on 4/4 samples, one (`E (mathematical constant)`) with a residual maths-rendering gap; spike code kept as reference (D97), not integrated. Gates the Wikipedia-collection, dictionary-collection and C6 entries below | `archive/C4a-2026-09-wikipedia-spike/` |
 | C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
 | C6  | collections        | planned | Deliberately vague, and gated on C4a: what a *collection* is beyond a folder — what all collections share, where they diverge, and how starring spans them | - |
 
@@ -66,8 +66,8 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 - File Picker matching against path components, not just the file name (from C2, D31)
 - Picker memory: last mode, last Scope, last query (from C2, D31; see repeat-last-search below)
 - Wikipedia as a real collection inside noggin — search, read, star, refresh (from C4a;
-  strictly gated on C4a's go/no-go, and shaped by C6)
-- A dictionary / thesaurus collection (from C4a)
+  go/no-go cleared per D112 — GO, with a known maths-rendering limitation; shaped by C6)
+- A dictionary / thesaurus collection (from C4a; unblocked alongside the above per D112)
 - Reading saved LLM-chat transcripts as an ordinary collection, plus a handoff key to a chat
   TUI (from C4a; chat itself is deliberately *not* noggin's job)
 - Select mode + copy in the Document Viewer (from C1); **wiki-link and URL following** (from

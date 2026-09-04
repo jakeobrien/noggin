@@ -24,7 +24,7 @@ own worked example, this is **go with a known limitation, not a no-go**, on the 
 
 ## Note on the earlier "image gaps" mention
 
-D104 / SPEC.md's amendment narrative (`DECISIONS.md:1240`) describes the swiss-cheese
+D104 / SPEC.md's amendment narrative (`DECISIONS.md:1256`) describes the swiss-cheese
 motivation as "missing maths **and images**" from an earlier, less structured read. This
 per-article A1–A4 pass recorded here shows no image-driven A3 failure in this specific
 sample set — none of the four apparently lost enough to a stripped image to register as a
