@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -55,7 +56,7 @@ func (e *OfflineError) Error() string {
 
 func (e *OfflineError) Unwrap() error { return e.Err }
 
-// userAgent identifies noggin to Wikimedia (S8) per their User-Agent policy,
+// userAgent identifies noggin to Wikimedia (S3) per their User-Agent policy,
 // which asks for an informative agent naming the tool and a way to reach
 // whoever runs it. NOGGIN_WIKIPEDIA_CONTACT overrides the contact detail per
 // operator without editing code; the default says plainly what is missing.
@@ -141,7 +142,7 @@ func searchURL(base, query string, limit int) (string, error) {
 	}
 	q := u.Query()
 	q.Set("q", query)
-	q.Set("limit", fmt.Sprintf("%d", limit))
+	q.Set("limit", strconv.Itoa(limit))
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }

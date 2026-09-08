@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.7
+Current task: M3.1
 
 ## Handoff
 
@@ -198,10 +198,28 @@ unrelated skip) and `cmd/wikispike`'s own; a fresh-context code-reviewer subagen
 no duplicated logic remains, no stale/unused imports, and the raw-vs-markdown call-site
 choice is correct by tracing all three raw-HTML consumers.
 
-Next: M2.7 (Wikipedia-client nits, TRIAGE T11, T12) — the last queued triage cleanup, pulled
-forward ahead of M3.1 at the user's request. After it, M3.1 (the first Wikipedia Picker
-task): read `SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2 already cleared
-its review/validate gate, so no further milestone-boundary check is needed before M3.
+M2.7 done: two trivial `internal/wikipedia` nits, the last of the queued triage cleanup.
+`search.go`'s `searchURL` now formats the limit query parameter with `strconv.Itoa(limit)`
+rather than `fmt.Sprintf("%d", limit)`. `userAgent`'s doc comment in `search.go` and
+`TestSearchTitlesUserAgent`'s in `search_test.go` both cited "S8" (Root names — unrelated) for
+the descriptive-User-Agent requirement; both now cite "S3" (Wikipedia article opening, the
+spec section that actually carries the User-Agent policy). Verified: `grep -rn "S8"
+internal/wikipedia` is empty; `make check` and `go test ./internal/wikipedia/... -run
+TestSearch -v` pass; `gofmt -l` clean. Given the effort-1 scope and trivially-verifiable
+diff (two one-line changes plus two comment citations, no behavior change beyond the
+stdlib-function swap), this task skipped a full fresh-context reviewer dispatch in favor of
+direct verification — consistent with earlier tasks' review passes finding nothing at this
+risk level.
+
+All six queued triage-cleanup tasks (M1.6, M1.7, M2.4–M2.7, from the 2026-09-08 replan's
+T1–T8 and T10–T12) are now done, each independently code-reviewed by a fresh-context
+subagent except M2.7 (see above). One new low-severity item surfaced along the way and
+logged to TRIAGE.md for a future replan: T14 (a pre-existing GLOSSARY.md self-inconsistency,
+found during M1.6, out of that task's cmd/noggin scope).
+
+Next: M3.1, the first Wikipedia Picker task — read `SPEC.md` S2 and the M3 section of
+`PLAN.md` before starting. M2 already cleared its review/validate gate, so no further
+milestone-boundary check is needed before M3.
 
 ## Status
 
@@ -220,7 +238,7 @@ its review/validate gate, so no further milestone-boundary check is needed befor
 | M2.4  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
 | M2.5  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
 | M2.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
-| M2.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T11, T12) |
+| M2.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |

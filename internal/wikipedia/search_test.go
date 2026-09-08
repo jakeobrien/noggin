@@ -107,7 +107,7 @@ func TestSearchTitlesOffline(t *testing.T) {
 }
 
 // TestSearchTitlesUserAgent covers noggin's descriptive User-Agent header
-// (M2.2's done-when, S8).
+// (M2.2's done-when, S3).
 func TestSearchTitlesUserAgent(t *testing.T) {
 	var gotUA string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
