@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.5
+Current task: M2.6
 
 ## Handoff
 
@@ -158,11 +158,32 @@ TestFetchAt -v` and `-race -count=5` (5 repeats) both clean, no races, no flakes
 fresh-context code-reviewer subagent traced the lock ordering, the happens-before chain and
 the pre-fix panic paths independently — PASS on both review passes, no findings.
 
-Next: M2.5–M2.7 (Wikipedia-client hygiene/cleanup, TRIAGE T6–T8, T10–T12) — queued triage
-cleanup, pulled forward ahead of M3.1 at the user's request. After those, M3.1 (the first
-Wikipedia Picker task): read `SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2
-already cleared its review/validate gate, so no further milestone-boundary check is needed
-before M3.
+M2.5 done: three independent `internal/wikipedia` hygiene fixes. TRIAGE T6:
+`fetchAt`/`fetchCanonicalHTML`/`canonicalFromURL`'s `fetchBase`/`wikiBase` parameters are now
+`fetchBaseURL`/`wikiBaseURL`, no longer shadowing the package-level constants of the same
+name. TRIAGE T7: `canonicalFromURL` used to decide "was this a redirect" by checking whether
+the final URL's last path segment was literally "html" — chose to guard rather than just
+document, since a real fix was cheap: it now compares the final response URL's path against
+the *originally requested* URL's path (threaded through as a new parameter), an exact
+structural signal instead of a text guess. Investigating this closely (with a fresh-context
+code-reviewer subagent) surfaced that the old heuristic could never actually produce a wrong
+answer for any real title, given `fetchBase`'s own fixed `.../page/html/` shape (verified by
+running the new edge-case test against the pre-fix code, where it also passed) — the fix's
+real value is making correctness structural rather than a coincidence of `fetchBase`'s
+current shape, and the doc comment/test comment were reworded after that finding to say so
+honestly rather than claim a reproducible bug. A second new test
+(`TestFetchAtRedirectToSingleSegmentPathIsRejected`) covers the new `len(segments) < 2`
+guard branch (a malformed/unexpected redirect shape errors cleanly rather than panicking).
+TRIAGE T8: `ServiceError`/`OfflineError`'s doc comments in `search.go` now note both
+`search.go` and `fetch.go` construct them, not just search. Verified: `make check` and `go
+test ./internal/wikipedia/... -race -count=3` all pass, no flakes; two fresh-context
+code-reviewer passes (the second specifically re-checking the first pass's framing finding)
+both end PASS with no remaining findings.
+
+Next: M2.6–M2.7 (Wikipedia-client cleanup, TRIAGE T10–T12) — queued triage cleanup, pulled
+forward ahead of M3.1 at the user's request. After those, M3.1 (the first Wikipedia Picker
+task): read `SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2 already cleared
+its review/validate gate, so no further milestone-boundary check is needed before M3.
 
 ## Status
 
@@ -179,7 +200,7 @@ before M3.
 | M1.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T2) |
 | M1.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T3) |
 | M2.4  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
-| M2.5  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
+| M2.5  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
 | M2.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
 | M2.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M3.1  | todo   | -        | -         |      |

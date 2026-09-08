@@ -29,6 +29,8 @@ type SearchResult struct {
 
 // ServiceError reports that Wikimedia answered the request but with a
 // non-2xx status — S2's "service error", as distinct from being offline.
+// Shared by both of this package's Wikimedia callers (M2.5/TRIAGE T8): title
+// search (this file) and canonical article fetch (fetch.go).
 type ServiceError struct {
 	StatusCode int
 	Status     string
@@ -40,7 +42,9 @@ func (e *ServiceError) Error() string {
 
 // OfflineError reports that the request never reached Wikimedia at all
 // (DNS failure, connection refused, timeout mid-dial) — S2's "offline", as
-// distinct from a service error.
+// distinct from a service error. Shared by both of this package's Wikimedia
+// callers (M2.5/TRIAGE T8): title search (this file) and canonical article
+// fetch (fetch.go).
 type OfflineError struct {
 	Err error
 }

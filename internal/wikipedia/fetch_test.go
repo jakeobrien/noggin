@@ -49,6 +49,66 @@ func TestFetchAtRedirect(t *testing.T) {
 	}
 }
 
+// TestFetchAtNonRedirectedTitleSlugHTMLIsNotTruncated pins M2.5/TRIAGE T7's
+// invariant directly: a non-redirected fetch whose title's own slug happens
+// to render as "html" comes back whole, whatever the mechanics happen to
+// be. It does *not* distinguish the current structural redirect detection
+// (compare finalURL's path to the exact URL this package requested) from
+// the text-heuristic it replaced (a literal trailing "html" segment means
+// "redirected") — given fetchBase's own fixed ".../page/html/" shape, the
+// old heuristic already produced the right answer here too, by coincidence
+// rather than by design (verified: this test still passes reverted to the
+// pre-M2.5 heuristic). The structural check's real benefit is not
+// depending on that coincidence — it stays correct even if fetchBase's own
+// shape ever changed — which no single input-based test can demonstrate;
+// this test only guards the observable behavior against a regression
+// either implementation could introduce.
+func TestFetchAtNonRedirectedTitleSlugHTMLIsNotTruncated(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html><body><p>About markup</p></body></html>"))
+	}))
+	defer server.Close()
+
+	c := newTestClient()
+	article, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "html", false)
+	if err != nil {
+		t.Fatalf("fetchAt: unexpected error: %v", err)
+	}
+	if article.Title != "html" {
+		t.Errorf("Article.Title = %q, want %q (not truncated)", article.Title, "html")
+	}
+	wantURL := server.URL + "/wiki/html"
+	if article.URL != wantURL {
+		t.Errorf("Article.URL = %q, want %q", article.URL, wantURL)
+	}
+}
+
+// TestFetchAtRedirectToSingleSegmentPathIsRejected covers canonicalFromURL's
+// len(segments) < 2 guard in its redirected branch: a redirect whose final
+// path has only one segment (so there is no title segment ahead of it to
+// recover) is reported as an error, not a panic or a silently wrong title.
+// Contrived — Wikimedia's real redirect shape always has at least two
+// segments — but the guard exists precisely because this function trusts
+// the response's shape, so it must fail cleanly if that trust is ever
+// misplaced.
+func TestFetchAtRedirectToSingleSegmentPathIsRejected(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/page/html/Foo", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/bare", http.StatusTemporaryRedirect)
+	})
+	mux.HandleFunc("/bare", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html><body><p>Unreachable in practice</p></body></html>"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := newTestClient()
+	_, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Foo", false)
+	if err == nil {
+		t.Fatal("fetchAt: expected an error for a redirect landing on a single-segment path, got nil")
+	}
+}
+
 // TestFetchAtNotFound covers a 404 (article gone), reported distinctly from
 // an offline failure (M2.3's done-when, S3).
 func TestFetchAtNotFound(t *testing.T) {

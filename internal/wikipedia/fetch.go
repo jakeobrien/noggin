@@ -88,10 +88,15 @@ func (c *Client) Fetch(title string, refresh bool) (Article, error) {
 }
 
 // fetchAt is Fetch's implementation against overridable base URLs, so tests
-// point it at an httptest server instead of the network.
-func (c *Client) fetchAt(fetchBase, wikiBase, title string, refresh bool) (Article, error) {
+// point it at an httptest server instead of the network. Its parameters are
+// named fetchBaseURL/wikiBaseURL, not fetchBase/wikiBase (M2.5/TRIAGE T6),
+// so they never shadow the package-level fetchBase/wikiBase constants Fetch
+// passes in for the production case — a shadowed name reads fine here but
+// invites a copy-paste bug the moment code inside this function ever needs
+// the real constant instead of the parameter.
+func (c *Client) fetchAt(fetchBaseURL, wikiBaseURL, title string, refresh bool) (Article, error) {
 	c.ensureInit()
-	candidateURL := articleURLFor(wikiBase, title)
+	candidateURL := articleURLFor(wikiBaseURL, title)
 
 	if !refresh {
 		c.mu.Lock()
@@ -102,7 +107,7 @@ func (c *Client) fetchAt(fetchBase, wikiBase, title string, refresh bool) (Artic
 		}
 	}
 
-	html, canonicalTitle, canonicalURL, err := fetchCanonicalHTML(c.httpClient, fetchBase, wikiBase, title)
+	html, canonicalTitle, canonicalURL, err := fetchCanonicalHTML(c.httpClient, fetchBaseURL, wikiBaseURL, title)
 	if err != nil {
 		return Article{}, err
 	}
@@ -134,8 +139,8 @@ func articleURLFor(base, title string) string {
 // fetchCanonicalHTML GETs title's Parsoid HTML, following any redirect to
 // the canonical article, and returns the raw HTML plus the canonical title
 // and URL taken from the final response.
-func fetchCanonicalHTML(client *http.Client, fetchBase, wikiBase, title string) (html, canonicalTitle, canonicalURL string, err error) {
-	target := articleURLFor(fetchBase, title)
+func fetchCanonicalHTML(client *http.Client, fetchBaseURL, wikiBaseURL, title string) (html, canonicalTitle, canonicalURL string, err error) {
+	target := articleURLFor(fetchBaseURL, title)
 	req, err := http.NewRequest(http.MethodGet, target, nil)
 	if err != nil {
 		return "", "", "", fmt.Errorf("building request for %q: %w", title, err)
@@ -153,7 +158,7 @@ func fetchCanonicalHTML(client *http.Client, fetchBase, wikiBase, title string) 
 		return "", "", "", &ServiceError{StatusCode: resp.StatusCode, Status: resp.Status}
 	}
 
-	canonicalTitle, canonicalURL, err = canonicalFromURL(wikiBase, resp.Request.URL)
+	canonicalTitle, canonicalURL, err = canonicalFromURL(wikiBaseURL, req.URL, resp.Request.URL)
 	if err != nil {
 		return "", "", "", fmt.Errorf("resolving canonical URL for %q: %w", title, err)
 	}
@@ -170,15 +175,32 @@ func fetchCanonicalHTML(client *http.Client, fetchBase, wikiBase, title string) 
 // (findings/wikimedia-api.md). A redirect to a canonical title lands on
 // .../rest.php/v1/page/<Canonical_Title>/html; an already-canonical
 // request's own URL is .../rest_v1/page/<Title> — in both cases the slug is
-// the escaped path segment immediately before a trailing "html" segment, or
-// the URL's last segment when there is none.
-func canonicalFromURL(wikiBase string, finalURL *url.URL) (title, wikiURL string, err error) {
+// the escaped path segment immediately before a trailing "html" segment
+// that only the redirect shape has, or the URL's last segment otherwise.
+//
+// Which shape applies is decided structurally (M2.5/TRIAGE T7), by
+// comparing finalURL's path against requestedURL's own — the exact request
+// this package built and sent, before any redirect — rather than by
+// guessing from the slug text itself. An earlier version treated a literal
+// trailing "html" segment as always meaning "redirected": for today's two
+// documented Wikimedia shapes that guess happens to be safe for every
+// title (fetchBase's own fixed ".../page/html/" segment sits immediately
+// before the title in the non-redirected case, so even a title whose own
+// slug is "html" reads back correctly by coincidence, not by design) — but
+// it depends on fetchBase always having that exact shape, a fact this
+// function had no way to enforce or even see. Comparing paths instead
+// makes correctness a structural guarantee rather than a coincidence of
+// the current base URL, at the cost of the one extra parameter.
+func canonicalFromURL(wikiBaseURL string, requestedURL, finalURL *url.URL) (title, wikiURL string, err error) {
 	segments := strings.Split(strings.Trim(finalURL.Path, "/"), "/")
 	if len(segments) == 0 || segments[len(segments)-1] == "" {
 		return "", "", fmt.Errorf("canonical URL %q has no path", finalURL)
 	}
 	slug := segments[len(segments)-1]
-	if slug == "html" && len(segments) >= 2 {
+	if finalURL.Path != requestedURL.Path {
+		if len(segments) < 2 {
+			return "", "", fmt.Errorf("redirected canonical URL %q is missing its title segment", finalURL)
+		}
 		slug = segments[len(segments)-2]
 	}
 	unescaped, err := url.PathUnescape(slug)
@@ -186,6 +208,6 @@ func canonicalFromURL(wikiBase string, finalURL *url.URL) (title, wikiURL string
 		return "", "", fmt.Errorf("unescaping canonical title %q: %w", slug, err)
 	}
 	title = strings.ReplaceAll(unescaped, "_", " ")
-	wikiURL = wikiBase + slug
+	wikiURL = wikiBaseURL + slug
 	return title, wikiURL, nil
 }
