@@ -1,4 +1,4 @@
-package main
+package wikipedia
 
 import (
 	"regexp"
@@ -106,7 +106,7 @@ var rpRemnant = regexp.MustCompile(`[^0-9]: [0-9]+ `)
 // acceptance shape: no "[edit]", no reference-list section, no image markup,
 // no infobox/navbox table, while Major Arcana's content tables survive.
 // Opt-in like the other live tests so `make check` stays hermetic:
-// WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// WIKISPIKE_LIVE=1 go test ./internal/wikipedia -run Live -v
 func TestStripChromeLiveSamples(t *testing.T) {
 	skipUnlessLive(t)
 	for _, title := range sampleTitles {

@@ -1,4 +1,4 @@
-package main
+package wikipedia
 
 import (
 	"strings"
@@ -158,9 +158,9 @@ func TestArticleMarkdownFromHTMLKeepsImagePlaceholder(t *testing.T) {
 <p>More prose follows.</p>
 </section></body></html>`
 
-	got, err := articleMarkdownFromHTML(input)
+	got, err := ArticleMarkdownFromHTML(input)
 	if err != nil {
-		t.Fatalf("articleMarkdownFromHTML: %v", err)
+		t.Fatalf("ArticleMarkdownFromHTML: %v", err)
 	}
 	if !strings.Contains(got, "`[Image: A caption about the figure]`") {
 		t.Errorf("expected the caption placeholder wrapped in backticks in the final markdown, got:\n%s", got)
@@ -185,7 +185,7 @@ func TestArticleMarkdownFromHTMLKeepsImagePlaceholder(t *testing.T) {
 // backtick-wrapped, bracketed placeholder in the final markdown, not
 // markdown image syntax, and no dangling empty-bracket gap is left behind.
 // Opt-in like the other live tests so `make check` stays hermetic:
-// WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// WIKISPIKE_LIVE=1 go test ./internal/wikipedia -run Live -v
 func TestArticleMarkdownLiveSamplesShowImagePlaceholders(t *testing.T) {
 	skipUnlessLive(t)
 	for _, title := range sampleTitles {

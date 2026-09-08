@@ -1,4 +1,4 @@
-package main
+package wikipedia
 
 import (
 	"strings"
@@ -54,7 +54,7 @@ func TestStripLinksPreservesSurroundingProse(t *testing.T) {
 // the four S5 sample titles (shared live-fetch cache, M2.5): no markdown
 // link syntax and no bare URL syntax, with previously-linked phrases still
 // present as prose. Opt-in like the other live tests so `make check` stays
-// hermetic: WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// hermetic: WIKISPIKE_LIVE=1 go test ./internal/wikipedia -run Live -v
 func TestPipelineLiveSamplesHaveNoLinkSyntax(t *testing.T) {
 	skipUnlessLive(t)
 	for _, title := range sampleTitles {

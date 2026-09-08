@@ -1,4 +1,4 @@
-package main
+package wikipedia
 
 import (
 	"strings"
@@ -37,7 +37,7 @@ func TestHTMLToMarkdownRendersHeadingsParagraphsAndTables(t *testing.T) {
 // against the four S5 sample titles (shared live-fetch cache, M2.5), checking
 // the same heading/paragraph/table shape end to end. Opt-in like fetch.go's
 // live test so `make check` stays hermetic:
-// WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// WIKISPIKE_LIVE=1 go test ./internal/wikipedia -run Live -v
 func TestHTMLToMarkdownLiveSamples(t *testing.T) {
 	skipUnlessLive(t)
 	for _, title := range sampleTitles {

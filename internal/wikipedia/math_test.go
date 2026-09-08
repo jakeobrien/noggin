@@ -1,4 +1,4 @@
-package main
+package wikipedia
 
 import (
 	"strings"
@@ -146,9 +146,9 @@ func TestArticleMarkdownFromHTMLKeepsMathAsProse(t *testing.T) {
 <p>The constant, denoted ` + mathSpan(`\\gamma`) + `, and the identity ` + mathSpan(`\\frac{1}{2}`) + ` continues the sentence.</p>
 </section></body></html>`
 
-	got, err := articleMarkdownFromHTML(input)
+	got, err := ArticleMarkdownFromHTML(input)
 	if err != nil {
-		t.Fatalf("articleMarkdownFromHTML: %v", err)
+		t.Fatalf("ArticleMarkdownFromHTML: %v", err)
 	}
 	if !strings.Contains(got, "γ") {
 		t.Errorf("expected the Unicode-rendered formula in the final markdown, got:\n%s", got)

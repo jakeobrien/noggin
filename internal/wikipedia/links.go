@@ -1,4 +1,4 @@
-package main
+package wikipedia
 
 import (
 	"github.com/PuerkitoBio/goquery"

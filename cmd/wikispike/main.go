@@ -19,6 +19,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"noggin/internal/wikipedia"
 )
 
 const usage = `wikispike — EXPERIMENTAL Wikipedia-to-markdown spike (not part of noggin)
@@ -75,13 +77,14 @@ func run(args []string, out io.Writer) error {
 // so run()'s own test does not need the network.
 var pipeline = articleMarkdown
 
-// articleMarkdown is the spike's pipeline: fetch, render maths, render
-// images, strip, convert, clean up. M1.2 has the fetch, M2.1 the
-// conversion, M2.2 the chrome-stripping, M2.3 the link-stripping, M2.4 the
-// final cleanup pass that closes the holes stripping leaves behind, M3.4
-// the maths-as-text substitution (D104) and M3.5 the image-as-placeholder
-// substitution (D104), both of which run before stripChrome would
-// otherwise remove that markup without a trace.
+// articleMarkdown is the spike's pipeline: fetch by exact title, then run the
+// internal/wikipedia conversion pipeline (render maths, render images, strip
+// chrome, delink, convert, clean up — moved there in M2.1/D120 so cmd/noggin
+// can import it too). articleMarkdownFromHTML is kept as a thin wrapper so
+// live tests can share one cached fetch across every stage-specific check
+// instead of each re-fetching the same four titles (TRIAGE T1, PLAN M2.5) —
+// the network call is the only part worth caching; the conversion stages
+// themselves are local and cheap to rerun.
 func articleMarkdown(title string) (string, error) {
 	html, err := fetchArticleHTML(restBase, title)
 	if err != nil {
@@ -90,33 +93,6 @@ func articleMarkdown(title string) (string, error) {
 	return articleMarkdownFromHTML(html)
 }
 
-// articleMarkdownFromHTML runs the pipeline's post-fetch stages (render
-// maths, render images, strip, delink, convert, clean up) on already-fetched
-// article HTML. Split out from articleMarkdown so live tests can share one
-// cached fetch across every stage-specific check instead of each
-// re-fetching the same four titles (TRIAGE T1, PLAN M2.5) — the network
-// call is the only part worth caching; these stages are local and cheap to
-// rerun.
 func articleMarkdownFromHTML(html string) (string, error) {
-	mathed, err := renderMath(html)
-	if err != nil {
-		return "", err
-	}
-	imaged, err := renderImages(mathed)
-	if err != nil {
-		return "", err
-	}
-	stripped, err := stripChrome(imaged)
-	if err != nil {
-		return "", err
-	}
-	delinked, err := stripLinks(stripped)
-	if err != nil {
-		return "", err
-	}
-	markdown, err := htmlToMarkdown(delinked)
-	if err != nil {
-		return "", err
-	}
-	return cleanupMarkdown(markdown), nil
+	return wikipedia.ArticleMarkdownFromHTML(html)
 }

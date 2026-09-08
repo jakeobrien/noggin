@@ -1,4 +1,4 @@
-package main
+package wikipedia
 
 import (
 	"regexp"
@@ -288,7 +288,7 @@ func TestDropEmptyHeadingsIgnoresFencedHashLines(t *testing.T) {
 // dangling closer even when nothing sits between it and its non-existent
 // partner, which the empty-pair checks above can't see. Opt-in like the
 // other live tests so `make check` stays hermetic:
-// WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
+// WIKISPIKE_LIVE=1 go test ./internal/wikipedia -run Live -v
 func TestPipelineLiveSamplesHaveNoStructuralHoles(t *testing.T) {
 	skipUnlessLive(t)
 	blankRun := regexp.MustCompile(`\n{3,}`)
