@@ -111,6 +111,17 @@ Picker-star precedent for the store-toggle shape. **Peek is still not wired to a
 (D130 — that is M5.2's job, not M5.1's): M5.1 only needs `fetchArticleInto`'s Activate half, which
 M4.2 already built and M4.3 leaves untouched.
 
+**Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
+(M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
+T18 was corrected in the process, not just accepted as filed: rerunning `make check-pty`
+showed its 11 failures are a real, deterministic regression from M1.3's and M1.6's own
+renames (`test/pty/checks.py` still asserts the pre-rename "Roots" pane label and the File
+Picker's old "Active Root" scope label), not sandbox/pty-harness flakiness as filed — see
+DECISIONS.md's correction entry. Also closed the open D122 judgment question (M2.3's
+cache-key guarantee): now that M4.2/M3.4 have real callers, the codebase's own doc comments
+(picker.go's `togglePickerStar`) already show the narrower guarantee is understood and
+accepted by design — see DECISIONS.md.
+
 ## Status
 
 | Key   | Status | Reviewed | Validated | Note |
@@ -136,11 +147,17 @@ M4.2 already built and M4.3 leaves untouched.
 | M3.3  | done   | 2026-09-08 | 2026-09-08 |      |
 | M3.4  | done   | 2026-09-08 | 2026-09-08 |      |
 | M3.5  | done   | 2026-09-08 | 2026-09-08 | review found 2 low-sev findings (TRIAGE T21, T22), independently reconfirmed at validate, still open/low-sev |
-| M4.1  | done   | 2026-09-08 | -         | review: code-reviewer subagent, same day |
-| M4.2  | done   | 2026-09-08 | -         | review: code-reviewer subagent, same day; found 1 high-sev functional bug (clearPeek scope) + 1 high-sev doc-comment placement, both fixed directly, plus 2 low fixed directly |
-| M4.3  | done   | 2026-09-08 | -       | review: code-reviewer subagent, same day; found 1 medium functional bug (m.message clobber across sync/async refresh) + 1 medium test gap (stale refresh completion) + 2 low (mirror-case test, GLOSSARY drift), all fixed/added directly |
+| M4.1  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; validate: fresh-context validator subagent, same day, PASS |
+| M4.2  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 high-sev functional bug (clearPeek scope) + 1 high-sev doc-comment placement, both fixed directly, plus 2 low fixed directly; validate: fresh-context validator subagent, same day, PASS (Peek mechanism correctly not yet wired to a key per D130, deferred to M5.2) |
+| M4.3  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 medium functional bug (m.message clobber across sync/async refresh) + 1 medium test gap (stale refresh completion) + 2 low (mirror-case test, GLOSSARY drift), all fixed/added directly; validate: fresh-context validator subagent, same day, PASS (TRIAGE T23: mirror DV-arrangement test gap for staleness/edit) |
 | M5.1  | todo   | -        | -         |      |
 | M5.2  | todo   | -        | -         |      |
+| M1.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
+| M1.10 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
+| M2.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
+| M3.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
+| M3.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |
+| M4.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T23) |
 | M6.1  | todo   | -        | -         | pre-agreed cut 1 |
 | M7.1  | todo   | -        | -         | pre-agreed cut 2 |
 | M7.2  | todo   | -        | -         | pre-agreed cut 2 |

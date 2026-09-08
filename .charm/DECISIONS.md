@@ -1372,7 +1372,7 @@
 
 ## D122: M2.3's fetch cache only hits for already-canonical requested titles — is that guarantee strong enough?
 
-- Status: open
+- Status: decided — revisited by replan 2026-09-08, accepted narrower guarantee as by-design
 - Cycle: C6
 - Date: 2026-09-08
 - Context: `internal/wikipedia.Client.Fetch` (M2.3) derives its cache *lookup* key from the
@@ -1391,6 +1391,21 @@
   index by requested title) or accept the narrower guarantee as by-design.
 - Why: Cheap to defer — no user-visible behaviour depends on it yet, and M2.3's tests already
   pin the current (narrower) contract, so nothing regresses silently while this is open.
+- Revisit (replan, post-M4.2/M4.3): M4.2, M4.3 and (earlier) M3.4 are all now built, so the
+  condition this entry set for revisiting is met. M3.4's `togglePickerStar` (picker.go) is the
+  one caller path that can hand `Fetch` a non-canonical title more than once per session:
+  starring a Wikipedia search Result before ever fetching it stores the article under
+  `wikipedia.ArticleURL(r.Title)`, a URL derived straight from the searched (possibly
+  non-canonical) title, which a later Fetch may resolve to a different canonical URL — its own
+  doc comment already names this and cites this decision by number. Every other caller
+  (`fetchArticleInto`'s Starred-scope pseudo-candidate, `refreshArticleFetchInto`) passes a
+  title already sourced from a prior `articleDocument`, i.e. already canonical, so it cannot
+  repeat-miss. Closed as accepted-by-design: the one exposed path costs at most one extra
+  network round-trip per distinct redirect title a user stars before opening it — not a
+  correctness bug — and the codebase already reasons about it explicitly rather than having
+  missed it. No secondary cache index is being built for a cost this small. Reopen only if a
+  future milestone (e.g. Recent for articles, M6.1) introduces a repeat-fetch path for a title
+  sourced from something other than a prior `articleDocument` or a starred search Result.
 
 ## D123: M2.1's byte-identical regeneration claim is unverifiable by a later fresh-context check
 
@@ -1640,3 +1655,37 @@
   user commits to) — the same "no Preview" contract S2 already gives wikipediaMode's own
   Results, extended consistently to File mode's Starred-scope article rows.
 - Revisit: none expected.
+
+## D132: TRIAGE T18's "pre-existing pty flakiness" diagnosis was wrong — `make check-pty`'s 11 failures are a real regression from M1.3/M1.6's own renames
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: T18 (filed during M3.1's build, severity low/build) reported 11 `make check-pty`
+  failures, verified via `git stash` to reproduce identically with M3.1's changes removed, and
+  concluded they "pre-date M3.1" and are "likely pty-harness/sandbox timing flakiness ... not
+  root-caused." Replan re-ran `make check-pty` and read every failing assertion in
+  `test/pty/checks.py` rather than accepting the filed diagnosis at face value (T18 itself
+  asked for exactly this: "investigate before trusting check-pty as a milestone gate").
+- Decision: The 11 failures are not flaky and not unexplained. They split into two
+  deterministic groups, both caused by this cycle's own deliberate renames landing without a
+  matching update to `test/pty/checks.py` (a cross-cycle regression suite, unlike the
+  per-cycle model/render tests that were updated alongside M1.3/M1.6 themselves):
+  (1) nine assertions (`M1.2` x2-at-two-sizes, `M3.2`, `M3.3`, `M3.4`, `M5.2`,
+  `C2a/M2.1`) hard-code the pre-M1.6 "Roots" pane label / footer focus name, now "Sources";
+  (2) two assertions (`M7.1`, `C2a/M6.2`) hard-code the File Picker's pre-M1.3 "Active Root"
+  scope label, now universally "Active Source" for File mode (Grep alone keeps "Active Root",
+  per M1.3's own acceptance criterion). `git stash`ing only M3.1's diff does not remove M1.3's
+  or M1.6's own commits, so the "pre-dates M3.1" observation was correct but the conclusion
+  drawn from it (flakiness) did not follow — the failures pre-date M3.1 because M1.3/M1.6
+  pre-date M3.1 in build order, not because they are timing-dependent. Routed to a new PLAN
+  task, M1.9, rather than re-filing T18 as-is or dropping it.
+- Why: Leaving "flakiness, not root-caused" on record would have let the rest of the cycle
+  keep landing on top of a silently-broken regression gate — most concretely, M9.1's own
+  acceptance criterion names `make check-pty` directly, and a gate already carrying 11
+  unexplained failures cannot distinguish M9.1's own tint regressions from this pre-existing
+  noise. A five-minute rerun-and-read was cheap enough to do at replan time rather than defer
+  the correction again.
+- Revisit: none expected once M1.9 lands; if `make check-pty` still fails afterward, that is a
+  new, distinct TRIAGE item, not a reopening of this one.
+

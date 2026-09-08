@@ -15,7 +15,11 @@ M2 is independent of M1 and can be built in either order or interleaved. Milesto
 M9 are the spec's pre-agreed cuts in cut order (Recent → Root names → background tint) and are
 sequenced late so overrun costs the least-valued work; M8's location line and Picker rows fall
 back to the folder base name if M7 is cut. M8.1 (half-page paging) and M3.1 (2-char threshold)
-are trivial and independent — pull them forward whenever a short slice is wanted.
+are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.10,
+M2.9, M3.6–M3.7 and M4.4 are replan-added hygiene/test-gap tasks, independent of the milestone
+sequencing above; pull forward whenever a short slot is available. M1.9 (the `make check-pty`
+string-drift fix) is worth doing before M9.1 specifically, since M9.1's own acceptance
+criterion leans on that gate.
 
 Cross-cutting: every network call is user-initiated (search, Activate, Peek, Refresh — D119)
 and every network-touching task must be testable without the network (fake/injected client,
@@ -74,6 +78,20 @@ Delivers: S1, S5 (the mode/scope structure — lists fill in M5/M6), store groun
   with an embedded newline without corrupting the record or adjacent fields, using the same
   escape mechanism as the title field, and existing on-disk stores load unchanged — effort: 1
   (replan: TRIAGE T17)
+- **M1.9** — `test/pty/checks.py` (a cross-cycle regression suite, not per-cycle-scoped) still
+  hard-codes pre-C6 strings that M1.3 and M1.6 deliberately renamed: the "Roots" pane label/
+  footer focus name (now "Sources") and the File Picker's "Active Root" scope label (now
+  "Active Source" — Grep keeps "Active Root"), across 11 assertions in `M1.2`, `M3.2`, `M3.3`,
+  `M3.4`, `M5.2`, `M7.1` and `C2a/M2.1`/`C2a/M6.2` blocks (confirmed by rerunning `make
+  check-pty`, not sandbox flakiness — see the replan correction of TRIAGE T18 in DECISIONS.md)
+  — done when: `make check-pty` shows zero failures attributable to these two renames (any
+  unrelated new failure is a separate TRIAGE item, not this task's problem) — effort: 2
+  (replan: TRIAGE T18, corrected)
+- **M1.10** — M1.7's and M1.8's tab/newline round-trip tests never cover a literal backslash
+  in a title or key — the one character `escapeDocField`'s scheme special-cases and reverses
+  first (per its doc comment) — done when: a docstore test adds a backslash case for both the
+  title and key round-trips, locking in escape-order correctness — effort: 1 (replan: TRIAGE
+  T2)
 
 ## M2 — Wikipedia client
 
@@ -121,6 +139,13 @@ Delivers: the fetch/search/convert capability S2 and S3 build on (`internal/` pa
   `ensureInit`, duplicating M2.4's lazy-init path where the two can drift — done when:
   `NewClient` constructs via `ensureInit` (or an equivalent single init path) and M2.4's
   zero-value-construction and concurrency tests still pass — effort: 1 (replan: TRIAGE T15)
+- **M2.9** — Neither of `internal/wikipedia`'s two real exported entry points is ever called
+  directly by a test: `NewClient()` itself (only its zero-value bypass and `ensureInit` are
+  exercised) and `(*Client).Search` (only the package-level `Search` function and
+  `cmd/noggin`'s fake are) — a future regression in either's one-line delegation would go
+  uncaught — done when: an `httptest`-backed test exercises `NewClient()`'s `Fetch` and a
+  separate test exercises `(*Client).Search` against an `httptest` server via the existing
+  overridable-base pattern — effort: 1 (replan: TRIAGE T1, T22)
 
 ## M3 — Wikipedia Picker
 
@@ -150,6 +175,15 @@ Delivers: S2, S13, S6 (Picker scope rules)
   starred articles matched on title and labelled `Wikipedia`; File `All Roots` and Grep in
   every scope exclude articles — done when: tests assert each of the four rules with a store
   holding both a starred file and a starred article — effort: 3 (needs: M1.5, M3.2)
+- **M3.6** — GLOSSARY's `Result` entry predates the Wikipedia Result (M3.2/M3.3) and the
+  Picker star it can now take (M3.4): fold in a third case, an article title+description
+  (Wikipedia Picker) — done when: the entry names all three Result shapes — effort: 1 (replan:
+  TRIAGE T20)
+- **M3.7** — `toggleHiddenFiles` (alt+h) unconditionally requeries even in `wikipediaMode`,
+  where `hideDotfiles` has no bearing on Wikipedia Results — pressing alt+h there fires a
+  real, debounced network search with no visible effect — done when: alt+h in `wikipediaMode`
+  still flips `m.hideDotfiles` (for later File/Grep use) but does not requery, pinned by a
+  test — effort: 1 (replan: TRIAGE T21)
 
 ## M4 — Opening an article
 
@@ -171,6 +205,12 @@ Delivers: S3
   indicator never fires for an article; `e` on an article is refused with a Footer message —
   done when: refresh, staleness and edit tests each cover an article in DV1 beside a file in
   DV2 — effort: 2 (needs: M4.2)
+- **M4.4** — M4.3's staleness and edit tests only cover "article in DV1, file in DV2"; unlike
+  refresh (which already has `TestRefreshUpdatesAFileInDV1BesideAnArticleInDV2`), no mirror
+  exists for either. Both are pane-symmetric by construction (staleness loops over whichever
+  docs exist; `startEdit` acts on the focused viewer regardless of DV1/DV2) but unverified —
+  done when: a DV2-article/DV1-file mirror test exists for both staleness and edit, matching
+  the refresh precedent — effort: 1 (replan: TRIAGE T23)
 
 ## M5 — Articles are documents: stars and cross-Source lists
 
