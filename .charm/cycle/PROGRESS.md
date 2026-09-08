@@ -89,8 +89,9 @@ needed).
 Next: M3.5 (cross-class Picker rules — with Wikipedia active, File/Grep skip `Active Root`
 and offer only `All Roots` | `Starred`; File `Starred` includes starred articles matched on
 title, labelled `Wikipedia`; File `All Roots` and Grep in every scope exclude articles —
-needs M1.5, M3.2). Both are done. No milestone-boundary gate before M3.5 (M3 completes with
-M3.5; a validation-due gate then applies before M4).
+needs M1.5, M3.2). No milestone-boundary gate before M3.5 itself, but M3.5 is M3's last task
+— its completion should trigger the usual milestone-boundary validation-due check before M4
+starts.
 
 ## Status
 
