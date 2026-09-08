@@ -217,6 +217,150 @@ func TestEvictDocStoreAllStarredExceedsCap(t *testing.T) {
 	}
 }
 
+// TestDocStoreMixedFileArticleRoundTrip is C6/M1.5's own acceptance
+// wording: article records (a canonical-URL key plus Starred/LastViewed and
+// a Title) round-trip alongside file records in the same store, each kind
+// keeping exactly its own fields — an article's Title survives, a file
+// record's Article/Title both stay at the zero value.
+func TestDocStoreMixedFileArticleRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "notes.md")
+	const articleURL = "https://en.wikipedia.org/wiki/Go_(programming_language)"
+	path := filepath.Join(dir, "documents")
+
+	now := time.Now().Round(time.Nanosecond)
+	want := map[string]docRecord{
+		filePath:   {Starred: true, LastViewed: now},
+		articleURL: {Starred: true, LastViewed: now.Add(-time.Hour), Article: true, Title: "Go (programming language)"},
+	}
+	if err := saveDocStore(path, want); err != nil {
+		t.Fatalf("saveDocStore: %v", err)
+	}
+
+	got := loadDocStore(path)
+	if len(got) != len(want) {
+		t.Fatalf("loadDocStore returned %d records, want %d: %+v", len(got), len(want), got)
+	}
+
+	gotFile, ok := got[filePath]
+	if !ok {
+		t.Fatalf("loadDocStore missing the file record for %s: %+v", filePath, got)
+	}
+	if gotFile.Article || gotFile.Title != "" {
+		t.Errorf("file record = %+v, want Article false and Title \"\"", gotFile)
+	}
+	if !gotFile.Starred || !gotFile.LastViewed.Equal(now) {
+		t.Errorf("file record = %+v, want Starred true, LastViewed %v", gotFile, now)
+	}
+
+	gotArticle, ok := got[articleURL]
+	if !ok {
+		t.Fatalf("loadDocStore missing the article record for %s: %+v", articleURL, got)
+	}
+	if !gotArticle.Article || gotArticle.Title != "Go (programming language)" {
+		t.Errorf("article record = %+v, want Article true, Title %q", gotArticle, "Go (programming language)")
+	}
+	if !gotArticle.Starred || !gotArticle.LastViewed.Equal(now.Add(-time.Hour)) {
+		t.Errorf("article record = %+v, want Starred true, LastViewed %v", gotArticle, now.Add(-time.Hour))
+	}
+}
+
+// TestLoadDocStoreArticleRequiresTitle checks S1's "pointer — canonical URL
+// and title", both halves required: an article line with an empty <title>
+// is dropped like any other malformed line, never kept with a blank title.
+func TestLoadDocStoreArticleRequiresTitle(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "documents")
+	const articleURL = "https://en.wikipedia.org/wiki/Orphan"
+	content := "1\t-\tarticle\t\t" + articleURL + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := loadDocStore(path)
+	if len(got) != 0 {
+		t.Errorf("loadDocStore(article, no title) = %+v, want empty (dropped)", got)
+	}
+}
+
+// TestLoadDocStoreLegacyFileFormatByteForByteEquivalent is C6/M1.5's own
+// "existing on-disk stores load unchanged" acceptance clause: a store
+// written entirely in the pre-M1.5, three-field-per-line shape loads into
+// exactly the same docRecord values it always has — Starred and LastViewed
+// as before, Article/Title at their new zero value, nothing about a legacy
+// file's own records changed by M1.5 existing.
+func TestLoadDocStoreLegacyFileFormatByteForByteEquivalent(t *testing.T) {
+	dir := t.TempDir()
+	starredViewed := filepath.Join(dir, "starred-viewed.md")
+	unstarredUnviewed := filepath.Join(dir, "unstarred-unviewed.md")
+	path := filepath.Join(dir, "documents")
+
+	viewedAt := time.Date(2026, 6, 1, 9, 0, 0, 0, time.UTC)
+	// Exactly the legacy, pre-M1.5 <starred>\t<lastViewed>\t<path> shape —
+	// no <kind>/<title> fields at all.
+	content := "1\t" + viewedAt.Format(time.RFC3339Nano) + "\t" + starredViewed + "\n" +
+		"0\t-\t" + unstarredUnviewed + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := loadDocStore(path)
+	want := map[string]docRecord{
+		starredViewed:     {Starred: true, LastViewed: viewedAt},
+		unstarredUnviewed: {Starred: false},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("loadDocStore returned %d records, want %d: %+v", len(got), len(want), got)
+	}
+	for p, wantRec := range want {
+		gotRec, ok := got[p]
+		if !ok {
+			t.Errorf("loadDocStore missing record for %s", p)
+			continue
+		}
+		if !reflect.DeepEqual(gotRec, wantRec) {
+			t.Errorf("%s: loadDocStore = %+v, want byte-for-byte equivalent %+v", p, gotRec, wantRec)
+		}
+	}
+}
+
+// TestEvictDocStoreMixedFileArticleStore is C6/M1.5's own eviction clause:
+// the cap and the starred-never-evicted rule apply across file and article
+// records together, as one pool ordered by LastViewed — not per kind. With
+// cap 2 and, oldest to newest, an unstarred article, an unstarred file and
+// a starred article, the two unstarred records compete for eviction by
+// recency regardless of kind, and the starred article survives regardless
+// of kind too.
+func TestEvictDocStoreMixedFileArticleStore(t *testing.T) {
+	base := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	const oldArticle = "https://en.wikipedia.org/wiki/Old"
+	const starredArticle = "https://en.wikipedia.org/wiki/Starred"
+	records := map[string]docRecord{
+		oldArticle:     {LastViewed: base, Article: true, Title: "Old"},
+		"/file.md":     {LastViewed: base.Add(time.Minute)},
+		starredArticle: {Starred: true, LastViewed: base.Add(2 * time.Minute), Article: true, Title: "Starred"},
+	}
+
+	got := evictDocStore(records, 2)
+
+	if len(got) != 2 {
+		t.Fatalf("evictDocStore left %d records, want 2: %+v", len(got), got)
+	}
+	if _, ok := got[oldArticle]; ok {
+		t.Errorf("%s (oldest, unstarred) should have been evicted", oldArticle)
+	}
+	fileRec, ok := got["/file.md"]
+	if !ok || fileRec.Article {
+		t.Errorf("/file.md should survive untouched (newer than the evicted article), got %+v, ok=%v", fileRec, ok)
+	}
+	articleRec, ok := got[starredArticle]
+	if !ok {
+		t.Fatalf("%s (starred) must survive eviction", starredArticle)
+	}
+	if !articleRec.Starred || !articleRec.Article || articleRec.Title != "Starred" {
+		t.Errorf("%s survived but lost its own fields: %+v", starredArticle, articleRec)
+	}
+}
+
 // TestDocStorePath pins docStorePath's resolution through dataDir (M1.1),
 // under its own file name distinct from the starred-Roots store.
 func TestDocStorePath(t *testing.T) {
