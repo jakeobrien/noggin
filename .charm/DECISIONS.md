@@ -1543,3 +1543,46 @@
   Activate from File mode's Starred scope (this task's own new path) and not only
   `wikipediaMode`'s Results list — replace both guards added here with the real fetch/render
   behaviour at that point, not before.
+
+## D129: M4.1's `document` reuses `path` as a dual-purpose file-path/article-URL field, with a viewer-scoped `articleCache` standing in for M4.2's not-yet-built fetch
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: M4.1 needs `document` (and everything keyed by its identity — `viewer.history`,
+  `docOffsets`, S9 Document History's goBack/goForward) to work for either a file or an
+  article without a network fetch, which is M4.2's own job. `docStoreKey` (D127, model.go)
+  had already generalized the document *store*'s key to hold a file's absolute path or an
+  article's canonical URL, told apart by a `"://"` substring rather than a threaded bool.
+- Decision: `document.path` is reused the same way for the in-memory type (`isArticleKey`,
+  shared by `document.go` and `docStoreKey`, one definition); `document` gains only a
+  `title` field (an article's display name — `filepath.Base` on a URL would show a slug, not
+  the real title) and `isArticle()`/`label()` helpers. History/`docOffsets`, both already
+  keyed by `.path`, needed no structural change. The one real gap — `model.walkViewerHistory`
+  re-reads a file fresh from disk on Back/Forward, but there is nothing on disk for a URL —
+  is filled by a new `viewer.articleCache map[string]document`, populated by `viewer.open`
+  alongside `docOffsets` and consulted instead of `loadDocument` when the history entry is
+  URL-shaped. Since every path ever in `v.history` was first opened through `viewer.open`
+  (`navigate`'s only underlying call, per its own doc comment), the cache can never miss in
+  practice — a miss is treated as a broken invariant (a Footer message, not a panic), not a
+  design gap to route around.
+- Why: This keeps M4.1 to exactly its own scope — no `wikipedia.Client` call anywhere in this
+  task, matching D119's "every network call is user-initiated (search, Activate, Peek,
+  Refresh)" by omission (History walking was never on that list, and should not silently
+  become network-triggering by accident). It also means M4.2's fetch-completion handler,
+  whatever shape it takes, only has to call the existing `navigate`/`open()` path once per
+  fetch — walking back to an already-seen article afterwards is then free, no re-fetch, no
+  new code.
+- Revisit: at M4.2, confirm the fetch-completion handler does route through
+  `navigate`/`openDocumentInto` (as Activate/Peek's existing file paths do) rather than
+  writing `dv1.doc`/`articleCache` directly — that is what keeps this task's "a URL can never
+  reach `v.history` without a matching `articleCache` entry" invariant true going forward.
+  Fresh-context review (code-reviewer subagent) also flagged two related landmines, both
+  already covered by M4.3's own acceptance criterion rather than this task's: once M4.2 lands,
+  `R` on an open article would call `loadDocument`'s disk-read path and fail loudly instead of
+  refreshing (S3's "R re-fetches any open Wikipedia article"), and `e` would hand `$EDITOR` a
+  URL as a literal filename (S3's "e on an article is refused"). `staleness.go`'s `os.Stat` on
+  a URL already fails and is silently omitted by its own pre-existing "omit, don't
+  half-track" rule, which happens to already satisfy S3's "staleness indicator never fires for
+  an article" — noted in a code comment there so it is not mistaken for a bug and "fixed" into
+  tracking a URL.

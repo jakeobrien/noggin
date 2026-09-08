@@ -291,18 +291,13 @@ func (m model) docRecord(path string) docRecord {
 // a file's absolute path is filepath.Clean'd (the pre-M1.5 behaviour, kept
 // so a caller can pass an unclean path and still hit an existing record);
 // an article's canonical URL (M1.5's other key shape, first written through
-// this path by the Picker star, C6/M3.4) is returned untouched.
-// filepath.Clean is a filesystem-path operation — on a URL like
-// "https://en.wikipedia.org/wiki/X" it collapses the "//" scheme separator
-// into "/", corrupting it ("https:/en.wikipedia.org/..."), so it must never
-// run on one. "://" does not occur in any absolute file path this
-// codebase itself ever constructs (Unix or Windows), so it is a reliable
-// way to tell the two key shapes apart in practice without threading an
-// isArticle flag through every docRecord/withDocRecord call site — not a
-// filesystem-level guarantee against every conceivable path a user could
-// name, which a colon-bearing Unix path segment could in principle defeat.
+// this path by the Picker star, C6/M3.4) is returned untouched, per
+// isArticleKey (document.go, C6/M4.1's shared home for this same "://"
+// heuristic — filepath.Clean is a filesystem-path operation and would
+// corrupt a URL's "//" scheme separator into "/", so it must never run on
+// one).
 func docStoreKey(path string) string {
-	if strings.Contains(path, "://") {
+	if isArticleKey(path) {
 		return path
 	}
 	return filepath.Clean(path)
@@ -487,33 +482,50 @@ func (m model) navigate(p pane, d document) model {
 
 // walkViewerHistory is historyBack/historyForward's shared step (C4/M6.1):
 // asks the focused viewer to move one entry along its own S9 stack (dir is
-// viewer.goBack or viewer.goForward), then re-reads that entry's document
-// from disk and opens it directly into the same pane (viewer.open, which
-// restores that document's own remembered scroll position per S9/C4-M6.2's
-// docOffsets, or the top on a document this viewer has never had open
-// before), never through navigate/openDocumentInto: the pane already holds Focus (no
-// setFocus needed), DV2 already exists if that is where Focus is (visible()
-// guarantees it), and this is history moving, not a new entry for
-// pushHistory to record. dir's own ok == false (either end of history) and
-// a Peeked viewer (moved.peeking(), matching toggleActiveDocStar's own
-// guard — Peek only ever lives while Focus sits on the Files Nav, so this
-// never actually fires today, but costs nothing to keep true) are both
-// silent no-ops, the same "nothing to do" shape FindNext/FindPrevious give
-// an empty match list, not a refusal. A read failure reports the same
-// "cannot open" message activate()'s own read failure gives and leaves the
-// model untouched — dir's moved viewer only ever exists in a local
-// variable until a successful read is in hand, so a failed load costs
-// nothing, the history position included.
+// viewer.goBack or viewer.goForward), then reopens that entry directly into
+// the same pane (viewer.open, which restores that document's own remembered
+// scroll position per S9/C4-M6.2's docOffsets, or the top on a document this
+// viewer has never had open before), never through navigate/openDocumentInto:
+// the pane already holds Focus (no setFocus needed), DV2 already exists if
+// that is where Focus is (visible() guarantees it), and this is history
+// moving, not a new entry for pushHistory to record. A file's entry is
+// re-read fresh from disk, picking up latest content when navigating back;
+// an article's entry (C6/M4.1, isArticleKey) has nothing on disk to
+// re-read, so it comes instead from the viewer's own articleCache — every
+// article ever in history was opened through viewer.open first, which
+// always populates that cache, so a lookup miss here would mean a broken
+// invariant elsewhere, not a normal outcome, and is reported the same as
+// any other failed reopen rather than assumed impossible. dir's own ok ==
+// false (either end of history) and a Peeked viewer (moved.peeking(),
+// matching toggleActiveDocStar's own guard — Peek only ever lives while
+// Focus sits on the Files Nav, so this never actually fires today, but
+// costs nothing to keep true) are both silent no-ops, the same "nothing to
+// do" shape FindNext/FindPrevious give an empty match list, not a refusal.
+// A read failure reports the same "cannot open" message activate()'s own
+// read failure gives and leaves the model untouched — dir's moved viewer
+// only ever exists in a local variable until a successful read is in hand,
+// so a failed load costs nothing, the history position included.
 func (m model) walkViewerHistory(dir func(viewer) (viewer, string, bool)) model {
 	p := m.focusedViewerPane()
 	moved, path, ok := dir(m.viewerFor(p))
 	if !ok || moved.peeking() {
 		return m
 	}
-	d, err := loadDocument(path)
-	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", path, err)
-		return m
+	var d document
+	if isArticleKey(path) {
+		var found bool
+		d, found = moved.cachedArticle(path)
+		if !found {
+			m.message = fmt.Sprintf("cannot open %s: article no longer available this session", path)
+			return m
+		}
+	} else {
+		var err error
+		d, err = loadDocument(path)
+		if err != nil {
+			m.message = fmt.Sprintf("cannot open %s: %v", path, err)
+			return m
+		}
 	}
 	m = m.withViewerFor(p, moved.open(d))
 	return m.resetStaleBaseline()

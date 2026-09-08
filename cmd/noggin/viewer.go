@@ -1,7 +1,6 @@
 package main
 
 import (
-	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -70,6 +69,20 @@ type viewer struct {
 	// place a document is ever actually left. Session-only and dies with
 	// the viewer, exactly like history itself.
 	docOffsets map[string]int
+
+	// articleCache holds every article document (C6/M4.1) this viewer has
+	// ever had open, keyed by its canonical URL (docOffsets' own sibling,
+	// populated and lazily allocated the same way). model.walkViewerHistory
+	// (S9's Document History) is what consults it: a file's own history
+	// entry is deliberately re-read from disk on Back/Forward ("picking up
+	// latest content when navigating back", walkViewerHistory's own doc
+	// comment), but an article has nothing on disk to re-read — D114's
+	// pointer-only store rule means its content lives only here, in memory
+	// for the session, exactly like the Wikipedia Client's own fetch cache
+	// (M2.3). Every path that can ever land in history first passed through
+	// open() below, so a history entry is never missing from this cache.
+	// Session-only and dies with the viewer, exactly like history itself.
+	articleCache map[string]document
 }
 
 // peekState is one Peeked document: its own read-only viewport, kept
@@ -128,6 +141,12 @@ func (v viewer) open(d document) viewer {
 		v = v.rememberOffset()
 	}
 	v.doc = d
+	if d.isArticle() {
+		if v.articleCache == nil {
+			v.articleCache = map[string]document{}
+		}
+		v.articleCache[d.path] = d
+	}
 	v = v.render()
 	if off, ok := v.docOffsets[d.path]; ok {
 		v.vp.SetYOffset(off)
@@ -237,7 +256,16 @@ func (v viewer) peekLabel() string {
 	if !v.peeking() {
 		return ""
 	}
-	return filepath.Base(v.peek.doc.path)
+	return v.peek.doc.label()
+}
+
+// cachedArticle looks up an article previously opened in this viewer by its
+// canonical URL (C6/M4.1) — model.walkViewerHistory's own way to reopen an
+// article history entry without a network fetch (articleCache's own doc
+// comment, above).
+func (v viewer) cachedArticle(url string) (document, bool) {
+	d, ok := v.articleCache[url]
+	return d, ok
 }
 
 // startPeek shows d in the pane without disturbing doc or vp (S7, M7.1): a
@@ -331,12 +359,7 @@ func (v viewer) lineCount() int { return v.vp.TotalLineCount() }
 func (v viewer) height() int { return v.vp.Height() }
 
 // label names the open document for the pane title, or is empty when none is.
-func (v viewer) label() string {
-	if !v.doc.isOpen() {
-		return ""
-	}
-	return filepath.Base(v.doc.path)
-}
+func (v viewer) label() string { return v.doc.label() }
 
 var emptyViewerStyle = lipgloss.NewStyle().Foreground(dimColor)
 

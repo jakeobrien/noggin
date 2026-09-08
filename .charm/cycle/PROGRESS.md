@@ -17,12 +17,31 @@
 
 ## Cursor
 
-Current task: M4.1
+Current task: M4.2
 
 ## Handoff
 
-M3 (Wikipedia Picker) is validated (2026-09-08, fresh-context `validator` subagent, per
-charm-validate) — the milestone-boundary gate is cleared, M4 may start.
+M4.1 done (2026-09-08, `make check` clean). `document` (document.go) reuses `path` to hold
+either a file's path or an article's canonical URL (`isArticleKey`, shared with
+`docStoreKey`/D127); a new `title` field names an article for `label()`/pane titles.
+`articleDocument(wikipedia.Article) document` is the constructor M4.2's fetch handler should
+call. `viewer.history`/`docOffsets` needed no change (already keyed by `.path`); a new
+`viewer.articleCache` lets `walkViewerHistory` (model.go) reopen an article on Back/Forward
+without a disk read or network call — populated by `viewer.open`, consulted instead of
+`loadDocument` when `isArticleKey(path)`. No network call anywhere in this task. Full
+rationale, and two landmines for M4.2/M4.3 to inherit knowingly (Refresh/`e` on an article
+both still unguarded until M4.3, exactly as planned), in D129.
+
+New tests: `cmd/noggin/article_document_test.go` (identity/label, viewer open+render+title
+row, Find in an article, file↔article history walk, cache-miss defensive branch). Fresh-context
+code-reviewer pass found 3 low/medium notes; two fixed directly (title-row assertion,
+cache-miss test), one left as a `staleness.go` code comment (its `os.Stat`-on-URL failure
+accidentally already satisfies S3's "staleness never fires for an article" — flagged so it's
+not mistaken for a bug later).
+
+Next: M4.2 (async fetch-and-open; needs M2.3, M3.3, M4.1). Route the fetch-completion handler
+through `navigate`/`openDocumentInto`, per D129's revisit note, to keep M4.1's history
+invariant (every history URL has an `articleCache` entry) true.
 
 **Validation result**: `make check` clean; `make check-pty` reproduces TRIAGE T18's
 pre-existing 11-failure baseline (same test names, not a new regression). All five
@@ -111,7 +130,7 @@ viewer title row/Document History/Find; needs M1.5).
 | M3.3  | done   | 2026-09-08 | 2026-09-08 |      |
 | M3.4  | done   | 2026-09-08 | 2026-09-08 |      |
 | M3.5  | done   | 2026-09-08 | 2026-09-08 | review found 2 low-sev findings (TRIAGE T21, T22), independently reconfirmed at validate, still open/low-sev |
-| M4.1  | todo   | -        | -         |      |
+| M4.1  | done   | 2026-09-08 | -         | review: code-reviewer subagent, same day |
 | M4.2  | todo   | -        | -         |      |
 | M4.3  | todo   | -        | -         |      |
 | M5.1  | todo   | -        | -         |      |

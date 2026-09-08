@@ -5,26 +5,68 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 
 	"charm.land/glamour/v2"
 	"charm.land/glamour/v2/styles"
 	"charm.land/lipgloss/v2"
 	"golang.org/x/term"
+
+	"noggin/internal/wikipedia"
 )
 
 // document is the active document: where it came from and its raw bytes. The
 // bytes are kept so the viewer can re-render at a new width without touching
 // the disk; re-reading from disk is an explicit act (M4.1's edit handoff).
+//
+// C6/M4.1 widens path beyond a file's absolute path to also carry an
+// article's canonical URL (S3, S4's store key) — the same generalization
+// docStoreKey (model.go) already made for the document store, reused here so
+// the viewer, S9 Document History and Find (which never look past a
+// document's rendered src) work on either kind unchanged. title is an
+// article's own display title (S1's "pointer — canonical URL and title");
+// always empty for a file, whose display name is instead derived from path
+// (label(), below).
 type document struct {
-	path string
-	src  []byte
+	path  string
+	title string
+	src   []byte
 }
 
 // isOpen reports whether there is a document to render. The zero document is
 // "nothing open", which the viewer shows as its empty state.
 func (d document) isOpen() bool { return d.path != "" }
+
+// isArticleKey reports whether key names a Wikipedia article (its canonical
+// URL) rather than a file (an absolute path) — the same "://" heuristic
+// docStoreKey (model.go) relies on to tell the document store's two key
+// shapes apart, shared here (D127's own precedent: this is a reliable way to
+// tell them apart in practice, not a filesystem-level guarantee) so a
+// document's identity can be classified without threading a redundant bool
+// field through every constructor and test literal.
+func isArticleKey(key string) bool { return strings.Contains(key, "://") }
+
+// isArticle reports whether d is an article rather than a file, per
+// isArticleKey.
+func (d document) isArticle() bool { return isArticleKey(d.path) }
+
+// label names d for a pane title or list row, or is empty for the zero
+// document (mirrors isOpen's "nothing open" contract) — an article's own
+// title (S1's "pointer ... and title") for an article, the base name of path
+// for a file, exactly as every label computation here did before M4.1
+// generalized path to also hold a URL.
+func (d document) label() string {
+	if !d.isOpen() {
+		return ""
+	}
+	if d.isArticle() {
+		return d.title
+	}
+	return filepath.Base(d.path)
+}
 
 // loadDocument reads path into a document.
 func loadDocument(path string) (document, error) {
@@ -33,6 +75,19 @@ func loadDocument(path string) (document, error) {
 		return document{}, err
 	}
 	return document{path: path, src: src}, nil
+}
+
+// articleDocument builds a document for a fetched Wikipedia article (S3):
+// path is the article's canonical URL (S4's store key), title its own
+// display title, and src the already markdown-converted content
+// (D112/M2.1's pipeline) — the same shape loadDocument produces for a file,
+// so viewer.open/render (document.go/viewer.go) and everything downstream
+// (Document History, Find) treat the two identically from here on. M4.2's
+// fetch-completion handler is the eventual real caller; M4.1 exercises it
+// directly in tests since M4.2 has not yet landed the fetch cmd that will
+// call it in production.
+func articleDocument(a wikipedia.Article) document {
+	return document{path: a.URL, title: a.Title, src: []byte(a.Markdown)}
 }
 
 // frontmatterFence matches a line that is exactly a `---` fence. Both ends of a

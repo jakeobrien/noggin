@@ -80,6 +80,14 @@ func snapshotStaleness(root *tree.Node, docPaths ...string) staleBaseline {
 		// stale() permanently true until the next reset — the same "omit,
 		// don't half-track" rule collectDirModTimes already applies to a
 		// directory whose own Stat fails.
+		//
+		// C6/M4.1 note for M4.3 ("the staleness indicator never fires for
+		// [an article]", S3): once an article document's path can reach here
+		// (a URL, isArticleKey), os.Stat fails on it exactly like any other
+		// unreadable path and this same omit-don't-half-track rule already
+		// keeps it untracked — accidentally satisfying that clause, not by a
+		// deliberate URL-aware branch. Worth keeping in mind before "fixing"
+		// this to Stat something else for a URL.
 		if info, err := os.Stat(docPath); err == nil {
 			b.docs = append(b.docs, docSnapshot{path: docPath, modTime: info.ModTime(), size: info.Size()})
 		}
