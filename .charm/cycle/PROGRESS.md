@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M5.2
+Current task: M1.9
 
 ## Handoff
 
@@ -126,16 +126,54 @@ AnArticle` (viewer_star_render_test.go, the title-row `★` marker), and
 already-starred article's Files Nav row, reached via Starred/All Starred scope since an
 article's bucket key is always `""` — the same orphan bucket a Root-orphan file lands in).
 
-Next: M5.2 (Files Nav Starred lists include articles). This is where the cosmetic gap M5.1
-left alone gets fixed: today a starred article's flat row renders via `buildBrowseRow`'s
-generic, file-shaped fields (`filepath.Base(url)` as the name, `pathMissing`'s `os.Stat` always
-failing so it renders dimmed with a `(missing)` suffix, exactly like a broken starred file) —
-correct enough for M5.1's own toggle-mechanism acceptance criterion (pinned above) but not the
-real title/`Wikipedia` label M5.2 promises. `starredRows`/`buildBrowseRow` (browse_list.go) are
-where that lives; `activeRootBrowseScope` while Wikipedia is active also needs its own bucket
-rather than reusing the orphan bucket, so it does not pull in Root-orphan files alongside
-articles (see M5.1's D133 and this handoff's own paragraph above for why the orphan bucket is
-where an article lands today).
+M5.2 done (2026-09-08, `make check` clean, `go test -race ./cmd/noggin/...` clean). Files Nav
+Starred lists now include articles for real, fixing the cosmetic gap M5.1's own handoff named:
+a new `buildStarredBrowseRow` (browse_list.go) gives a starred article its own display shape
+(name = the article's title, rootLabel = the fixed `wikipediaLabel`, never `buildBrowseRow`'s
+file-shaped `filepath.Base(url)`/`pathMissing`-driven `(missing)`) instead of falling through
+to the generic file path M4.3 shipped. `starredRows` buckets every starred article under its
+own reserved key (`wikipediaSourceKey`, files.go's existing per-Source memory sentinel, reused
+here for the same "impossible as a real Root path" property) rather than the "" orphan bucket
+a Root-orphan file also keys on — the actual bug the old bucketing had: without this, Active
+Source while Wikipedia is active and Orphans while a Root is active would both silently mix
+articles in with unrelated Root-orphan files. `starredRows` gained a `wikipedia bool` parameter
+(files.go passes `f.wikipedia`) so Active Source can tell "no active Root" apart from
+"Wikipedia is the Active Source" — both read `activeRootPath == ""` otherwise. Orphans and All
+Starred needed no scope-selection change: the new bucket key already keeps articles out of the
+former and lets them fall naturally into the latter's every-bucket merge.
+
+Activate and Peek on a Starred/Recent-flat-row article (S3) now fetch instead of failing
+`loadDocument` on a URL (D129's own landmine, M4.3's Refresh precedent): `activateInto`/
+`activate`/`togglePeek`/`togglePeekInto` all widen their return to `(model, tea.Cmd)` so their
+new `row.article` branches (`activateFlatRowInto`, `togglePeekFlatRowInto`) can dispatch
+`fetchArticleInto(target, row.name, peek)` — the same mechanism M4.2 built and M5.2's own
+handoff flagged as "call this, don't reinvent it". `browseRow` gained an `article bool` field
+(mirrors `pickerFile`'s own article/title pair, files_search.go) that both new branches read;
+the already-Peeking/already-Active carve-out in `togglePeekFlatRowInto` needed no article-
+specific case since `row.path` (an article's canonical URL) already equals `v.doc.path` once
+open, the same identity a file's row already relies on.
+
+New/updated tests: `TestStarredRowsWikipediaActiveSourceShowsArticlesByTitle`,
+`TestStarredRowsAllStarredIncludesArticlesLabelledWikipediaWithARootActive`,
+`TestStarredRowsOrphansExcludesArticles` (browse_starred_test.go, the bucketing fix at the
+`starredRows` level); `TestActivateStarredArticleFlatRowFetchesAndOpens`,
+`TestPeekStarredArticleFlatRowFetchesWithoutActivating` (same file, the Activate/Peek fetch
+wiring, mirroring article_fetch_test.go's own Picker-Result shape via a shared
+`starredArticleWikipediaModel` fixture). M5.1's own `TestToggleDocStarInStarredModeDropsA
+StarredArticleRowImmediately` was updated in place (title/`Wikipedia` label assertions instead
+of the old `Leonhard_Euler` URL-slug ones it had pinned as an accepted gap) — not a new test,
+the same test now exercising the fixed rendering; widened to a 120-column fixture since 80
+truncates `Wikipedia` (9 cols) below its own render budget, the same class of gotcha D52/
+TRIAGE T13 already named for the Picker's Root label. Every pre-existing `starredRows` call
+site (tests and files.go) took the new `wikipedia bool` parameter; every pre-existing
+`activateInto`/`togglePeekInto` test call site was updated to discard the new `tea.Cmd` return.
+No TRIAGE items opened, no DECISIONS entry — the design (bucket-key reuse, return-signature
+widening) follows precedent M4.2/M3.4/M3.5 already set closely enough to be low/medium risk,
+not an open judgment call.
+
+Next: M1.9 (TRIAGE T18, corrected: `make check-pty`'s Roots/File-Picker label renames from
+M1.3/M1.6). Independent of M5.2's own work — next in cursor order, not because M5.2 touched
+the pty harness.
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -177,7 +215,7 @@ accepted by design — see DECISIONS.md.
 | M4.2  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 high-sev functional bug (clearPeek scope) + 1 high-sev doc-comment placement, both fixed directly, plus 2 low fixed directly; validate: fresh-context validator subagent, same day, PASS (Peek mechanism correctly not yet wired to a key per D130, deferred to M5.2) |
 | M4.3  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 medium functional bug (m.message clobber across sync/async refresh) + 1 medium test gap (stale refresh completion) + 2 low (mirror-case test, GLOSSARY drift), all fixed/added directly; validate: fresh-context validator subagent, same day, PASS (TRIAGE T23: mirror DV-arrangement test gap for staleness/edit) |
 | M5.1  | done   | -        | -         | fixed a real persistence bug found while building (D133: toggleActiveDocStar didn't stamp Article/Title for a never-before-starred article) |
-| M5.2  | todo   | -        | -         |      |
+| M5.2  | done   | -        | -         | fixed the M5.1-flagged cosmetic gap (article rows rendered file-shaped); Activate/Peek widened to (model, tea.Cmd) for the new fetch dispatch |
 | M1.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
 | M1.10 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |

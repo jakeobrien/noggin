@@ -644,7 +644,12 @@ func (m model) setFocus(p pane) model {
 // expand/collapse bindings. A read error is a footer message rather than a
 // silent no-op (T15), the same "silence is not an error" shape as
 // activateRoot's own refusal below and S1's launch-time version of the rule.
-func (m model) activate() model {
+//
+// C6/M5.2 widens the return to (model, tea.Cmd): a starred article row
+// (activateFlatRowInto's own new branch) opens asynchronously like every
+// other Activate-a-Wikipedia-thing path (fetchArticleInto), unlike a file,
+// which still opens synchronously with a nil Cmd.
+func (m model) activate() (model, tea.Cmd) {
 	return m.activateInto(dv1Pane)
 }
 
@@ -662,49 +667,68 @@ func (m model) activate() model {
 // activateFlatRowInto, which also gives Starred's own "broken starred
 // document ... cannot be activated" (S3) the same refused-with-a-message
 // shape activateRoot gives a broken Root.
-func (m model) activateInto(target pane) model {
+//
+// C6/M5.2 widens the return to (model, tea.Cmd) for activateFlatRowInto's
+// own new article branch; the tree branch below always returns a nil Cmd,
+// since Recent/Starred are the only modes a starred article can appear in
+// today (M6.1 gives Recent one; Tree never shows an article at all).
+func (m model) activateInto(target pane) (model, tea.Cmd) {
 	if m.files.flatMode() {
 		row, ok := m.files.selectedFlatRow()
 		if !ok {
-			return m
+			return m, nil
 		}
 		return m.activateFlatRowInto(row, target)
 	}
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
-		return m
+		return m, nil
 	}
 	d, err := loadDocument(n.Path)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
-		return m
+		return m, nil
 	}
 	// S4/M3.1: Activate records recency regardless of which viewer it
 	// targets — unlike activateRoot, which never records (S4 names
 	// Activate-in-a-viewer, not Root activation).
 	m = m.recordViewed(n.Path)
-	return m.navigate(target, d)
+	return m.navigate(target, d), nil
 }
 
 // activateFlatRowInto is activateInto's flat-list branch (M4.3): row.broken
 // (Starred's own S3 clause; always false for a Recent row, since recentRows
-// never produces one for a missing file) is refused with a footer message
-// mirroring activateRoot's own broken-Root refusal below, rather than the
-// generic "cannot open" read-error wording — the two are different refusals
-// (the file was never even attempted to load) even though both end in a
-// message. Otherwise this behaves exactly like activateInto's tree branch.
-func (m model) activateFlatRowInto(row browseRow, target pane) model {
+// never produces one for a missing file, and always false for an article
+// row too, browseRow.article's own doc comment) is refused with a footer
+// message mirroring activateRoot's own broken-Root refusal below, rather
+// than the generic "cannot open" read-error wording — the two are
+// different refusals (the file was never even attempted to load) even
+// though both end in a message.
+//
+// C6/M5.2: row.article routes through fetchArticleInto (S3) instead of
+// loadDocument — row.path is the article's canonical URL here, not a real
+// file, the same D129 landmine M4.3's Refresh already sidestepped; row.name
+// already carries the article's title (buildStarredBrowseRow), exactly
+// what Fetch takes, mirroring activatePickerInto's own f.article branch
+// (picker.go). fetchArticleInto handles Focus, DV2 creation and recency
+// itself on completion (applyArticleFetch), so this returns its Cmd
+// directly rather than doing any of that here. Every other row behaves
+// exactly like activateInto's tree branch, synchronously, with a nil Cmd.
+func (m model) activateFlatRowInto(row browseRow, target pane) (model, tea.Cmd) {
 	if row.broken {
 		m.message = fmt.Sprintf("%s no longer exists; not activated", row.path)
-		return m
+		return m, nil
+	}
+	if row.article {
+		return m.fetchArticleInto(target, row.name, false)
 	}
 	d, err := loadDocument(row.path)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot open %s: %v", row.path, err)
-		return m
+		return m, nil
 	}
 	m = m.recordViewed(row.path)
-	return m.navigate(target, d)
+	return m.navigate(target, d), nil
 }
 
 // activateRoot makes the Sources Nav's selected entry the active root,
@@ -1003,7 +1027,12 @@ func (m model) focusPane(target pane) model {
 // a no-op") leave Peek exactly as found; a read failure is a footer
 // message, the same "silence is not an error" shape activate()'s own read
 // failure already gives.
-func (m model) togglePeek() model {
+//
+// C6/M5.2 widens the return to (model, tea.Cmd): a starred article row
+// (togglePeekFlatRowInto's own new branch) starts Peek asynchronously like
+// every other Wikipedia fetch (fetchArticleInto), unlike a file, which
+// still starts Peek synchronously with a nil Cmd.
+func (m model) togglePeek() (model, tea.Cmd) {
 	// S3: the unmodified key always targets DV1 (ctrl+p targets DV2, D55,
 	// see togglePeekInto) — an explicit target, not the focused-viewer
 	// accessor, since Peek's target is never "whichever pane has Focus" (Peek is
@@ -1031,7 +1060,7 @@ func (m model) togglePeek() model {
 // delegating to togglePeekFlatRowInto, which also refuses a broken Starred
 // row (S3) with the same "no longer exists" wording activateFlatRowInto
 // already gives Activate.
-func (m model) togglePeekInto(target pane) model {
+func (m model) togglePeekInto(target pane) (model, tea.Cmd) {
 	if target != dv2Pane {
 		target = dv1Pane
 	}
@@ -1039,33 +1068,33 @@ func (m model) togglePeekInto(target pane) model {
 	// target viewer below is gated on it actually existing.
 	exists := target == dv1Pane || m.dv2 != nil
 	if exists && m.viewerFor(target).peeking() {
-		return m.clearPeekIn(target)
+		return m.clearPeekIn(target), nil
 	}
 	if m.files.flatMode() {
 		row, ok := m.files.selectedFlatRow()
 		if !ok {
-			return m
+			return m, nil
 		}
 		return m.togglePeekFlatRowInto(row, target, exists)
 	}
 	n := m.files.selectedNode()
 	if n == nil || n.IsDir {
-		return m
+		return m, nil
 	}
 	if exists {
 		if v := m.viewerFor(target); v.doc.isOpen() && n.Path == v.doc.path {
-			return m
+			return m, nil
 		}
 	}
 	d, err := loadDocument(n.Path)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
-		return m
+		return m, nil
 	}
 	if target == dv2Pane {
 		m = m.ensureDV2()
 	}
-	return m.withViewerFor(target, m.viewerFor(target).startPeek(d))
+	return m.withViewerFor(target, m.viewerFor(target).startPeek(d)), nil
 }
 
 // togglePeekFlatRowInto is togglePeekInto's flat-list branch (M4.5), the
@@ -1075,25 +1104,35 @@ func (m model) togglePeekInto(target pane) model {
 // already-peeking case is handled by the caller before either branch runs,
 // since it depends only on the target viewer, never on which row is
 // selected.
-func (m model) togglePeekFlatRowInto(row browseRow, target pane, exists bool) model {
+//
+// C6/M5.2: row.article routes through fetchArticleInto (S3, peek == true)
+// instead of loadDocument, the same D129-landmine dodge activateFlatRowInto
+// makes for Activate — the already-Peeking/already-Active carve-out just
+// above already covers an article correctly (row.path is its canonical URL,
+// exactly what v.doc.path holds once open, article_fetch.go's
+// articleDocument), so no separate check is needed for it here.
+func (m model) togglePeekFlatRowInto(row browseRow, target pane, exists bool) (model, tea.Cmd) {
 	if row.broken {
 		m.message = fmt.Sprintf("%s no longer exists; not peeked", row.path)
-		return m
+		return m, nil
 	}
 	if exists {
 		if v := m.viewerFor(target); v.doc.isOpen() && row.path == v.doc.path {
-			return m
+			return m, nil
 		}
+	}
+	if row.article {
+		return m.fetchArticleInto(target, row.name, true)
 	}
 	d, err := loadDocument(row.path)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot open %s: %v", row.path, err)
-		return m
+		return m, nil
 	}
 	if target == dv2Pane {
 		m = m.ensureDV2()
 	}
-	return m.withViewerFor(target, m.viewerFor(target).startPeek(d))
+	return m.withViewerFor(target, m.viewerFor(target).startPeek(d)), nil
 }
 
 // clearPeek ends Peek (S7, M7.1) in both viewers if either is active; a
@@ -1532,13 +1571,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case filesPane:
 			if key.Matches(msg, keys.Activate) {
-				return m.activate(), nil
+				return m.activate()
 			}
 			// Peek (S7, M7.1) is Files-Nav-only, unlike every other binding
 			// matched above in the global switch — that is what keeps it
 			// from firing on the Sources Nav or Document Viewer.
 			if key.Matches(msg, keys.Peek) {
-				return m.togglePeek(), nil
+				return m.togglePeek()
 			}
 			// C3/S3's targeting modifiers (M1.4), matched here beside the
 			// unmodified keys they modify: same actions, aimed at DV2 and
@@ -1547,10 +1586,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// "ctrl+enter"/"ctrl+l" never match Activate's "enter" and
 			// "ctrl+p" never matches Peek's "p" (D55).
 			if key.Matches(msg, keys.ActivateDV2) {
-				return m.activateInto(dv2Pane), nil
+				return m.activateInto(dv2Pane)
 			}
 			if key.Matches(msg, keys.PeekDV2) {
-				return m.togglePeekInto(dv2Pane), nil
+				return m.togglePeekInto(dv2Pane)
 			}
 			// M2.1: star/un-star the Files Nav's selected file, the same
 			// physical key (keys.Star) the Sources Nav's own case below already

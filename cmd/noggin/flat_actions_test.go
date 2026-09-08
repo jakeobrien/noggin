@@ -29,7 +29,7 @@ func TestPeekIntoRecentRowDV1(t *testing.T) {
 
 	m = press(t, m, keys.FilesMode.Keys()[0]) // Tree -> Recent
 
-	m = m.togglePeekInto(dv1Pane)
+	m, _ = m.togglePeekInto(dv1Pane)
 	if !m.dv1.peeking() || m.dv1.peek.doc.path != target {
 		t.Fatalf("togglePeekInto(dv1Pane) did not peek %q in DV1: peek = %+v", target, m.dv1.peek.doc)
 	}
@@ -57,7 +57,7 @@ func TestPeekIntoRecentRowDV2(t *testing.T) {
 
 	m = press(t, m, keys.FilesMode.Keys()[0]) // Tree -> Recent
 
-	m = m.togglePeekInto(dv2Pane)
+	m, _ = m.togglePeekInto(dv2Pane)
 	if m.dv2 == nil {
 		t.Fatalf("togglePeekInto(dv2Pane) did not create DV2")
 	}
@@ -86,12 +86,12 @@ func TestActivateIntoRecentRowDV1AndDV2(t *testing.T) {
 
 	m = press(t, m, keys.FilesMode.Keys()[0]) // Tree -> Recent
 
-	m = m.activateInto(dv1Pane)
+	m, _ = m.activateInto(dv1Pane)
 	if !m.dv1.doc.isOpen() || m.dv1.doc.path != target {
 		t.Fatalf("activateInto(dv1Pane) did not open %q into DV1: doc = %+v", target, m.dv1.doc)
 	}
 
-	m = m.activateInto(dv2Pane)
+	m, _ = m.activateInto(dv2Pane)
 	if m.dv2 == nil || !m.dv2.doc.isOpen() || m.dv2.doc.path != target {
 		t.Fatalf("activateInto(dv2Pane) did not open %q into DV2: dv2 = %+v", target, m.dv2)
 	}
@@ -121,7 +121,7 @@ func TestPeekRefusesBrokenStarredRow(t *testing.T) {
 		t.Fatalf("setup: flatRows = %+v, want exactly the broken row", m.files.flatRows())
 	}
 
-	m = m.togglePeekInto(dv1Pane)
+	m, _ = m.togglePeekInto(dv1Pane)
 	if m.dv1.peeking() {
 		t.Errorf("togglePeekInto peeked the broken document, want refused")
 	}

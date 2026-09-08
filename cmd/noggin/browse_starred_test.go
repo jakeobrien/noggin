@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"noggin/internal/tree"
+	"noggin/internal/wikipedia"
 )
 
 // starredFixtureFile creates a real file at dir/name, mirroring
@@ -34,7 +35,7 @@ func TestStarredRowsActiveRootScopeOnlyShowsThatRoot(t *testing.T) {
 	}
 	roots := []root{{path: rootA}, {path: rootB}}
 
-	rows := starredRows(docs, roots, rootA, activeRootBrowseScope)
+	rows := starredRows(docs, roots, rootA, false, activeRootBrowseScope)
 	if len(rows) != 1 || rows[0].path != aDoc {
 		t.Errorf("Active Source scope rows = %+v, want exactly [%q]", rows, aDoc)
 	}
@@ -57,7 +58,7 @@ func TestStarredRowsAllStarredIncludesOrphansAndOtherRoots(t *testing.T) {
 	}
 	roots := []root{{path: rootA}}
 
-	rows := starredRows(docs, roots, rootA, allStarredBrowseScope)
+	rows := starredRows(docs, roots, rootA, false, allStarredBrowseScope)
 	got := map[string]browseRow{}
 	for _, r := range rows {
 		got[r.path] = r
@@ -90,7 +91,7 @@ func TestStarredRowsOrphansScopeOnlyShowsOrphans(t *testing.T) {
 	}
 	roots := []root{{path: rootA}}
 
-	rows := starredRows(docs, roots, rootA, orphansBrowseScope)
+	rows := starredRows(docs, roots, rootA, false, orphansBrowseScope)
 	if len(rows) != 1 || rows[0].path != orphanDoc {
 		t.Errorf("Orphans scope rows = %+v, want exactly [%q]", rows, orphanDoc)
 	}
@@ -107,10 +108,10 @@ func TestStarredRowsExcludesUnstarredRecords(t *testing.T) {
 	docs := map[string]docRecord{unstarred: {LastViewed: time.Now()}}
 	roots := []root{{path: rootDir}}
 
-	if rows := starredRows(docs, roots, rootDir, activeRootBrowseScope); len(rows) != 0 {
+	if rows := starredRows(docs, roots, rootDir, false, activeRootBrowseScope); len(rows) != 0 {
 		t.Errorf("Active Source scope rows = %+v, want none (never starred)", rows)
 	}
-	if rows := starredRows(docs, roots, rootDir, allStarredBrowseScope); len(rows) != 0 {
+	if rows := starredRows(docs, roots, rootDir, false, allStarredBrowseScope); len(rows) != 0 {
 		t.Errorf("All Starred scope rows = %+v, want none (never starred)", rows)
 	}
 }
@@ -127,7 +128,7 @@ func TestStarredRowsIncludesNeverViewedRecords(t *testing.T) {
 	docs := map[string]docRecord{neverViewed: {Starred: true}}
 	roots := []root{{path: rootDir}}
 
-	rows := starredRows(docs, roots, rootDir, activeRootBrowseScope)
+	rows := starredRows(docs, roots, rootDir, false, activeRootBrowseScope)
 	if len(rows) != 1 || rows[0].path != neverViewed {
 		t.Errorf("Active Source scope rows = %+v, want exactly [%q]", rows, neverViewed)
 	}
@@ -149,7 +150,7 @@ func TestStarredRowsMarksBrokenFileRatherThanOmitting(t *testing.T) {
 	}
 	roots := []root{{path: rootDir}}
 
-	rows := starredRows(docs, roots, rootDir, activeRootBrowseScope)
+	rows := starredRows(docs, roots, rootDir, false, activeRootBrowseScope)
 	if len(rows) != 2 {
 		t.Fatalf("starredRows = %+v, want both rows (broken document still listed)", rows)
 	}
@@ -173,9 +174,95 @@ func TestStarredRowsActiveRootScopeWithNoActiveRootIsEmpty(t *testing.T) {
 	orphanDoc := starredFixtureFile(t, dir, "orphan.md")
 	docs := map[string]docRecord{orphanDoc: {Starred: true}}
 
-	rows := starredRows(docs, nil, "", activeRootBrowseScope)
+	rows := starredRows(docs, nil, "", false, activeRootBrowseScope)
 	if len(rows) != 0 {
 		t.Errorf("starredRows with no active root = %+v, want none", rows)
+	}
+}
+
+// TestStarredRowsWikipediaActiveSourceShowsArticlesByTitle is C6/M5.2's own
+// S5 clause: with Wikipedia the Active Source (wikipedia == true), Active
+// Source reads the article bucket, not activeRootPath's (always "" while
+// Wikipedia is active, filesNav.setWikipedia) — a starred Root-orphan file,
+// which shares that same "" key, must never leak in (the cosmetic gap this
+// task's own handoff named), and the row shows the article's title, not a
+// URL-derived name.
+func TestStarredRowsWikipediaActiveSourceShowsArticlesByTitle(t *testing.T) {
+	dir := t.TempDir()
+	orphanDoc := starredFixtureFile(t, dir, "orphan.md")
+	article := fixtureArticle()
+	docs := map[string]docRecord{
+		orphanDoc:    {Starred: true},
+		article.path: {Starred: true, Article: true, Title: article.title},
+	}
+
+	rows := starredRows(docs, nil, "", true, activeRootBrowseScope)
+	if len(rows) != 1 || rows[0].path != article.path {
+		t.Fatalf("Wikipedia Active Source rows = %+v, want exactly the article", rows)
+	}
+	if rows[0].name != article.title {
+		t.Errorf("row.name = %q, want the article's title %q", rows[0].name, article.title)
+	}
+	if !rows[0].article {
+		t.Errorf("row.article = false, want true")
+	}
+	if rows[0].rootLabel != wikipediaLabel {
+		t.Errorf("row.rootLabel = %q, want %q", rows[0].rootLabel, wikipediaLabel)
+	}
+}
+
+// TestStarredRowsAllStarredIncludesArticlesLabelledWikipediaWithARootActive
+// is S6's own clause: with a Root active (not Wikipedia), All Starred still
+// includes a starred article alongside the Root's own starred files,
+// labelled Wikipedia where a file is labelled by its covering Root's name.
+func TestStarredRowsAllStarredIncludesArticlesLabelledWikipediaWithARootActive(t *testing.T) {
+	dir := t.TempDir()
+	rootA := mkdir(t, filepath.Join(dir, "root-a"))
+	aDoc := starredFixtureFile(t, rootA, "a.md")
+	article := fixtureArticle()
+	docs := map[string]docRecord{
+		aDoc:         {Starred: true},
+		article.path: {Starred: true, Article: true, Title: article.title},
+	}
+	roots := []root{{path: rootA}}
+
+	rows := starredRows(docs, roots, rootA, false, allStarredBrowseScope)
+	got := map[string]browseRow{}
+	for _, r := range rows {
+		got[r.path] = r
+	}
+	if len(got) != 2 {
+		t.Fatalf("All Starred rows = %+v, want exactly 2", rows)
+	}
+	if ar, ok := got[article.path]; !ok || !ar.article || ar.name != article.title || ar.rootLabel != wikipediaLabel {
+		t.Errorf("article row = %+v, want name %q labelled %q", ar, article.title, wikipediaLabel)
+	}
+	if fr, ok := got[aDoc]; !ok || fr.article || fr.rootLabel != "root-a" {
+		t.Errorf("a.md row = %+v, want rootLabel %q, article false", fr, "root-a")
+	}
+}
+
+// TestStarredRowsOrphansExcludesArticles is S5's own "no Orphans; that is a
+// Root concept" applied to the value itself, not just its reachability
+// (already pinned by TestWikipediaStarredScopeExcludesOrphans): a starred
+// article never appears in Orphans even while a Root is active and Orphans
+// is reachable — an article's own bucket (wikipediaSourceKey) is distinct
+// from the "" orphan bucket a Root-orphan file lands in.
+func TestStarredRowsOrphansExcludesArticles(t *testing.T) {
+	dir := t.TempDir()
+	rootA := mkdir(t, filepath.Join(dir, "root-a"))
+	orphanDir := mkdir(t, filepath.Join(dir, "elsewhere"))
+	orphanDoc := starredFixtureFile(t, orphanDir, "orphan.md")
+	article := fixtureArticle()
+	docs := map[string]docRecord{
+		orphanDoc:    {Starred: true},
+		article.path: {Starred: true, Article: true, Title: article.title},
+	}
+	roots := []root{{path: rootA}}
+
+	rows := starredRows(docs, roots, rootA, false, orphansBrowseScope)
+	if len(rows) != 1 || rows[0].path != orphanDoc {
+		t.Errorf("Orphans scope rows = %+v, want exactly [%q] (the article excluded)", rows, orphanDoc)
 	}
 }
 
@@ -195,7 +282,7 @@ func TestStarredRowsOrdersByName(t *testing.T) {
 	}
 	roots := []root{{path: rootDir}}
 
-	rows := starredRows(docs, roots, rootDir, activeRootBrowseScope)
+	rows := starredRows(docs, roots, rootDir, false, activeRootBrowseScope)
 	want := []string{apple, mango, zebra}
 	if len(rows) != len(want) {
 		t.Fatalf("starredRows returned %d rows, want %d", len(rows), len(want))
@@ -326,7 +413,7 @@ func TestActivateRefusesBrokenStarredRow(t *testing.T) {
 		t.Fatalf("setup: flatRows = %+v, want exactly the broken row", m.files.flatRows())
 	}
 
-	m = m.activateInto(dv1Pane)
+	m, _ = m.activateInto(dv1Pane)
 	if m.dv1.doc.isOpen() {
 		t.Errorf("activateInto opened the broken document, want refused")
 	}
@@ -356,7 +443,7 @@ func TestActivateOpensNonBrokenStarredRow(t *testing.T) {
 	m = press(t, m, keys.FilesMode.Keys()[0])
 	m = press(t, m, keys.FilesMode.Keys()[0])
 
-	m = m.activateInto(dv1Pane)
+	m, _ = m.activateInto(dv1Pane)
 	if !m.dv1.doc.isOpen() || m.dv1.doc.path != present {
 		t.Fatalf("activateInto did not open %q into DV1: doc = %+v", present, m.dv1.doc)
 	}
@@ -409,20 +496,25 @@ func TestToggleDocStarInStarredModeDropsTheRowImmediately(t *testing.T) {
 // Files Nav row already-starred today (Recent's own pathMissing check omits
 // every article until M6.1 gives it an article-aware existence test, and
 // Starred's own row set is Starred==true by definition) — All Starred scope
-// is used here, not Active Source, since an article's bucket key is always
-// "" (buildBrowseRow's rootForPath never matches a URL), the same bucket a
-// Root-orphan file would land in.
+// is used here, not Active Source, since a Root is never activated in this
+// test (a real title/`Wikipedia`-label row either way, C6/M5.2's own fix to
+// the cosmetic gap this test used to pin: buildStarredBrowseRow now renders
+// the article's own title, not a URL-derived name).
 func TestToggleDocStarInStarredModeDropsAStarredArticleRowImmediately(t *testing.T) {
 	storePath := filepath.Join(t.TempDir(), "documents")
 	article := fixtureArticle()
 	docs := map[string]docRecord{article.path: {Starred: true, Article: true, Title: article.title}}
 
-	m := sized(t, newModel().withDocs(storePath, docs), 80, 24)
+	// 120, not the project's standard 80: at 80 the Files Nav column's own
+	// right-hand budget truncates "Wikipedia" (9 cols) to "...ipedia", the
+	// same class of width-dependent gotcha D52/TRIAGE T13 already named for
+	// the Picker's own Root label.
+	m := sized(t, newModel().withDocs(storePath, docs), 120, 24)
 	m = press(t, m, keys.FilesMode.Keys()[0])  // Tree -> Recent
 	m = press(t, m, keys.FilesMode.Keys()[0])  // Recent -> Starred
 	m = press(t, m, keys.FilesScope.Keys()[0]) // Active Source -> All Starred
-	if !strings.Contains(m.files.view(), "Leonhard_Euler") {
-		t.Fatalf("setup: Starred/All Starred view does not show the article:\n%s", m.files.view())
+	if !strings.Contains(m.files.view(), article.title) || !strings.Contains(m.files.view(), "Wikipedia") {
+		t.Fatalf("setup: Starred/All Starred view does not show the article by title/Wikipedia label:\n%s", m.files.view())
 	}
 
 	m = m.toggleDocStar()
@@ -436,12 +528,93 @@ func TestToggleDocStarInStarredModeDropsAStarredArticleRowImmediately(t *testing
 	if !got.Article || got.Title != article.title {
 		t.Errorf("docRecord(article) after un-starring = %+v, want Article/Title preserved", got)
 	}
-	if strings.Contains(m.files.view(), "Leonhard_Euler") {
+	if strings.Contains(m.files.view(), article.title) {
 		t.Errorf("Starred view after un-starring the article still shows it:\n%s", m.files.view())
 	}
 
 	restarted := newModel().withDocs(storePath, loadDocStore(storePath))
 	if got := restarted.docRecord(article.path); got.Starred {
 		t.Errorf("docRecord(article) after restart = %+v, want Starred false", got)
+	}
+}
+
+// starredArticleWikipediaModel is C6/M5.2's own fixture for the Activate/
+// Peek-from-a-flat-row tests below: Wikipedia active (its first visit lands
+// on Starred, filesNav.setWikipedia) with exactly one starred article on
+// screen, ready to Activate/Peek — the flat-row mirror of article_fetch_
+// test.go's own wikipediaModeWithResult (the Picker's Result-row fixture).
+func starredArticleWikipediaModel(t *testing.T, fetcher *fakeWikipediaFetcher) model {
+	t.Helper()
+	storePath := filepath.Join(t.TempDir(), "documents")
+	docs := map[string]docRecord{eulerArticle.URL: {Starred: true, Article: true, Title: eulerArticle.Title}}
+	m := sized(t, newModel().withDocs(storePath, docs), 80, 24).withWikipediaFetcher(fetcher)
+	m = m.activateWikipediaSource()
+	if m.files.mode != starredBrowse {
+		t.Fatalf("setup: mode = %v, want starredBrowse", m.files.mode)
+	}
+	rows := m.files.flatRows()
+	if len(rows) != 1 || !rows[0].article {
+		t.Fatalf("setup: flatRows = %+v, want exactly the starred article", rows)
+	}
+	return m
+}
+
+// TestActivateStarredArticleFlatRowFetchesAndOpens is C6/M5.2's own
+// acceptance clause "Activate ... on an article row fetch per M4.2": with
+// Wikipedia active and a starred article the sole Starred/Active Source
+// row, Activate dispatches fetchArticleInto (row.article, activateFlatRow
+// Into) rather than failing loadDocument on the article's canonical URL
+// (D129's own landmine) — the same round trip article_fetch_test.go's own
+// TestActivateWikipediaResultOpensCanonicalArticleInDV1 already pins for a
+// Picker Result, now reached from a Files Nav Starred row instead.
+func TestActivateStarredArticleFlatRowFetchesAndOpens(t *testing.T) {
+	fetcher := &fakeWikipediaFetcher{articles: map[string]wikipedia.Article{eulerArticle.Title: eulerArticle}}
+	m := starredArticleWikipediaModel(t, fetcher)
+
+	after, cmd := m.activateInto(dv1Pane)
+	got := runArticleFetch(t, after, cmd)
+
+	if got.dv1.doc.path != eulerArticle.URL {
+		t.Errorf("DV1 Active Document = %q, want the canonical URL %q", got.dv1.doc.path, eulerArticle.URL)
+	}
+	if got.dv1.doc.title != eulerArticle.Title {
+		t.Errorf("DV1 Active Document title = %q, want %q", got.dv1.doc.title, eulerArticle.Title)
+	}
+	if got.focus != dv1Pane {
+		t.Errorf("focus = %v after Activate, want dv1Pane", got.focus)
+	}
+	if rec := got.docRecord(eulerArticle.URL); rec.LastViewed.IsZero() {
+		t.Error("LastViewed is zero after Activate completed, want recency recorded (S4)")
+	}
+	if len(fetcher.calls) != 1 || fetcher.calls[0] != eulerArticle.Title {
+		t.Errorf("Fetch calls = %v, want exactly one call for %q", fetcher.calls, eulerArticle.Title)
+	}
+}
+
+// TestPeekStarredArticleFlatRowFetchesWithoutActivating is C6/M5.2's own
+// acceptance clause's Peek half: togglePeekFlatRowInto's new row.article
+// branch fetches (peek == true) and starts Peek on completion, without ever
+// moving Focus or recording recency (S7's "Peek does not count", the same
+// contract article_fetch_test.go's TestPeekWikipediaArticleStartsPeek
+// WithoutActivating already pins for a Picker Result).
+func TestPeekStarredArticleFlatRowFetchesWithoutActivating(t *testing.T) {
+	fetcher := &fakeWikipediaFetcher{articles: map[string]wikipedia.Article{eulerArticle.Title: eulerArticle}}
+	m := starredArticleWikipediaModel(t, fetcher)
+	beforeFocus := m.focus
+
+	after, cmd := m.togglePeekInto(dv1Pane)
+	got := runArticleFetch(t, after, cmd)
+
+	if !got.dv1.peeking() || got.dv1.peek.doc.path != eulerArticle.URL {
+		t.Fatalf("togglePeekInto did not peek the article in DV1: peek = %+v", got.dv1.peek.doc)
+	}
+	if got.dv1.doc.isOpen() {
+		t.Errorf("Peek changed DV1's Active Document, want it untouched")
+	}
+	if got.focus != beforeFocus {
+		t.Errorf("focus = %v after Peek, want unchanged %v (Peek never moves Focus)", got.focus, beforeFocus)
+	}
+	if rec := got.docRecord(eulerArticle.URL).LastViewed; !rec.IsZero() {
+		t.Error("LastViewed recorded after Peek, want zero (S4: Peek does not count)")
 	}
 }

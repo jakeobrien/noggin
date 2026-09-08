@@ -50,7 +50,7 @@ func TestCyclingToAShorterFlatListReClampsSelection(t *testing.T) {
 		t.Errorf("selected after cycling to a shorter list = %d, want 0 (re-clamped)", m.files.selected)
 	}
 
-	m = m.activateInto(dv1Pane)
+	m, _ = m.activateInto(dv1Pane)
 	if !m.dv1.doc.isOpen() || m.dv1.doc.path != a {
 		t.Errorf("activateInto after re-clamp did not open %q into DV1: doc = %+v (silent no-op bug)", a, m.dv1.doc)
 	}
@@ -168,7 +168,7 @@ func TestCyclingScopeToASmallerFlatListReClampsSelection(t *testing.T) {
 		t.Errorf("selected after cycling scope to a shorter list = %d, want 0 (re-clamped)", m.files.selected)
 	}
 
-	m = m.activateInto(dv1Pane)
+	m, _ = m.activateInto(dv1Pane)
 	if !m.dv1.doc.isOpen() || m.dv1.doc.path != a {
 		t.Errorf("activateInto after re-clamp did not open %q into DV1: doc = %+v (silent no-op bug)", a, m.dv1.doc)
 	}

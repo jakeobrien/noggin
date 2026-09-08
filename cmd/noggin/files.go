@@ -550,7 +550,7 @@ func (f filesNav) flatRows() []browseRow {
 	case recentBrowse:
 		return recentRows(f.docs, f.sessionRoots, f.activeRootPath, f.scope)
 	case starredBrowse:
-		return starredRows(f.docs, f.sessionRoots, f.activeRootPath, f.scope)
+		return starredRows(f.docs, f.sessionRoots, f.activeRootPath, f.wikipedia, f.scope)
 	default:
 		return nil
 	}

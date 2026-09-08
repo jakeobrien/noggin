@@ -128,7 +128,7 @@ func TestRecencyAndStarredNameTiesBreakByPath(t *testing.T) {
 		}
 		roots := []root{{path: dirA}, {path: dirB}}
 
-		rows := starredRows(docs, roots, dirA, allStarredBrowseScope)
+		rows := starredRows(docs, roots, dirA, false, allStarredBrowseScope)
 		want := []string{docA, docB}
 		if len(rows) != len(want) {
 			t.Fatalf("starredRows returned %d rows, want %d", len(rows), len(want))
