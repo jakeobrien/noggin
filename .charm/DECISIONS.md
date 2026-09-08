@@ -211,7 +211,7 @@
 
 ## D22: M3.3 Roots Nav pulls forward a minimal footer message, ahead of M4.2
 
-- Status: decided
+- Status: decided — Picker parent-path disambiguation dropped by C6/D117
 - Cycle: C1
 - Date: 2026-07-31
 - Context: D20 parked S1's launch-rejection message on `model.message` with display deferred to
@@ -352,7 +352,7 @@
 
 ## D31: The Picker is a jump tool, not a browser — stateless and query-only
 
-- Status: decided
+- Status: decided — 3-character minimum revised to 2 by C6/D116
 - Cycle: C2
 - Date: 2026-08-02
 - Context: Several small choices (memory, minimum query length, what the query matches, what
@@ -1098,7 +1098,7 @@
 
 ## D94: Wikipedia is modelled as a kind of Root, not as a new tab/channel layer — but the model itself is deferred
 
-- Status: decided
+- Status: decided — deferred model question resolved by C6/D114
 - Cycle: C4a
 - Date: 2026-08-14
 - Context: The pitch was a top-row tab bar selected by number keys (`1` Notes, `2` Wikipedia).
@@ -1228,3 +1228,100 @@
   survives the cycle) is unblocked by this verdict but still decided at `/charm-close`, per
   its own entry, not here.
 
+
+## D113: This cycle is C6 sources; C5 organize is withdrawn, not reused
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: Priorities moved: the collections work should run before tags/outline. The user
+  first proposed reusing the unstarted `C5` key for it. But archived docs and D95 already say
+  "Tags are C5", and D94 had already scheduled the collections question as `C6`.
+- Decision: allocate this cycle as **C6 sources**; mark `C5 organize` **withdrawn** in the
+  ledger with its goals moved to Unscheduled; the C5 key is retired and never reused.
+- Why: least disruptive — nothing that points at C5 or C6 needs re-pointing, and the
+  never-renumber rule holds even for unstarted keys. Ledger order remains independent of key
+  order (D42, D95).
+
+## D114: Sources, not Collections — Root stays, Query Source is the new class
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: C4a left "Collection" provisional and D94 left open whether a typed Root is "just a
+  source with conditional UX, or needs a distinct layer". The user proposed renaming
+  collection → source, root → file source, Wikipedia/dictionary → query source.
+- Decision: **Source** is the umbrella entity (Roots Nav → Sources Nav). **Root** keeps its name
+  and meaning. **Query Source** is the second class: singular per kind, always present, never
+  created/removed/starred, no Tree, no grep, reached only by search. "Collection" is retired
+  as an in-app term and kept only as north-star language. D94's open question resolves to:
+  a typed Source with conditional UX, no distinct layer.
+- Why: "Root" is load-bearing across the glossary (Active/Ad-hoc/Broken Root, Orphan, All
+  Roots) and is exact for a folder; renaming it buys nothing. The unifying observation is that
+  neither class persists its content — only pointers, stars and timestamps — and the real axis
+  of difference is bounded-and-crawlable vs. not, which is what dictates Tree and grep.
+
+## D115: Query Source documents in Recent are treated exactly like files
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: The pitch suggested a Wikipedia-specific time/count cap or session-scoped Recent.
+- Decision: no special treatment — same persistence, per-Source cap, recency-only ordering.
+- Why: Recent is the only way back to an unstarred article other than re-searching, which
+  makes persistence more valuable for articles, not less; a divergent rule would also break the
+  "restate for the dictionary without rewording" test the spec is built around.
+
+## D116: Picker minimum query length is 2 (revises D31's 3)
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: D31 fixed the File/Grep Picker threshold at 3 characters.
+- Decision: 2 characters in every Picker mode including Wikipedia; searches remain debounced,
+  with a longer wait in Wikipedia mode because each search is a network call.
+- Why: user judgment that 3 feels laggy; the existing debounce (D41) already prevents
+  per-keystroke work, so the threshold was carrying less than it appeared.
+
+## D117: Root parent-path fragment dropped from Picker rows; editable Root names replace it
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: D22 disambiguated same-named Roots in Picker rows via a left-truncated parent path.
+- Decision: drop the fragment (row = Root name + path relative to the Root). Persisted Roots
+  gain an editable name (default: folder base name); the Sources Nav's path line remains the
+  disambiguator there. Ad-hoc Roots have no name until starred.
+- Why: the fragment costs width on every row to solve a rare case that a user-chosen name
+  solves better. Accepted loss: two same-named, un-renamed Roots are indistinguishable in
+  Picker rows.
+
+## D118: Focus indicated by background — inactive panes lighter, as an evaluation
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: Focus is currently border colour only (205 vs 240, 256-colour palette, no
+  backgrounds anywhere). The user wants to evaluate background-based focus before the roadmap's
+  style pass. "Active pane darker" was the first framing.
+- Decision: tint **unfocused** panes with a subtly lighter background; the focused pane keeps
+  the terminal's own background; border cue retained. Provisional until the style pass.
+- Why: darkening the focused pane is a no-op on already-black terminals; lightening the
+  others is visible regardless of theme. Known risk for build: Glamour output carries its own
+  ANSI resets, so an inactive Document Viewer may show tint "holes" — acceptable in an
+  evaluation.
+
+## D119: Articles carry no Preview and are never grepped; File·Starred is the only cross-class search
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: Each article Preview or grep would require a network fetch (or persisted content,
+  which contradicts D114's pointer-only rule).
+- Decision: Wikipedia Picker shows a placeholder instead of a Preview; Grep never includes
+  Query Sources in any scope; the File Picker's `All Roots` scope is files only; `Starred` scope
+  matches starred articles by title. With a Query Source active, File/Grep skip the
+  `Active Root` scope rather than offering an empty one. Cross-Source *lists* in the Files Nav
+  (`All Starred`, `All Sources`) do include articles — those are store lookups, not fetches.
+- Why: keeps every network call user-initiated and explicit (search, Activate, Peek, Refresh);
+  no dead-end scopes.

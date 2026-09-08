@@ -1,4 +1,4 @@
-# Progress — C5 organize
+# Progress — C6 sources
 
 <!-- Per-cycle. Cursor and statuses ONLY — no work summaries (git history carries those).
      The Handoff section is the single exception: overwrite it each session, never append.

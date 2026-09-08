@@ -43,12 +43,13 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
 | C3  | compare            | done    | Second Document Viewer (DV2), ctrl+ targeting from Files Nav/Picker, four-way direct focus keys replacing Tab-cycling, ctrl+x close, dual-viewer refresh/staleness, session-only DV2 state | `archive/C3-2026-08-compare/` |
 | C4  | recall             | done    | Delivered all 10 spec'd deliverables (S1–S10) across 46 plan tasks; none of D63's four pre-agreed cuts were needed | `archive/C4-2026-08-recall/` |
 | C4a | wikipedia-spike    | done    | GO, with a known limitation (D112): conversion quality clears the reading bar on 4/4 samples, one (`E (mathematical constant)`) with a residual maths-rendering gap; spike code kept as reference (D97), not integrated. Gates the Wikipedia-collection, dictionary-collection and C6 entries below | `archive/C4a-2026-09-wikipedia-spike/` |
-| C5  | organize           | planned | Non-hierarchical structure and document shape: tags, outline, file management | - |
-| C6  | collections        | planned | Deliberately vague, and gated on C4a: what a *collection* is beyond a folder — what all collections share, where they diverge, and how starring spans them | - |
+| C5  | organize           | withdrawn | Un-planned 2026-09-07 before any spec: priorities moved to Sources first. Its goals (tags, outline, file management) live in Unscheduled. Key retired, never reused | - |
+| C6  | sources            | active  | Roots generalize to **Sources**; Wikipedia is the first **Query Source** — search (Picker mode), read, star, Recent, side-by-side with local files — shaped so a dictionary Source needs no second redefinition. Plus editable Root names and a batch of polish (location line, de-emphasized paths, background focus, half-page paging, 2-char Picker threshold) | - |
 
 <!-- C4a is a suffixed interstitial key per D42: C5 was already referenced by intent in
      DECISIONS.md, knowledge/ and archived cycle docs ("Tags are C5"), so renumbering was
-     not available. Ledger order is independent of key order. -->
+     not available. Ledger order is independent of key order. C6 runs before the withdrawn
+     C5 for the same reason: D94 had already scheduled the collections question as C6. -->
 
 ## Unscheduled
 
@@ -65,9 +66,12 @@ persisted sources; nvim renders markdown poorly and is unfocused for this task.
   (from C2, D31)
 - File Picker matching against path components, not just the file name (from C2, D31)
 - Picker memory: last mode, last Scope, last query (from C2, D31; see repeat-last-search below)
-- Wikipedia as a real collection inside noggin — search, read, star, refresh (from C4a;
-  go/no-go cleared per D112 — GO, with a known maths-rendering limitation; shaped by C6)
-- A dictionary / thesaurus collection (from C4a; unblocked alongside the above per D112)
+- Tags, outline and file management — non-hierarchical structure and document shape (the
+  withdrawn C5 organize; D10 on tag notation is still open)
+- A dictionary / thesaurus **Query Source** (from C4a; unblocked per D112; C6's Source model
+  is built to admit it without redefinition)
+- A style pass: dark/light mode, palette, style sheet — required before shipping; C6's
+  background-focus and de-emphasis choices are provisional until then (from C6)
 - Reading saved LLM-chat transcripts as an ordinary collection, plus a handoff key to a chat
   TUI (from C4a; chat itself is deliberately *not* noggin's job)
 - Select mode + copy in the Document Viewer (from C1); **wiki-link and URL following** (from

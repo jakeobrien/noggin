@@ -1,4 +1,4 @@
-# Plan — C5 organize
+# Plan — C6 sources
 
 <!-- Per-cycle. The spec decomposed into milestones and tasks. Technically aware but
      high-level: state WHAT and the done-condition, not step-by-step HOW — trust executor

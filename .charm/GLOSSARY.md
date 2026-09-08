@@ -6,6 +6,12 @@
 - **Active Document** — the document currently rendered in the Document Viewer. Independent of
   the Active Root: switching roots does not change it.
 - **Active Root** — the one Root whose contents the Files Nav is showing. Exactly one at a time.
+  Generalized to **Active Source** in C6: wherever a Query Source can be the active one, the
+  term (and scope label) is Active Source; "Active Root" survives where only Roots qualify
+  (Grep).
+- **Article** — a document served by the Wikipedia Source. Identified by its canonical URL
+  (redirects resolved) and title; noggin stores that pointer plus star/last-viewed, never the
+  content (C6).
 - **Ad-hoc Root** — a Root supplied by the command line for this session only, not persisted.
   Listed first because it was named deliberately. At most one per session (C1).
 - **Broken Root** — a Root whose path no longer exists on disk. Still listed and its starred
@@ -16,10 +22,9 @@
 - **Browse Scope** — what a Browse Mode is drawn from. `Tree` has none; `Recent` is Active Root
   or All Roots; `Starred` is Active Root, All Starred or Orphans. Remembered per (Root, Mode)
   for the session (C4). Distinct from a Picker's Scope.
-- **Collection** — a bounded source of documents noggin can browse and read. Today every
-  Collection is a Root (a folder on disk); the north star admits non-folder ones (Wikipedia,
-  a dictionary, saved chat transcripts). **Provisional**: what all Collections share and
-  where they diverge is deliberately undecided until C6 (C4a).
+- **Collection** — north-star language for a class of knowledge noggin admits (Notes,
+  Wikipedia, Dictionary). Not an in-app entity: the entity is the **Source** (C6, resolving
+  C4a's provisional definition).
 - **Chrome** — everything a fetched Wikipedia page carries that is not the article itself:
   navboxes, sidebars (e.g. "Part of a series on X" boxes; CSS class `sidebar`, distinct from
   navbox), infoboxes, edit-section links, citation superscripts, reference lists, metadata
@@ -47,7 +52,8 @@
 - **Edit** — the handoff: release the terminal to `$EDITOR` on the Active Document, then resume
   and re-render. Not in-app editing.
 - **File Picker** — the Picker whose Results are files, matched fuzzily (C2).
-- **Files Nav** — the lower Navigator pane; the file tree of the Active Root.
+- **Files Nav** — the lower Navigator pane; the file tree of the Active Root — or, when a
+  Query Source is active, its Starred / Recent lists only (C6).
 - **Find** — the `/`-style incremental search over the Active Document: next/previous
   traversal wraps, case-insensitive unless the query has uppercase. See Committed Find.
   *Find is always within one document*; searching across files is a Picker.
@@ -58,7 +64,10 @@
 - **Focus Badge** — the key that focuses a pane, shown right-aligned on that pane's title row
   (`[f]`, `[^o]`). Dropped when the pane is too narrow (C4).
 - **Footer** — the persistent bottom bar: contextual key hints plus transient messages.
-- **Grep Picker** — the Picker whose Results are matching lines across files (C2).
+- **Grep Picker** — the Picker whose Results are matching lines across files (C2). Never
+  includes Query Sources (C6).
+- **Location line** — the de-emphasized bottom row of a Document Viewer naming where its
+  document lives: Root name + relative path, full path for an orphan, URL for an Article (C6).
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
   footer's help affordance and dismissible with one key.
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
@@ -73,7 +82,10 @@
   Picker open or Refresh — restoring the Active Document at its previous scroll position.
   `<enter>` is the only promotion path. Distinct from the Picker's Preview pane (C2a).
 - **Picker** — the modal fuzzy-finding UI: a Prompt, a Results list, and a Preview pane.
-  Comes in modes — File Picker and Grep Picker (C2). "Finder" is deliberately avoided; it
+  Comes in modes — File Picker, Grep Picker (C2) and Wikipedia Picker (C6).
+- **Query Source** — a Source reached only by search: a remote service, exactly one of each
+  kind, always present, never created, removed or starred. Has no Tree and no grep; its
+  documents are found by search, then kept via Starred or Recent. Wikipedia is the first (C6). "Finder" is deliberately avoided; it
   means the OS file manager.
 - **Preview pane** — the part of a Picker that shows the selected Result's file. Lives inside
   the Picker only; it never changes the Active Document (C2).
@@ -94,12 +106,21 @@
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
 - **Root** — a folder that bounds file visibility. Several exist per session; identified by
-  exact path; may not nest inside another Root.
-- **Roots Nav** — the upper Navigator pane; the list of the session's Roots.
+  exact path; may not nest inside another Root. One of the two classes of Source (C6).
+- **Root name** — the editable label of a persisted Root, defaulting to its folder's base
+  name; shown wherever the Root is labelled. Ad-hoc Roots have none until starred (C6).
+- **Roots Nav** — the upper Navigator pane; the list of the session's Roots. Renamed
+  **Sources Nav** in C6.
+- **Source** — anything noggin serves documents from; the entity listed in the Sources Nav.
+  Two classes: Root and Query Source. Common rule: content is always fetched, never stored —
+  noggin keeps pointers, stars and timestamps only (C6).
+- **Sources Nav** — the upper Navigator pane: Ad-hoc Root, persisted Roots, then Query
+  Sources (C6; formerly Roots Nav).
 - **Scratch root** — a throwaway Root, outside the repo, holding converted articles purely so
   they can be read in noggin's own Document Viewer at real pane widths. A judging proxy, not
   a feature (C4a).
-- **Scope** — what a Picker searches: the Active Root, or All Roots (C2).
+- **Scope** — what a Picker searches: the Active Root, All Roots (C2), or Starred (C4). The
+  Wikipedia Picker has none; with a Query Source active, File/Grep skip Active Root (C6).
 - **Staleness indicator** — a passive UI signal that an open Document Viewer's Active Document
   or the Active Root's tree changed on disk. Reports only that *something* changed across
   those sources, and never refreshes on its own (C2a). Its own dedicated, highlighted row
@@ -109,6 +130,10 @@
 - **Starred** — bookmarked and persisted across sessions. Applies to Roots (C1) and to
   documents (C4). Document stars are a single global collection of paths, independent of the
   Root lifecycle: un-starring a Root never touches them.
+- **Wikipedia Picker** — the Picker mode that searches Wikipedia article titles; no Scope, no
+  Preview; reachable from any Active Source (C6).
+- **Wikipedia Source** — the first Query Source: English Wikipedia, listed last in the
+  Sources Nav (C6).
 - **Targeting modifier** — the `ctrl+` prefix on Files Nav's Activate/Peek and the Picker's
   Activate that routes the action to DV2 instead of DV1, creating DV2 first if it doesn't
   already exist. Unmodified keys always target DV1. The same `ctrl+` prefix is also used by
