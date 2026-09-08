@@ -139,7 +139,7 @@ type keyMap struct {
 	// Picker opens the C2 Picker modal (S1): global, like Edit/Find/
 	// Navigator, and reachable from every Focus including while the
 	// Navigator is hidden. It always opens the same way — File Picker
-	// mode, Active Root Scope, empty Prompt (model.openPicker) — and
+	// mode, Active Source Scope, empty Prompt (model.openPicker) — and
 	// Cancel is its one-key dismissal, the same generic binding Find and
 	// the Help Modal already share.
 	Picker key.Binding
@@ -155,8 +155,9 @@ type keyMap struct {
 	PickerDown key.Binding
 
 	// PickerMode and PickerScope switch the open Picker's mode (File ↔
-	// Grep, S7) and Scope (Active Root -> All Roots -> Starred, S7/S8) in
-	// place, without touching the Prompt (M2.3 reserves them as
+	// Grep, S7) and Scope (its first value labelled Active Root for Grep,
+	// Active Source for File Picker, C6/M1.3; then All Roots, then Starred,
+	// S7/S8) in place, without touching the Prompt (M2.3 reserves them as
 	// non-typing; M5.1/M5.2 give them their actions, C4/M5.1 adds
 	// Scope's third value). Tab/Shift+Tab rather than a letter, for the
 	// same reason PickerUp/PickerDown avoid "j"/"k": both are

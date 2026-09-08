@@ -46,7 +46,7 @@ func TestPickerOpensFromEveryFocusAndNavigatorHidden(t *testing.T) {
 // TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt is S1's fixed opening
 // state, checked from a picker that (if memory existed) would say
 // otherwise: Grep mode, All Roots Scope, a typed Prompt. Opening always
-// resets to File Picker / Active Root / empty Prompt regardless.
+// resets to File Picker / Active Source / empty Prompt regardless.
 func TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m.picker = picker{open: false, mode: grepMode, scope: allRootsScope, input: newPicker().input}
@@ -71,7 +71,7 @@ func TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt(t *testing.T) {
 // TestPickerDismissRestoresThePreOpenFrameByteForByte is M2.1's own
 // acceptance criterion: opening the Picker, changing what it would show
 // (mode, Scope, Prompt) and dismissing it leaves the session exactly as it
-// was found — the same Active Document, Active Root and scroll position,
+// was found — the same Active Document, Active Source and scroll position,
 // and (since M2.1 predates any Picker rendering, M2.2 onward's job) the
 // exact same rendered frame.
 func TestPickerDismissRestoresThePreOpenFrameByteForByte(t *testing.T) {
@@ -1353,7 +1353,7 @@ func TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch(t *testing.T) {
 
 // TestPickerScopeSwitchFindsNonActiveRootOnlyAfterSwitchingToAllRoots is
 // M5.2's own acceptance criterion, verbatim: a query matching only in a
-// non-active Root finds nothing under Active Root Scope, finds it once
+// non-active Root finds nothing under Active Source Scope, finds it once
 // switched to All Roots, the Prompt is unchanged throughout, and a Broken
 // Root in the session produces no error row (S6's "All Roots silently
 // skips Broken Roots", already M1.2's contract at the listFiles layer;
@@ -1375,16 +1375,16 @@ func TestPickerScopeSwitchFindsNonActiveRootOnlyAfterSwitchingToAllRoots(t *test
 	m, seqs := typePickerQuery(t, m, query)
 	m, searches := deliverPickerTicks(t, m, seqs)
 	if searches == 0 {
-		t.Fatal("no initial Active Root search was dispatched; setup is broken")
+		t.Fatal("no initial Active Source search was dispatched; setup is broken")
 	}
 	if m.picker.scope != activeRootScope {
 		t.Fatalf("scope = %v, want activeRootScope before any switch", m.picker.scope)
 	}
 	if got := len(m.picker.results.files); got != 0 {
-		t.Fatalf("Active Root results = %d files, want 0 (the match is only in a non-active Root)", got)
+		t.Fatalf("Active Source results = %d files, want 0 (the match is only in a non-active Root)", got)
 	}
 	if m.message != "" {
-		t.Fatalf("message after Active Root search = %q, want empty (no error row)", m.message)
+		t.Fatalf("message after Active Source search = %q, want empty (no error row)", m.message)
 	}
 
 	// Switch to All Roots: the PickerScope key is swallowed as a non-typing

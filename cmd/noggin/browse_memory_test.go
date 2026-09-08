@@ -26,7 +26,7 @@ func TestBrowseMemoryModePerRootScopePerRootMode(t *testing.T) {
 
 	f := newFilesNav().setRoot(rootA)
 	f = f.cycleMode()  // Tree -> Recent
-	f = f.cycleScope() // Active Root -> All Roots
+	f = f.cycleScope() // Active Source -> All Roots
 	if f.mode != recentBrowse || f.scope != allRootsBrowseScope {
 		t.Fatalf("setup: Root A's pair = (%v, %v), want (Recent, All Roots)", f.mode, f.scope)
 	}
@@ -40,7 +40,7 @@ func TestBrowseMemoryModePerRootScopePerRootMode(t *testing.T) {
 	}
 	f = f.cycleMode()  // Tree -> Recent
 	f = f.cycleMode()  // Recent -> Starred
-	f = f.cycleScope() // Active Root -> All Starred
+	f = f.cycleScope() // Active Source -> All Starred
 	f = f.cycleScope() // All Starred -> Orphans
 	if f.mode != starredBrowse || f.scope != orphansBrowseScope {
 		t.Fatalf("setup: Root B's pair = (%v, %v), want (Starred, Orphans)", f.mode, f.scope)
@@ -76,9 +76,9 @@ func TestBrowseMemoryScopePerModeSurvivesAThirdModeVisit(t *testing.T) {
 
 	f := newFilesNav().setRoot(rootA)
 	f = f.cycleMode()  // Tree -> Recent
-	f = f.cycleScope() // Active Root -> All Roots (Recent's own scope on A)
+	f = f.cycleScope() // Active Source -> All Roots (Recent's own scope on A)
 	f = f.cycleMode()  // Recent -> Starred
-	f = f.cycleScope() // Active Root -> All Starred (Starred's own scope on A)
+	f = f.cycleScope() // Active Source -> All Starred (Starred's own scope on A)
 
 	// Leave and return to Root A without ever switching mode again here —
 	// setRoot alone is what must round-trip both modes' scopes.

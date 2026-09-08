@@ -29,8 +29,8 @@ func normalizedRows(view string) string {
 
 // TestFilesNavEveryModeScopeCombinationEmptyShowsAMessage is M4.4's own
 // acceptance wording: every one of S5's six mode/scope combinations (Tree's
-// one scope-less state; Recent's Active Root and All Roots; Starred's
-// Active Root, All Starred and Orphans) renders a brief, non-blank message
+// one scope-less state; Recent's Active Source and All Roots; Starred's
+// Active Source, All Starred and Orphans) renders a brief, non-blank message
 // of its own when it has nothing to show, rather than sharing one
 // placeholder across a whole mode (recentEmptyText/starredEmptyText's
 // pre-M4.4 shape) or leaving the row list blank. The Tree combo's own
@@ -57,9 +57,9 @@ func TestFilesNavEveryModeScopeCombinationEmptyShowsAMessage(t *testing.T) {
 		scope browseScope
 	}{
 		{"Tree", treeBrowse, activeRootBrowseScope},
-		{"Recent/Active Root", recentBrowse, activeRootBrowseScope},
+		{"Recent/Active Source", recentBrowse, activeRootBrowseScope},
 		{"Recent/All Roots", recentBrowse, allRootsBrowseScope},
-		{"Starred/Active Root", starredBrowse, activeRootBrowseScope},
+		{"Starred/Active Source", starredBrowse, activeRootBrowseScope},
 		{"Starred/All Starred", starredBrowse, allStarredBrowseScope},
 		{"Starred/Orphans", starredBrowse, orphansBrowseScope},
 	}

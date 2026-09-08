@@ -91,7 +91,7 @@ func sortByRecency(entries []docTimestamp) {
 // bucket is ordered newest-first and capped at recentPerRootCap (S6's own
 // per-Root cap) independently, before scope is applied:
 //
-//   - Active Root scope reads only the bucket keyed by activeRootPath (nil
+//   - Active Source scope reads only the bucket keyed by activeRootPath (nil
 //     when activeRootPath is "", i.e. no root is active — there is no
 //     bucket for "no active root" to fall back to).
 //   - All Roots scope merges every bucket's own (already-capped) list,
@@ -157,7 +157,7 @@ func recentRows(docs map[string]docRecord, roots []root, activeRootPath string, 
 //
 // Buckets key on the same rootForPath-derived Root path, or "" for a
 // document under no session Root (an "orphan", S1) — recentRows' identical
-// bucketing, just never capped. Active Root reads only its own bucket
+// bucketing, just never capped. Active Source reads only its own bucket
 // (activeRootPath == "" short-circuits to none, same as recentRows); All
 // Starred merges every bucket, orphans included; Orphans (the pre-agreed cut
 // 3 in PLAN.md/M4.3, carried regardless — see browse.go's modeScopes) reads

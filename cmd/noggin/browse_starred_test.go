@@ -19,7 +19,7 @@ func starredFixtureFile(t *testing.T, dir, name string) string {
 }
 
 // TestStarredRowsActiveRootScopeOnlyShowsThatRoot is M4.3's own acceptance
-// wording, first clause: Active Root reads only the Starred documents under
+// wording, first clause: Active Source reads only the Starred documents under
 // the active Root, never another Root's or an orphan's.
 func TestStarredRowsActiveRootScopeOnlyShowsThatRoot(t *testing.T) {
 	dir := t.TempDir()
@@ -36,7 +36,7 @@ func TestStarredRowsActiveRootScopeOnlyShowsThatRoot(t *testing.T) {
 
 	rows := starredRows(docs, roots, rootA, activeRootBrowseScope)
 	if len(rows) != 1 || rows[0].path != aDoc {
-		t.Errorf("Active Root scope rows = %+v, want exactly [%q]", rows, aDoc)
+		t.Errorf("Active Source scope rows = %+v, want exactly [%q]", rows, aDoc)
 	}
 }
 
@@ -108,7 +108,7 @@ func TestStarredRowsExcludesUnstarredRecords(t *testing.T) {
 	roots := []root{{path: rootDir}}
 
 	if rows := starredRows(docs, roots, rootDir, activeRootBrowseScope); len(rows) != 0 {
-		t.Errorf("Active Root scope rows = %+v, want none (never starred)", rows)
+		t.Errorf("Active Source scope rows = %+v, want none (never starred)", rows)
 	}
 	if rows := starredRows(docs, roots, rootDir, allStarredBrowseScope); len(rows) != 0 {
 		t.Errorf("All Starred scope rows = %+v, want none (never starred)", rows)
@@ -129,7 +129,7 @@ func TestStarredRowsIncludesNeverViewedRecords(t *testing.T) {
 
 	rows := starredRows(docs, roots, rootDir, activeRootBrowseScope)
 	if len(rows) != 1 || rows[0].path != neverViewed {
-		t.Errorf("Active Root scope rows = %+v, want exactly [%q]", rows, neverViewed)
+		t.Errorf("Active Source scope rows = %+v, want exactly [%q]", rows, neverViewed)
 	}
 }
 
@@ -166,7 +166,7 @@ func TestStarredRowsMarksBrokenFileRatherThanOmitting(t *testing.T) {
 }
 
 // TestStarredRowsActiveRootScopeWithNoActiveRootIsEmpty mirrors Recent's own
-// edge case: with no root active, Active Root scope has no bucket to read,
+// edge case: with no root active, Active Source scope has no bucket to read,
 // not the orphan bucket by accident (both key on "").
 func TestStarredRowsActiveRootScopeWithNoActiveRootIsEmpty(t *testing.T) {
 	dir := t.TempDir()
@@ -248,7 +248,7 @@ func TestFilesNavStarredModeRendersFlatRowsWithoutStarMarker(t *testing.T) {
 }
 
 // TestFilesNavStarredModeEmptyShowsAMessage checks Starred mode's own
-// resting state: Active Root scope's own M4.4 message.
+// resting state: Active Source scope's own M4.4 message.
 func TestFilesNavStarredModeEmptyShowsAMessage(t *testing.T) {
 	dir := t.TempDir()
 	rootDir := mkdir(t, filepath.Join(dir, "project"))

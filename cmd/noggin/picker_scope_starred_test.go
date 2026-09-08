@@ -7,8 +7,8 @@ import (
 
 // TestSwitchPickerScopeCyclesThroughStarredAndBack is S8/M5.1's "a
 // three-way cycle" acceptance wording: the scope key now visits Active
-// Root, All Roots and Starred in that fixed order before returning to
-// Active Root, the same "named cycle order" shape browse.go's modeScopes
+// Source, All Roots and Starred in that fixed order before returning to
+// Active Source, the same "named cycle order" shape browse.go's modeScopes
 // already gives Browse Scope rather than a pairwise toggle per value.
 func TestSwitchPickerScopeCyclesThroughStarredAndBack(t *testing.T) {
 	m := sized(t, newModel(), 80, 24).withRipgrep(ripgrepAvailability{available: true})
@@ -81,7 +81,7 @@ func starredScopeFixture(t *testing.T) (m model, orphan string) {
 	}
 
 	m, _ = m.openPicker()
-	for i := 0; i < 2; i++ { // Active Root -> All Roots -> Starred
+	for i := 0; i < 2; i++ { // Active Source -> All Roots -> Starred
 		next, _ := m.Update(keyPress(keys.PickerScope.Keys()[0]))
 		m = concrete(t, next)
 	}

@@ -42,27 +42,27 @@ func TestBrowseScopeIsANoOpInTreeMode(t *testing.T) {
 }
 
 // TestBrowseScopeCyclesRecentsTwoValues checks Recent's own scope set (S5:
-// "Active Root | All Roots"), wrapping after two values.
+// "Active Source | All Roots"), wrapping after two values.
 func TestBrowseScopeCyclesRecentsTwoValues(t *testing.T) {
 	f := newFilesNav().cycleMode() // Tree -> Recent
-	if got := f.scopeLabel(); got != "Active Root" {
-		t.Fatalf("Recent's starting scope = %q, want Active Root", got)
+	if got := f.scopeLabel(); got != "Active Source" {
+		t.Fatalf("Recent's starting scope = %q, want Active Source", got)
 	}
 	f = f.cycleScope()
 	if got := f.scopeLabel(); got != "All Roots" {
 		t.Errorf("Recent's scope after one cycle = %q, want All Roots", got)
 	}
 	f = f.cycleScope()
-	if got := f.scopeLabel(); got != "Active Root" {
-		t.Errorf("Recent's scope after two cycles = %q, want Active Root (wrapped)", got)
+	if got := f.scopeLabel(); got != "Active Source" {
+		t.Errorf("Recent's scope after two cycles = %q, want Active Source (wrapped)", got)
 	}
 }
 
 // TestBrowseScopeCyclesStarredsThreeValues checks Starred's own scope set
-// (S5: "Active Root | All Starred | Orphans"), wrapping after three values.
+// (S5: "Active Source | All Starred | Orphans"), wrapping after three values.
 func TestBrowseScopeCyclesStarredsThreeValues(t *testing.T) {
 	f := newFilesNav().cycleMode().cycleMode() // Tree -> Recent -> Starred
-	want := []string{"Active Root", "All Starred", "Orphans", "Active Root"}
+	want := []string{"Active Source", "All Starred", "Orphans", "Active Source"}
 	for i, w := range want {
 		if got := f.scopeLabel(); got != w {
 			t.Errorf("Starred's scope at step %d = %q, want %q", i, got, w)
@@ -74,17 +74,17 @@ func TestBrowseScopeCyclesStarredsThreeValues(t *testing.T) {
 // TestBrowseModeSwitchResetsScopeToTheNewModesFirstValue checks that a scope
 // index carried from one mode is never read against a different mode's own
 // value set: switching from Recent's second scope (All Roots) to Starred
-// lands on Starred's own first value (Active Root), not on Starred's
+// lands on Starred's own first value (Active Source), not on Starred's
 // same-index (All Starred) or a stale label.
 func TestBrowseModeSwitchResetsScopeToTheNewModesFirstValue(t *testing.T) {
 	f := newFilesNav().cycleMode() // Tree -> Recent
-	f = f.cycleScope()             // Active Root -> All Roots
+	f = f.cycleScope()             // Active Source -> All Roots
 	if got := f.scopeLabel(); got != "All Roots" {
 		t.Fatalf("setup: Recent's scope = %q, want All Roots", got)
 	}
 	f = f.cycleMode() // Recent -> Starred
-	if got := f.scopeLabel(); got != "Active Root" {
-		t.Errorf("Starred's scope right after switching from Recent/All Roots = %q, want Active Root", got)
+	if got := f.scopeLabel(); got != "Active Source" {
+		t.Errorf("Starred's scope right after switching from Recent/All Roots = %q, want Active Source", got)
 	}
 }
 
@@ -97,8 +97,8 @@ func TestFilesModeScopeRowShowsTheCurrentPair(t *testing.T) {
 		scope string
 	}{
 		{"Tree", "-"},
-		{"Recent", "Active Root"},
-		{"Starred", "Active Root"},
+		{"Recent", "Active Source"},
+		{"Starred", "Active Source"},
 	}
 	for _, c := range cases {
 		lines := strings.Split(f.view(), "\n")

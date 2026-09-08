@@ -146,10 +146,17 @@ func (p picker) promptView(width int) string {
 // off p.mode/p.scope rather than being passed in as text.
 func pickerModeScope(p picker, hideDotfiles bool) string {
 	mode := "File"
+	// Grep's own Scope keeps reading "Active Root" (C6/M1.3): Grep never
+	// reaches Wikipedia (S6), so its activeRootScope value always names a
+	// literal Root. File Picker's identical zero value instead reads
+	// "Active Source" — today that is still always a Root (Wikipedia's own
+	// Picker mode lands later, M3.2), but the label is ahead of that on
+	// purpose so M3.2 does not need a second relabelling pass.
+	scope := "Active Source"
 	if p.mode == grepMode {
 		mode = "Grep"
+		scope = "Active Root"
 	}
-	scope := "Active Root"
 	switch p.scope {
 	case allRootsScope:
 		scope = "All Roots"

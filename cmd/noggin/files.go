@@ -157,7 +157,7 @@ func newFilesNav() filesNav {
 // flat mode re-resolves f.selected against that list's own rowCount instead
 // of trusting the Tree-shaped value indexOfPath produced (TRIAGE T23/D82) —
 // but only once f.activeRootPath itself already names root (below), not the
-// Root being left: a flat mode's Active Root scope reads the bucket keyed
+// Root being left: a flat mode's Active Source scope reads the bucket keyed
 // by activeRootPath (recentRows/starredRows), and the model's own
 // refreshFilesRecentSource call that would otherwise repoint it never runs
 // until after setRoot returns (TRIAGE T38/M4.15) — this method's single

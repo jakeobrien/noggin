@@ -534,7 +534,7 @@ func TestPickerGrepRowTruncatesLongLinesWithoutWrapping(t *testing.T) {
 // covers the whole path — status selection, the Prompt box's title and
 // caption rows, and the modal's own width being enough for the text.
 func TestPickerStatusStates(t *testing.T) {
-	// results labels a result set as answering query in File/Active Root
+	// results labels a result set as answering query in File/Active Source
 	// mode, which is what a Picker that has just searched holds.
 	results := func(query string, files []pickerFile, truncated bool) pickerResults {
 		return pickerResults{query: query, mode: fileMode, scope: activeRootScope, files: files, truncated: truncated}
@@ -553,7 +553,7 @@ func TestPickerStatusStates(t *testing.T) {
 			name:  "mode and Scope indicator",
 			avail: ripgrepAvailability{available: true},
 			setup: func(p *picker) {},
-			want:  []string{"File · Active Root"},
+			want:  []string{"File · Active Source"},
 		},
 		{
 			// TRIAGE T7 / DECISIONS.md D50: the alt+h dotfile-hiding toggle's
@@ -564,7 +564,7 @@ func TestPickerStatusStates(t *testing.T) {
 			avail:        ripgrepAvailability{available: true},
 			hideDotfiles: true,
 			setup:        func(p *picker) {},
-			want:         []string{"File · Active Root · Hidden"},
+			want:         []string{"File · Active Source · Hidden"},
 		},
 		{
 			name:  "Grep and All Roots indicator",

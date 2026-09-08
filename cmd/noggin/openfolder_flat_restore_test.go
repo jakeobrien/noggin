@@ -9,14 +9,14 @@ import (
 
 // TestOpenFolderRestoresFlatModeSelectionAgainstTheCorrectRoot is TRIAGE
 // T38/M4.15's own regression: switching the Active Root back onto a Root
-// previously left in a flat browse mode (Recent/Starred, Active Root scope)
+// previously left in a flat browse mode (Recent/Starred, Active Source scope)
 // must restore M4.6's remembered row, not reset to row 0.
 //
 // The bug lived in filesNav.setRoot's own clampSelected() call: it runs
 // before model.openFolder's later refreshFilesRecentSource re-points
 // f.activeRootPath at the Root setRoot itself just switched to, so the
 // restore's re-clamp (clampSelected -> rowCount -> flatRows -> recentRows/
-// starredRows) reads Active Root scope's bucket keyed by the *outgoing*
+// starredRows) reads Active Source scope's bucket keyed by the *outgoing*
 // Root's still-stale activeRootPath instead of the incoming one — an empty
 // or wrong-sized bucket, collapsing the restored index to 0 even though the
 // incoming Root's own flat list is unchanged and the memory-restored index
@@ -71,7 +71,7 @@ func TestOpenFolderRestoresFlatModeSelectionAgainstTheCorrectRoot(t *testing.T) 
 
 	// Switch to Root B (openFolder again, activating it first the same way
 	// model.activateRoot does) — M4.6 memory now holds Root A's (Starred,
-	// Active Root) pair with selectedPath = a3.md.
+	// Active Source) pair with selectedPath = a3.md.
 	m.roots = m.roots.activate(1)
 	m = m.openFolder(nodeB)
 	if m.files.root.Path != rootBDir {
@@ -79,7 +79,7 @@ func TestOpenFolderRestoresFlatModeSelectionAgainstTheCorrectRoot(t *testing.T) 
 	}
 
 	// Back to Root A: the memory-restored row (a3.md, index 2) must survive
-	// against Root A's own three-row Starred/Active Root list, not collapse
+	// against Root A's own three-row Starred/Active Source list, not collapse
 	// to 0 against Root B's single-row bucket.
 	m.roots = m.roots.activate(0)
 	m = m.openFolder(nodeA)

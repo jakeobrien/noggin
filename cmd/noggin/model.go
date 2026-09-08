@@ -476,7 +476,7 @@ func (m model) walkViewerHistory(dir func(viewer) (viewer, string, bool)) model 
 
 // historyBack and historyForward are keys.HistoryBack/keys.HistoryForward's
 // actions (C4/M6.1): each focused Document Viewer walks its own S9
-// back/forward stack independently, never the Active Root (walkViewerHistory
+// back/forward stack independently, never the Active Source (walkViewerHistory
 // never calls openFolder/setRoot, so m.roots is untouched either way).
 func (m model) historyBack() model    { return m.walkViewerHistory(viewer.goBack) }
 func (m model) historyForward() model { return m.walkViewerHistory(viewer.goForward) }

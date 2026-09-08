@@ -236,7 +236,7 @@ func TestRecentRowsAllRootsMergesByTimestampAcrossRootsAndOrphans(t *testing.T) 
 	}
 }
 
-// TestRecentRowsActiveRootScopeOnlyShowsThatRoot checks Active Root scope in
+// TestRecentRowsActiveRootScopeOnlyShowsThatRoot checks Active Source scope in
 // isolation, against the same two-Root fixture shape as the All Roots test:
 // only rootA's own document appears, never rootB's or the orphan's.
 func TestRecentRowsActiveRootScopeOnlyShowsThatRoot(t *testing.T) {
@@ -254,7 +254,7 @@ func TestRecentRowsActiveRootScopeOnlyShowsThatRoot(t *testing.T) {
 
 	rows := recentRows(docs, roots, rootA, activeRootBrowseScope)
 	if len(rows) != 1 || rows[0].path != aDoc {
-		t.Errorf("Active Root scope rows = %+v, want exactly [%q]", rows, aDoc)
+		t.Errorf("Active Source scope rows = %+v, want exactly [%q]", rows, aDoc)
 	}
 }
 
@@ -293,7 +293,7 @@ func TestRecentRowsIgnoresNeverViewedRecords(t *testing.T) {
 	roots := []root{{path: rootDir}}
 
 	if rows := recentRows(docs, roots, rootDir, activeRootBrowseScope); len(rows) != 0 {
-		t.Errorf("Active Root scope rows = %+v, want none (zero LastViewed)", rows)
+		t.Errorf("Active Source scope rows = %+v, want none (zero LastViewed)", rows)
 	}
 	if rows := recentRows(docs, roots, rootDir, allRootsBrowseScope); len(rows) != 0 {
 		t.Errorf("All Roots scope rows = %+v, want none (zero LastViewed)", rows)
@@ -301,7 +301,7 @@ func TestRecentRowsIgnoresNeverViewedRecords(t *testing.T) {
 }
 
 // TestRecentRowsActiveRootScopeWithNoActiveRootIsEmpty covers the "" active-
-// root-path edge case explicitly: with no root active, Active Root scope has
+// root-path edge case explicitly: with no root active, Active Source scope has
 // no bucket to read, not the orphan bucket by accident (both key on "").
 func TestRecentRowsActiveRootScopeWithNoActiveRootIsEmpty(t *testing.T) {
 	dir := t.TempDir()
@@ -352,7 +352,7 @@ func TestFilesNavRecentModeRendersFlatRows(t *testing.T) {
 }
 
 // TestFilesNavRecentModeEmptyShowsAMessage checks Recent mode's own resting
-// state: with nothing recently viewed, the pane shows Active Root scope's
+// state: with nothing recently viewed, the pane shows Active Source scope's
 // own M4.4 message rather than a blank list.
 func TestFilesNavRecentModeEmptyShowsAMessage(t *testing.T) {
 	dir := t.TempDir()

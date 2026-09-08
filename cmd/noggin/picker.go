@@ -150,9 +150,10 @@ type picker struct {
 }
 
 // newPicker is the closed, no-search state: nothing open, nothing typed,
-// File Picker mode and Active Root Scope — the zero values of pickerMode
-// and pickerScope already are S1's fixed opening state, so there is nothing
-// to set beyond a fresh Prompt.
+// File Picker mode and Active Source Scope (C6/M1.3's own label for File
+// Picker's activeRootScope) — the zero values of pickerMode and
+// pickerScope already are S1's fixed opening state, so there is nothing to
+// set beyond a fresh Prompt.
 func newPicker() picker {
 	vp := viewport.New(viewport.WithWidth(0), viewport.WithHeight(0))
 	// Same reason viewer.go's newViewer clears it: keys reach the Preview
@@ -184,7 +185,7 @@ func (m model) resetPicker() model {
 	return m
 }
 
-// openPicker opens the Picker (S1): always File Picker mode, Active Root
+// openPicker opens the Picker (S1): always File Picker mode, Active Source
 // Scope, empty Prompt, regardless of what a previous open (in this or an
 // earlier session) left behind — S1's fixed opening state and S8's "no
 // memory" are the same requirement seen from two sides, so replacing the
@@ -204,7 +205,7 @@ func (m model) openPicker() (model, tea.Cmd) {
 }
 
 // dismissPicker closes the Picker, discarding its state entirely (S8): the
-// pre-open frame — Active Document, Active Root, scroll positions — was
+// pre-open frame — Active Document, Active Source, scroll positions — was
 // never touched by an open Picker in the first place (nothing here reaches
 // m.viewer, m.roots or m.files), so restoring it is just this: replace
 // picker with its closed zero value.
@@ -309,8 +310,10 @@ func (m model) switchPickerMode() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
-// switchPickerScope cycles the open Picker's Scope (Active Root -> All
-// Roots -> Starred -> Active Root, S7/S8/M5.2/C4-M5.1), the exact same
+// switchPickerScope cycles the open Picker's Scope through the same fixed
+// order regardless of mode (its first value read Active Root Scope in
+// Grep mode, Active Source Scope in File mode, C6/M1.3) -> All Roots ->
+// Starred -> back to the first, S7/S8/M5.2/C4-M5.1 — the exact same
 // shape switchPickerMode gives mode (above): only p.scope changes, the
 // Prompt is untouched, and the switch goes through queuePickerSearch so
 // the new Scope's search for the same query follows the same debounce/

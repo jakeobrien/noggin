@@ -89,7 +89,8 @@ func (r rootsNav) setRoots(roots []root, active int) rootsNav {
 
 // activePath is the active root's own Path, or "" when none is active —
 // the (roots, active) shape's own scalar form the Files Nav's Recent/
-// Starred flat lists need for their own Active Root scope (M4.2/M4.3),
+// Starred flat lists need for their own Active Source scope (M4.2/M4.3,
+// relabelled C6/M1.3),
 // mirroring resolution.activeRootPath's identical shape for the launch-time
 // version of the same question.
 func (r rootsNav) activePath() string {

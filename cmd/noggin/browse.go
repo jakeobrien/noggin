@@ -33,7 +33,7 @@ func (m browseMode) label() string {
 // different tasks.
 //
 // A single enum spans every mode's scope values rather than one type per
-// mode: activeRootBrowseScope means the same thing (S5's "Active Root") whichever
+// mode: activeRootBrowseScope means the same thing (S5's "Active Source") whichever
 // of Recent/Starred it is read against, so modeScopes below is what actually
 // bounds which values are reachable from a given mode — a browseScope value
 // meaningless for the current mode (e.g. allRootsBrowseScope while Starred) is
@@ -60,7 +60,7 @@ func (s browseScope) label() string {
 	case orphansBrowseScope:
 		return "Orphans"
 	default:
-		return "Active Root"
+		return "Active Source"
 	}
 }
 

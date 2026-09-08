@@ -25,7 +25,7 @@ func TestCyclingToAShorterFlatListReClampsSelection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
-	// Only a.md has a recency record, so Recent's Active Root scope lists
+	// Only a.md has a recency record, so Recent's Active Source scope lists
 	// exactly one row — shorter than the three-row Tree list below it.
 	docs := map[string]docRecord{a: {LastViewed: time.Now()}}
 	m := sized(t, newModel().withDocs("", docs), 80, 24)
@@ -116,7 +116,7 @@ func TestUnstarringLastVisibleStarredRowReClampsSelection(t *testing.T) {
 // f.selected (clampSelected's own doc comment lists both), but only
 // cycleMode had a regression test before this. Recent's own two scope
 // values give the shrink directly: All Roots (this Root's one recent
-// document plus another Root's three) cycling back down to Active Root
+// document plus another Root's three) cycling back down to Active Source
 // (this Root's alone) — the same wrap TestFilesModeScopeKeysCycleFromFiles-
 // NavFocus's own two-value cycle takes, just with real rows behind it here.
 func TestCyclingScopeToASmallerFlatListReClampsSelection(t *testing.T) {
@@ -144,12 +144,12 @@ func TestCyclingScopeToASmallerFlatListReClampsSelection(t *testing.T) {
 	m.roots = m.roots.setRoots([]root{{path: rootADir}, {path: rootBDir}}, 0)
 	m = m.openFolder(nodeA)
 
-	m = press(t, m, keys.FilesMode.Keys()[0]) // Tree -> Recent, Active Root by default
+	m = press(t, m, keys.FilesMode.Keys()[0]) // Tree -> Recent, Active Source by default
 	if got := len(m.files.flatRows()); got != 1 {
-		t.Fatalf("setup: Recent/Active Root rows = %d, want 1", got)
+		t.Fatalf("setup: Recent/Active Source rows = %d, want 1", got)
 	}
 
-	m = press(t, m, keys.FilesScope.Keys()[0]) // Active Root -> All Roots
+	m = press(t, m, keys.FilesScope.Keys()[0]) // Active Source -> All Roots
 	if got := len(m.files.flatRows()); got != 4 {
 		t.Fatalf("setup: Recent/All Roots rows = %d, want 4", got)
 	}
@@ -160,9 +160,9 @@ func TestCyclingScopeToASmallerFlatListReClampsSelection(t *testing.T) {
 		t.Fatalf("setup: All Roots selection = %d, want 3 (last row)", m.files.selected)
 	}
 
-	m = press(t, m, keys.FilesScope.Keys()[0]) // All Roots -> Active Root (wraps: only two values)
+	m = press(t, m, keys.FilesScope.Keys()[0]) // All Roots -> Active Source (wraps: only two values)
 	if got := len(m.files.flatRows()); got != 1 {
-		t.Fatalf("setup: back on Active Root rows = %d, want 1", got)
+		t.Fatalf("setup: back on Active Source rows = %d, want 1", got)
 	}
 	if m.files.selected != 0 {
 		t.Errorf("selected after cycling scope to a shorter list = %d, want 0 (re-clamped)", m.files.selected)
@@ -182,9 +182,9 @@ func TestCyclingScopeToASmallerFlatListReClampsSelection(t *testing.T) {
 // list the restored mode actually shows — but nothing exercised that
 // restore branch shrinking directly. Root A is left on a three-row Starred
 // list selected at its last row (a3.md, which also happens to sit at Tree
-// row 2 here — alphabetical order coincides with Starred/Active Root's own
+// row 2 here — alphabetical order coincides with Starred/Active Source's own
 // name sort); a3.md is then un-starred while Root B is the pane's current
-// root (Root A's Starred/Active Root list is now two rows, but a3.md's
+// root (Root A's Starred/Active Source list is now two rows, but a3.md's
 // file itself — and so its Tree row — is untouched), before setRoot moves
 // the pane back onto Root A.
 //
@@ -239,7 +239,7 @@ func TestSettingRootRestoringAFlatModeReClampsSelection(t *testing.T) {
 	f = f.setRoot(nodeB)
 
 	// a3.md is un-starred while Root A is not the pane's current root —
-	// Root A's Starred/Active Root list is now two rows, not the three
+	// Root A's Starred/Active Source list is now two rows, not the three
 	// memory still remembers.
 	docs = map[string]docRecord{a1: {Starred: true}, a2: {Starred: true}, a3: {Starred: false}}
 	f = f.withRecentSource(docs, roots, rootADir)
