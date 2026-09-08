@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.1
+Current task: M3.2
 
 ## Handoff
 
@@ -38,10 +38,9 @@ M2.8 (TRIAGE T15): `internal/wikipedia.NewClient` now builds `&Client{}` then ca
 with the lazy zero-value case. M2.4's zero-value and `-race` concurrency tests
 (`TestFetchAtZeroValueClientDoesNotPanic`, `TestFetchAtConcurrentUseIsRaceFree`) still pass.
 
-TRIAGE.md is empty; both tasks were independent of M3 and pulled forward per the plan's own
-note. DECISIONS D122 (fetch cache's narrower-than-documented guarantee — revisit at M4.2),
-D123 (equivalence-claim verifiability) and D124 (Search/Fetch config asymmetry — revisit at
-M3.3) are open by design, not blocking.
+DECISIONS D122 (fetch cache's narrower-than-documented guarantee — revisit at M4.2), D123
+(equivalence-claim verifiability) and D124 (Search/Fetch config asymmetry — revisit at M3.3)
+are open by design, not blocking.
 
 SPEC.md amended 2026-09-08 (`/brainstorm amend`, user-confirmed): new S9a closes D98 (CC
 BY-SA attribution, open since C4a) — a Wikipedia article's location line now reads `CC BY-SA
@@ -49,8 +48,20 @@ BY-SA attribution, open since C4a) — a Wikipedia article's location line now r
 built) is updated to build the three-segment line; no other task's scope or status changes.
 D98 is now `decided`.
 
-Next: M3.1 (Picker query threshold → 2, per-mode debounce) — read `SPEC.md` S2/S13 and
-`PLAN.md`'s M3 section first. No further milestone-boundary gate needed before M3.
+M3.1 (S13): `pickerQueryMinLength` dropped 3→2 (`pickerBelowThresholdStatus` now "type at
+least 2 characters"); `queuePickerSearch`'s debounce is now per-mode via `pickerDebounceFor`
+— File/Grep keep `pickerSearchDebounce` (120ms), a new `wikipediaMode` pickerMode value (not
+yet reachable from `switchPickerMode`; that wiring is M3.2's) gets its own, longer
+`pickerWikipediaSearchDebounce` (300ms). New/updated tests:
+`TestPickerWikipediaModeDebounceExceedsFileModeDebounce` (debounce ordering, direct on
+`pickerDebounceFor`), `TestPickerIssuesNoSearchBelowTheThreshold` (1 char below, 2 chars
+searches) and `TestPickerStatusStates`/pty `checks.py` (threshold string). TRIAGE T18 logs 11
+pre-existing `make check-pty` failures (verified identical with these changes stashed out, so
+not caused by M3.1); `make check` is clean. TRIAGE otherwise empty; both T1/T2 were
+independent of M3 and pulled forward per the plan's own note.
+
+Next: M3.2 (Wikipedia mode joins the File→Grep→Wikipedia cycle, needs M1.1) — read `SPEC.md`
+S2 and `PLAN.md`'s M3 section first. No further milestone-boundary gate needed before M3.2.
 
 ## Status
 
@@ -72,7 +83,7 @@ Next: M3.1 (Picker query threshold → 2, per-mode debounce) — read `SPEC.md` 
 | M2.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M1.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T17); review found 1 low-sev finding (TRIAGE T2), independently reproduced and PASSed at validate |
 | M2.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T15); review found 1 low-sev finding (TRIAGE T1), independently reproduced and PASSed at validate |
-| M3.1  | todo   | -        | -         |      |
+| M3.1  | done   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |
 | M3.4  | todo   | -        | -         |      |

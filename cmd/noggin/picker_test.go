@@ -1688,37 +1688,59 @@ func TestPickerEmptyPromptClearsResultsAndSearchesNothing(t *testing.T) {
 }
 
 // TestPickerIssuesNoSearchBelowTheThreshold is the second half of M2.5's own
-// acceptance criterion: no search is issued for a 1- or 2-character query
-// (S12's threshold), while the same query one character longer does search.
-// Checked through the full keystroke-then-timer path, so it covers both
-// gates: a sub-threshold keystroke schedules a timer that dispatches nothing.
+// acceptance criterion, revised for S13/C6/M3.1's 2-character threshold: no
+// search is issued for a 1-character query, while the same query one
+// character longer (2 characters, S13's own "a 2-character File search
+// runs") does search. Checked through the full keystroke-then-timer path,
+// so it covers both gates: a sub-threshold keystroke schedules a timer that
+// dispatches nothing.
 func TestPickerIssuesNoSearchBelowTheThreshold(t *testing.T) {
 	requireRipgrep(t)
 
-	for _, query := range []string{"r", "re"} {
-		m, _ := pickerRoot(t)
-		m, seqs := typePickerQuery(t, m, query)
-		m, searches := deliverPickerTicks(t, m, seqs)
-
-		if searches != 0 {
-			t.Errorf("query %q dispatched %d searches, want 0", query, searches)
-		}
-		if m.picker.results.query != "" {
-			t.Errorf("query %q produced results for %q, want none", query, m.picker.results.query)
-		}
-		if m.picker.searching {
-			t.Errorf("query %q left searching = true, want false", query)
-		}
-	}
-
 	m, _ := pickerRoot(t)
-	m, seqs := typePickerQuery(t, m, "rep")
+	m, seqs := typePickerQuery(t, m, "r")
 	m, searches := deliverPickerTicks(t, m, seqs)
-	if searches != 1 {
-		t.Errorf("query %q dispatched %d searches, want 1 (the threshold is 3)", "rep", searches)
+
+	if searches != 0 {
+		t.Errorf("query %q dispatched %d searches, want 0", "r", searches)
 	}
-	if m.picker.results.query != "rep" {
-		t.Errorf("results answer %q, want %q", m.picker.results.query, "rep")
+	if m.picker.results.query != "" {
+		t.Errorf("query %q produced results for %q, want none", "r", m.picker.results.query)
+	}
+	if m.picker.searching {
+		t.Errorf("query %q left searching = true, want false", "r")
+	}
+
+	m, _ = pickerRoot(t)
+	m, seqs = typePickerQuery(t, m, "re")
+	m, searches = deliverPickerTicks(t, m, seqs)
+	if searches != 1 {
+		t.Errorf("query %q dispatched %d searches, want 1 (the threshold is 2)", "re", searches)
+	}
+	if m.picker.results.query != "re" {
+		t.Errorf("results answer %q, want %q", m.picker.results.query, "re")
+	}
+}
+
+// TestPickerWikipediaModeDebounceExceedsFileModeDebounce is S13/C6/M3.1's
+// other half ("Wikipedia mode waits somewhat longer than local modes since
+// each search is a network call"): the debounce queuePickerSearch schedules
+// for wikipediaMode is strictly longer than the one it schedules for
+// fileMode (grepMode shares fileMode's). Checked against pickerDebounceFor
+// directly rather than by timing a real tea.Tick, the same reason every
+// other Picker async test (typePickerQuery/deliverPickerTicks above) avoids
+// sleeping on the real debounce: duration is a value, not something worth
+// racing a clock over.
+func TestPickerWikipediaModeDebounceExceedsFileModeDebounce(t *testing.T) {
+	fileDebounce := pickerDebounceFor(fileMode)
+	grepDebounce := pickerDebounceFor(grepMode)
+	wikipediaDebounce := pickerDebounceFor(wikipediaMode)
+
+	if wikipediaDebounce <= fileDebounce {
+		t.Errorf("wikipediaMode debounce = %v, want strictly more than fileMode's %v", wikipediaDebounce, fileDebounce)
+	}
+	if grepDebounce != fileDebounce {
+		t.Errorf("grepMode debounce = %v, want the same as fileMode's %v", grepDebounce, fileDebounce)
 	}
 }
 

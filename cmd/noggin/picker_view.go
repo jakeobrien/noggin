@@ -179,7 +179,9 @@ func pickerModeScope(p picker, hideDotfiles bool) string {
 // "nothing to show yet" from "nothing to show", so each is worded to say
 // which.
 const (
-	pickerBelowThresholdStatus = "type at least 3 characters"
+	// pickerBelowThresholdStatus's count tracks pickerQueryMinLength (S13,
+	// C6/M3.1: 2, revised down from S12/C2's 3).
+	pickerBelowThresholdStatus = "type at least 2 characters"
 	pickerSearchingStatus      = "searching…"
 	pickerNoResultsStatus      = "no results"
 )

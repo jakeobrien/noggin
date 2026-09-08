@@ -577,8 +577,8 @@ func TestPickerStatusStates(t *testing.T) {
 		{
 			name:  "below the query threshold",
 			avail: ripgrepAvailability{available: true},
-			setup: func(p *picker) { p.input.SetValue("re") },
-			want:  []string{"type at least 3 characters"},
+			setup: func(p *picker) { p.input.SetValue("r") },
+			want:  []string{"type at least 2 characters"},
 			deny:  []string{"no results"},
 		},
 		{
@@ -589,7 +589,7 @@ func TestPickerStatusStates(t *testing.T) {
 				p.results = results("zzz", nil, false)
 			},
 			want: []string{"no results"},
-			deny: []string{"type at least 3 characters"},
+			deny: []string{"type at least 2 characters"},
 		},
 		{
 			name:  "truncated at the cap",
@@ -606,7 +606,7 @@ func TestPickerStatusStates(t *testing.T) {
 			avail: ripgrepAvailability{reason: "ripgrep (rg) not found on PATH"},
 			setup: func(p *picker) { p.input.SetValue("report") },
 			want:  []string{"Picker unavailable: ripgrep (rg) not found on PATH"},
-			deny:  []string{"type at least 3 characters", "no results"},
+			deny:  []string{"type at least 2 characters", "no results"},
 		},
 		{
 			name:  "still searching",
@@ -625,7 +625,7 @@ func TestPickerStatusStates(t *testing.T) {
 				p.input.SetValue("report")
 				p.results = results("report", found, false)
 			},
-			deny: []string{"no results", "searching", "type at least 3 characters", "truncated"},
+			deny: []string{"no results", "searching", "type at least 2 characters", "truncated"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

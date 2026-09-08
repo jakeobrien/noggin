@@ -14,40 +14,64 @@ import (
 )
 
 // pickerMode selects which kind of search a Picker runs (S1, GLOSSARY.md
-// "File Picker"/"Grep Picker"): fuzzy file-name matching or literal grep.
-// The Picker always opens in fileMode (S1's fixed default); only an
-// in-Picker switch (M5.1) ever changes it.
+// "File Picker"/"Grep Picker"/"Wikipedia Picker"): fuzzy file-name matching,
+// literal grep, or a Wikipedia title search. The Picker always opens in
+// fileMode (S1's fixed default); only an in-Picker switch (M5.1) ever
+// changes it. wikipediaMode is not yet reachable through that switch — it
+// joins the File/Grep cycle in C6/M3.2 — but exists from C6/M3.1 on so its
+// own debounce (pickerDebounceFor) can be named and tested ahead of the
+// mode itself being wired in.
 type pickerMode int
 
 const (
 	fileMode pickerMode = iota
 	grepMode
+	wikipediaMode
 )
 
 // pickerSearchDebounce is how long a changed Prompt settles before its
-// search is actually dispatched (M2.4). A keystroke only ever schedules a
-// timer; the search itself runs in a tea.Cmd goroutine once no newer
-// keystroke has superseded it (dispatchPickerSearch's seq check), so fast
-// typing issues far fewer searches than keystrokes and the Prompt never
-// waits on rg.
+// search is actually dispatched (M2.4), for File and Grep mode. A keystroke
+// only ever schedules a timer; the search itself runs in a tea.Cmd goroutine
+// once no newer keystroke has superseded it (dispatchPickerSearch's seq
+// check), so fast typing issues far fewer searches than keystrokes and the
+// Prompt never waits on rg.
 //
 // 120ms is a build-time judgment call, not a spec'd number: long enough
 // that an average typing burst collapses into one search, short enough that
 // a pause between words still feels immediate.
 const pickerSearchDebounce = 120 * time.Millisecond
 
-// pickerQueryMinLength is S12's query threshold: neither Picker searches
-// until at least this many characters are typed, and below it the Picker
-// says so instead (pickerStatus, M2.5). Enforced at both search gates
+// pickerWikipediaSearchDebounce is Wikipedia mode's own, longer debounce
+// (S13, C6/M3.1): "Wikipedia mode waits somewhat longer than local modes
+// since each search is a network call", unlike File/Grep's local rg shell-
+// out. Also a build-time judgment call, not a spec'd number.
+const pickerWikipediaSearchDebounce = 300 * time.Millisecond
+
+// pickerDebounceFor is the per-mode debounce queuePickerSearch schedules
+// (S13, C6/M3.1): every mode but Wikipedia shares pickerSearchDebounce;
+// Wikipedia gets its own, longer pickerWikipediaSearchDebounce. Pulled out
+// as its own function, rather than inlined at the one call site, so the
+// "Wikipedia waits longer" half of S13 is directly testable without driving
+// a real tea.Tick.
+func pickerDebounceFor(mode pickerMode) time.Duration {
+	if mode == wikipediaMode {
+		return pickerWikipediaSearchDebounce
+	}
+	return pickerSearchDebounce
+}
+
+// pickerQueryMinLength is the Picker's query threshold: neither Picker
+// searches until at least this many characters are typed, and below it the
+// Picker says so instead (pickerStatus, M2.5). Enforced at both search gates
 // (queuePickerSearch and dispatchPickerSearch) for the same reason the
 // empty-Prompt refusal it replaces was: whichever path scheduled a timer,
 // no search may escape for a sub-threshold query.
 //
-// The number is S12's own ("at least 3 characters"), not a build-time
-// choice: one- and two-character queries match a large fraction of any real
-// collection, so searching them spends an rg run over the whole Scope to
-// produce a result list nobody wanted.
-const pickerQueryMinLength = 3
+// The number was originally S12's own ("at least 3 characters", cycle C2);
+// C6/S13 revises it down to 2 (C2/D31), on the same one-character-queries-
+// are-too-broad reasoning, now weighed against 2 being the shortest useful
+// Wikipedia title prefix.
+const pickerQueryMinLength = 2
 
 // pickerResults is one completed search's answer, labelled with the query,
 // mode and Scope it answers *for*. The labels are the point: results arrive
@@ -254,7 +278,7 @@ type pickerResultsMsg struct {
 // is precisely how the Prompt stays responsive no matter how large the
 // Scope (S1's "the Prompt never feels blocked").
 //
-// A sub-threshold Prompt is not a search (S12, pickerQueryMinLength): it
+// A sub-threshold Prompt is not a search (S13, pickerQueryMinLength): it
 // clears results outright and schedules nothing, so deleting a query back
 // below the threshold cannot leave the previous query's results on screen,
 // and rg is never handed an empty pattern (which matches every line of every
@@ -270,7 +294,7 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 		return m, nil
 	}
 	seq := m.picker.seq
-	return m, tea.Tick(pickerSearchDebounce, func(time.Time) tea.Msg {
+	return m, tea.Tick(pickerDebounceFor(m.picker.mode), func(time.Time) tea.Msg {
 		return pickerSearchMsg{seq: seq}
 	})
 }
@@ -513,7 +537,7 @@ func (p picker) resultsCurrent(hideDotfiles bool) bool {
 
 // searchable is whether the current Prompt may be searched at all: ripgrep
 // present (S14 — it supplies both the file list and the text search, so
-// without it there is no search to run) and the query at or above S12's
+// without it there is no search to run) and the query at or above S13's
 // threshold. Both search gates consult it, and pickerStatus reports the
 // same two conditions to the user, so what the modal says and what the model
 // does cannot drift apart.

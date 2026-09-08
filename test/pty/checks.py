@@ -1096,7 +1096,7 @@ check("M7.1 space opens the Picker modal",
 check("M7.1 the Picker opens in File mode, Active Root Scope (S1's fixed default)",
       "File · Active Root" in opened_body, repr(opened_body[:200]))
 check("M7.1 an empty Prompt reports the query threshold",
-      "type at least 3 characters" in opened_body, repr(opened_body[:200]))
+      "type at least 2 characters" in opened_body, repr(opened_body[:200]))
 
 s.send(KEY["Cancel"], 0.5)
 after_lines = screen_of(s.out, 80, 24).raw_lines()
