@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.2
+Current task: M2.3
 
 ## Handoff
 
@@ -45,10 +45,28 @@ suite passes in both `cmd/wikispike` and `internal/wikipedia`; regenerating "Maj
 through `wikispike` before and after the move produced byte-identical markdown (16003
 bytes, `diff` empty).
 
-Next: M2.2 (title search) — read `findings/wikimedia-api.md` first (already read this
-session); build the title-search endpoint client in `internal/wikipedia`, httptest-backed,
-no network in `go test ./...`. M2.3 (canonical fetch) can follow in either order per the
-plan's ordering note but M2.2 is the cursor.
+M2.2 done: `internal/wikipedia/search.go` adds `Search(query, limit)` against Wikimedia's
+title-search endpoint (`searchBase`), returning `[]SearchResult{Title, Description}` in
+Wikipedia's own order; `Description` is empty when the endpoint sends `null`. Errors are two
+distinguishable exported types per the plan's done-when: `*ServiceError` (non-2xx response —
+StatusCode/Status) and `*OfflineError` (the request never reached Wikimedia — wraps the
+underlying net error), so a caller can tell offline from a service failure without string-
+matching. `userAgent()` is a new package-level helper (mirrors `cmd/wikispike/fetch.go`'s but
+reads `NOGGIN_WIKIPEDIA_CONTACT`, not `WIKISPIKE_CONTACT` — noggin's own env var, not the
+spike's) satisfying S8. `searchTitles(base, query, limit)` takes the base URL as a parameter
+so `search_test.go` points it at `httptest` servers instead of the network; `Search` is the
+thin production wrapper pinning `searchBase`. Five httptest-backed tests cover: results with
+and without a description, an empty result list, a 500 service error (asserted to *not* also
+match `*OfflineError`), a connection failure via a closed-then-hit `httptest` server
+(asserted to *not* also match `*ServiceError`), and the `User-Agent` header value. Verified:
+`make check` passes; `go test ./internal/wikipedia/... -run TestSearch -v` shows all five
+new tests passing individually.
+
+Next: M2.3 (canonical fetch) — read `findings/wikimedia-api.md` again for the redirect/
+canonical-title resolution notes (307 → final `resp.Request.URL`); build the fetch client in
+`internal/wikipedia` (own timeout, per its own acceptance criterion — deliberately not
+sharing `searchHTTPClient`), httptest-backed, session-scoped cache keyed by canonical URL
+with an explicit Refresh bypass. No network in `go test ./...`.
 
 ## Status
 
@@ -60,7 +78,7 @@ plan's ordering note but M2.2 is the cursor.
 | M1.4  | done   | 2026-09-08 | 2026-09-08 |      |
 | M1.5  | done   | 2026-09-08 | 2026-09-08 |      |
 | M2.1  | done   | -        | -         |      |
-| M2.2  | todo   | -        | -         |      |
+| M2.2  | done   | -        | -         |      |
 | M2.3  | todo   | -        | -         |      |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
