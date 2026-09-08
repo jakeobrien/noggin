@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M1.2
+Current task: M1.3
 
 ## Handoff
 
@@ -25,20 +25,29 @@ M1.1 done: `rootsNav` gained a `wikipedia bool` Active Source flag (`activateWik
 `activeIsWikipedia`, mutually exclusive with a valid `active` index) and `model.
 activateWikipediaSource()`; every Root-only subsystem (tree walk, grep, git markers,
 staleness, Refresh) already tolerated `active < 0`/`m.files.root == nil` before this change,
-so none needed touching — verified by code review (cmd/noggin/wikipedia_source_test.go is the
-acceptance test). `m.files.root` is deliberately left untouched when Wikipedia is activated
-(still shows the prior Root's tree if one was loaded) — that is M1.4's job, not a gap here.
+so none needed touching. `m.files.root` is deliberately left untouched when Wikipedia is
+activated (still shows the prior Root's tree if one was loaded) — that is M1.4's job.
 
-Next: M1.2 (Sources Nav renders the Wikipedia row) is the natural follow-on since it needs
-M1.1. M2 (Wikipedia client) is independent of M1 and may be interleaved instead. Read
-`findings/wikimedia-api.md` before M2.2/M2.3. D120 covers the spike extraction (M2.1).
+M1.2 done: the Sources Nav pane (`rootsnav.go`) always shows a trailing Wikipedia row
+(`rowCount` = Roots + 1, never zero), removing the old "No roots…" empty state; Activate on
+it calls `activateWikipediaSource`, `s` on it sets a Footer message instead of falling into
+`activateRoot`/`toggleStar`; broken/starred markers are structurally unreachable for it
+(`renderWikipediaRow` reads no per-row state). Both reviewed clean by code-reviewer subagent.
+
+Logged to TRIAGE (T1, low): the pane border/footer title still reads "Roots", not "Sources"
+per GLOSSARY's C6 rename — no M1.x task's acceptance criterion currently covers retitling it.
+
+Next: M1.3 (relabel "Active Root" → "Active Source" wherever a Query Source can be active) is
+queued next — needs M1.1, now done. M2 (Wikipedia client) is independent of M1 and may be
+interleaved instead. Read `findings/wikimedia-api.md` before M2.2/M2.3. D120 covers the spike
+extraction (M2.1).
 
 ## Status
 
 | Key   | Status | Reviewed | Validated | Note |
 |-------|--------|----------|-----------|------|
 | M1.1  | done   | 2026-09-07 | -       |      |
-| M1.2  | todo   | -        | -         |      |
+| M1.2  | done   | 2026-09-07 | -       |      |
 | M1.3  | todo   | -        | -         |      |
 | M1.4  | todo   | -        | -         |      |
 | M1.5  | todo   | -        | -         |      |

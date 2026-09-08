@@ -279,7 +279,9 @@ func TestRootsNavStarredMarked(t *testing.T) {
 }
 
 // TestRootsNavMoveClampsAtEnds checks selection movement, mirroring the Files
-// Nav's own clamp behaviour.
+// Nav's own clamp behaviour. C6/M1.2: the row set is every Root plus the
+// always-present Wikipedia row, so with two Roots the bottom of the list is
+// index 2 (Wikipedia), not index 1.
 func TestRootsNavMoveClampsAtEnds(t *testing.T) {
 	a := mkdir(t, filepath.Join(t.TempDir(), "a"))
 	b := mkdir(t, filepath.Join(t.TempDir(), "b"))
@@ -294,28 +296,39 @@ func TestRootsNavMoveClampsAtEnds(t *testing.T) {
 		t.Errorf("selected after move(1) = %d, want 1", r.selected)
 	}
 	r = r.move(1)
-	if r.selected != 1 {
-		t.Errorf("moving down past the end = %d, want it to clamp at 1", r.selected)
+	if r.selected != 2 {
+		t.Errorf("selected after move(1) again = %d, want 2 (the Wikipedia row)", r.selected)
+	}
+	if !r.selectedIsWikipedia() {
+		t.Error("selectedIsWikipedia() = false at index 2, want true")
+	}
+	r = r.move(1)
+	if r.selected != 2 {
+		t.Errorf("moving down past the end = %d, want it to clamp at 2", r.selected)
 	}
 }
 
-// TestRootsNavEmptyState checks the no-roots resting state (a bare launch
-// with no starred roots yet, and no ad-hoc root from a launch argument
-// either) says what to do next (T26, the cycle-level acceptance's "a first
-// run with neither explains what to do next"): launch with a path, then star
-// it here.
-func TestRootsNavEmptyState(t *testing.T) {
+// TestRootsNavEmptyStateShowsWikipediaOnly is C6/M1.2's acceptance
+// criterion: with zero Roots the old "No roots…" empty state no longer
+// occurs — the Sources Nav shows only the Wikipedia row instead (S1).
+func TestRootsNavEmptyStateShowsWikipediaOnly(t *testing.T) {
 	r := newRootsNav().setSize(20, 4)
 	lines := strings.Split(r.view(), "\n")
 	if len(lines) != 4 {
 		t.Fatalf("empty-state view has %d lines, want 4", len(lines))
 	}
 	view := r.view()
-	if !strings.Contains(view, "No roots") {
-		t.Errorf("empty-state view = %q, want the no-roots message", view)
+	if strings.Contains(view, "No roots") {
+		t.Errorf("empty-state view = %q, want the old no-roots message gone", view)
 	}
-	if !strings.Contains(view, "noggin") || !strings.Contains(view, "star") {
-		t.Errorf("empty-state view = %q, want guidance to launch with a path and star it", view)
+	if !strings.Contains(lines[0], "Wikipedia") {
+		t.Errorf("line 0 = %q, want the Wikipedia row's label", lines[0])
+	}
+	if !strings.Contains(lines[1], "en.wikipedia.org") {
+		t.Errorf("line 1 = %q, want the Wikipedia row's domain", lines[1])
+	}
+	if strings.TrimSpace(lines[2]) != "" || strings.TrimSpace(lines[3]) != "" {
+		t.Errorf("lines 2/3 = %q / %q, want blank padding (only one row: Wikipedia)", lines[2], lines[3])
 	}
 }
 

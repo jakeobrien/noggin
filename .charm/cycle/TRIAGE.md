@@ -25,3 +25,4 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T1 | build | low | cmd/noggin/model.go:47 (`pane.title()`, `case rootsPane: return "Roots"`) | GLOSSARY.md already renames the pane "Sources Nav" (C6), but no M1.x task's acceptance criterion covers retitling the border/footer label from "Roots" to "Sources"; M1.2 (Wikipedia row) and M1.3 (Active Root→Active Source labels) both leave it untouched by their own done-when clauses. | open |

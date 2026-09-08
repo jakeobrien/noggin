@@ -1415,6 +1415,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case rootsPane:
+			// S1/C6/M1.2: the Wikipedia row is a Source like any Root for
+			// Activate, but `s` is refused with a Footer message instead of
+			// toggleStar's silent no-op ("nothing can add, remove or hide
+			// it") — both branches below must be checked before falling
+			// into activateRoot/toggleStar, which only know how to act on a
+			// Root row (selectedRow's own "false" for this selection).
+			if m.roots.selectedIsWikipedia() {
+				if key.Matches(msg, keys.Activate) {
+					return m.activateWikipediaSource(), nil
+				}
+				if key.Matches(msg, keys.Star) {
+					m.message = "the Wikipedia Source cannot be starred"
+					return m, nil
+				}
+			}
 			if key.Matches(msg, keys.Activate) {
 				return m.activateRoot(), nil
 			}

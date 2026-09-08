@@ -9,13 +9,14 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// emptyRootsText is what the Roots Nav pane says when the session has no
-// roots at all — a bare launch with no starred roots yet (S2's "empty root
-// list" outcome) and no ad-hoc root from a launch argument either. This is
-// the cycle-level acceptance's "a first run with neither explains what to do
-// next" (T26): the only way to gain a root this cycle is a launch argument
-// (S1), so the guidance names that rather than a nonexistent in-pane action.
-const emptyRootsText = "No roots. Launch noggin with a folder or file path, then press s here to star it for next time."
+// wikipediaLabel and wikipediaDomain are the Wikipedia Source's two-line
+// row (S1, C6/M1.2): always the Sources Nav's last row, present with zero
+// or many Roots — the "No roots…" empty state (T26's old guidance) no
+// longer occurs, since there is always at least this one Source to show.
+const (
+	wikipediaLabel  = "Wikipedia"
+	wikipediaDomain = "en.wikipedia.org"
+)
 
 // rootRow pairs a root with whether its path currently exists on disk (S3's
 // "broken" mark). broken is computed once, when the pane's roots are set —
@@ -130,13 +131,32 @@ func (r rootsNav) setSize(width, height int) rootsNav {
 	return r
 }
 
-// selectedRow is the row under the selection cursor, or false when there are
-// no rows.
+// selectedRow is the Root row under the selection cursor, or false when
+// there are no Root rows or the cursor sits on the Wikipedia row instead
+// (selectedIsWikipedia) — callers that only know how to act on a Root
+// (model.activateRoot, model.toggleStar) already treat that "false" as a
+// no-op, so they need a Wikipedia-aware guard in front of this, not a
+// different return here.
 func (r rootsNav) selectedRow() (rootRow, bool) {
 	if r.selected < 0 || r.selected >= len(r.rows) {
 		return rootRow{}, false
 	}
 	return r.rows[r.selected], true
+}
+
+// rowCount is the Sources Nav's total row count (S1, C6/M1.2): every Root
+// plus the Wikipedia Source, which is always present — the pane never has
+// zero rows, even when r.rows itself is empty. Selection movement and
+// rendering both walk indices [0, rowCount()), with len(r.rows) itself
+// being the one reserved for Wikipedia.
+func (r rootsNav) rowCount() int {
+	return len(r.rows) + 1
+}
+
+// selectedIsWikipedia reports whether the selection cursor sits on the
+// Sources Nav's Wikipedia row (S1, C6/M1.2) rather than a Root row.
+func (r rootsNav) selectedIsWikipedia() bool {
+	return r.selected == len(r.rows)
 }
 
 // activate makes rows[i] the active root. The caller (model.activateRoot)
@@ -200,9 +220,10 @@ func (r rootsNav) handleKey(msg tea.KeyPressMsg) (rootsNav, bool) {
 	return r, false
 }
 
-// move shifts the selection cursor by delta rows, clamped to the row set.
+// move shifts the selection cursor by delta rows, clamped to the row set
+// — every Root plus the always-present Wikipedia row (rowCount).
 func (r rootsNav) move(delta int) rootsNav {
-	r.selected = moveSelection(r.selected, delta, len(r.rows))
+	r.selected = moveSelection(r.selected, delta, r.rowCount())
 	return r
 }
 
@@ -215,22 +236,17 @@ var (
 	rootsBrokenStyle = lipgloss.NewStyle().Faint(true)
 	rootsNameStyle   = lipgloss.NewStyle().Bold(true)
 	rootsPathStyle   = lipgloss.NewStyle()
-	emptyRootsStyle  = lipgloss.NewStyle().Foreground(dimColor)
 )
 
 // view renders the pane's content box at exactly its width x height, the same
-// contract the Files Nav and viewer keep.
+// contract the Files Nav and viewer keep. Unlike before C6/M1.2, there is no
+// empty state: the Wikipedia row (rowCount) means the Sources Nav always has
+// at least one row to show, with zero or many Roots alike (S1).
 func (r rootsNav) view() string {
 	if r.width <= 0 || r.height <= 0 {
 		return ""
 	}
-	if len(r.rows) == 0 {
-		return emptyRootsStyle.
-			Width(r.width).Height(r.height).
-			MaxWidth(r.width).MaxHeight(r.height).
-			Render(emptyRootsText)
-	}
-	return windowedViewRows(r.width, r.height, r.selected, len(r.rows), rootRowHeight, r.renderRow)
+	return windowedViewRows(r.width, r.height, r.selected, r.rowCount(), rootRowHeight, r.renderRow)
 }
 
 // renderRow lays out one entry across its two lines (S5). Line 1 carries the
@@ -245,6 +261,9 @@ func (r rootsNav) view() string {
 // reverse video never gets cancelled mid-line
 // (lipgloss-v2-row-rendering-gotchas.md).
 func (r rootsNav) renderRow(idx int) []string {
+	if idx == len(r.rows) {
+		return r.renderWikipediaRow()
+	}
 	row := r.rows[idx]
 
 	activeMark := "  "
@@ -274,6 +293,35 @@ func (r rootsNav) renderRow(idx int) []string {
 		style1, style2 = rootsBrokenStyle, rootsBrokenStyle
 	}
 	if idx == r.selected {
+		style1 = style1.Reverse(true)
+		style2 = style2.Reverse(true)
+	}
+	return []string{
+		style1.Width(r.width).MaxWidth(r.width).Render(line1),
+		style2.Width(r.width).MaxWidth(r.width).Render(line2),
+	}
+}
+
+// renderWikipediaRow lays out the Sources Nav's always-present, always-last
+// Wikipedia row (S1, C6/M1.2): line 1 is the active marker (when Wikipedia
+// is the Active Source) plus the label "Wikipedia", bold like every other
+// row's name line; line 2 is its domain, de-emphasized the same way a
+// Root's path line is — same rootsPathStyle, not a heavier dim, matching
+// S1's "de-emphasized like a Root's path" exactly. Neither the starred nor
+// broken marker ever applies here (S1: "nothing can add, remove or hide
+// it"; it cannot be starred at all, so it is never Broken either) — unlike
+// renderRow, there is no per-row state to read either from, only r.wikipedia
+// and the selection cursor.
+func (r rootsNav) renderWikipediaRow() []string {
+	activeMark := "  "
+	if r.wikipedia {
+		activeMark = "● "
+	}
+	line1 := rightTruncate(activeMark+wikipediaLabel, r.width)
+	line2 := leftTruncate(wikipediaDomain, r.width)
+
+	style1, style2 := rootsNameStyle, rootsPathStyle
+	if r.selectedIsWikipedia() {
 		style1 = style1.Reverse(true)
 		style2 = style2.Reverse(true)
 	}
