@@ -1398,3 +1398,35 @@
   stands as validated on the evidence available.
 - Why: A process-quality gap in how equivalence claims are made checkable, not a defect in
   M2.1's actual result.
+
+## D124: `Search`'s package-level client vs `Fetch`'s `Client` struct — no shared config surface
+
+- Status: open
+- Cycle: C6
+- Date: 2026-09-08
+- Context: TRIAGE T9 (code review). `internal/wikipedia.Search` is a free function backed by
+  a package-level mutable `searchHTTPClient`; `Fetch` is a method on an explicit `Client`
+  with its own `http.Client`. Nothing today unifies timeout, transport or User-Agent
+  configuration between the two call shapes.
+- Decision: **Open.** Not blocking M2 or M3.1/M3.2 (M3.3 is the first task that wires a real
+  injectable client into the Picker for search, and M4.2 does the same for fetch) — revisit
+  at M3.3, when it will be clear whether the Picker's injectable-client need pushes toward
+  unifying `Search` onto `Client` (or a shared config struct) before more call sites accrete.
+- Why: Cheap to defer — both shapes work and are independently tested; deciding now would be
+  speculative ahead of M3.3's actual caller shape.
+
+## D125: M2 review findings T4–T6 (medium) accepted as new hardening tasks, not a reopen of M2.1–M2.3
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: Replan triage of TRIAGE T4 (zero-value `Client` panics on `Fetch`), T5 (untested
+  concurrency claim) and T6 (parameter shadowing in `fetchAt`/`fetchCanonicalHTML`/
+  `canonicalFromURL`) — all medium severity, all against already-`done`/`Reviewed`/
+  `Validated` M2.1–M2.3.
+- Decision: Accepted as new tasks M2.4 (T4, T5) and M2.5 (T6, plus low-severity T7, T8)
+  rather than reopening M2.1–M2.3's status — M2.3's own done-when criteria and tests still
+  hold; these are additive hardening, not a correction of a failed acceptance criterion.
+- Why: Keeps the Status table's Reviewed/Validated dates meaningful (they attest to the
+  done-when criteria, not to every review nit) while still ensuring the findings turn into
+  tracked work before M4.2 builds concurrent real-fetch usage on top of `Client`.

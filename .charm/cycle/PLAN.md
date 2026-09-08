@@ -55,6 +55,17 @@ Delivers: S1, S5 (the mode/scope structure — lists fill in M5/M6), store groun
   starred-never-evicted rule applying to both together; existing on-disk stores load unchanged
   — done when: docstore tests cover a mixed file+article round-trip, a legacy-format file
   loading byte-for-byte equivalent records, and eviction across a mixed store — effort: 2
+- **M1.6** — Propagate GLOSSARY's C6 rename: every "Roots Nav" string and code comment in
+  `cmd/noggin` (pane border/footer title, comments across rootsnav.go, files.go, keymap.go,
+  model.go, footer.go, layout.go, help.go, roots.go, browse_list.go, style.go,
+  picker_view.go) becomes "Sources Nav"/"Sources" — done when: `grep -rn "Roots Nav"
+  cmd/noggin` is empty and a rootsnav render test asserts the pane label reads "Sources" —
+  effort: 1 (replan: TRIAGE T1, T2)
+- **M1.7** — Guard the Document Store's article `<title>` field against embedded tab/
+  newline characters corrupting a saved record (reject or escape on write) — done when: a
+  docstore test round-trips an article whose title contains an embedded tab and one with an
+  embedded newline without corrupting the record or adjacent fields — effort: 1 (replan:
+  TRIAGE T3)
 
 ## M2 — Wikipedia client
 
@@ -76,6 +87,27 @@ Delivers: the fetch/search/convert capability S2 and S3 build on (`internal/` pa
   bypass for Refresh — done when: `httptest` tests cover a redirect resolving to the canonical
   title/URL, a 404, a timeout, a cache hit (no second request) and a bypass (second request)
   — effort: 3 (needs: M2.1)
+- **M2.4** — `Client` cannot be used mid-panic from a zero-value construction (nil
+  `httpClient` call, nil-map cache write), and its "safe for concurrent use" doc claim is
+  backed by a test — done when: a zero-value `Client{}`'s `Fetch` no longer panics (lazy-init
+  or an equivalent guard) and a `go test -race` test drives concurrent `Fetch`/`fetchAt` calls
+  — effort: 2 (replan: TRIAGE T4, T5)
+- **M2.5** — `internal/wikipedia` code hygiene: rename `fetchAt`/`fetchCanonicalHTML`/
+  `canonicalFromURL`'s `fetchBase`/`wikiBase` parameters so they no longer shadow the
+  package-level constants of the same name; document (or guard against) `canonicalFromURL`'s
+  assumption that a trailing `html` URL segment means a redirect; broaden `ServiceError`/
+  `OfflineError`'s doc comments to acknowledge both `search.go` and `fetch.go` use them — done
+  when: no parameter shadows a same-named package constant in those three functions, and both
+  error types' doc comments mention search and fetch — effort: 2 (replan: TRIAGE T6, T7, T8)
+- **M2.6** — `internal/wikipedia/live_test.go`'s temporary exact-title-fetch duplication
+  (called out as provisional in the M2.1 handoff, pending M2.3) now calls `Client.Fetch` (or
+  `fetchAt`) instead of its own copy, and its stale "pending M2.3" comment is removed — done
+  when: the opt-in live test suite still passes (`WIKISPIKE_LIVE=1`) with the duplicated fetch
+  logic gone — effort: 1 (replan: TRIAGE T10)
+- **M2.7** — Two low-risk `internal/wikipedia` nits: `search.go`'s `fmt.Sprintf("%d", limit)`
+  becomes `strconv.Itoa(limit)`; the descriptive-User-Agent doc comments in `search.go` and
+  `search_test.go` that cite "S8" are re-pointed at "S3" (S8 is Root names, unrelated) — done
+  when: both changes land and existing tests still pass — effort: 1 (replan: TRIAGE T11, T12)
 
 ## M3 — Wikipedia Picker
 
