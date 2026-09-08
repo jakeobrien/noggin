@@ -354,6 +354,40 @@ func TestStaleBaselineNeverTracksAnOpenArticleBesideAFile(t *testing.T) {
 	}
 }
 
+// TestStaleBaselineNeverTracksAnOpenArticleInDV2BesideAFileInDV1 is the
+// mirror of TestStaleBaselineNeverTracksAnOpenArticleBesideAFile (M4.4/
+// TRIAGE T23): the staleness baseline loops over whichever docs exist
+// (resetStaleBaseline/trackedDocPaths, pane-agnostic by construction), but
+// only the DV1-article/DV2-file arrangement was ever pinned. Same claim,
+// article and file on the other sides.
+func TestStaleBaselineNeverTracksAnOpenArticleInDV2BesideAFileInDV1(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	filePath := writeFile(t, filepath.Join(root, "note.md"))
+	m := sized(t, newModel().openFolder(walkFor(t, root)), 80, 24)
+	fileDoc, err := loadDocument(filePath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m = m.navigate(dv1Pane, fileDoc)
+	m = m.openDocumentInto(dv2Pane, fixtureArticle())
+	m = m.resetStaleBaseline()
+
+	got := m.staleBaseline.trackedDocPaths()
+	if len(got) != 1 || got[0] != filePath {
+		t.Errorf("tracked doc paths = %v, want exactly [%q] (the file only, not the article)", got, filePath)
+	}
+
+	// The file changes on disk; the article does not (nothing to change).
+	bumpMtimeForward(t, filePath)
+	if err := os.WriteFile(filePath, []byte("edited\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	m = m.runStaleCheckSync(t)
+	if !m.stale {
+		t.Error("stale = false after the file beside the article was edited on disk, want true")
+	}
+}
+
 // runStaleCheckSync is the test helper every staleness test above inlines
 // by hand for a single case; here it is named once for callers (like
 // TestRefreshClearsTheIndicatorAndRebaselines) that just need "run one

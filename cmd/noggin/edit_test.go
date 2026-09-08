@@ -91,6 +91,41 @@ func TestEditOnAWikipediaArticleIsRefusedWithFooterMessage(t *testing.T) {
 	}
 }
 
+// TestEditOnAWikipediaArticleInDV2IsRefusedWithFooterMessage is the mirror
+// of TestEditOnAWikipediaArticleIsRefusedWithFooterMessage (M4.4/TRIAGE
+// T23): startEdit acts on the focused viewer's Active Document regardless
+// of DV1/DV2 (model.go's own focusedViewerPane, not a DV1-only path), but
+// only the DV1-article/DV2-file arrangement was ever pinned. Same refusal,
+// same untouched-DV2... except here it is DV1 (the file) that must stay
+// untouched, and DV2 (the article) that must be refused.
+func TestEditOnAWikipediaArticleInDV2IsRefusedWithFooterMessage(t *testing.T) {
+	filePath := writeFileContent(t, filepath.Join(t.TempDir(), "note.md"), "# A file\n\nUnaffected.\n")
+	fileDoc, err := loadDocument(filePath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m := sized(t, newModel(), 80, 24)
+	m = m.navigate(dv1Pane, fileDoc)
+	m = m.openDocumentInto(dv2Pane, fixtureArticle())
+	m.focus = dv2Pane
+
+	next, cmd := m.Update(keyPress(keys.Edit.Keys()[0]))
+	got := concrete(t, next)
+
+	if cmd != nil {
+		t.Errorf("cmd = %v, want nil (no $EDITOR handoff for an article)", cmd)
+	}
+	if got.message == "" {
+		t.Error("message is empty, want a report that a Wikipedia article cannot be edited")
+	}
+	if got.dv2.doc.path != fixtureArticle().path {
+		t.Errorf("DV2 Active Document = %q after a refused edit, want unchanged %q", got.dv2.doc.path, fixtureArticle().path)
+	}
+	if got.dv1.doc.path != filePath {
+		t.Errorf("DV1 Active Document = %q after DV2's edit was refused, want unchanged %q", got.dv1.doc.path, filePath)
+	}
+}
+
 // TestFinishEditReloadsDocumentFromDisk covers D3's "re-renders from disk":
 // finishEdit is what M4.1's handoff resumes into once $EDITOR exits, and it
 // must reuse loadDocument (per the PROGRESS.md handoff) rather than duplicate

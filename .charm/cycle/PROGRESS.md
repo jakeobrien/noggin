@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.4
+Current task: M6.1
 
 ## Handoff
 
@@ -244,8 +244,23 @@ length, and `resultsCurrent` reports the unchanged rows current throughout. Veri
 test catches a real regression: reverted the fix, confirmed the test failed with the
 exact predicted symptom (a non-nil requery `Cmd`), then restored.
 
-Next: M4.4 (TRIAGE T23: mirror DV-arrangement test gap for staleness/edit). Independent
-of M3.7's own work — next in cursor order.
+M4.4 done (2026-09-08, `make check` clean, `make check-pty` clean, `go test -race
+./cmd/noggin/...` clean). M4.3's staleness and edit tests only ever covered "article in
+DV1, file in DV2"; refresh already had a DV2-article/DV1-file mirror
+(`TestRefreshUpdatesAFileInDV1BesideAnArticleInDV2`) but staleness and edit did not. Both
+are pane-symmetric by construction (`resetStaleBaseline`/`trackedDocPaths` loop over
+whichever docs exist; `startEdit` acts on `focusedViewerPane()` regardless of DV1/DV2) so
+no bug was expected or found — this closes a verification gap, not a functional one. New
+`TestStaleBaselineNeverTracksAnOpenArticleInDV2BesideAFileInDV1` (staleness_test.go) and
+`TestEditOnAWikipediaArticleInDV2IsRefusedWithFooterMessage` (edit_test.go) mirror their
+DV1/DV2-swapped M4.3 counterparts exactly, both passing on first run. Test-only, no
+production code changes.
+
+This closes out the last of the replan-added hygiene/test-gap tasks (M1.9–M1.10, M2.9,
+M3.6–M3.7, M4.4); TRIAGE.md is empty and every row in Status is `done` up to this point.
+
+Next: M6.1 (pre-agreed cut 1). Independent of M4.4's own work — next in cursor order,
+resuming the milestone sequence.
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -293,7 +308,7 @@ accepted by design — see DECISIONS.md.
 | M2.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M3.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |
-| M4.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T23) |
+| M4.4  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T23) |
 | M6.1  | todo   | -        | -         | pre-agreed cut 1 |
 | M7.1  | todo   | -        | -         | pre-agreed cut 2 |
 | M7.2  | todo   | -        | -         | pre-agreed cut 2 |
