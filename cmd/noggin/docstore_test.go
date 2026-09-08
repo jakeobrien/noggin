@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -262,6 +263,73 @@ func TestDocStoreMixedFileArticleRoundTrip(t *testing.T) {
 	}
 	if !gotArticle.Starred || !gotArticle.LastViewed.Equal(now.Add(-time.Hour)) {
 		t.Errorf("article record = %+v, want Starred true, LastViewed %v", gotArticle, now.Add(-time.Hour))
+	}
+}
+
+// TestDocStoreArticleTitleTabAndNewlineRoundTrip is M1.7's acceptance
+// criterion (TRIAGE T3): an article title carrying an embedded tab, and one
+// carrying an embedded newline, both round-trip through save/load byte-for-
+// byte, without corrupting the record itself (the title read back must
+// still match) or the adjacent record sharing the file — a raw tab or
+// newline in an unescaped title would otherwise shift loadDocStore's fixed
+// tab-separated field positions, or split one line into two.
+func TestDocStoreArticleTitleTabAndNewlineRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "documents")
+	const (
+		tabURL     = "https://en.wikipedia.org/wiki/Tab_Title"
+		newlineURL = "https://en.wikipedia.org/wiki/Newline_Title"
+		plainURL   = "https://en.wikipedia.org/wiki/Plain_Title"
+	)
+	tabTitle := "Embedded\tTab"
+	newlineTitle := "Embedded\nNewline"
+	want := map[string]docRecord{
+		tabURL:     {Article: true, Title: tabTitle},
+		newlineURL: {Article: true, Title: newlineTitle},
+		plainURL:   {Article: true, Title: "Plain Title", Starred: true},
+	}
+	if err := saveDocStore(path, want); err != nil {
+		t.Fatalf("saveDocStore: %v", err)
+	}
+
+	// The escaped on-disk bytes must still be exactly one line per record
+	// (no raw newline split a title across lines) and exactly 5 tab-
+	// separated fields per line (no raw tab shifted a field boundary) —
+	// checked directly against the file, not just inferred from a
+	// successful load, so a subtly-broken line/field count that happened
+	// to still parse could not slip past this test unnoticed.
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading store file: %v", err)
+	}
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	if len(lines) != len(want) {
+		t.Fatalf("on-disk store has %d lines, want %d (a raw tab/newline likely escaped incorrectly): %q", len(lines), len(want), raw)
+	}
+	for _, line := range lines {
+		if n := strings.Count(line, "\t"); n != 4 {
+			t.Errorf("line %q has %d tab-separated field boundaries, want 4 (5 fields)", line, n)
+		}
+	}
+	if !strings.Contains(string(raw), `Embedded\tTab`) {
+		t.Errorf("on-disk store does not contain the escaped tab title %q: %q", `Embedded\tTab`, raw)
+	}
+	if !strings.Contains(string(raw), `Embedded\nNewline`) {
+		t.Errorf("on-disk store does not contain the escaped newline title %q: %q", `Embedded\nNewline`, raw)
+	}
+
+	got := loadDocStore(path)
+	if len(got) != len(want) {
+		t.Fatalf("loadDocStore returned %d records, want %d: %+v", len(got), len(want), got)
+	}
+	for key, wantRec := range want {
+		gotRec, ok := got[key]
+		if !ok {
+			t.Fatalf("loadDocStore missing record for %s: %+v", key, got)
+		}
+		if gotRec.Title != wantRec.Title || gotRec.Article != wantRec.Article || gotRec.Starred != wantRec.Starred {
+			t.Errorf("record for %s = %+v, want %+v", key, gotRec, wantRec)
+		}
 	}
 }
 

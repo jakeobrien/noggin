@@ -133,7 +133,7 @@ func loadDocStore(path string) map[string]docRecord {
 			}
 			records[filepath.Clean(docPath)] = docRecord{Starred: starred, LastViewed: lastViewed}
 		case 5:
-			kind, title, key := fields[2], fields[3], fields[4]
+			kind, title, key := fields[2], unescapeDocTitle(fields[3]), fields[4]
 			switch kind {
 			case "file":
 				if !filepath.IsAbs(key) {
@@ -153,6 +153,53 @@ func loadDocStore(path string) map[string]docRecord {
 		}
 	}
 	return records
+}
+
+// escapeDocTitle guards an article's <title> field (M1.7/TRIAGE T3) against
+// the tab and newline bytes that would otherwise corrupt the store's
+// tab-separated, one-record-per-line format: a raw tab in the title would
+// shift the fixed field positions loadDocStore's SplitN(line, "\t", 5)
+// relies on (the title's tail bleeding into the <key> field), and a raw
+// newline would split one record's line into two, producing a truncated,
+// unparsable orphan line. Backslash is escaped first so the encoding is
+// unambiguous to reverse. Applied unconditionally in saveDocStore — a file
+// record's title is always "", and escaping the empty string is a no-op.
+func escapeDocTitle(title string) string {
+	r := strings.NewReplacer(`\`, `\\`, "\t", `\t`, "\n", `\n`)
+	return r.Replace(title)
+}
+
+// unescapeDocTitle reverses escapeDocTitle on load, restoring the tab/
+// newline/backslash bytes a title may legitimately contain. Applied to
+// every C6/M1.5 five-field line's <title> field regardless of <kind> — a
+// file record's title is always the empty string, which unescapes to
+// itself. A lone trailing backslash (malformed escaping, e.g. from a
+// hand-edited file) is left as-is rather than panicking or dropping the
+// line: escapeDocTitle itself never produces one, so this only guards
+// against a hand-edited store.
+func unescapeDocTitle(title string) string {
+	var b strings.Builder
+	b.Grow(len(title))
+	for i := 0; i < len(title); i++ {
+		if title[i] == '\\' && i+1 < len(title) {
+			switch title[i+1] {
+			case '\\':
+				b.WriteByte('\\')
+				i++
+				continue
+			case 't':
+				b.WriteByte('\t')
+				i++
+				continue
+			case 'n':
+				b.WriteByte('\n')
+				i++
+				continue
+			}
+		}
+		b.WriteByte(title[i])
+	}
+	return b.String()
 }
 
 // parseDocStoreCommonFields parses the <starred>/<lastViewed> pair every
@@ -256,7 +303,7 @@ func saveDocStore(path string, records map[string]docRecord) error {
 		title := ""
 		if rec.Article {
 			kind = "article"
-			title = rec.Title
+			title = escapeDocTitle(rec.Title)
 		}
 		b.WriteString(starredField)
 		b.WriteByte('\t')

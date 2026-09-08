@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M1.7
+Current task: M2.4
 
 ## Handoff
 
@@ -120,11 +120,30 @@ for replan rather than fixed here. Verified: `grep -rn "Roots Nav" cmd/noggin` a
 fresh-context code-reviewer subagent independently re-derived the width arithmetic and
 confirmed no leftover renames or grammar breakage — PASS on both review passes.
 
-Next: M1.7 (docstore title tab/newline guard, TRIAGE T3), then M2.4–M2.7 (Wikipedia-client
-hardening/cleanup, TRIAGE T4–T8, T10–T12) — all queued triage cleanup, pulled forward ahead
-of M3.1 at the user's request. After those, M3.1 (the first Wikipedia Picker task): read
-`SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2 already cleared its
-review/validate gate, so no further milestone-boundary check is needed before M3.
+M1.7 done: `docstore.go` guards the article `<title>` field against the tab and newline bytes
+that would otherwise corrupt the store's tab-separated, one-record-per-line format — a raw
+tab would shift `loadDocStore`'s fixed `SplitN(line, "\t", 5)` field positions (bleeding the
+title's tail into the `<key>` field), and a raw newline would split one record's line into
+two, producing an unparsable orphan. Fix: two new helpers, `escapeDocTitle` (backslash, tab,
+newline → `\\`, `\t`, `\n`, backslash escaped first so the encoding is unambiguous to
+reverse) called from `saveDocStore`'s title write, and `unescapeDocTitle` (its inverse,
+tolerant of a malformed trailing lone backslash rather than panicking) called from
+`loadDocStore`'s 5-field-shape title read; the legacy 3-field shape has no title field and is
+untouched. `TestDocStoreArticleTitleTabAndNewlineRoundTrip` covers a tab title, a newline
+title and an adjacent plain-title record all in the same store file, asserting both the
+load(save(x))==x round-trip *and* the on-disk bytes directly (exact line count, exactly 4 tab
+boundaries per line, the literal escaped substrings present) so a subtly-broken line/field
+count that happened to still parse could not slip past unnoticed — the on-disk assertion was
+added after a fresh-context code-reviewer subagent flagged the round-trip-only version as a
+minor test-thoroughness gap. Verified: `make check` and `go test ./cmd/noggin/... -run
+TestDocStore -v` pass; the reviewer's two passes (standards, spec fidelity) both PASS with no
+remaining findings.
+
+Next: M2.4–M2.7 (Wikipedia-client hardening/cleanup, TRIAGE T4–T8, T10–T12) — queued triage
+cleanup, pulled forward ahead of M3.1 at the user's request. After those, M3.1 (the first
+Wikipedia Picker task): read `SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2
+already cleared its review/validate gate, so no further milestone-boundary check is needed
+before M3.
 
 ## Status
 
@@ -139,7 +158,7 @@ review/validate gate, so no further milestone-boundary check is needed before M3
 | M2.2  | done   | 2026-09-08 | 2026-09-08 |      |
 | M2.3  | done   | 2026-09-08 | 2026-09-08 |      |
 | M1.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T2) |
-| M1.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T3) |
+| M1.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T3) |
 | M2.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
 | M2.5  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
 | M2.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
