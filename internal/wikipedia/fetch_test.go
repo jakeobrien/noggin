@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -156,4 +157,65 @@ func TestFetchAtRefreshBypass(t *testing.T) {
 	if third != second {
 		t.Errorf("fetchAt (post-refresh) = %+v, want the refreshed article %+v", third, second)
 	}
+}
+
+// TestFetchAtZeroValueClientDoesNotPanic is M2.4/TRIAGE T4's acceptance
+// criterion: a Client constructed as a bare zero value (Client{}), not via
+// NewClient, must not panic on its first Fetch — a nil httpClient panics
+// inside (*http.Client).Do's first field access, and a nil cache map panics
+// on the write that populates it after a successful fetch. ensureInit's
+// lazy initialization must cover both.
+func TestFetchAtZeroValueClientDoesNotPanic(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html><body><p>Zero-value content</p></body></html>"))
+	}))
+	defer server.Close()
+
+	var c Client // deliberately not NewClient()
+	article, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Zero Value Article", false)
+	if err != nil {
+		t.Fatalf("fetchAt on a zero-value Client: unexpected error: %v", err)
+	}
+	if article.Markdown == "" {
+		t.Error("fetchAt on a zero-value Client: Article.Markdown is empty")
+	}
+
+	// A second fetch of the same title should now hit the lazily-created
+	// cache without panicking either.
+	if _, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Zero Value Article", false); err != nil {
+		t.Fatalf("fetchAt (second, cached): unexpected error: %v", err)
+	}
+}
+
+// TestFetchAtConcurrentUseIsRaceFree backs the Client doc comment's "safe
+// for concurrent use" claim (M2.4/TRIAGE T5) with an actual test: many
+// goroutines calling fetchAt concurrently — on a zero-value Client, so
+// ensureInit's lazy first-use initialization is itself exercised under
+// race — against a shared title (exercising concurrent cache reads/writes
+// on the same key) and distinct titles (exercising concurrent cache writes
+// on different keys). Meaningful only under `go test -race`.
+func TestFetchAtConcurrentUseIsRaceFree(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html><body><p>Concurrent content</p></body></html>"))
+	}))
+	defer server.Close()
+
+	var c Client // deliberately not NewClient()
+	const goroutines = 20
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			title := "Shared Article"
+			if i%2 == 0 {
+				title = "Distinct Article " + strconv.Itoa(i)
+			}
+			if _, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", title, i%5 == 0); err != nil {
+				t.Errorf("fetchAt(%q): unexpected error: %v", title, err)
+			}
+		}()
+	}
+	wg.Wait()
 }

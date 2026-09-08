@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.4
+Current task: M2.5
 
 ## Handoff
 
@@ -139,7 +139,26 @@ minor test-thoroughness gap. Verified: `make check` and `go test ./cmd/noggin/..
 TestDocStore -v` pass; the reviewer's two passes (standards, spec fidelity) both PASS with no
 remaining findings.
 
-Next: M2.4–M2.7 (Wikipedia-client hardening/cleanup, TRIAGE T4–T8, T10–T12) — queued triage
+M2.4 done: `internal/wikipedia/fetch.go`'s `Client` is now usable from its zero value
+(`Client{}`, not just via `NewClient()`) — a new `ensureInit()` method, guarded by the
+existing `c.mu` mutex, lazily allocates `httpClient` and `cache` on first use if either is
+nil, called as `fetchAt`'s first statement (before either field is touched, on every call
+path including the public `Fetch` wrapper). Without it, a bare `Client{}`'s first fetch
+panicked twice over: a nil `*http.Client` field dereferenced inside `(*http.Client).Do`, and
+(had that not panicked first) a nil-map write populating the cache after a successful fetch.
+The whole check-and-init runs inside one held lock, so concurrent first-use callers can't
+both observe nil and both allocate — no double-checked-locking pattern needed.
+`TestFetchAtZeroValueClientDoesNotPanic` covers the zero-value path end-to-end (traced to
+confirm it would genuinely have panicked pre-fix, not vacuously passed), and
+`TestFetchAtConcurrentUseIsRaceFree` drives 20 goroutines' first-ever calls into a shared
+zero-value `*Client` concurrently under `go test -race`, backing the `Client` doc comment's
+pre-existing "safe for concurrent use" claim with an actual test (M2.4's other acceptance
+clause). Verified: `make check` passes; `go test ./internal/wikipedia/... -race -run
+TestFetchAt -v` and `-race -count=5` (5 repeats) both clean, no races, no flakes; a
+fresh-context code-reviewer subagent traced the lock ordering, the happens-before chain and
+the pre-fix panic paths independently — PASS on both review passes, no findings.
+
+Next: M2.5–M2.7 (Wikipedia-client hygiene/cleanup, TRIAGE T6–T8, T10–T12) — queued triage
 cleanup, pulled forward ahead of M3.1 at the user's request. After those, M3.1 (the first
 Wikipedia Picker task): read `SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2
 already cleared its review/validate gate, so no further milestone-boundary check is needed
@@ -159,7 +178,7 @@ before M3.
 | M2.3  | done   | 2026-09-08 | 2026-09-08 |      |
 | M1.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T2) |
 | M1.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T3) |
-| M2.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
+| M2.4  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
 | M2.5  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
 | M2.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
 | M2.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T11, T12) |

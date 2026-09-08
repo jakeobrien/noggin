@@ -37,7 +37,10 @@ type Article struct {
 // Client fetches Wikipedia articles by title, resolving redirects to the
 // canonical article and converting to markdown, with a cache scoped to the
 // Client's own lifetime (S3: "cached for the session only") keyed by
-// canonical URL. A Client is safe for concurrent use.
+// canonical URL. A Client is safe for concurrent use, and its zero value
+// (Client{}) is ready to Fetch — NewClient is a convenience, not a
+// requirement (M2.4/TRIAGE T4): fetchAt lazily initializes httpClient and
+// cache on first use via ensureInit.
 type Client struct {
 	httpClient *http.Client
 
@@ -50,6 +53,25 @@ func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: fetchTimeout},
 		cache:      make(map[string]Article),
+	}
+}
+
+// ensureInit lazily initializes a zero-value Client's httpClient and cache
+// (M2.4/TRIAGE T4): without it, a Client{} constructed directly rather than
+// via NewClient would panic on its first Fetch — a nil httpClient panics on
+// the first field access inside (*http.Client).Do, and a nil cache map
+// panics on the first write. Guarded by c.mu (M2.4/TRIAGE T5's "safe for
+// concurrent use" claim covers this too) so concurrent first-use callers
+// race safely to a single initialization rather than each allocating their
+// own map/client and silently dropping one.
+func (c *Client) ensureInit() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.httpClient == nil {
+		c.httpClient = &http.Client{Timeout: fetchTimeout}
+	}
+	if c.cache == nil {
+		c.cache = make(map[string]Article)
 	}
 }
 
@@ -68,6 +90,7 @@ func (c *Client) Fetch(title string, refresh bool) (Article, error) {
 // fetchAt is Fetch's implementation against overridable base URLs, so tests
 // point it at an httptest server instead of the network.
 func (c *Client) fetchAt(fetchBase, wikiBase, title string, refresh bool) (Article, error) {
+	c.ensureInit()
 	candidateURL := articleURLFor(wikiBase, title)
 
 	if !refresh {
