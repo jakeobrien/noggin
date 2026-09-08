@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.6
+Current task: M2.7
 
 ## Handoff
 
@@ -180,8 +180,26 @@ test ./internal/wikipedia/... -race -count=3` all pass, no flakes; two fresh-con
 code-reviewer passes (the second specifically re-checking the first pass's framing finding)
 both end PASS with no remaining findings.
 
-Next: M2.6–M2.7 (Wikipedia-client cleanup, TRIAGE T10–T12) — queued triage cleanup, pulled
-forward ahead of M3.1 at the user's request. After those, M3.1 (the first Wikipedia Picker
+M2.6 done: `internal/wikipedia/live_test.go`'s `fetchLiveArticleHTML` no longer keeps its own
+copy of the exact-title-fetch HTTP logic (request-building, status-check, body-read) — it
+now calls the package's own unexported `fetchCanonicalHTML` (fetch.go, M2.3's real fetch),
+discarding the canonical title/URL and keeping only the raw HTML. Deliberately not
+`Client.Fetch`/`fetchAt`: both convert to markdown before returning, but `convert_test.go`,
+`images_test.go` and `strip_test.go` all need *raw* HTML from `fetchLiveSample` to test
+individual pipeline stages, not the converted end product — confirmed each would break
+(wrong input type, or a substring check that would silently always fail) if fed markdown
+instead. `fetchLiveSample`'s caller-facing shape and caching needed no changes.
+`liveRestBase` and the manually-set User-Agent string are gone (fetchCanonicalHTML sets its
+own, from the production `userAgent()`); the stale "M2.3 adds the real canonical fetch..."
+comment (written when M2.3 was still future work) is reworded to past tense now that it has
+landed. Verified: `make check` passes; both opt-in live suites pass with
+`WIKISPIKE_LIVE=1` — `internal/wikipedia`'s five live test functions (one pre-existing,
+unrelated skip) and `cmd/wikispike`'s own; a fresh-context code-reviewer subagent confirmed
+no duplicated logic remains, no stale/unused imports, and the raw-vs-markdown call-site
+choice is correct by tracing all three raw-HTML consumers.
+
+Next: M2.7 (Wikipedia-client nits, TRIAGE T11, T12) — the last queued triage cleanup, pulled
+forward ahead of M3.1 at the user's request. After it, M3.1 (the first Wikipedia Picker
 task): read `SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2 already cleared
 its review/validate gate, so no further milestone-boundary check is needed before M3.
 
@@ -201,7 +219,7 @@ its review/validate gate, so no further milestone-boundary check is needed befor
 | M1.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T3) |
 | M2.4  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
 | M2.5  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
-| M2.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
+| M2.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
 | M2.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |

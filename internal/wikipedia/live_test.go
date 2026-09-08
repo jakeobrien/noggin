@@ -1,12 +1,8 @@
 package wikipedia
 
 import (
-	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -15,10 +11,7 @@ import (
 // This file mirrors cmd/wikispike's live_test.go (same opt-in guard, same
 // once-per-title fetch cache across the whole test binary run) so the stage
 // tests moved here in M2.1 (D120) keep exercising real article HTML without
-// re-fetching per test. It has its own minimal exact-title fetch rather than
-// importing cmd/wikispike's (a `main` package can't be imported) — this is
-// test-only fixture plumbing, not the package's production fetch path; M2.3
-// adds the real canonical fetch this package will actually ship.
+// re-fetching per test.
 //
 // WIKISPIKE_LIVE=1 go test ./internal/wikipedia -run Live -v
 
@@ -31,38 +24,22 @@ func skipUnlessLive(t *testing.T) {
 	}
 }
 
-// liveRestBase is the same Wikimedia REST endpoint cmd/wikispike's fetch.go
-// uses (S2: English Wikipedia only, no auth, no search).
-const liveRestBase = "https://en.wikipedia.org/api/rest_v1/page/html/"
-
 var liveHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
-// fetchLiveArticleHTML GETs an article's Parsoid HTML by exact title —
-// test-only, mirrors cmd/wikispike/fetch.go's fetchArticleHTML.
+// fetchLiveArticleHTML GETs an article's raw Parsoid HTML by exact title
+// (M2.6/TRIAGE T10): several stage tests (convert_test.go, images_test.go,
+// strip_test.go) need the *raw* HTML directly, ahead of conversion, so this
+// cannot simply call Client.Fetch/fetchAt — both convert to markdown before
+// returning. It instead calls fetchCanonicalHTML, the same unexported
+// fetch-and-follow-redirects step fetchAt itself uses (fetch.go), so this
+// fixture shares the package's one real HTTP-fetch implementation rather
+// than keeping its own copy of the request-building/status-check/body-read
+// logic — the duplication M2.1's handoff called out as provisional, resolved
+// now that M2.3's real fetch has landed in this package. Canonical
+// title/URL are discarded here; the stage tests only need the HTML.
 func fetchLiveArticleHTML(title string) (string, error) {
-	slug := strings.ReplaceAll(strings.TrimSpace(title), " ", "_")
-	target := liveRestBase + url.PathEscape(slug)
-	req, err := http.NewRequest(http.MethodGet, target, nil)
-	if err != nil {
-		return "", fmt.Errorf("building request for %q: %w", title, err)
-	}
-	req.Header.Set("User-Agent", "noggin-wikipedia-pkg-test/0.1 (local experimental test, not distributed)")
-	req.Header.Set("Accept", "text/html")
-
-	resp, err := liveHTTPClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("fetching %q: %w", title, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("fetching %q: %s returned %s", title, target, resp.Status)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("reading %q: %w", title, err)
-	}
-	return string(body), nil
+	html, _, _, err := fetchCanonicalHTML(liveHTTPClient, fetchBase, wikiBase, title)
+	return html, err
 }
 
 var (
