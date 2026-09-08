@@ -703,7 +703,7 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 		t.Errorf("Document Viewer offset = %d, want 0 (opened plain at the top per D34's full degrade)", got.dv1.offset())
 	}
 	// Scoped to the viewer pane's own rendering, not the whole frame (S5's
-	// two-line Roots Nav rows use a bare Reverse(true) on an active row's
+	// two-line Sources Nav rows use a bare Reverse(true) on an active row's
 	// unbold path line, which would otherwise make this substring check a
 	// false positive whenever a root is both active and selected — the
 	// common single-root case, unrelated to whether the viewer has a find

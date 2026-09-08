@@ -3,7 +3,7 @@ package main
 import "testing"
 
 // TestCloseDV2FromEveryPane is S4/C3/M2.1's full sweep: `ctrl+x` closes DV2
-// from every non-modal Focus (Roots Nav, Files Nav, DV1, DV2 itself), and
+// from every non-modal Focus (Sources Nav, Files Nav, DV1, DV2 itself), and
 // Focus lands per S4's own rule — DV1 if DV2 held Focus, unchanged
 // otherwise.
 func TestCloseDV2FromEveryPane(t *testing.T) {

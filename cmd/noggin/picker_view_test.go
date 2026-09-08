@@ -342,7 +342,7 @@ func TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory(t *testing
 // TRIAGE T8 found: S2/M2.5's own wording already talked about a Picker
 // Result's "star marker" being cleared, but no Picker row actually rendered
 // one. A starred Result's row now carries the same "\u2605 "/"  " two-column
-// field Files Nav and Roots Nav rows already use, prepended ahead of the
+// field Files Nav and Sources Nav rows already use, prepended ahead of the
 // Root label rather than appended — the marker is styling-adjacent state,
 // not part of the disambiguating path text pickerRootLabel computes.
 func TestPickerFileRowShowsStarMarkerForAStarredResult(t *testing.T) {

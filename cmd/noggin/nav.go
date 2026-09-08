@@ -25,7 +25,7 @@ func windowedView(width, height, selected, count int, renderRow func(idx int) st
 }
 
 // windowedViewRows generalizes windowedView to entries that occupy more than
-// one physical line each (rowHeight lines per entry — S5's two-line Roots
+// one physical line each (rowHeight lines per entry — S5's two-line Sources
 // Nav rows). Scrolling and the on-screen window are computed in entries, not
 // lines, so an entry is never shown split across the top/bottom edge: at
 // most height/rowHeight whole entries are drawn, the selected one kept fully

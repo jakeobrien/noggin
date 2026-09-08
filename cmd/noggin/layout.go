@@ -1,7 +1,7 @@
 package main
 
 // Frame proportions, in one place so the layout can be retuned without reading
-// the render code. The frame is: a Navigator column (Roots Nav stacked above
+// the render code. The frame is: a Navigator column (Sources Nav stacked above
 // Files Nav) beside the Document Viewer, with a Footer line beneath both.
 const (
 	footerHeight = 1
@@ -16,7 +16,7 @@ const (
 	paneTitleHeight = 1
 
 	// navigatorPercent is the Navigator column's share of the terminal width,
-	// clamped to the min/max below; rootsPercent is the Roots Nav pane's share
+	// clamped to the min/max below; rootsPercent is the Sources Nav pane's share
 	// of the Navigator column's height.
 	navigatorPercent = 30
 	rootsPercent     = 35

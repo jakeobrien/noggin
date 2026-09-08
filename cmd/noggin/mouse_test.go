@@ -34,7 +34,7 @@ func TestMouseWheelScrollsTheFilesNavUnderTheCursor(t *testing.T) {
 		t.Fatalf("fixture tree has %d rows, want at least 2 to scroll between", m.files.rowCount())
 	}
 	l := m.layout()
-	x, y := 1, l.roots.height+1 // inside the Navigator column, below Roots Nav's rows: the Files Nav
+	x, y := 1, l.roots.height+1 // inside the Navigator column, below Sources Nav's rows: the Files Nav
 
 	before := m.files.selected
 	next, _ := m.Update(tea.MouseWheelMsg{X: x, Y: y, Button: tea.MouseWheelDown})

@@ -17,7 +17,7 @@ const recentPerRootCap = 100
 // right-hand label per S6 — either the base name of the session Root that
 // covers it, or, when no session Root does (an "orphan" document, S1's "not
 // attached to Roots"), that document's own parent directory, left-truncated
-// at render time the same way the Roots Nav already disambiguates two
+// at render time the same way the Sources Nav already disambiguates two
 // same-named Roots (rootsnav.go's leftTruncate).
 type browseRow struct {
 	path string

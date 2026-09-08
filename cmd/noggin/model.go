@@ -36,7 +36,7 @@ const (
 var focusOrder = []pane{rootsPane, filesPane, dv1Pane}
 
 // title is the pane's heading, shown in its border and the footer. It is a
-// short display label, not the GLOSSARY.md term ("Roots Nav", "Files Nav",
+// short display label, not the GLOSSARY.md term ("Sources Nav", "Files Nav",
 // "Document Viewer") — those name the pane in prose, but a title lives on a
 // single content row shared with the Active Document's own label
 // (paneTitle), so it stays terse on purpose rather than drifting to match the
@@ -44,7 +44,7 @@ var focusOrder = []pane{rootsPane, filesPane, dv1Pane}
 func (p pane) title() string {
 	switch p {
 	case rootsPane:
-		return "Roots"
+		return "Sources"
 	case filesPane:
 		return "Files"
 	default: // dv1Pane, dv2Pane
@@ -106,7 +106,7 @@ type model struct {
 	dv2 *viewer
 
 	// navigatorHidden is the S9 Navigator toggle: hides the whole sidebar
-	// (Roots Nav and Files Nav) and gives the Document Viewer the full width
+	// (Sources Nav and Files Nav) and gives the Document Viewer the full width
 	// when set. It never touches either pane's own state (selection,
 	// expansion) — only the layout computed from it (see layout()) — so
 	// restoring it leaves that state exactly as it was (M5.2).
@@ -123,7 +123,7 @@ type model struct {
 	// model (relaunch) resets it, matching S4's "reset on relaunch".
 	hideDotfiles bool
 
-	// roots is the session's note sources (S1): the Roots Nav pane and its
+	// roots is the session's note sources (S1): the Sources Nav pane and its
 	// selection, doubling as the record of which root is active. message
 	// carries a transient footer notice — a launch-time rejection (S1) or a
 	// refused action (e.g. activating a broken root, S3); M4.2 will add
@@ -228,7 +228,7 @@ func (m model) focusedViewerPane() pane {
 }
 
 // withStorePath sets the resolved starred-roots data path (M3.2's
-// storePath(), M1.1's dataDir()) that a Roots Nav star toggle persists
+// storePath(), M1.1's dataDir()) that a Sources Nav star toggle persists
 // through. main.go resolves it once at startup so a keypress never
 // re-derives dataDir() itself.
 func (m model) withStorePath(path string) model {
@@ -618,7 +618,7 @@ func (m model) activateFlatRowInto(row browseRow, target pane) model {
 	return m.navigate(target, d)
 }
 
-// activateRoot makes the Roots Nav's selected entry the active root,
+// activateRoot makes the Sources Nav's selected entry the active root,
 // re-rooting the Files Nav (S4; M3.4 verifies the open document survives
 // this) while leaving focus free to land in the Files Nav, same shape as
 // activate() above. A broken root (missing path) is refused with a footer
@@ -645,7 +645,7 @@ func (m model) activateRoot() model {
 
 // activateWikipediaSource makes the Wikipedia Query Source the model's
 // Active Source (S1, C6/M1.1) — activateRoot's mirror for the one Source
-// that is never a Roots Nav row index. It refreshes exactly what a Root
+// that is never a Sources Nav row index. It refreshes exactly what a Root
 // switch already refreshes (the Files Nav's Recent/Starred snapshot, the
 // staleness baseline) so both kinds of Active Source keep those invariants
 // unconditionally, not just for Roots. filesNav.setWikipedia (C6/M1.4) puts
@@ -665,7 +665,7 @@ func (m model) activateWikipediaSource() model {
 	return m.resetStaleBaseline()
 }
 
-// toggleStar flips the Roots Nav selection's starred mark and persists it via
+// toggleStar flips the Sources Nav selection's starred mark and persists it via
 // the S2 store (M3.2's toggleStore), using the storePath resolved once at
 // startup (withStorePath). A data directory that could not be resolved
 // (m.roots.storePath == "", the same rare case loadStarredRoots degrades on)
@@ -1305,7 +1305,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m.focusPane(dv2Pane), nil
 		// CloseDV2 (S4, C3/M2.1) lives in this global switch, not a pane-
-		// specific case, so it is reachable from every one of Roots Nav/Files
+		// specific case, so it is reachable from every one of Sources Nav/Files
 		// Nav/DV1/DV2 — and, like every other binding in this switch, already
 		// unreachable while a find is editing, the Help Modal is open or the
 		// Picker is open, per the three gates above that return before this
@@ -1356,7 +1356,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// M2.2: star/un-star acts on this viewer's own Active Document, so
 			// DV1 and DV2 star independently — the same shared keys.Star chord
-			// the Roots Nav and Files Nav cases each bind to their own action.
+			// the Sources Nav and Files Nav cases each bind to their own action.
 			if key.Matches(msg, keys.Star) {
 				return m.toggleActiveDocStar(), nil
 			}
@@ -1375,7 +1375,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Peek (S7, M7.1) is Files-Nav-only, unlike every other binding
 			// matched above in the global switch — that is what keeps it
-			// from firing on the Roots Nav or Document Viewer.
+			// from firing on the Sources Nav or Document Viewer.
 			if key.Matches(msg, keys.Peek) {
 				return m.togglePeek(), nil
 			}
@@ -1392,7 +1392,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.togglePeekInto(dv2Pane), nil
 			}
 			// M2.1: star/un-star the Files Nav's selected file, the same
-			// physical key (keys.Star) the Roots Nav's own case below already
+			// physical key (keys.Star) the Sources Nav's own case below already
 			// binds — the two are matched independently per pane, not shared
 			// logic, since they act on two entirely separate stores.
 			if key.Matches(msg, keys.Star) {
@@ -1451,7 +1451,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // footer, a collapsed Navigator's now-absent column, or off the frame
 // entirely). layout() only hands back each region's size, not its on-screen
 // offset, so the offsets are rebuilt here from the same pieces frame() joins
-// in the same order: the Navigator column (Roots Nav above Files Nav) at
+// in the same order: the Navigator column (Sources Nav above Files Nav) at
 // x=0..navWidth, the Document Viewer (DV1, then DV2 if present) beside it —
 // both columns sharing the same body height, rows 0..l.viewer.height.
 func (m model) paneAt(x, y int) (pane, bool) {
@@ -1663,7 +1663,7 @@ func (m model) visible(p pane) bool {
 }
 
 // resolveFocus keeps focus on a visible pane across a resize, falling back
-// through focusOrder (Roots Nav, Files Nav, DV1) when want is not visible.
+// through focusOrder (Sources Nav, Files Nav, DV1) when want is not visible.
 // DV2 is deliberately never a fallback target — see focusOrder's own doc
 // comment.
 func (m model) resolveFocus(want pane) pane {
@@ -1809,7 +1809,7 @@ func titleRow(title, badge string, width int) string {
 // two are never visually confusable.
 //
 // S3/M2.4: a starred Active Document gets the same "★ " glyph the Files Nav
-// and Roots Nav rows already use, immediately to the left of the label, so
+// and Sources Nav rows already use, immediately to the left of the label, so
 // a star reads the same way in every pane that shows one. It only applies
 // to the Active Document's own title — Peek names a different, non-Active
 // document (S7's own concept), which S2/S3 never speak to, so the Peek

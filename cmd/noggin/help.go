@@ -42,7 +42,7 @@ import (
 // keys.Star (S2/M2.1/M2.2) itself now joins filesPane's and the viewer's
 // list here (M2.8, TRIAGE T5/T6), not only rootsPane's: the Files Nav
 // (toggleDocStar) and a focused Document Viewer (toggleActiveDocStar) can
-// star just as well as the Roots Nav, so the discoverability backstop this
+// star just as well as the Sources Nav, so the discoverability backstop this
 // modal gives every other binding was missing for those two actions.
 // TestHelpModalListsThePaneOwnBindings's filesPane/dv1Pane cases were
 // reworded from pinning keys.Star's absence to pinning its presence.

@@ -27,7 +27,7 @@ type rootRow struct {
 	broken bool
 }
 
-// rootsNav is the Roots Nav pane: a selection cursor over the session's roots
+// rootsNav is the Sources Nav pane: a selection cursor over the session's roots
 // (S1's order — ad-hoc root first, then starred — is preserved as given,
 // never reordered here), independent of which root is active. storePath is
 // resolved once at startup (main.go's storePath(), threaded through
@@ -206,7 +206,7 @@ func (r rootsNav) toggleStarred(i int) rootsNav {
 	return r
 }
 
-// handleKey applies the Roots Nav binding msg is bound to, reporting whether
+// handleKey applies the Sources Nav binding msg is bound to, reporting whether
 // it was one. Only selection movement lives here — Activate and Star have
 // cross-cutting effects (re-rooting the Files Nav, persisting to disk) that
 // belong to the model, mirroring how the Files Nav's own Activate is handled
@@ -228,7 +228,7 @@ func (r rootsNav) move(delta int) rootsNav {
 	return r
 }
 
-// rootRowHeight is how many physical lines one Roots Nav entry occupies
+// rootRowHeight is how many physical lines one Sources Nav entry occupies
 // (S5): name-and-markers, then path. windowedViewRows uses this to window
 // and scroll in whole entries, never splitting one across the screen edge.
 const rootRowHeight = 2

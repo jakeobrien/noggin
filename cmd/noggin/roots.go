@@ -9,7 +9,7 @@ import (
 
 // root is one of the session's note sources: an absolute path plus whether it
 // is starred. A launch argument produces an unstarred ad-hoc root; roots loaded
-// from the store (M3.2) are starred. M3.3's Roots Nav renders these.
+// from the store (M3.2) are starred. M3.3's Sources Nav renders these.
 type root struct {
 	path    string
 	starred bool

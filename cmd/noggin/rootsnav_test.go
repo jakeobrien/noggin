@@ -523,7 +523,7 @@ func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
 }
 
 // TestActivateRootRestoresFilesNavPerRoot is M3.1's acceptance criterion,
-// driven through the same keypresses a user takes (Roots Nav selection +
+// driven through the same keypresses a user takes (Sources Nav selection +
 // Activate) rather than filesNav directly (that version lives alongside
 // filesNav's own tests as TestFilesNavRestoresPerRootStateAcrossSwitches):
 // expanding/collapsing nodes and selecting one in Root A, activating Root B

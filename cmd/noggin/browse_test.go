@@ -160,14 +160,14 @@ func TestFilesNavViewHeightOneOmitsRowList(t *testing.T) {
 // other than the Files Nav.
 func TestFilesModeScopeKeysActOnlyFromFilesNavFocus(t *testing.T) {
 	m := sized(t, newModel().openFolder(fixtureTree()), 80, 24)
-	m = press(t, m, "r") // focus -> Roots Nav
+	m = press(t, m, "r") // focus -> Sources Nav
 	if m.focus != rootsPane {
 		t.Fatalf("setup: focus = %v, want rootsPane", m.focus)
 	}
 	m = press(t, m, keys.FilesMode.Keys()[0])
 	m = press(t, m, keys.FilesScope.Keys()[0])
 	if m.files.mode != treeBrowse || m.files.scope != activeRootBrowseScope {
-		t.Errorf("Files Nav browse state changed while Roots Nav had focus: mode %v, scope %v", m.files.mode, m.files.scope)
+		t.Errorf("Files Nav browse state changed while Sources Nav had focus: mode %v, scope %v", m.files.mode, m.files.scope)
 	}
 }
 

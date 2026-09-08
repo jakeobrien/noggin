@@ -873,7 +873,7 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 	}
 	// Star marker (S3), files only — a folder cannot itself be Starred (the
 	// S1 store holds document records, not folders) — same "★ "/"  " pair the
-	// Roots Nav's own renderRow already uses for row.root.starred, so the two
+	// Sources Nav's own renderRow already uses for row.root.starred, so the two
 	// panes read the same mark for the same concept.
 	star := "  "
 	if !r.node.IsDir && f.starred[r.node.Path] {
@@ -883,7 +883,7 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 	// A long name (or deep nesting) can push line past f.width; truncate it
 	// here rather than let Width().Render() below word-wrap it into a second
 	// physical line (lipgloss-v2-row-rendering-gotchas.md) — an over-height
-	// Files Nav pane pushes the Roots Nav and Document Viewer panes' top rows
+	// Files Nav pane pushes the Sources Nav and Document Viewer panes' top rows
 	// off screen, since frame() has no outer viewport to clip it back down.
 	line = rightTruncate(line, f.width)
 

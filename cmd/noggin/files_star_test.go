@@ -53,7 +53,7 @@ func TestToggleDocStarPersistsAndUpdatesDisplay(t *testing.T) {
 
 // TestFilesNavStarKeyTogglesDocStar confirms the wiring, not just the
 // method: with Focus on the Files Nav, pressing the shared keys.Star chord
-// (the same physical key the Roots Nav's own case binds) reaches
+// (the same physical key the Sources Nav's own case binds) reaches
 // toggleDocStar through model.Update's filesPane case.
 func TestFilesNavStarKeyTogglesDocStar(t *testing.T) {
 	dir := t.TempDir()

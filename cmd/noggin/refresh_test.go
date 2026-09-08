@@ -694,7 +694,7 @@ func TestRefreshWorksWithFocusOnRootsPane(t *testing.T) {
 // ("nothing else is refreshed") holds today only by construction —
 // model.refresh only ever assigns to m.files/m.dv1 — but nothing
 // regression-proofs it. With two roots configured, deletes the inactive
-// root's directory (which would flip its Roots Nav broken mark if it were
+// root's directory (which would flip its Sources Nav broken mark if it were
 // ever recomputed) and adds a file under the Active Root, then refreshes:
 // the Active Root's tree picks up the new file, while the inactive root's
 // row is untouched down to its stale (pre-deletion) broken snapshot.

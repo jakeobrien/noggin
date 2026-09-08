@@ -15,7 +15,7 @@ import (
 // lipgloss v2 Width-wraps-before-MaxWidth-truncates gotcha
 // (lipgloss-v2-row-rendering-gotchas.md) TestRenderStaleRowTruncatesRatherThanWraps
 // already guards for the stale row. Before the fix, every wrapped row grew
-// the pane's rendered height by one line, pushing the Roots Nav and Document
+// the pane's rendered height by one line, pushing the Sources Nav and Document
 // Viewer panes above it off screen (windowedViewRows counts entries, not
 // physical lines, so it never caught the overflow).
 func TestFilesNavRowTruncatesRatherThanWraps(t *testing.T) {

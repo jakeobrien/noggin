@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.1
+Current task: M1.7
 
 ## Handoff
 
@@ -87,11 +87,44 @@ request made, cache repopulated, a following non-refresh fetch returns the new v
 Verified: `make check` and `go test ./... -race` both pass; `go test ./internal/wikipedia/...
 -run TestFetchAt -v` shows all five new tests passing individually.
 
-M2 (Wikipedia client) is now fully done — M2.1/M2.2/M2.3 all `done`, none yet `Reviewed`/
-`Validated`. Next: M3.1, the first Wikipedia Picker task — read `SPEC.md` S2 and the M3
-section of `PLAN.md` before starting; consider whether M2's three tasks warrant a
-code-review/validate pass first per the milestone-boundary guidance (M2.1–M2.3 all
-unreviewed) before building further on top.
+M2 (Wikipedia client) is now fully done — M2.1/M2.2/M2.3 all `done`, and (contrary to this
+handoff's stale prior wording) already `Reviewed`/`Validated` 2026-09-08 per the Status
+table; that review pass is what surfaced TRIAGE T4–T13.
+
+2026-09-08 replan: triaged all 13 open TRIAGE items (T1–T13). Accepted as new PLAN tasks:
+M1.6/M1.7 (T1–T3, "Roots Nav"→"Sources Nav" rename propagation and docstore title
+tab/newline guard) and M2.4–M2.7 (T4–T8, T10–T12, Wikipedia-client hardening and cleanup) —
+all six are queued cleanup work, low-effort and independent of the M3 critical path, pullable
+forward like M3.1/M8.1 whenever a short slice is wanted. T9 (Search/Fetch API-shape
+asymmetry) became DECISIONS.md D124 (open, to resolve by/at M3.3). T13 was dropped as a
+duplicate of the already-open D122. TRIAGE.md is now empty. See D124/D125.
+
+M1.6 done: mechanically propagated GLOSSARY's C6 rename ("Roots Nav" → "Sources Nav")
+across every comment and string in `cmd/noggin` — 24 files touched, including three
+line-wrapped occurrences (`keymap.go`, `nav.go`, `main.go`) a plain substring sed/perl pass
+missed because the phrase split across a line break in the source comment. The rendered pane
+title itself (`model.go`'s `pane.title()` for `rootsPane`) changed from the literal `"Roots"`
+to `"Sources"`; `focus_badge_test.go`'s two width-arithmetic tests were re-derived for the
+new title's length (7 chars vs. 5: interior-column and rect-width constants shifted from
+9/11/10 to 11/13/12) rather than just renaming the string, since the pane border only fits a
+title+badge for panes wide enough. `TestPaneFocusBadgesShowAtNormalWidthRegardlessOfFocus`
+(uses `pane.title()` dynamically) is the "rootsnav render test asserts the pane label reads
+'Sources'" the acceptance criterion calls for. Root/Roots-the-data-concept references (`All
+Roots` scope label, `rootsPane`/`rootsnav.go` identifiers, `FocusRoots`, `loadStarredRoots`,
+etc.) were deliberately left alone — GLOSSARY still uses "Root"/"Roots" for that concept;
+only the Roots-*Nav* pane name moved. A pre-existing GLOSSARY self-inconsistency found along
+the way (Navigator entry at GLOSSARY.md:77 still says "Roots Nav above" despite its own
+rename note at lines 114-120) is out of this task's `cmd/noggin` scope — logged as TRIAGE T14
+for replan rather than fixed here. Verified: `grep -rn "Roots Nav" cmd/noggin` and `grep -n
+'"Roots"' cmd/noggin/*.go` both empty; `make check` and `go test ./... -count=1` pass; a
+fresh-context code-reviewer subagent independently re-derived the width arithmetic and
+confirmed no leftover renames or grammar breakage — PASS on both review passes.
+
+Next: M1.7 (docstore title tab/newline guard, TRIAGE T3), then M2.4–M2.7 (Wikipedia-client
+hardening/cleanup, TRIAGE T4–T8, T10–T12) — all queued triage cleanup, pulled forward ahead
+of M3.1 at the user's request. After those, M3.1 (the first Wikipedia Picker task): read
+`SPEC.md` S2 and the M3 section of `PLAN.md` before starting. M2 already cleared its
+review/validate gate, so no further milestone-boundary check is needed before M3.
 
 ## Status
 
@@ -105,6 +138,12 @@ unreviewed) before building further on top.
 | M2.1  | done   | 2026-09-08 | 2026-09-08 |      |
 | M2.2  | done   | 2026-09-08 | 2026-09-08 |      |
 | M2.3  | done   | 2026-09-08 | 2026-09-08 |      |
+| M1.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T2) |
+| M1.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T3) |
+| M2.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
+| M2.5  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
+| M2.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
+| M2.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |

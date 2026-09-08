@@ -290,7 +290,7 @@ func pickerLocationLabel(f pickerFile, width int, rest string) string {
 // matched characters of the file name (S5/M6.1) — an empty query renders
 // exactly the unhighlighted row M3.1 shipped.
 // starred is S3/D72's Picker-side star marker: a starred Result renders the
-// same "\u2605 "/"  " two-column field Files Nav, Roots Nav and the Document
+// same "\u2605 "/"  " two-column field Files Nav, Sources Nav and the Document
 // Viewer already use, computed live from the caller's docs lookup rather
 // than cached on picker itself (unlike M2.7's m.files.starred, there is
 // nothing here that needs syncing — every frame re-renders straight from

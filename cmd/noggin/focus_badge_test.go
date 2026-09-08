@@ -50,22 +50,22 @@ func TestPaneFocusBadgesShowAtNormalWidthRegardlessOfFocus(t *testing.T) {
 
 // TestRenderPaneDropsTheBadgeNotTheTitleWhenTooNarrow covers the other half
 // of M7.1's acceptance criterion: a pane too narrow for title plus badge
-// drops the badge, not the title. rootsPane's title ("Roots", 5 columns)
-// plus its badge ("[r]", 3 columns) needs 9 interior columns (5 + 1
+// drops the badge, not the title. rootsPane's title ("Sources", 7 columns)
+// plus its badge ("[r]", 3 columns) needs 11 interior columns (7 + 1
 // separator + 3); interior width is r.width - 2*paneBorderWidth.
 func TestRenderPaneDropsTheBadgeNotTheTitleWhenTooNarrow(t *testing.T) {
 	m := sized(t, newModel(), 80, 24)
 
-	fits := m.renderPane(rootsPane, rect{width: 11, height: 3}, "") // interior 9: exact fit
-	if !strings.Contains(fits, "Roots") {
+	fits := m.renderPane(rootsPane, rect{width: 13, height: 3}, "") // interior 11: exact fit
+	if !strings.Contains(fits, "Sources") {
 		t.Errorf("at exact-fit width, rendered pane = %q, want it to contain the title", fits)
 	}
 	if !strings.Contains(fits, "[r]") {
 		t.Errorf("at exact-fit width, rendered pane = %q, want it to contain the badge", fits)
 	}
 
-	tooNarrow := m.renderPane(rootsPane, rect{width: 10, height: 3}, "") // interior 8: title only
-	if !strings.Contains(tooNarrow, "Roots") {
+	tooNarrow := m.renderPane(rootsPane, rect{width: 12, height: 3}, "") // interior 10: title only
+	if !strings.Contains(tooNarrow, "Sources") {
 		t.Errorf("at too-narrow width, rendered pane = %q, want the title kept", tooNarrow)
 	}
 	if strings.Contains(tooNarrow, "[r]") {
@@ -78,11 +78,11 @@ func TestRenderPaneDropsTheBadgeNotTheTitleWhenTooNarrow(t *testing.T) {
 // column short of "title + separator + badge" drops the badge; exactly
 // enough keeps both.
 func TestTitleRowDropsTheBadgeAtExactlyOneColumnShort(t *testing.T) {
-	title, badge := "Roots", "[r]" // 5 + 1 + 3 = 9
-	if got := titleRow(title, badge, 9); got != title+" "+badge {
+	title, badge := "Sources", "[r]" // 7 + 1 + 3 = 11
+	if got := titleRow(title, badge, 11); got != title+" "+badge {
 		t.Errorf("titleRow at exact width = %q, want title and badge joined by one space of padding", got)
 	}
-	if got := titleRow(title, badge, 8); got != title {
+	if got := titleRow(title, badge, 10); got != title {
 		t.Errorf("titleRow one column short = %q, want the bare title with the badge dropped", got)
 	}
 }

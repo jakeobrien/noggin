@@ -24,7 +24,7 @@ func main() {
 	// garbage one, is a first run.
 	cwd, cwdErr := resolveCwd()
 	res := resolveLaunch(os.Args[1:], loadStarredRoots(), cwd, cwdErr)
-	// storePath is resolved once here and threaded into the model so a Roots
+	// storePath is resolved once here and threaded into the model so a Sources
 	// Nav star toggle (M3.3) persists without re-deriving dataDir() on every
 	// keypress; an unresolvable data directory (storePath's own error)
 	// becomes "", the same degrade loadStarredRoots already applies.

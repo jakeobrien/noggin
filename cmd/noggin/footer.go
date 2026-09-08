@@ -41,11 +41,11 @@ import (
 // FindNext/FindPrevious/Cancel.
 //
 // keys.Star (S2/M2.1/M2.2) now appears in every case below (M2.8, TRIAGE
-// T5/T6): before this, only the Roots Nav's own star action had a footer
+// T5/T6): before this, only the Sources Nav's own star action had a footer
 // hint, even though the Files Nav (toggleDocStar) and a focused Document
 // Viewer (toggleActiveDocStar) can star just as well — a real action with no
-// hint anywhere outside the Roots Nav. Placed right after each pane's own
-// open/expand action, mirroring the Roots Nav's existing Activate-then-Star
+// hint anywhere outside the Sources Nav. Placed right after each pane's own
+// open/expand action, mirroring the Sources Nav's existing Activate-then-Star
 // order.
 //
 // keys.FilesMode/keys.FilesScope (C4/M4.1) join filesPane's list here too
@@ -58,7 +58,7 @@ import (
 // keys.HistoryBack/keys.HistoryForward (C4/M6.1) join the viewer case below
 // (M6.3, TRIAGE T41), mirroring M2.8's and M4.8's precedent above: S9's
 // per-viewer back/forward walk had no footer hint anywhere. Viewer-only by
-// design (DV1/DV2 each walk their own history; Roots Nav and Files Nav have
+// design (DV1/DV2 each walk their own history; Sources Nav and Files Nav have
 // none), so they appear only in the default case, placed right after Star —
 // the pane's other own document action — and before Edit.
 func paneHints(p pane) []key.Binding {

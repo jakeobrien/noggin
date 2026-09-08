@@ -18,9 +18,9 @@ type keyMap struct {
 	Quit key.Binding
 
 	// Star toggles the selected item's starred mark, persisted via the S1/S2
-	// document (or Roots) store: the Roots Nav's selected root, the Files
+	// document (or Roots) store: the Sources Nav's selected root, the Files
 	// Nav's selected file, or a focused Document Viewer's Active Document
-	// (C4/M2.1, M2.2, M2.8). Roots Nav selection moves with the shared
+	// (C4/M2.1, M2.2, M2.8). Sources Nav selection moves with the shared
 	// LineUp/LineDown bindings; Activate (below) also opens the selected root.
 	Star key.Binding
 
@@ -31,7 +31,7 @@ type keyMap struct {
 
 	// Activate opens the selected entry: on the Files Nav, the selected file
 	// becomes the active document and focus moves to the viewer (M2.3); a
-	// folder is left for later. On the Roots Nav, the selected root becomes
+	// folder is left for later. On the Sources Nav, the selected root becomes
 	// the active root (S3), refused with a footer message if its path is
 	// missing (broken). It also commits an in-progress find query (M5.1),
 	// the viewer's own use of the same physical key: "enter" always means
@@ -65,15 +65,15 @@ type keyMap struct {
 	FindNext     key.Binding
 	FindPrevious key.Binding
 
-	// Navigator hides and restores the whole sidebar (Roots Nav and Files
+	// Navigator hides and restores the whole sidebar (Sources Nav and Files
 	// Nav), the Document Viewer re-wrapping to the width it gains (S9,
 	// M5.2). Global, like Edit and Find, and it never resets either
 	// Navigator pane's own selection — hiding and restoring leaves it
 	// exactly as it was.
 	Navigator key.Binding
 
-	// FocusRoots and FocusFiles (S6, M2.1) move Focus straight to the Roots
-	// Nav or Files Nav from any of the Roots Nav, Files Nav or Document
+	// FocusRoots and FocusFiles (S6, M2.1) move Focus straight to the Sources
+	// Nav or Files Nav from any of the Sources Nav, Files Nav or Document
 	// Viewer, revealing the Navigator first if the S9 toggle has it hidden
 	// — never hiding it. Global like Navigator/Edit/Find, so both are inert
 	// while the Picker owns the keyboard (model.Update's picker.open gate
@@ -176,7 +176,7 @@ type keyMap struct {
 
 	// PickerStar is S2/M2.5's Picker-only star toggle: acts on the Picker's
 	// currently selected Result (either mode), the same conceptual action
-	// keys.Star already gives the Roots Nav, Files Nav and a focused Document
+	// keys.Star already gives the Sources Nav, Files Nav and a focused Document
 	// Viewer, but under its own binding rather than reusing keys.Star's plain
 	// "s" — for the identical reason PickerUp/PickerDown avoid "j"/"k" and
 	// ToggleHidden avoids a bare letter: S2's "every printable keystroke goes
@@ -232,7 +232,7 @@ type keyMap struct {
 	// Picker owns the keyboard exclusively while open, handlePickerInput's
 	// own gate, so Update's filesPane case is only ever reached with the
 	// Picker closed) the same way keys.Activate's "enter" already means one
-	// thing on the Files Nav and another on the Roots Nav/Picker without
+	// thing on the Files Nav and another on the Sources Nav/Picker without
 	// collision. FilesMode cycles Tree -> Recent -> Starred -> Tree ...
 	// (filesNav.cycleMode); FilesScope cycles the current mode's own Browse
 	// Scope values (filesNav.cycleScope), a no-op while the mode is Tree,
@@ -244,7 +244,7 @@ type keyMap struct {
 	// back/forward stack (C4/M6.1): matched in Update's dv1Pane/dv2Pane case
 	// beside keys.Star, so — like it — they act on whichever viewer holds
 	// Focus (DV1 and DV2 each walk their own history independently) and do
-	// nothing from the Roots Nav or Files Nav. `[`/`]`, unused elsewhere in
+	// nothing from the Sources Nav or Files Nav. `[`/`]`, unused elsewhere in
 	// the keymap and free of S2's Picker-Prompt "always typing" constraint
 	// PickerUp/PickerDown, ToggleHidden and PickerStar each had to route
 	// around, since neither the Files Nav nor a focused viewer is ever a
