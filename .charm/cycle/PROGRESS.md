@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.6
+Current task: M3.7
 
 ## Handoff
 
@@ -220,7 +220,15 @@ always pass `limit=0` (caught — wrong query param), then reverted both mutatio
 the two methods' own doc comments and the one `search.go` comment claiming `Search` is
 "untested directly against a live server" (no longer true) to point at the new tests.
 
-Next: M3.6 (TRIAGE T20). Independent of M2.9's own work — next in cursor order.
+M3.6 done (2026-09-08, `make check` clean). GLOSSARY's `Result` entry predated the
+Wikipedia Result (M3.2/M3.3) and its Picker star (M3.4); added the third Result shape
+(article title-and-description) and its star capability. Doc-only — staged just this one
+hunk (`git apply --cached`) of `.charm/GLOSSARY.md`, leaving a pre-existing unrelated
+uncommitted hunk there (the Location-line S9a wording, present since before this session,
+out of scope) untouched in the working tree.
+
+Next: M3.7 (TRIAGE T21: alt+h requeries needlessly in wikipediaMode). Independent of
+M3.6's own work — next in cursor order.
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -266,7 +274,7 @@ accepted by design — see DECISIONS.md.
 | M1.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
 | M1.10 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
-| M3.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
+| M3.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T23) |
 | M6.1  | todo   | -        | -         | pre-agreed cut 1 |

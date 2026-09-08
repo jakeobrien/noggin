@@ -102,7 +102,9 @@
   disk to re-read: Refresh re-fetches it instead, bypassing the session cache — the one case
   where Refresh reaches the network. Otherwise manual only; noggin never watches the
   filesystem (C2a).
-- **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
+- **Result** — one row in a Picker: a file (File Picker), a file-and-line (Grep Picker) (C2),
+  or an article title-and-description (Wikipedia Picker) — a Wikipedia Result can also carry
+  a star, the same as a file's (C6).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the
   Prompt (C2).
 - **Retune** — adjust what the conversion spike strips and re-judge the sample. Repeatable
