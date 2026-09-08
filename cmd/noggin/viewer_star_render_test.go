@@ -76,6 +76,39 @@ func TestDocumentViewerTitleShowsStarIndicatorWithNavigatorHidden(t *testing.T) 
 	}
 }
 
+// TestDocumentViewerTitleShowsStarIndicatorForAnArticle is C6/M5.1's own
+// acceptance criterion for the viewer title row: the "★ " indicator
+// M2.4 already gives a starred file's title applies identically to a
+// starred article's title (its own label, the article's title — M4.1 — not
+// a URL), and clears the same way on un-star.
+func TestDocumentViewerTitleShowsStarIndicatorForAnArticle(t *testing.T) {
+	dir := t.TempDir()
+	storePath := filepath.Join(dir, "documents")
+	article := fixtureArticle()
+
+	m := sized(t, newModel().withDocs(storePath, loadDocStore(storePath)).openDocument(article), 80, 24)
+
+	view := m.View().Content
+	if !strings.Contains(view, "Document: Leonhard Euler") {
+		t.Fatalf("setup: expected title not found before starring; view = %q", view)
+	}
+	if strings.Contains(view, "★") {
+		t.Fatalf("setup: unexpected star before the article is starred; view = %q", view)
+	}
+
+	m = press(t, m, keys.Star.Keys()[0])
+	view = m.View().Content
+	if !strings.Contains(view, "Document: ★ Leonhard Euler") {
+		t.Errorf("DV1 title after starring the article = %q, want a star immediately left of the title", view)
+	}
+
+	m = press(t, m, keys.Star.Keys()[0])
+	view = m.View().Content
+	if strings.Contains(view, "★") {
+		t.Errorf("DV1 title after un-starring the article = %q, want no star indicator", view)
+	}
+}
+
 // TestDocumentViewerTitleStarIndicatorDegradesAtNarrowWidth confirms the
 // title row still renders within its pane's width once the "★ " indicator
 // is added — no line exceeding the box width, and the label still visible

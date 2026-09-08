@@ -398,3 +398,50 @@ func TestToggleDocStarInStarredModeDropsTheRowImmediately(t *testing.T) {
 		t.Errorf("Starred view after un-starring still shows target.md:\n%s", m.files.view())
 	}
 }
+
+// TestToggleDocStarInStarredModeDropsAStarredArticleRowImmediately is
+// C6/M5.1's own acceptance criterion for the Files Nav half: an already-
+// starred article (M1.5's own record shape, Article/Title set the way
+// togglePickerStar/toggleActiveDocStar both stamp it) appears in a Starred
+// flat list like any starred file, and un-starring it from that row drops
+// it immediately, the same shape TestToggleDocStarInStarredModeDropsThe
+// RowImmediately already pins for a file. An article can only ever reach a
+// Files Nav row already-starred today (Recent's own pathMissing check omits
+// every article until M6.1 gives it an article-aware existence test, and
+// Starred's own row set is Starred==true by definition) — All Starred scope
+// is used here, not Active Source, since an article's bucket key is always
+// "" (buildBrowseRow's rootForPath never matches a URL), the same bucket a
+// Root-orphan file would land in.
+func TestToggleDocStarInStarredModeDropsAStarredArticleRowImmediately(t *testing.T) {
+	storePath := filepath.Join(t.TempDir(), "documents")
+	article := fixtureArticle()
+	docs := map[string]docRecord{article.path: {Starred: true, Article: true, Title: article.title}}
+
+	m := sized(t, newModel().withDocs(storePath, docs), 80, 24)
+	m = press(t, m, keys.FilesMode.Keys()[0])  // Tree -> Recent
+	m = press(t, m, keys.FilesMode.Keys()[0])  // Recent -> Starred
+	m = press(t, m, keys.FilesScope.Keys()[0]) // Active Source -> All Starred
+	if !strings.Contains(m.files.view(), "Leonhard_Euler") {
+		t.Fatalf("setup: Starred/All Starred view does not show the article:\n%s", m.files.view())
+	}
+
+	m = m.toggleDocStar()
+	if m.message != "" {
+		t.Fatalf("toggleDocStar on the article row: unexpected message %q", m.message)
+	}
+	got := m.docRecord(article.path)
+	if got.Starred {
+		t.Fatalf("docRecord(article) after toggleDocStar = %+v, want Starred false", got)
+	}
+	if !got.Article || got.Title != article.title {
+		t.Errorf("docRecord(article) after un-starring = %+v, want Article/Title preserved", got)
+	}
+	if strings.Contains(m.files.view(), "Leonhard_Euler") {
+		t.Errorf("Starred view after un-starring the article still shows it:\n%s", m.files.view())
+	}
+
+	restarted := newModel().withDocs(storePath, loadDocStore(storePath))
+	if got := restarted.docRecord(article.path); got.Starred {
+		t.Errorf("docRecord(article) after restart = %+v, want Starred false", got)
+	}
+}

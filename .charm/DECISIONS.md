@@ -1689,3 +1689,37 @@
 - Revisit: none expected once M1.9 lands; if `make check-pty` still fails afterward, that is a
   new, distinct TRIAGE item, not a reopening of this one.
 
+## D133: toggleActiveDocStar must stamp Article/Title on every toggle, not just leave them at docRecord's zero value — the M5.1 gap that made a first-time article star silently fail to persist
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: Building M5.1 (star/un-star an article from the focused Document Viewer and a Files
+  Nav row), a probe test showed the viewer's Star key visibly starred an article in-session but
+  the record vanished after a store reload. `docRecord`/`docStoreKey` (M1.5) already key an
+  article by its canonical URL, but `toggleActiveDocStar` (M2.2, predating M1.5's article
+  records) reads whatever record already exists — for a never-before-starred article, that is
+  `docRecord`'s zero value, `Article: false`. `saveDocStore` writes `kind: "file"` for any
+  non-`Article` record, and `loadDocStore`'s file branch requires `filepath.IsAbs(key)`, which
+  a URL never satisfies — the line is silently dropped on the next load, the same tolerant
+  "drop malformed lines" behaviour `loadDocStore`'s own doc comment already names for other
+  malformed input. `togglePickerStar`'s Wikipedia branch (M3.4) already stamps
+  `Article`/`Title` explicitly for exactly this reason; `toggleActiveDocStar` never got the
+  same treatment because M2.2 predates articles existing at all.
+- Decision: `toggleActiveDocStar` now stamps `rec.Article = true; rec.Title = v.doc.title`
+  unconditionally whenever `v.doc.isArticle()`, on every toggle (star and un-star alike), not
+  only when creating a fresh record — mirroring `togglePickerStar`'s own shape.
+  `toggleDocStar`'s flat-mode branch (the Files Nav row surface) needs no equivalent change:
+  a flat row only ever shows a document already in `m.docs`, and today the only mode an article
+  can appear in at all is Starred (Recent's own `pathMissing` check omits every article until
+  M6.1 gives it an article-aware existence test), which by construction only lists
+  `Starred == true` records — so `row.path` there always already carries a record some earlier
+  star (the viewer or the Picker) stamped correctly. Documented in-line at both call sites
+  rather than only here, so a future M6.1 reader hits the caveat where the code lives.
+- Why: Without the fix, M5.1's own acceptance criterion ("tests toggle from each place and
+  assert ... the store record") would be provably false for the Document Viewer surface the
+  moment a test restarted the store — the exact shape M2.2's own persistence tests already use
+  to catch this class of bug for files.
+- Revisit: if M6.1 makes an unstarred, never-before-seen article reachable as a Files Nav flat
+  row, `toggleDocStar`'s flat-mode branch will need the same stamping, from a real title source
+  (not `row.name`, which is `filepath.Base(row.path)` — a URL slug, not the article's title).

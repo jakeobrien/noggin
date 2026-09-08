@@ -73,6 +73,57 @@ func TestToggleActiveDocStarIsIndependentPerViewer(t *testing.T) {
 	}
 }
 
+// TestToggleActiveDocStarStarsAndPersistsAnArticle is C6/M5.1's own
+// acceptance criterion for the Document Viewer half: starring an article
+// (keyed by its canonical URL, M4.1) from the focused viewer must stamp
+// Article/Title on the record the same way togglePickerStar's Wikipedia
+// branch already does (M3.4) — without that, the record round-trips
+// through saveDocStore as an invalid "file" line (its URL key fails
+// filepath.IsAbs) and loadDocStore silently drops it, so the star would
+// look like it worked for the rest of the session but vanish on restart.
+// This exercises the real gap: toggleActiveDocStar previously left
+// Article/Title at docRecord's zero value for a never-before-starred
+// article.
+func TestToggleActiveDocStarStarsAndPersistsAnArticle(t *testing.T) {
+	dir := t.TempDir()
+	storePath := filepath.Join(dir, "documents")
+	article := fixtureArticle()
+
+	m := sized(t, newModel().withDocs(storePath, loadDocStore(storePath)).openDocument(article), 80, 24)
+
+	m = press(t, m, keys.Star.Keys()[0])
+	if m.message != "" {
+		t.Fatalf("toggleActiveDocStar on an article: unexpected message %q", m.message)
+	}
+	got := m.docRecord(article.path)
+	if !got.Starred || !got.Article || got.Title != article.title {
+		t.Fatalf("docRecord(article) after starring = %+v, want Starred, Article, Title %q", got, article.title)
+	}
+
+	// Persists: a fresh model loading the same on-disk store sees the same
+	// record — the round-trip this test exists to pin.
+	restarted := newModel().withDocs(storePath, loadDocStore(storePath))
+	if got := restarted.docRecord(article.path); !got.Starred || !got.Article || got.Title != article.title {
+		t.Errorf("docRecord(article) after restart = %+v, want Starred, Article, Title %q", got, article.title)
+	}
+
+	// Un-starring clears Starred but leaves Article/Title known (the same
+	// "a record persists with Starred=false" shape a file's own record
+	// already gives, M2.1).
+	m = press(t, m, keys.Star.Keys()[0])
+	got = m.docRecord(article.path)
+	if got.Starred {
+		t.Error("docRecord(article) after un-starring still Starred, want false")
+	}
+	if !got.Article || got.Title != article.title {
+		t.Errorf("docRecord(article) after un-starring = %+v, want Article/Title preserved", got)
+	}
+	restarted = newModel().withDocs(storePath, loadDocStore(storePath))
+	if got := restarted.docRecord(article.path); got.Starred {
+		t.Errorf("docRecord(article) after restart still Starred, want false")
+	}
+}
+
 // TestToggleActiveDocStarNoOpWithNoDocumentOpen confirms the empty-pane
 // refusal (a footer message, the same shape startEdit/startFind give their
 // own "nothing to act on" case) rather than a silent no-op or a panic on a

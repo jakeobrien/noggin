@@ -806,6 +806,21 @@ func (m model) toggleDocStar() model {
 		}
 		rec := m.docRecord(row.path)
 		rec.Starred = !rec.Starred
+		// C6/M5.1: unlike toggleActiveDocStar, this does not stamp
+		// Article/Title itself when row.path isArticleKey — a flat row only
+		// ever shows a document already in m.docs (recentRows/starredRows
+		// both build rows from existing records), and today the only mode an
+		// article can appear in at all is Starred (Recent's own pathMissing
+		// check omits every article until M6.1 gives it an article-aware
+		// existence test), which by definition only lists rec.Starred ==
+		// true records — so row.path here already carries a record some
+		// earlier star (the viewer or the Picker) already stamped correctly.
+		// Re-deriving a title from row.name would be actively wrong: it is
+		// filepath.Base(row.path), which for a URL yields the slug
+		// ("Leonhard_Euler"), not the article's real title. If a future
+		// milestone (M6.1) makes an unstarred, never-before-seen article
+		// reachable as a flat row, this will need the same stamping
+		// toggleActiveDocStar does, from a real title source, not row.name.
 		return m.withDocRecord(row.path, rec)
 	}
 	n := m.files.selectedNode()
@@ -855,6 +870,19 @@ func (m model) filesStarredMarks() map[string]bool {
 // displayed surprise those two guards exist to prevent. With no document
 // open, a footer message explains it, the same shape startEdit/startFind
 // give their own "nothing to act on" case.
+//
+// C6/M5.1: for an article (v.doc.isArticle()), Article/Title are stamped on
+// the record every time, not just when it is first created — the same
+// unconditional shape togglePickerStar's own Wikipedia branch already uses,
+// needed because docRecord's zero value (Article: false) is what a
+// never-before-starred article's record starts as. Without this, an
+// article starred for the first time from a viewer would round-trip through
+// saveDocStore as an invalid "file" record (its URL key fails
+// filepath.IsAbs) and loadDocStore would silently drop the line on the next
+// load — the star would appear to work for the rest of the session but not
+// survive a restart. Cheap and harmless to re-stamp on every toggle
+// (un-starring included): the title is already known from the open
+// document, and a file's Article/Title are never touched here at all.
 func (m model) toggleActiveDocStar() model {
 	v := m.focusedViewer()
 	if v.peeking() {
@@ -866,6 +894,10 @@ func (m model) toggleActiveDocStar() model {
 	}
 	rec := m.docRecord(v.doc.path)
 	rec.Starred = !rec.Starred
+	if v.doc.isArticle() {
+		rec.Article = true
+		rec.Title = v.doc.title
+	}
 	return m.withDocRecord(v.doc.path, rec)
 }
 

@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M5.1
+Current task: M5.2
 
 ## Handoff
 
@@ -104,12 +104,38 @@ stale/superseded **refresh**-completion test existed, only Activate/Peek's) — 
 (`TestRefreshUpdatesAFileInDV1BesideAnArticleInDV2`); GLOSSARY's "Refresh" entry updated for the
 article-refetches-over-the-network case. No TRIAGE items opened — everything fixed directly.
 
-Next: M5.1 (star/un-star an article from the focused viewer and a Files Nav row). `document.
-isArticle()`/`label()` (M4.1) and the store's article-record shape (M1.5) are already in place;
-M5.1's own job is wiring the Star key and rendering the marker on both surfaces — see M3.4's
-Picker-star precedent for the store-toggle shape. **Peek is still not wired to any real key**
-(D130 — that is M5.2's job, not M5.1's): M5.1 only needs `fetchArticleInto`'s Activate half, which
-M4.2 already built and M4.3 leaves untouched.
+M5.1 done (2026-09-08, `make check` clean). Star/un-star an article from the focused Document
+Viewer and from a Files Nav row: the viewer-title-row marker (`paneTitle`, M2.4) and the
+Files-Nav-row toggle mechanism (`toggleDocStar`'s flat-mode branch, M2.1/M4.3) were already
+generic over `docRecord`'s article-aware key (`docStoreKey`, M1.5) and needed no change — but a
+probe test surfaced a real gap in `toggleActiveDocStar` (the viewer's own toggle, M2.2, which
+predates M1.5's article records): it left a never-before-starred article's `Article`/`Title`
+fields at `docRecord`'s zero value, so `saveDocStore` wrote it as an invalid `file`-kind line
+(a URL fails `filepath.IsAbs`) that `loadDocStore` silently dropped on the next load — the star
+looked like it worked for the rest of the session but did not survive a restart. Fixed by
+stamping `Article`/`Title` unconditionally on every toggle, mirroring `togglePickerStar`'s own
+Wikipedia branch (M3.4) — see D133 for the full reasoning, including why `toggleDocStar`'s flat
+branch needs no equivalent fix yet (a flat row can only ever show an *already*-starred article
+today; Recent mode omits every article until M6.1 gives it an article-aware existence check in
+place of `pathMissing`'s plain `os.Stat`, which always fails on a URL).
+
+New tests: `TestToggleActiveDocStarStarsAndPersistsAnArticle` (viewer_star_test.go, the
+persistence round-trip the bug above broke), `TestDocumentViewerTitleShowsStarIndicatorFor
+AnArticle` (viewer_star_render_test.go, the title-row `★` marker), and
+`TestToggleDocStarInStarredModeDropsAStarredArticleRowImmediately` (browse_starred_test.go, an
+already-starred article's Files Nav row, reached via Starred/All Starred scope since an
+article's bucket key is always `""` — the same orphan bucket a Root-orphan file lands in).
+
+Next: M5.2 (Files Nav Starred lists include articles). This is where the cosmetic gap M5.1
+left alone gets fixed: today a starred article's flat row renders via `buildBrowseRow`'s
+generic, file-shaped fields (`filepath.Base(url)` as the name, `pathMissing`'s `os.Stat` always
+failing so it renders dimmed with a `(missing)` suffix, exactly like a broken starred file) —
+correct enough for M5.1's own toggle-mechanism acceptance criterion (pinned above) but not the
+real title/`Wikipedia` label M5.2 promises. `starredRows`/`buildBrowseRow` (browse_list.go) are
+where that lives; `activeRootBrowseScope` while Wikipedia is active also needs its own bucket
+rather than reusing the orphan bucket, so it does not pull in Root-orphan files alongside
+articles (see M5.1's D133 and this handoff's own paragraph above for why the orphan bucket is
+where an article lands today).
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -150,7 +176,7 @@ accepted by design — see DECISIONS.md.
 | M4.1  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; validate: fresh-context validator subagent, same day, PASS |
 | M4.2  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 high-sev functional bug (clearPeek scope) + 1 high-sev doc-comment placement, both fixed directly, plus 2 low fixed directly; validate: fresh-context validator subagent, same day, PASS (Peek mechanism correctly not yet wired to a key per D130, deferred to M5.2) |
 | M4.3  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 medium functional bug (m.message clobber across sync/async refresh) + 1 medium test gap (stale refresh completion) + 2 low (mirror-case test, GLOSSARY drift), all fixed/added directly; validate: fresh-context validator subagent, same day, PASS (TRIAGE T23: mirror DV-arrangement test gap for staleness/edit) |
-| M5.1  | todo   | -        | -         |      |
+| M5.1  | done   | -        | -         | fixed a real persistence bug found while building (D133: toggleActiveDocStar didn't stamp Article/Title for a never-before-starred article) |
 | M5.2  | todo   | -        | -         |      |
 | M1.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
 | M1.10 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
