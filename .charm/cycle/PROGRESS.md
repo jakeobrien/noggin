@@ -17,13 +17,22 @@
 
 ## Cursor
 
-Current task: M4.1 (M3 milestone complete — validation due before this starts; see Handoff)
+Current task: M4.1
 
 ## Handoff
 
-M3.5 (S6, the last M3 task) is done — **M3 (Wikipedia Picker) is now complete**; a
-milestone-boundary validation-due gate applies before M4 starts (charm-build's own gate
-check, per cycle-state.md).
+M3 (Wikipedia Picker) is validated (2026-09-08, fresh-context `validator` subagent, per
+charm-validate) — the milestone-boundary gate is cleared, M4 may start.
+
+**Validation result**: `make check` clean; `make check-pty` reproduces TRIAGE T18's
+pre-existing 11-failure baseline (same test names, not a new regression). All five
+acceptance criteria (M3.1–M3.5) and the SPEC deliverables they deliver (S2, S6, S13)
+independently verified against code + tests, not just PROGRESS.md's claim — all PASS, high
+confidence. No new discrepancies beyond the already-open TRIAGE T21/T22 (both re-confirmed
+accurately characterized, still low-severity, not gate-blocking). Manual/interactive
+confirmation of the live-TUI Wikipedia flow is still recommended (see the validator's report
+for exact steps) since all evidence so far is test-level, not pty-exercised — no pty suite
+covers Wikipedia mode yet.
 
 S6's four rules, each with its own test in new `cmd/noggin/picker_scope_wikipedia_test.go`:
 
@@ -74,10 +83,8 @@ Wikipedia" claim (previously only checked via a direct `pickerLocationLabel` cal
 `make check` clean. TRIAGE T20 (GLOSSARY's `Result` entry) is unchanged, still open — File
 Picker Results can now also be article-shaped, which only strengthens that item's case.
 
-Next: **ask the user before starting M4** — M3's milestone boundary is a validation-due gate
-(cycle-state.md), and this session (the builder) should not also be the one that validates.
-If validation is deferred, M4.1 (`document` carries source identity — file path or article
-URL+title — for the viewer title row/Document History/Find; needs M1.5) is the next task.
+Next: M4.1 (`document` carries source identity — file path or article URL+title — for the
+viewer title row/Document History/Find; needs M1.5).
 
 ## Status
 
@@ -99,11 +106,11 @@ URL+title — for the viewer title row/Document History/Find; needs M1.5) is the
 | M2.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M1.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T17); review found 1 low-sev finding (TRIAGE T2), independently reproduced and PASSed at validate |
 | M2.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T15); review found 1 low-sev finding (TRIAGE T1), independently reproduced and PASSed at validate |
-| M3.1  | done   | -        | -         |      |
-| M3.2  | done   | -        | -         |      |
-| M3.3  | done   | -        | -         |      |
-| M3.4  | done   | -        | -         |      |
-| M3.5  | done   | -        | -         |      |
+| M3.1  | done   | 2026-09-08 | 2026-09-08 |      |
+| M3.2  | done   | 2026-09-08 | 2026-09-08 |      |
+| M3.3  | done   | 2026-09-08 | 2026-09-08 |      |
+| M3.4  | done   | 2026-09-08 | 2026-09-08 |      |
+| M3.5  | done   | 2026-09-08 | 2026-09-08 | review found 2 low-sev findings (TRIAGE T21, T22), independently reconfirmed at validate, still open/low-sev |
 | M4.1  | todo   | -        | -         |      |
 | M4.2  | todo   | -        | -         |      |
 | M4.3  | todo   | -        | -         |      |
