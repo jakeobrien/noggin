@@ -25,5 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T1 | review | low | internal/wikipedia/fetch.go:56; internal/wikipedia/fetch_test.go:234,263 | M2.8 changed `NewClient` but no test calls `NewClient()` directly — both zero-value/concurrency tests deliberately bypass it ("not NewClient()") and no caller in the repo invokes it yet; a future regression in `NewClient`/`ensureInit` would go uncaught. Add a test exercising `NewClient()` itself (e.g. `Fetch` against an httptest server, or asserting non-nil `httpClient`/`cache`). | open |
+| T2 | review | low | cmd/noggin/docstore.go:157 (escapeDocField); cmd/noggin/docstore_test.go:276,343 | M1.7's and M1.8's tab/newline round-trip tests (`TestDocStoreArticleTitleTabAndNewlineRoundTrip`, `TestDocStoreKeyTabAndNewlineRoundTrip`) never cover a literal backslash in a title or key — the one character the escape scheme special-cases and reverses first (per the doc comment). Add a backslash case to lock in escape-order correctness rather than leaving it asserted only in prose. | open |
 
-<!-- empty as of 2026-09-08 replan: T15 -> PLAN M2.8, T17 -> PLAN M1.8 -->
+<!-- empty as of 2026-09-08 replan: T15 -> PLAN M2.8, T17 -> PLAN M1.8; T1/T2 added by fresh-session code review (M1.8/M2.8) same day -->

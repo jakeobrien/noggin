@@ -70,8 +70,8 @@ Next: M3.1 (Picker query threshold → 2, per-mode debounce) — read `SPEC.md` 
 | M2.5  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
 | M2.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T10) |
 | M2.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T11, T12) |
-| M1.8  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T17) |
-| M2.8  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T15) |
+| M1.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T17); review found 1 low-sev finding (TRIAGE T2), independently reproduced and PASSed at validate |
+| M2.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T15); review found 1 low-sev finding (TRIAGE T1), independently reproduced and PASSed at validate |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |
