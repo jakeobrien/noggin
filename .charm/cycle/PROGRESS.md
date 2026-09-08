@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M1.9
+Current task: M1.10
 
 ## Handoff
 
@@ -163,7 +163,7 @@ wiring, mirroring article_fetch_test.go's own Picker-Result shape via a shared
 StarredArticleRowImmediately` was updated in place (title/`Wikipedia` label assertions instead
 of the old `Leonhard_Euler` URL-slug ones it had pinned as an accepted gap) — not a new test,
 the same test now exercising the fixed rendering; widened to a 120-column fixture since 80
-truncates `Wikipedia` (9 cols) below its own render budget, the same class of gotcha D52/
+truncates `Wikipedia` (9 cols) below its own render budget, the same class of gotcha C2/D52/
 TRIAGE T13 already named for the Picker's Root label. Every pre-existing `starredRows` call
 site (tests and files.go) took the new `wikipedia bool` parameter; every pre-existing
 `activateInto`/`togglePeekInto` test call site was updated to discard the new `tea.Cmd` return.
@@ -171,9 +171,21 @@ No TRIAGE items opened, no DECISIONS entry — the design (bucket-key reuse, ret
 widening) follows precedent M4.2/M3.4/M3.5 already set closely enough to be low/medium risk,
 not an open judgment call.
 
-Next: M1.9 (TRIAGE T18, corrected: `make check-pty`'s Roots/File-Picker label renames from
-M1.3/M1.6). Independent of M5.2's own work — next in cursor order, not because M5.2 touched
-the pty harness.
+M1.9 done (2026-09-08, `make check` clean, `make check-pty` clean — 0 failures, was 11).
+Fixed the 9 assertions in `test/pty/checks.py` D132 diagnosed as a real regression, not
+flakiness: `"Roots"`/`focused() == "Roots"`/`footer.split(...) == "Roots"`/
+`footer.startswith("Roots")` -> `"Sources"` (M1.6's pane-label rename) across M1.2 (both
+sizes, one shared loop body so one fix covers the reported 80x24/100x30 duplicate),
+M3.2, M3.3, M3.4, M5.2 and C2a/M2.1; `"File \u00b7 Active Root"` -> `"File \u00b7 Active
+Source"` (M1.3's File-Picker scope-label rename; Grep's own "Active Root" wording is
+unchanged per M1.3's acceptance criterion and was left alone) in M7.1 and C2a/M6.2. No
+source changes — pty-harness-only, confirming D132's diagnosis that the renames themselves
+were already correct and only the cross-cycle regression suite had drifted. Pre-existing
+uncommitted `GLOSSARY.md`/`PROGRESS.md` changes in the tree (S9a Location-line wording,
+a D52/TRIAGE-T13 citation fix) predate this task and were left untouched, out of scope.
+
+Next: M1.10 (TRIAGE T2: a backslash round-trip test gap in `escapeDocField`'s docstore
+encoding). Independent of M1.9's own work — next in cursor order.
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -216,7 +228,7 @@ accepted by design — see DECISIONS.md.
 | M4.3  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 medium functional bug (m.message clobber across sync/async refresh) + 1 medium test gap (stale refresh completion) + 2 low (mirror-case test, GLOSSARY drift), all fixed/added directly; validate: fresh-context validator subagent, same day, PASS (TRIAGE T23: mirror DV-arrangement test gap for staleness/edit) |
 | M5.1  | done   | -        | -         | fixed a real persistence bug found while building (D133: toggleActiveDocStar didn't stamp Article/Title for a never-before-starred article) |
 | M5.2  | done   | -        | -         | fixed the M5.1-flagged cosmetic gap (article rows rendered file-shaped); Activate/Peek widened to (model, tea.Cmd) for the new fetch dispatch |
-| M1.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
+| M1.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
 | M1.10 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M3.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |

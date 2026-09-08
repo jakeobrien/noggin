@@ -135,7 +135,7 @@ for cols, rows in [(80, 24), (100, 30)]:
 
     body = "\n".join(lines)
     check(f"M1.2 all three regions present at {cols}x{rows}",
-          "Roots" in body and "Files" in body and "Document" in body)
+          "Sources" in body and "Files" in body and "Document" in body)
     check(f"M1.2 footer is the last row at {cols}x{rows}",
           "quit" in lines[-1], repr(lines[-1][:40]))
 
@@ -162,7 +162,7 @@ for cols, rows in [(80, 24), (100, 30)]:
     # keys — FocusRoots/FocusFiles reach their panes from anywhere non-modal.
     s.send(KEY["FocusRoots"], 0.5)
     check(f"M1.2 FocusRoots jumps focus to Roots at {cols}x{rows}",
-          focused() == "Roots", repr(focused()))
+          focused() == "Sources", repr(focused()))
 
     s.send(KEY["FocusFiles"], 0.5)
     check(f"M1.2 FocusFiles jumps focus back to Files at {cols}x{rows}",
@@ -396,7 +396,7 @@ check("M3.3 bare launch with starred roots opens focused on Files",
 s.send(KEY["FocusRoots"], 0.4)
 footer = screen_of(s.out, 80, 30).lines()[-1]
 check("M3.3 FocusRoots from Files moves focus to Roots",
-      footer.split(" \u00b7")[0] == "Roots", repr(footer))
+      footer.split(" \u00b7")[0] == "Sources", repr(footer))
 
 
 def row_with(text, lines):
@@ -488,7 +488,7 @@ s.pump(1.5)
 s.send(KEY["FocusRoots"], 0.4)  # Files -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
 check("M3.2 restart fixture: focus reaches Roots to star the ad-hoc root",
-      footer.split(" \u00b7")[0] == "Roots", repr(footer))
+      footer.split(" \u00b7")[0] == "Sources", repr(footer))
 
 s.send(KEY["Star"], 0.5)
 lines = screen_of(s.out, 80, 24).raw_lines()
@@ -549,7 +549,7 @@ viewer_before = [line[nav_edge + 1:] for line in lines_before[:-1]]
 s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
 check("M3.4 pty: FocusRoots from the Document pane reaches Roots",
-      footer.split(" \u00b7")[0] == "Roots", repr(footer))
+      footer.split(" \u00b7")[0] == "Sources", repr(footer))
 
 s.send(KEY["Down"], 0.4)   # selection off the ad-hoc TREE root, onto root-b
 s.send(KEY["Activate"], 0.6)
@@ -926,7 +926,7 @@ before = screen_of(s.out, 80, 24)
 before_lines = before.raw_lines()
 before_body = "\n".join(before_lines)
 check("M5.2 the sidebar is present before toggling",
-      "Roots" in before_body and "Files" in before_body,
+      "Sources" in before_body and "Files" in before_body,
       repr(before_lines[1]))
 nav_edge_before = before_lines[0].index("╮")
 
@@ -1094,7 +1094,7 @@ opened_body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("M7.1 space opens the Picker modal",
       "Results" in opened_body and "Preview" in opened_body, repr(opened_body[:200]))
 check("M7.1 the Picker opens in File mode, Active Root Scope (S1's fixed default)",
-      "File · Active Root" in opened_body, repr(opened_body[:200]))
+      "File · Active Source" in opened_body, repr(opened_body[:200]))
 check("M7.1 an empty Prompt reports the query threshold",
       "type at least 2 characters" in opened_body, repr(opened_body[:200]))
 
@@ -1231,7 +1231,7 @@ hidden = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("C2a/M6.2 pty: alt+h hides the dotfile from the File Results",
       ".secret.md" not in hidden, repr(hidden[:300]))
 check("C2a/M6.2 pty: alt+h marks the Prompt title Hidden",
-      "File \u00b7 Active Root \u00b7 Hidden" in hidden, repr(hidden[:300]))
+      "File \u00b7 Active Source \u00b7 Hidden" in hidden, repr(hidden[:300]))
 
 s.send(KEY["Cancel"], 0.3)
 s.send(KEY["Picker"], 0.3)   # reopen: fresh empty Prompt, toggle untouched
@@ -1425,7 +1425,7 @@ check("C2a/M2.1 pty: focus starts on Files", footer.startswith("Files"), repr(fo
 mark = len(s.out)
 s.send(KEY["FocusRoots"], 0.5)
 footer = screen_of(s.out, 80, 24).raw_lines()[-1]
-check("C2a/M2.1 pty: r moves the footer's focus name to Roots", footer.startswith("Roots"), repr(footer))
+check("C2a/M2.1 pty: r moves the footer's focus name to Roots", footer.startswith("Sources"), repr(footer))
 check("C2a/M2.1 pty: r redraws a border in the focused colour",
       focused_sgr.search(s.out[mark:]) is not None, repr(s.out[mark:][:200]))
 check("C2a/M2.1 pty: r redraws the vacated pane's border in the unfocused colour",
