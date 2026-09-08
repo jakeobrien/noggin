@@ -37,10 +37,24 @@ type rootRow struct {
 // updates the pane's own display but has nothing to write through. That is
 // an uncommon case — no $HOME or $XDG_DATA_HOME — matching loadStarredRoots'
 // own degrade-to-empty behavior for the same failure.
+//
+// wikipedia is S1's Active Source flag for the Wikipedia Query Source
+// (C6/M1.1): true when Wikipedia, not any Root, is the session's Active
+// Source. Mutually exclusive with active >= 0 — activate and
+// activateWikipedia each clear the other's claim on "active" — so every
+// existing Root-only reader of (rows, active) keeps working unmodified:
+// active < 0 already meant "nothing to walk/search" before Wikipedia
+// existed (an empty session), and it means exactly the same thing now that
+// Wikipedia being active is one more way to get there. This field only
+// exists so the *reason* active is -1 can be told apart where it matters
+// (Sources Nav rendering, M1.2; Footer/Help labels, M1.3; Files Nav modes,
+// M1.4) — none of those exist yet in M1.1, which only introduces the flag
+// and the Root-only tolerance it buys for free.
 type rootsNav struct {
-	rows     []rootRow
-	active   int // index into rows of the active root, or -1
-	selected int // index into rows the cursor sits on
+	rows      []rootRow
+	active    int // index into rows of the active root, or -1
+	wikipedia bool
+	selected  int // index into rows the cursor sits on
 
 	storePath string
 
@@ -53,7 +67,13 @@ func newRootsNav() rootsNav {
 
 // setRoots installs a fresh roots list and which one is active, resetting the
 // selection cursor to the active root (or the top when none is active) —
-// mirrors the Files Nav's setRoot "fresh browse" contract.
+// mirrors the Files Nav's setRoot "fresh browse" contract. It always clears
+// the Wikipedia Active Source flag: a launch resolution (this method's only
+// caller, model.applyResolution) never activates Wikipedia itself (C6/M1.1
+// leaves that to an explicit activation, same as any Root), so a fresh
+// session's Active Source is exactly what the resolution says, never a
+// leftover Wikipedia claim from a value this rootsNav happened to start
+// from.
 func (r rootsNav) setRoots(roots []root, active int) rootsNav {
 	rows := make([]rootRow, len(roots))
 	for i, rt := range roots {
@@ -61,6 +81,7 @@ func (r rootsNav) setRoots(roots []root, active int) rootsNav {
 	}
 	r.rows = rows
 	r.active = active
+	r.wikipedia = false
 	r.selected = max(active, 0)
 	return r
 }
@@ -120,10 +141,34 @@ func (r rootsNav) selectedRow() (rootRow, bool) {
 
 // activate makes rows[i] the active root. The caller (model.activateRoot)
 // checks broken and does the actual re-rooting; this just updates which
-// index the pane marks active.
+// index the pane marks active. It clears the Wikipedia Active Source flag
+// (C6/M1.1) — a Root and Wikipedia are mutually exclusive as the one Active
+// Source, so activating a Root always displaces Wikipedia if it was active.
 func (r rootsNav) activate(i int) rootsNav {
 	r.active = i
+	r.wikipedia = false
 	return r
+}
+
+// activateWikipedia makes the Wikipedia Query Source the Active Source
+// (C6/S1, M1.1): the mirror of activate, for the one Source that is never a
+// row index. It clears active to -1 rather than leaving whatever Root was
+// last active — a Root and Wikipedia are mutually exclusive as the Active
+// Source, and every existing Root-only reader of (rows, active) already
+// treats active < 0 as "nothing to walk/search" (scope.go's
+// liveRootsInScope, the tree/git/staleness/Refresh call sites gated on
+// model.files.root/m.files.root != nil) — the same tolerance an empty
+// session already relied on, now doing double duty for Wikipedia too.
+func (r rootsNav) activateWikipedia() rootsNav {
+	r.active = -1
+	r.wikipedia = true
+	return r
+}
+
+// activeIsWikipedia reports whether the Wikipedia Query Source, rather than
+// any Root (or nothing), is the session's Active Source.
+func (r rootsNav) activeIsWikipedia() bool {
+	return r.wikipedia
 }
 
 // toggleStarred flips rows[i]'s starred mark. The caller (model.toggleStar)

@@ -17,19 +17,27 @@
 
 ## Cursor
 
-Current task: M1.1
+Current task: M1.2
 
 ## Handoff
 
-Plan written 2026-09-07; nothing built yet. Start with M1.1 (Source model). M2 (Wikipedia
-client) is independent of M1 and may be interleaved. Read `findings/wikimedia-api.md` before
-M2.2/M2.3. D120 covers the spike extraction (M2.1).
+M1.1 done: `rootsNav` gained a `wikipedia bool` Active Source flag (`activateWikipedia`/
+`activeIsWikipedia`, mutually exclusive with a valid `active` index) and `model.
+activateWikipediaSource()`; every Root-only subsystem (tree walk, grep, git markers,
+staleness, Refresh) already tolerated `active < 0`/`m.files.root == nil` before this change,
+so none needed touching — verified by code review (cmd/noggin/wikipedia_source_test.go is the
+acceptance test). `m.files.root` is deliberately left untouched when Wikipedia is activated
+(still shows the prior Root's tree if one was loaded) — that is M1.4's job, not a gap here.
+
+Next: M1.2 (Sources Nav renders the Wikipedia row) is the natural follow-on since it needs
+M1.1. M2 (Wikipedia client) is independent of M1 and may be interleaved instead. Read
+`findings/wikimedia-api.md` before M2.2/M2.3. D120 covers the spike extraction (M2.1).
 
 ## Status
 
 | Key   | Status | Reviewed | Validated | Note |
 |-------|--------|----------|-----------|------|
-| M1.1  | todo   | -        | -         |      |
+| M1.1  | done   | 2026-09-07 | -       |      |
 | M1.2  | todo   | -        | -         |      |
 | M1.3  | todo   | -        | -         |      |
 | M1.4  | todo   | -        | -         |      |

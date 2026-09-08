@@ -643,6 +643,28 @@ func (m model) activateRoot() model {
 	return m.openFolder(node)
 }
 
+// activateWikipediaSource makes the Wikipedia Query Source the model's
+// Active Source (S1, C6/M1.1) — activateRoot's mirror for the one Source
+// that is never a Roots Nav row index. It refreshes exactly what a Root
+// switch already refreshes (the Files Nav's Recent/Starred snapshot, the
+// staleness baseline) so both kinds of Active Source keep those invariants
+// unconditionally, not just for Roots. It deliberately leaves the Files
+// Nav's tree (m.files.root) untouched: every Root-only subsystem that
+// matters here — tree walk (nothing to walk without an active Root path),
+// grep (scope.go's liveRootsInScope, gated on active < 0), git markers and
+// staleness (both gated on m.files.root/the Active Root's path), and
+// Refresh (model.refresh's own m.files.root != nil guard) — already
+// tolerates "no active Root" exactly the same way an empty session does,
+// which is what rootsNav.activateWikipedia's cleared active achieves. Which
+// Browse Modes the Files Nav shows and how its tree is put aside for good
+// is M1.4's job, not this one.
+func (m model) activateWikipediaSource() model {
+	m.roots = m.roots.activateWikipedia()
+	m.message = ""
+	m = m.refreshFilesRecentSource()
+	return m.resetStaleBaseline()
+}
+
 // toggleStar flips the Roots Nav selection's starred mark and persists it via
 // the S2 store (M3.2's toggleStore), using the storePath resolved once at
 // startup (withStorePath). A data directory that could not be resolved
