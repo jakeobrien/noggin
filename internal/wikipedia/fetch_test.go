@@ -1,0 +1,159 @@
+package wikipedia
+
+import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func newTestClient() *Client {
+	return &Client{
+		httpClient: &http.Client{Timeout: fetchTimeout},
+		cache:      make(map[string]Article),
+	}
+}
+
+// TestFetchAtRedirect covers a title that redirects to the canonical
+// article: the returned Article carries the canonical title/URL from the
+// final response, not the requested title (M2.3's done-when, S3).
+func TestFetchAtRedirect(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/page/html/Euler", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/w/rest.php/v1/page/Leonhard_Euler/html", http.StatusTemporaryRedirect)
+	})
+	mux.HandleFunc("/w/rest.php/v1/page/Leonhard_Euler/html", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html><body><p>Euler content</p></body></html>"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := newTestClient()
+	article, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Euler", false)
+	if err != nil {
+		t.Fatalf("fetchAt: unexpected error: %v", err)
+	}
+	if article.Title != "Leonhard Euler" {
+		t.Errorf("Article.Title = %q, want %q", article.Title, "Leonhard Euler")
+	}
+	wantURL := server.URL + "/wiki/Leonhard_Euler"
+	if article.URL != wantURL {
+		t.Errorf("Article.URL = %q, want %q", article.URL, wantURL)
+	}
+	if article.Markdown == "" {
+		t.Error("Article.Markdown is empty")
+	}
+}
+
+// TestFetchAtNotFound covers a 404 (article gone), reported distinctly from
+// an offline failure (M2.3's done-when, S3).
+func TestFetchAtNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	c := newTestClient()
+	_, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Nonexistent Article", false)
+	if err == nil {
+		t.Fatal("fetchAt: expected an error, got nil")
+	}
+	var svcErr *ServiceError
+	if !errors.As(err, &svcErr) {
+		t.Fatalf("fetchAt: error = %v (%T), want *ServiceError", err, err)
+	}
+	if svcErr.StatusCode != http.StatusNotFound {
+		t.Errorf("ServiceError.StatusCode = %d, want %d", svcErr.StatusCode, http.StatusNotFound)
+	}
+}
+
+// TestFetchAtTimeout covers a request that exceeds the client's timeout,
+// reported as an offline-shaped failure since the request never completed
+// (M2.3's done-when, S3).
+func TestFetchAtTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+		w.Write([]byte("<html><body><p>too slow</p></body></html>"))
+	}))
+	defer server.Close()
+
+	c := &Client{httpClient: &http.Client{Timeout: 5 * time.Millisecond}, cache: make(map[string]Article)}
+	_, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Slow Article", false)
+	if err == nil {
+		t.Fatal("fetchAt: expected a timeout error, got nil")
+	}
+	var offErr *OfflineError
+	if !errors.As(err, &offErr) {
+		t.Fatalf("fetchAt: error = %v (%T), want *OfflineError", err, err)
+	}
+}
+
+// TestFetchAtCacheHit covers a repeat fetch of an already-canonical title
+// hitting the session cache without a second request (M2.3's done-when, S3).
+func TestFetchAtCacheHit(t *testing.T) {
+	var requests int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&requests, 1)
+		w.Write([]byte("<html><body><p>Stable content</p></body></html>"))
+	}))
+	defer server.Close()
+
+	c := newTestClient()
+	first, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Stable Article", false)
+	if err != nil {
+		t.Fatalf("fetchAt (first): unexpected error: %v", err)
+	}
+	second, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Stable Article", false)
+	if err != nil {
+		t.Fatalf("fetchAt (second): unexpected error: %v", err)
+	}
+	if got := atomic.LoadInt32(&requests); got != 1 {
+		t.Fatalf("server received %d requests, want 1 (second fetch should be a cache hit)", got)
+	}
+	if second != first {
+		t.Errorf("fetchAt (second) = %+v, want identical to first %+v", second, first)
+	}
+}
+
+// TestFetchAtRefreshBypass covers refresh bypassing the cache and making a
+// second request, repopulating the cache (M2.3's done-when, S3's Refresh).
+func TestFetchAtRefreshBypass(t *testing.T) {
+	var requests int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&requests, 1)
+		w.Write([]byte("<html><body><p>Version " + strconv.Itoa(int(n)) + "</p></body></html>"))
+	}))
+	defer server.Close()
+
+	c := newTestClient()
+	first, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Refreshed Article", false)
+	if err != nil {
+		t.Fatalf("fetchAt (initial): unexpected error: %v", err)
+	}
+	second, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Refreshed Article", true)
+	if err != nil {
+		t.Fatalf("fetchAt (refresh): unexpected error: %v", err)
+	}
+	if got := atomic.LoadInt32(&requests); got != 2 {
+		t.Fatalf("server received %d requests, want 2 (refresh should bypass the cache)", got)
+	}
+	if second.Markdown == first.Markdown {
+		t.Error("fetchAt (refresh): markdown unchanged, expected the second request's content")
+	}
+
+	// The refreshed result replaces the cached entry: a following
+	// non-refresh fetch must return it, not the stale first version.
+	third, err := c.fetchAt(server.URL+"/page/html/", server.URL+"/wiki/", "Refreshed Article", false)
+	if err != nil {
+		t.Fatalf("fetchAt (post-refresh): unexpected error: %v", err)
+	}
+	if got := atomic.LoadInt32(&requests); got != 2 {
+		t.Fatalf("server received %d requests, want 2 (post-refresh fetch should be a cache hit)", got)
+	}
+	if third != second {
+		t.Errorf("fetchAt (post-refresh) = %+v, want the refreshed article %+v", third, second)
+	}
+}

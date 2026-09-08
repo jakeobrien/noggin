@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.3
+Current task: M3.1
 
 ## Handoff
 
@@ -62,11 +62,36 @@ match `*OfflineError`), a connection failure via a closed-then-hit `httptest` se
 `make check` passes; `go test ./internal/wikipedia/... -run TestSearch -v` shows all five
 new tests passing individually.
 
-Next: M2.3 (canonical fetch) — read `findings/wikimedia-api.md` again for the redirect/
-canonical-title resolution notes (307 → final `resp.Request.URL`); build the fetch client in
-`internal/wikipedia` (own timeout, per its own acceptance criterion — deliberately not
-sharing `searchHTTPClient`), httptest-backed, session-scoped cache keyed by canonical URL
-with an explicit Refresh bypass. No network in `go test ./...`.
+M2.3 done: `internal/wikipedia/fetch.go` adds `Client` (`NewClient()`, `Fetch(title, refresh)
+(Article, error)`), completing M2's Wikipedia client. `Fetch` GETs `fetchBase` + escaped
+title; Go's default `http.Client` follows the endpoint's 307 automatically, and
+`canonicalFromURL` reads the canonical title/URL back out of the final `resp.Request.URL`
+(handles both the redirect-landing path `.../page/<Title>/html` and an already-canonical
+request's own `.../page/<Title>` path). `Article{Title, URL, Markdown}` is the result after
+running `ArticleMarkdownFromHTML`. Errors reuse M2.2's `*ServiceError`/`*OfflineError` split
+rather than adding new types: a 404 ("article gone") and a client-timeout both surface
+naturally through the same two categories `http.Client.Do` already distinguishes for search.
+Caching design (a judgment call, logged here rather than DECISIONS.md since it is
+implementation shape, not a product question): the cache is keyed by the canonical URL
+computed *before* the request, from the requested title — so it only pays off when the
+requested title is already canonical, which S3 guarantees for every title noggin itself
+records (Starred/Recent/Refresh all reopen by canonical title). A title that turns out to be
+a redirect always costs one request; there is no way to know its canonical URL without
+asking. `refresh=true` bypasses the lookup and overwrites the cache entry. `Client` holds its
+cache behind a mutex (safe for concurrent use, matching the async-fetch shape M4.x will need).
+Five httptest-backed tests (`fetch_test.go`, exercising the unexported `fetchAt` with
+overridable base URLs) cover: a redirect resolving to the canonical title/URL, a 404, a
+timeout (via a client with a 5ms timeout against a handler that sleeps 50ms), a cache hit
+(second fetch of the same title makes no second request), and a refresh bypass (second
+request made, cache repopulated, a following non-refresh fetch returns the new value).
+Verified: `make check` and `go test ./... -race` both pass; `go test ./internal/wikipedia/...
+-run TestFetchAt -v` shows all five new tests passing individually.
+
+M2 (Wikipedia client) is now fully done — M2.1/M2.2/M2.3 all `done`, none yet `Reviewed`/
+`Validated`. Next: M3.1, the first Wikipedia Picker task — read `SPEC.md` S2 and the M3
+section of `PLAN.md` before starting; consider whether M2's three tasks warrant a
+code-review/validate pass first per the milestone-boundary guidance (M2.1–M2.3 all
+unreviewed) before building further on top.
 
 ## Status
 
@@ -79,7 +104,7 @@ with an explicit Refresh bypass. No network in `go test ./...`.
 | M1.5  | done   | 2026-09-08 | 2026-09-08 |      |
 | M2.1  | done   | -        | -         |      |
 | M2.2  | done   | -        | -         |      |
-| M2.3  | todo   | -        | -         |      |
+| M2.3  | done   | -        | -         |      |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |
