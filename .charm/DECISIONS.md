@@ -1357,3 +1357,44 @@
   written to degrade to the folder base name if M7 is cut. Product docs (M10) close the cycle.
 - Why: an overrun then costs exactly the work the spec already agreed to lose, without a
   replan to untangle half-built dependants.
+
+## D122: M2.3's fetch cache only hits for already-canonical requested titles — is that guarantee strong enough?
+
+- Status: open
+- Cycle: C6
+- Date: 2026-09-08
+- Context: `internal/wikipedia.Client.Fetch` (M2.3) derives its cache *lookup* key from the
+  requested title before the request, but its cache *write* key from the canonical URL the
+  response resolves to. A fetch for a title that turns out to be a redirect therefore never
+  hits cache on repeat, even within the same session — only fetches of a title already
+  canonical do. All five of M2.3's own done-when test scenarios pass under this behaviour
+  (surfaced by code review, TRIAGE T13, and independently confirmed at validate). PLAN.md's
+  prose ("caches the result... keyed by canonical URL") reads as a stronger guarantee than
+  this. S3 only requires this to hold for titles noggin itself records, since Starred/Recent/
+  Refresh always reopen by canonical title (per M2.3's own PROGRESS.md rationale) — but that
+  is currently an implementation comment, not a tested invariant at any layer.
+- Decision: **Open.** Not blocking M2 or M3; revisit once M4.2 (async fetch-and-open) wires a
+  real caller and it's clear whether any caller path can hand `Fetch` a non-canonical title
+  more than once per session. If so, decide whether to widen the cache key (e.g. a secondary
+  index by requested title) or accept the narrower guarantee as by-design.
+- Why: Cheap to defer — no user-visible behaviour depends on it yet, and M2.3's tests already
+  pin the current (narrower) contract, so nothing regresses silently while this is open.
+
+## D123: M2.1's byte-identical regeneration claim is unverifiable by a later fresh-context check
+
+- Status: open
+- Cycle: C6
+- Date: 2026-09-08
+- Context: M2.1's done-when ("regenerating one C4a sample through wikispike before and after
+  the move yields identical markdown, recorded in the task's commit message") was satisfied at
+  build time (commit `1d70bbd`: "byte-identical markdown, 16003 bytes, diff empty") but the
+  "before" state (pre-move code) is not checked out anywhere afterward. A fresh-context
+  validate pass re-ran `wikispike` against live Wikipedia post-move and got a matching byte
+  count, which corroborates but does not reproduce the original before/after diff.
+- Decision: **Open.** Not specific to M2.1 — any future task whose done-when is an "X and Y
+  produce identical output" comparison should consider committing the diff artifact (or a
+  checksum of both outputs) alongside the commit message, so later validation doesn't rely on
+  re-fetching live content that happens to still match. No action taken on M2.1 itself, which
+  stands as validated on the evidence available.
+- Why: A process-quality gap in how equivalence claims are made checkable, not a defect in
+  M2.1's actual result.
