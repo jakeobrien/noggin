@@ -280,9 +280,32 @@ func (m model) refreshFilesRecentSource() model {
 // for path, or the zero value (unstarred, never viewed) if path has no
 // record — which includes a path under no session Root at all (M1.2's "no
 // attachment to Roots"), so every caller can look a path up unconditionally
-// with no existence check of its own.
+// with no existence check of its own. key normalizes path/URL keys alike
+// (docStoreKey, C6/M3.4) — the docs map holds both file paths and article
+// canonical URLs (M1.5), and this is the one place both are looked up.
 func (m model) docRecord(path string) docRecord {
-	return m.docs[filepath.Clean(path)]
+	return m.docs[docStoreKey(path)]
+}
+
+// docStoreKey normalizes a document-store key for docRecord/withDocRecord:
+// a file's absolute path is filepath.Clean'd (the pre-M1.5 behaviour, kept
+// so a caller can pass an unclean path and still hit an existing record);
+// an article's canonical URL (M1.5's other key shape, first written through
+// this path by the Picker star, C6/M3.4) is returned untouched.
+// filepath.Clean is a filesystem-path operation — on a URL like
+// "https://en.wikipedia.org/wiki/X" it collapses the "//" scheme separator
+// into "/", corrupting it ("https:/en.wikipedia.org/..."), so it must never
+// run on one. "://" does not occur in any absolute file path this
+// codebase itself ever constructs (Unix or Windows), so it is a reliable
+// way to tell the two key shapes apart in practice without threading an
+// isArticle flag through every docRecord/withDocRecord call site — not a
+// filesystem-level guarantee against every conceivable path a user could
+// name, which a colon-bearing Unix path segment could in principle defeat.
+func docStoreKey(path string) string {
+	if strings.Contains(path, "://") {
+		return path
+	}
+	return filepath.Clean(path)
 }
 
 // withDocRecord is docRecord's write half: sets path's record to rec, bounds
@@ -310,7 +333,7 @@ func (m model) withDocRecord(path string, rec docRecord) model {
 		m.message = "cannot save document store: no resolvable data directory"
 		return m
 	}
-	path = filepath.Clean(path)
+	path = docStoreKey(path)
 	docs := make(map[string]docRecord, len(m.docs)+1)
 	for p, r := range m.docs {
 		docs[p] = r

@@ -1452,3 +1452,57 @@
 - Why: Keeps the Status table's Reviewed/Validated dates meaningful (they attest to the
   done-when criteria, not to every review nit) while still ensuring the findings turn into
   tracked work before M4.2 builds concurrent real-fetch usage on top of `Client`.
+
+## D126: M3.4's Document Store key for a Wikipedia Result never yet fetched is a title-derived URL, not a confirmed canonical one
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: M1.5/M4.1 fix the Document Store's article key as the canonical URL, but M3.4's
+  Picker star must act on a `wikipedia.SearchResult` (title search, M2.2), which carries no
+  URL at all — only `Fetch` (M4.2) learns the canonical URL, by following redirects. The
+  handoff into M3.4 (PROGRESS.md) flagged this as needing "a concrete answer" before assuming
+  title is an adequate key.
+- Decision: Star a Wikipedia Result by deriving its key from the title alone via a new
+  exported `wikipedia.ArticleURL(title)` — the same escaping (`articleURLFor(wikiBase,
+  title)`) `Fetch`'s own request-building and `canonicalFromURL` already use for an
+  already-canonical title, so the derived URL is byte-identical to what a real Fetch of the
+  same (non-redirect) title would resolve to (locked in by
+  `TestArticleURLMatchesCanonicalFromURLEscaping`, `internal/wikipedia/fetch_test.go`). A
+  title that turns out to be a redirect page (title search matches real page titles, so this
+  is rare) gets a record keyed by the pre-redirect URL; a later Fetch (M4.2) resolves the true
+  canonical URL under what would be a second, unmerged record — not reconciled by this task.
+- Why: Correct for the overwhelmingly common case at zero extra network cost (no fetch-before-
+  star), reuses existing escaping logic instead of a second hand-rolled one that could drift,
+  and mirrors D122's own accepted precedent — "noggin's own records always hold the canonical
+  title once an article has been opened", i.e. before that point a narrower guarantee is
+  already the codebase's own accepted shape, not a new relaxation invented for this task.
+  Fetching first would also block Star on the network, which S2 does not ask for.
+- Revisit: if M4.2's real fetch usage or a future validate surfaces the redirect-title edge
+  case as a live problem (e.g. a starred article silently "loses" its star to Activate landing
+  on a different key), decide there whether to reconcile keys on fetch (migrate the derived-URL
+  record to the resolved canonical one) rather than leaving two.
+
+## D127: `docRecord`/`withDocRecord` route through a new `docStoreKey` helper instead of calling `filepath.Clean` directly
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: Found while implementing M3.4. `model.go`'s `docRecord`/`withDocRecord` — the only
+  read/write path for the S1 document store, shared by every star/recency caller including the
+  Picker's Wikipedia branch this task adds — unconditionally ran every key through
+  `filepath.Clean`, written when only file paths existed. `filepath.Clean` collapses a URL's
+  `"//"` scheme separator into `"/"` (confirmed:
+  `filepath.Clean("https://en.wikipedia.org/wiki/X")` → `"https:/en.wikipedia.org/wiki/X"`),
+  so the first article record M3.4 ever wrote through this path would have been silently
+  corrupted on every read/write — a latent bug since M1.5 introduced the article key shape,
+  surfaced only once a real caller (M3.4) exercised it.
+- Decision: Added `docStoreKey(path string) string`, which returns an article's canonical URL
+  untouched (detected by an `"://"` substring, absent from any file path this codebase itself
+  constructs) and `filepath.Clean`s everything else, and pointed both `docRecord` and
+  `withDocRecord` at it instead of the bare `filepath.Clean` call.
+- Why: Directly blocked M3.4's own acceptance criterion (a starred article's persisted record
+  would not survive its own key). Low-risk, narrowly scoped fix (one helper, two call sites,
+  no change to file-record behaviour — `docstore.go`'s on-disk load/save path already
+  branches by an explicit `<kind>` field, unaffected). Fixing in place rather than deferring to
+  TRIAGE since it sits on M3.4's own critical path, not an unrelated tangent.

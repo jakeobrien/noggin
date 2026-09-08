@@ -139,6 +139,23 @@ func articleURLFor(base, title string) string {
 	return base + url.PathEscape(articleSlug(title))
 }
 
+// ArticleURL builds the wiki URL an exact, non-redirect title would resolve
+// to — the same escaping fetchAt's own request and canonicalFromURL's
+// response both go through (articleURLFor(wikiBase, title)), exported for a
+// caller that needs a Document Store key for a title it has not fetched yet
+// (cmd/noggin's Picker star, C6/M3.4): a title-search SearchResult carries
+// no URL of its own, so the Picker derives one from the title alone rather
+// than requiring a Fetch first, the same trade D122 already accepts for the
+// fetch cache ("noggin's own records always hold the canonical title once
+// an article has been opened"). This is exact when title is already
+// canonical, which title search's own results always are unless the hit
+// itself happens to be a redirect page — that rare case is reconciled the
+// same way any non-canonical title is: fetching it (M4.2) resolves the true
+// canonical URL, which is what Activate/Peek then record.
+func ArticleURL(title string) string {
+	return articleURLFor(wikiBase, title)
+}
+
 // fetchCanonicalHTML GETs title's Parsoid HTML, following any redirect to
 // the canonical article, and returns the raw HTML plus the canonical title
 // and URL taken from the final response.

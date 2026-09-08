@@ -18,6 +18,32 @@ func newTestClient() *Client {
 	}
 }
 
+// TestArticleURLMatchesCanonicalFromURLEscaping is C6/M3.4's own
+// correctness check for ArticleURL, the Picker star's pre-fetch key
+// derivation: for a title that needs URL-escaping (a literal "+", which
+// url.PathEscape encodes but a naive space->underscore substitution alone
+// would not), ArticleURL must produce exactly what fetchAt/canonicalFromURL
+// resolve an already-canonical fetch of the same title to — the whole
+// point of deriving one from the other (articleURLFor) rather than
+// hand-rolling a second escaping rule that could drift from it.
+func TestArticleURLMatchesCanonicalFromURLEscaping(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/C++", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html></html>"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	c := newTestClient()
+	article, err := c.fetchAt(server.URL+"/", "https://en.wikipedia.org/wiki/", "C++", false)
+	if err != nil {
+		t.Fatalf("fetchAt: unexpected error: %v", err)
+	}
+	if got := ArticleURL("C++"); got != article.URL {
+		t.Errorf("ArticleURL(%q) = %q, want the same canonical URL fetchAt resolved: %q", "C++", got, article.URL)
+	}
+}
+
 // TestFetchAtRedirect covers a title that redirects to the canonical
 // article: the returned Article carries the canonical title/URL from the
 // final response, not the requested title (M2.3's done-when, S3).

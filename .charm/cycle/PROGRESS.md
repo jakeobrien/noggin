@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.4
+Current task: M3.5
 
 ## Handoff
 
@@ -51,14 +51,46 @@ rendering (title+description), stale-generation discard, failure-keeps-rows, the
 clearing on the next attempt, the Preview placeholder, and no-ripgrep-needed. `make check`
 clean; `make check-pty` unchanged at the same pre-existing 11 failures (TRIAGE T18).
 
-Next: M3.4 (Picker star key toggles a Wikipedia Result's Document Store record, shows the
-marker — needs M1.5, M3.3). Gotcha to check first: `togglePickerStar`/`pickerSelectedPath`
-today only handle `fileMode`/`grepMode` (a Wikipedia Result silently no-ops, which is why
-M3.3 needed no change there) — M3.4 needs its own candidate lookup, and a title-search
-`wikipedia.SearchResult` carries no canonical URL (only `Fetch`, M4.2, resolves that), so
-M3.4/S4's "the store's key is the canonical URL" (M4.1) needs a concrete answer for starring
-a Result that has never been fetched — read S4/S6 and M1.5's article-record shape before
-assuming title is an adequate key. No milestone-boundary gate before M3.4.
+M3.4 (S2's "star key works on a Wikipedia Result exactly as on a file Result") is done.
+`togglePickerStar` (picker.go) gains a `wikipediaMode` branch: a new `pickerWikipediaCandidate`
+(mirrors `pickerGrepCandidate`'s resultsCurrent+bounds gating) names the selected
+`wikipedia.SearchResult`, and the store key is `wikipedia.ArticleURL(r.Title)` — a new
+exported `internal/wikipedia` helper (`articleURLFor(wikiBase, title)`, the exact escaping
+`Fetch`'s own request-building already uses) since a title-search result carries no URL of
+its own and only `Fetch` (M4.2) would otherwise learn one. D126 records why a title-derived
+key is accepted rather than requiring a fetch first (byte-identical to a real Fetch's
+canonical URL for the common non-redirect case; D122 precedent for the rare redirect-title
+gap, left unreconciled here). The record is stamped `Article: true, Title: r.Title` so it
+reads exactly like one M4.1 will later write.
+
+Found and fixed on M3.4's own critical path (D127): `docRecord`/`withDocRecord` (model.go)
+unconditionally ran every key through `filepath.Clean`, which corrupts a URL (collapses
+`"https://"` to `"https:/"`) — a latent bug since M1.5 introduced article keys, surfaced only
+once M3.4 became the first real writer of one. Both now route through a new `docStoreKey`
+helper (`"://"`-detection — absent from any file path this codebase itself builds — to decide
+whether to Clean).
+
+`pickerWikipediaRow` (picker_view.go) takes a new `starred bool` and prepends `starMarker`
+before the single whole-row `styleRow` call (no per-character highlighting to keep separately
+styled, unlike File/Grep rows); `pickerResultsContent`'s wikipediaMode branch looks the flag
+up via `docs[wikipedia.ArticleURL(r.Title)].Starred`, live off `m.docs` every render like
+File/Grep rows already do — no separate refresh path needed.
+
+New `cmd/noggin/picker_wikipedia_star_test.go` covers star/un-star + persisted-record-after-
+restart (Article/Title preserved on un-star), the no-op-with-nothing-selected shape, and the
+live marker render; `internal/wikipedia/fetch_test.go` gained
+`TestArticleURLMatchesCanonicalFromURLEscaping` locking `ArticleURL` to `fetchAt`'s own
+resolved URL for a title needing escaping (`C++`). `make check` clean; fresh-context code
+review (code-reviewer subagent) found only two low findings, both logged rather than fixed
+in place where trivial: TRIAGE T20 (GLOSSARY's `Result` entry still doesn't mention Wikipedia
+Results) and a softened `docStoreKey` doc-comment overclaim (applied directly, no TRIAGE entry
+needed).
+
+Next: M3.5 (cross-class Picker rules — with Wikipedia active, File/Grep skip `Active Root`
+and offer only `All Roots` | `Starred`; File `Starred` includes starred articles matched on
+title, labelled `Wikipedia`; File `All Roots` and Grep in every scope exclude articles —
+needs M1.5, M3.2). Both are done. No milestone-boundary gate before M3.5 (M3 completes with
+M3.5; a validation-due gate then applies before M4).
 
 ## Status
 
@@ -83,7 +115,7 @@ assuming title is an adequate key. No milestone-boundary gate before M3.4.
 | M3.1  | done   | -        | -         |      |
 | M3.2  | done   | -        | -         |      |
 | M3.3  | done   | -        | -         |      |
-| M3.4  | todo   | -        | -         |      |
+| M3.4  | done   | -        | -         |      |
 | M3.5  | todo   | -        | -         |      |
 | M4.1  | todo   | -        | -         |      |
 | M4.2  | todo   | -        | -         |      |

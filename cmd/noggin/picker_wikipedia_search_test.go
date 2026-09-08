@@ -77,8 +77,8 @@ func TestPickerWikipediaModeRendersTitleAndDescription(t *testing.T) {
 
 	joined := strings.Join(plainLines(m.View().Content), "\n")
 	resultsWidth := computePickerLayout(80, 24).results.content().width
-	wantA := pickerWikipediaRow(got[0], resultsWidth, false)
-	wantB := pickerWikipediaRow(got[1], resultsWidth, false)
+	wantA := pickerWikipediaRow(got[0], resultsWidth, false, false)
+	wantB := pickerWikipediaRow(got[1], resultsWidth, false, false)
 	if !strings.Contains(wantA, "Leonhard Euler") {
 		t.Fatalf("test fixture did not produce the expected row text: %q", wantA)
 	}
@@ -94,7 +94,7 @@ func TestPickerWikipediaModeRendersTitleAndDescription(t *testing.T) {
 	// Results column (resultsWidth above) is too narrow to show both the
 	// title and the full description without rightTruncate cutting it —
 	// the row's own text-selection contract, not a rendering bug.
-	wide := pickerWikipediaRow(got[0], 80, false)
+	wide := pickerWikipediaRow(got[0], 80, false, false)
 	if !strings.Contains(wide, "Swiss mathematician (1707-1783)") {
 		t.Errorf("pickerWikipediaRow at width 80 = %q, want the full description visible", wide)
 	}

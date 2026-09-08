@@ -575,21 +575,28 @@ func pickerGrepRow(g grepResult, query string, width int, selected bool, starred
 	return styleRow(highlightMatches(marked, shifted, selected), width, selected)
 }
 
-// pickerWikipediaRow renders one Wikipedia Picker Result (S2, C6/M3.3): the
-// article's title, plus its short description when Wikipedia supplies one
-// — its own row shape, unlike pickerFileRow/pickerGrepRow: there is no
-// Root or path to show (an article has neither) and no match highlighting
-// (S2 does not ask for one — Wikipedia's own title-search ranking is
-// trusted as-is, unlike the fuzzy/literal matching this codebase does
-// itself for File/Grep). Star marker support (M3.4) is not yet wired
-// here — this task's own scope stops at rendering title+description.
-func pickerWikipediaRow(r wikipedia.SearchResult, width int, selected bool) string {
+// pickerWikipediaRow renders one Wikipedia Picker Result (S2, C6/M3.3/
+// M3.4): the article's title, plus its short description when Wikipedia
+// supplies one, with a star marker (S2's "the Picker's star key works on a
+// Wikipedia Result exactly as on a file Result") — its own row shape,
+// unlike pickerFileRow/pickerGrepRow: there is no Root or path to show (an
+// article has neither) and no match highlighting (S2 does not ask for one
+// — Wikipedia's own title-search ranking is trusted as-is, unlike the
+// fuzzy/literal matching this codebase does itself for File/Grep). With no
+// per-character highlighting to keep separately styled (unlike
+// pickerFileRow/pickerGrepRow's prependMarker+highlightMatches split), the
+// marker is simply prepended to the plain line before the single
+// whole-row style styleRow applies — nothing here risks the partial-style
+// reverse-video hazard prependMarker's own doc comment warns about.
+func pickerWikipediaRow(r wikipedia.SearchResult, width int, selected bool, starred bool) string {
+	marker := starMarker(starred)
 	line := r.Title
 	if r.Description != "" {
 		line += "  " + r.Description
 	}
-	line = rightTruncate(line, width)
-	return styleRow(line, width, selected)
+	contentWidth := max(width-lipgloss.Width(marker), 0)
+	line = rightTruncate(line, contentWidth)
+	return styleRow(marker+line, width, selected)
 }
 
 // pickerResultsContent renders the Results list's content (M3.1, M4.1),
@@ -621,7 +628,8 @@ func pickerResultsContent(p picker, width, height int, hideDotfiles bool, docs m
 			return ""
 		}
 		return windowedView(width, height, p.selected, len(results), func(idx int) string {
-			return pickerWikipediaRow(results[idx], width, idx == p.selected)
+			r := results[idx]
+			return pickerWikipediaRow(r, width, idx == p.selected, docs[wikipedia.ArticleURL(r.Title)].Starred)
 		})
 	}
 	files := p.results.files

@@ -778,8 +778,9 @@ func (m model) activatePickerInto(target pane) model {
 
 // togglePickerStar flips the S1 document store's star mark for the
 // Picker's currently selected Result (S2's third starring surface,
-// M2.5) — whichever mode is open, fileMode's pickerPreviewCandidate or
-// grepMode's pickerGrepCandidate, both already gated on resultsCurrent so
+// M2.5) — whichever mode is open, fileMode's pickerPreviewCandidate,
+// grepMode's pickerGrepCandidate, or (C6/M3.4) wikipediaMode's
+// pickerWikipediaCandidate, all three already gated on resultsCurrent so
 // a stale generation's row can no more be starred than it may be previewed
 // or activated. Unlike the Files Nav's Starred-list row (M4.3, un-starring
 // removes it immediately), S2 is explicit that un-starring from the Picker
@@ -790,7 +791,34 @@ func (m model) activatePickerInto(target pane) model {
 // A no-op with nothing selected (empty Results, no search run yet, or a
 // stale generation) is silent, the same shape activatePickerInto's own
 // "not ok" case already gives.
+//
+// wikipediaMode is its own branch, not folded into pickerSelectedPath: a
+// file/grep Result's key is already its path, but an article's store key
+// is its canonical URL (M1.5/M4.1), which a title-search SearchResult never
+// carries — only Fetch (M4.2) learns it. Rather than block starring on a
+// fetch the Picker's own Star key was never asked to trigger, this derives
+// a URL straight from the title (wikipedia.ArticleURL) the same way an
+// already-canonical Fetch would, and stamps Article/Title so the record
+// reads exactly like one M4.1 wrote after opening the article — for a
+// title that turns out to be a redirect (rare: title search itself already
+// matches real page titles), a later Fetch resolves the true canonical URL
+// under a separate record; this one is not migrated or merged (see
+// wikipedia.ArticleURL's own doc comment, and D122's precedent of accepting
+// the narrower guarantee for a title noggin has not yet confirmed is
+// canonical).
 func (m model) togglePickerStar() model {
+	if m.picker.mode == wikipediaMode {
+		r, ok := m.picker.pickerWikipediaCandidate(m.hideDotfiles)
+		if !ok {
+			return m
+		}
+		key := wikipedia.ArticleURL(r.Title)
+		rec := m.docRecord(key)
+		rec.Starred = !rec.Starred
+		rec.Article = true
+		rec.Title = r.Title
+		return m.withDocRecord(key, rec)
+	}
 	path, ok := m.pickerSelectedPath()
 	if !ok {
 		return m
@@ -819,6 +847,22 @@ func (m model) pickerSelectedPath() (string, bool) {
 		return "", false
 	}
 	return f.path, true
+}
+
+// pickerWikipediaCandidate is the Result togglePickerStar (C6/M3.4) acts on
+// in wikipediaMode: the selected row, gated the same way
+// pickerPreviewCandidate/pickerGrepCandidate gate their own modes —
+// resultsCurrent and the live result count, so a stale generation or a
+// fresh, shorter result set landing between a selection move and the next
+// render can no more be starred than it may be previewed or activated.
+func (p picker) pickerWikipediaCandidate(hideDotfiles bool) (wikipedia.SearchResult, bool) {
+	if p.mode != wikipediaMode || !p.resultsCurrent(hideDotfiles) {
+		return wikipedia.SearchResult{}, false
+	}
+	if p.selected < 0 || p.selected >= len(p.results.wikipedia) {
+		return wikipedia.SearchResult{}, false
+	}
+	return p.results.wikipedia[p.selected], true
 }
 
 // pickerGrepCandidate is the Grep Result Activate would open (M4.3): the
