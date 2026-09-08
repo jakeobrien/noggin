@@ -13,6 +13,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"noggin/internal/tree"
+	"noggin/internal/wikipedia"
 )
 
 // pane identifies a focusable region of the frame.
@@ -151,6 +152,18 @@ type model struct {
 	// touches m.focus; it is a layer over the frame, not a pane.
 	picker picker
 
+	// wikipediaClient is the Wikipedia Source's own client (S2/S3, C6/M3.3):
+	// one instance for the session, so a later article fetch (M4.2) shares
+	// this same *wikipedia.Client's cache with whatever Picker searches ran
+	// before it, rather than each call getting its own throwaway. Held as
+	// the pickerWikipediaClient interface (Search only, for now) so a test
+	// can inject a fake without a working Fetch; newModel defaults it to a
+	// real *wikipedia.Client, whose construction makes no network call
+	// itself (wikipedia.NewClient's own doc comment), so every test gets a
+	// working default without reaching Wikimedia unless it actually
+	// searches.
+	wikipediaClient pickerWikipediaClient
+
 	// staleBaseline/staleGen/stale are S10's periodic staleness check
 	// (C2a/M10.1, staleness.go): the "known good" snapshot the disk is
 	// compared against, the generation that invalidates a check dispatched
@@ -175,7 +188,7 @@ type model struct {
 }
 
 func newModel() model {
-	return model{focus: filesPane, files: newFilesNav(), dv1: newViewer(), roots: newRootsNav(), picker: newPicker()}
+	return model{focus: filesPane, files: newFilesNav(), dv1: newViewer(), roots: newRootsNav(), picker: newPicker(), wikipediaClient: wikipedia.NewClient()}
 }
 
 // viewerFor is the viewer paired with a Document Viewer pane: dv2Pane maps
@@ -332,6 +345,15 @@ func (m model) recordViewed(path string) model {
 // pattern as withStorePath.
 func (m model) withRipgrep(avail ripgrepAvailability) model {
 	m.ripgrep = avail
+	return m
+}
+
+// withWikipediaClient replaces the session's Wikipedia client (C6/M3.3),
+// newModel's own *wikipedia.Client default included: tests use this to
+// inject a fake satisfying pickerWikipediaClient instead, so a Wikipedia
+// mode search in a test never reaches the network.
+func (m model) withWikipediaClient(c pickerWikipediaClient) model {
+	m.wikipediaClient = c
 	return m
 }
 

@@ -11,6 +11,8 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"noggin/internal/wikipedia"
 )
 
 // pickerMode selects which kind of search a Picker runs (S1, GLOSSARY.md
@@ -72,6 +74,25 @@ func pickerDebounceFor(mode pickerMode) time.Duration {
 // Wikipedia title prefix.
 const pickerQueryMinLength = 2
 
+// pickerWikipediaResultLimit bounds a Wikipedia title search the same way
+// S2 asks ("a bounded list"): unlike pickerResultCap (200, sized for a local
+// fuzzy/grep match list that also reports "truncated"), this is deliberately
+// small — a title-search Results list is meant to be scanned like Wikipedia's
+// own search box, not paged through. A build-time judgment call, not a
+// spec'd number, the same status pickerSearchDebounce's own comment gives.
+const pickerWikipediaResultLimit = 20
+
+// pickerWikipediaClient is the seam Wikipedia mode's search runs against
+// (S2, C6/M3.3): whatever satisfies it — model's default, a real
+// *wikipedia.Client held for the session so a later article fetch (M4.2)
+// can share its cache, or a test fake — pickerSearchCmd's wikipediaMode
+// case calls Search on. Kept to exactly what a title search needs, not the
+// whole *wikipedia.Client, so a fake never has to also implement Fetch to
+// satisfy it.
+type pickerWikipediaClient interface {
+	Search(query string, limit int) ([]wikipedia.SearchResult, error)
+}
+
 // pickerResults is one completed search's answer, labelled with the query,
 // mode and Scope it answers *for*. The labels are the point: results arrive
 // asynchronously, so the only way the modal can render honestly is for a
@@ -80,9 +101,12 @@ const pickerQueryMinLength = 2
 // M2.5, read these labels; M5.1/M5.2 make mode and Scope change under an
 // in-flight search).
 //
-// files and grep are the two modes' shapes; exactly one is ever populated,
-// selected by mode. truncated is S12's cap flag, passed straight through
-// from fuzzyFiles/grepPickerFiles.
+// files, grep and wikipedia are the three modes' shapes; exactly one is
+// ever populated, selected by mode (C6/M3.3 adds wikipedia to M4.1's
+// original two). truncated is S12's cap flag, passed straight through from
+// fuzzyFiles/grepPickerFiles; a Wikipedia search has no such flag of its
+// own (pickerWikipediaResultLimit's cap is silent, the way Wikipedia's own
+// search box is).
 type pickerResults struct {
 	query        string
 	mode         pickerMode
@@ -90,6 +114,7 @@ type pickerResults struct {
 	hideDotfiles bool
 	files        []pickerFile
 	grep         []grepResult
+	wikipedia    []wikipedia.SearchResult
 	truncated    bool
 }
 
@@ -170,6 +195,19 @@ type picker struct {
 	// criterion) means concretely: a different path, a fresh load, GotoTop
 	// (File mode) or a scroll/highlight to previewLine (Grep mode, M4.2).
 	previewPath string
+
+	// wikipediaErr is Wikipedia mode's own failure state (S2, C6/M3.3): the
+	// most recent search's error text ("offline"/"service error"), or ""
+	// when its last attempt (if any) succeeded. pickerStatus shows it in
+	// place of the usual searching/no-results/truncated captions, and
+	// applyPickerResults sets it instead of clearing p.results on a failed
+	// search — S2's "leaves the last Results in place". queuePickerSearch
+	// clears it on every new attempt (a keystroke, a mode/Scope switch), the
+	// same "goes stale the instant something changes" rule results.query's
+	// own mismatch already gives the Results list — so a leftover error
+	// from a since-abandoned query is never shown once a fresh one is
+	// underway.
+	wikipediaErr string
 }
 
 // newPicker is the closed, no-search state: nothing open, nothing typed,
@@ -273,9 +311,15 @@ type pickerSearchMsg struct{ seq int }
 // pickerResultsMsg is a completed search reporting back, carrying the
 // generation it was dispatched for so a result set for a query the user has
 // already typed past can be discarded (M2.4) rather than briefly displayed.
+// err is Wikipedia mode's own addition (S2, C6/M3.3): a title search can
+// fail (offline, service error) where a local File/Grep search never does,
+// and results then carries only the labels (query/mode/scope/hideDotfiles)
+// the failed search was for, never any rows — applyPickerResults's err
+// branch is what keeps the previous Results in place instead.
 type pickerResultsMsg struct {
 	seq     int
 	results pickerResults
+	err     error
 }
 
 // queuePickerSearch is what any change to what would be searched (a
@@ -294,6 +338,10 @@ type pickerResultsMsg struct {
 // scheduled and the modal reports why instead (pickerStatus).
 func (m model) queuePickerSearch() (model, tea.Cmd) {
 	m.picker.seq++
+	// C6/M3.3: any new attempt — typed or a mode/Scope switch — invalidates
+	// a leftover Wikipedia search error the same instant it invalidates the
+	// previous Results labels (see wikipediaErr's own doc comment).
+	m.picker.wikipediaErr = ""
 	if !m.searchable() {
 		m.picker.results = pickerResults{}
 		m.picker.searching = false
@@ -393,7 +441,7 @@ func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
 	}
 	m.picker.searching = true
 	return m, pickerSearchCmd(m.picker.seq, m.picker.mode, m.picker.scope,
-		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles, m.docs)
+		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles, m.docs, m.wikipediaClient)
 }
 
 // resultCount is how many Result rows the current mode has to show right
@@ -403,10 +451,14 @@ func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
 // which is about whether a search *should* run, not how many rows the last
 // one that did produced.
 func (p picker) resultCount() int {
-	if p.mode == grepMode {
+	switch p.mode {
+	case grepMode:
 		return len(p.results.grep)
+	case wikipediaMode:
+		return len(p.results.wikipedia)
+	default:
+		return len(p.results.files)
 	}
-	return len(p.results.files)
 }
 
 // move shifts the Results selection cursor by delta rows, clamped to the
@@ -554,14 +606,23 @@ func (p picker) resultsCurrent(hideDotfiles bool) bool {
 		p.results.hideDotfiles == hideDotfiles
 }
 
-// searchable is whether the current Prompt may be searched at all: ripgrep
+// searchable is whether the current Prompt may be searched at all: the
+// query at or above S13's threshold, and — for File/Grep only — ripgrep
 // present (S14 — it supplies both the file list and the text search, so
-// without it there is no search to run) and the query at or above S13's
-// threshold. Both search gates consult it, and pickerStatus reports the
-// same two conditions to the user, so what the modal says and what the model
-// does cannot drift apart.
+// without it there is no local search to run). Wikipedia mode needs no
+// ripgrep at all (C6/M3.3): its search is a Wikimedia request, not a local
+// shell-out, so a session with no rg on PATH can still search Wikipedia.
+// Both search gates consult this, and pickerStatus reports the same
+// conditions to the user, so what the modal says and what the model does
+// cannot drift apart.
 func (m model) searchable() bool {
-	return m.ripgrep.available && len([]rune(m.picker.input.Value())) >= pickerQueryMinLength
+	if len([]rune(m.picker.input.Value())) < pickerQueryMinLength {
+		return false
+	}
+	if m.picker.mode == wikipediaMode {
+		return true
+	}
+	return m.ripgrep.available
 }
 
 // pickerSearchCmd is the search itself, as a tea.Cmd: M1's blocking,
@@ -578,9 +639,29 @@ func (m model) searchable() bool {
 // discipline (withDocRecord always builds a fresh map before replacing
 // m.docs, never mutates one in place) makes it as safe to read from a
 // concurrent goroutine as roots already is.
-func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int, hideDotfiles bool, docs map[string]docRecord) tea.Cmd {
+// wikipediaClient is nil only if a caller bypasses model.dispatchPickerSearch
+// (which always passes m.wikipediaClient, never nil — newModel sets a real
+// *wikipedia.Client and every test that reaches wikipediaMode injects a
+// fake via withWikipediaClient); it is a parameter like every other value
+// here rather than read from model for the same reason roots/docs/active
+// are copied in, not read from m, in this function's own doc comment.
+func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int, hideDotfiles bool, docs map[string]docRecord, wikipediaClient pickerWikipediaClient) tea.Cmd {
 	return func() tea.Msg {
 		results := pickerResults{query: query, mode: mode, scope: scope, hideDotfiles: hideDotfiles}
+		if mode == wikipediaMode {
+			// S2: a title search, not a local file/grep one — no Root, no
+			// Scope (wikipediaMode has none, C6/M3.2), no ripgrep. A
+			// failure (offline, service error) reports back via err rather
+			// than results.wikipedia, so applyPickerResults can leave the
+			// previous Results in place instead of replacing them with an
+			// empty list.
+			items, err := wikipediaClient.Search(query, pickerWikipediaResultLimit)
+			if err != nil {
+				return pickerResultsMsg{seq: seq, results: results, err: err}
+			}
+			results.wikipedia = items
+			return pickerResultsMsg{seq: seq, results: results}
+		}
 		var files []pickerFile
 		if scope == starredScope {
 			// S8: the whole store, not a walk of any Root's tree —
@@ -611,8 +692,24 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 	if !m.picker.open || msg.seq != m.picker.seq {
 		return m
 	}
-	m.picker.results = msg.results
 	m.picker.searching = false
+	if msg.err != nil {
+		// S2: "a failed search ... leaves the last Results in place." Only
+		// the labels this search was for advance (so resultsCurrent still
+		// recognizes the retained rows as answering the Prompt/mode/Scope);
+		// the rows themselves — whichever of files/grep/wikipedia a
+		// previous successful search set — are left untouched rather than
+		// replaced by msg.results' own empty ones. wikipediaErr is what
+		// pickerStatus shows in their place as the status line.
+		m.picker.wikipediaErr = msg.err.Error()
+		m.picker.results.query = msg.results.query
+		m.picker.results.mode = msg.results.mode
+		m.picker.results.scope = msg.results.scope
+		m.picker.results.hideDotfiles = msg.results.hideDotfiles
+		return m
+	}
+	m.picker.wikipediaErr = ""
+	m.picker.results = msg.results
 	m.picker.selected = 0
 	m.picker = m.picker.syncPreview(m.hideDotfiles)
 	return m

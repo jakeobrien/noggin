@@ -17,62 +17,48 @@
 
 ## Cursor
 
-Current task: M3.3
+Current task: M3.4
 
 ## Handoff
 
-M1 and M2 (Source model + Wikipedia client, M1.1–M1.8 and M2.1–M2.8, including the eight
-replan-added cleanup tasks from TRIAGE T1–T8/T10–T12/T15/T17) are all `done` as of
-2026-09-08; M1.8/M2.8 are not yet Reviewed/Validated (see the Status table). No reopen
-needed for M1.1–M2.7 (D125).
+M3.3 (S2) is done: Wikipedia mode's search is real now. `model.wikipediaClient`
+(`pickerWikipediaClient` interface, `Search(query, limit)` only) defaults to a real
+`*wikipedia.Client` in `newModel`; tests inject a fake via `withWikipediaClient`.
+`pickerSearchCmd`'s `wikipediaMode` branch calls it and reports back via `pickerResultsMsg`'s
+new `err` field. Rows render via `pickerWikipediaRow` (title + description, no match
+highlighting, no star marker — that's M3.4). `searchable()`/`pickerStatus` no longer require
+ripgrep for `wikipediaMode` (only File/Grep do).
 
-M1.8 (TRIAGE T17): `escapeDocTitle`/`unescapeDocTitle` renamed to `escapeDocField`/
-`unescapeDocField` and now also applied to the C6/M1.5 five-field shape's `<key>` field
-(both `file` and `article` records) on save/load; the legacy three-field shape's key stays
-raw/unescaped so existing on-disk stores load unchanged. New test
-`TestDocStoreKeyTabAndNewlineRoundTrip` in `cmd/noggin/docstore_test.go` covers a file key
-and an article key each carrying an embedded tab or newline.
+Failure handling (S2 "leaves the last Results in place"): `picker.wikipediaErr` holds the
+last search's error text; `applyPickerResults`'s `err` branch relabels only
+`results.query/mode/scope/hideDotfiles` (so `resultsCurrent` still holds) and leaves the
+actual rows untouched rather than replacing them with the failed attempt's empty ones.
+`pickerStatus` shows `wikipediaErr` ahead of the generic searching/no-results captions;
+`queuePickerSearch` clears it on every new attempt (keystroke or mode/Scope switch) — same
+"goes stale the instant something changes" rule the Results labels already have.
 
-M2.8 (TRIAGE T15): `internal/wikipedia.NewClient` now builds `&Client{}` then calls
-`ensureInit()` instead of constructing `httpClient`/`cache` directly — one init path shared
-with the lazy zero-value case. M2.4's zero-value and `-race` concurrency tests
-(`TestFetchAtZeroValueClientDoesNotPanic`, `TestFetchAtConcurrentUseIsRaceFree`) still pass.
+Preview: new `pickerPreviewContent(p picker)` helper (picker_view.go) returns
+`pickerWikipediaPreviewPlaceholder` for `wikipediaMode`, `p.preview.View()` otherwise;
+`renderPicker` now calls it instead of reading `p.preview.View()` directly.
 
-DECISIONS D122 (fetch cache's narrower-than-documented guarantee — revisit at M4.2), D123
-(equivalence-claim verifiability) and D124 (Search/Fetch config asymmetry — revisit at M3.3)
-are open by design, not blocking.
+D124 (Search/Fetch config asymmetry) is now `decided`, not open: `*wikipedia.Client.Search`
+is a one-line delegator to the existing free `Search`/`searchHTTPClient` — the Picker's
+injectable-client need only required *a* `Search` method, not a shared `http.Client`/config
+with Fetch. Revisit only if M4.2 surfaces a concrete shared-config need.
 
-SPEC.md amended 2026-09-08 (`/brainstorm amend`, user-confirmed): new S9a closes D98 (CC
-BY-SA attribution, open since C4a) — a Wikipedia article's location line now reads `CC BY-SA
-4.0 · <URL> · Reformatted to markdown` instead of a plain URL. M8.2 (still `todo`, not yet
-built) is updated to build the three-segment line; no other task's scope or status changes.
-D98 is now `decided`.
+New `cmd/noggin/picker_wikipedia_search_test.go` (`fakeWikipediaSearcher`) covers results
+rendering (title+description), stale-generation discard, failure-keeps-rows, the error
+clearing on the next attempt, the Preview placeholder, and no-ripgrep-needed. `make check`
+clean; `make check-pty` unchanged at the same pre-existing 11 failures (TRIAGE T18).
 
-M3.1 (S13): `pickerQueryMinLength` dropped 3→2 (`pickerBelowThresholdStatus` now "type at
-least 2 characters"); `queuePickerSearch`'s debounce is now per-mode via `pickerDebounceFor`
-— File/Grep keep `pickerSearchDebounce` (120ms), `wikipediaMode` gets its own, longer
-`pickerWikipediaSearchDebounce` (300ms). TRIAGE T18 logs 11 pre-existing `make check-pty`
-failures (verified identical with M3.1's changes stashed out, so not caused by it); `make
-check` is clean throughout M3.1–M3.2.
-
-M3.2 (S2): `wikipediaMode` (introduced inert in M3.1) is now wired in —
-`switchPickerMode` cycles File → Grep → Wikipedia → File instead of the old File ↔ Grep
-two-way flip; `openPicker` lands on `wikipediaMode` when `m.roots.activeIsWikipedia()`,
-otherwise still `fileMode`; `switchPickerScope` no-ops in `wikipediaMode` (no field change, no
-Cmd); `pickerModeScope` renders "Wikipedia · -" regardless of `p.scope`'s actual value. Two
-pre-existing tests baked in the old two-way toggle (`TestSwitchPickerModeNeverRewritesScope`,
-`TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch`) updated for the three-way cycle,
-the latter deliberately not asserting on Wikipedia mode's own search/results (M3.3's
-contract, not built yet — `pickerSearchCmd`'s `default` case still treats `wikipediaMode`
-like `fileMode` under the hood until M3.3 replaces it). New `picker_wikipedia_mode_test.go`
-covers the cycle from both kinds of Active Source, the landing mode, and the Scope no-op/"-"
-label directly. `make check` clean; `make check-pty` still exactly the same pre-existing 11
-failures (T18), none new.
-
-Next: M3.3 (Wikipedia search via an injectable client, async through the existing debounce;
-Results show title+description; failure keeps previous Results; Preview shows a placeholder
-— needs M2.2, M3.2) — read `SPEC.md` S2 and `PLAN.md`'s M3 section first. No further
-milestone-boundary gate needed before M3.3.
+Next: M3.4 (Picker star key toggles a Wikipedia Result's Document Store record, shows the
+marker — needs M1.5, M3.3). Gotcha to check first: `togglePickerStar`/`pickerSelectedPath`
+today only handle `fileMode`/`grepMode` (a Wikipedia Result silently no-ops, which is why
+M3.3 needed no change there) — M3.4 needs its own candidate lookup, and a title-search
+`wikipedia.SearchResult` carries no canonical URL (only `Fetch`, M4.2, resolves that), so
+M3.4/S4's "the store's key is the canonical URL" (M4.1) needs a concrete answer for starring
+a Result that has never been fetched — read S4/S6 and M1.5's article-record shape before
+assuming title is an adequate key. No milestone-boundary gate before M3.4.
 
 ## Status
 
@@ -96,7 +82,7 @@ milestone-boundary gate needed before M3.3.
 | M2.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T15); review found 1 low-sev finding (TRIAGE T1), independently reproduced and PASSed at validate |
 | M3.1  | done   | -        | -         |      |
 | M3.2  | done   | -        | -         |      |
-| M3.3  | todo   | -        | -         |      |
+| M3.3  | done   | -        | -         |      |
 | M3.4  | todo   | -        | -         |      |
 | M3.5  | todo   | -        | -         |      |
 | M4.1  | todo   | -        | -         |      |

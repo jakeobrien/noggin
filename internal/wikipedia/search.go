@@ -77,6 +77,22 @@ func Search(query string, limit int) ([]SearchResult, error) {
 	return searchTitles(searchBase, query, limit)
 }
 
+// Search is the same title search as the package-level Search function,
+// as a *Client method (C6/M3.3) so a Client can satisfy an injectable
+// search seam (cmd/noggin's pickerWikipediaClient) — the Picker's Wikipedia
+// mode holds one Client for the session and calls Search on it, the same
+// value M4.2's later Fetch calls will share. It does not read or write any
+// Client field: title search has no per-session cache (S2 does not ask for
+// one, unlike S3's fetch cache) and search.go's own searchHTTPClient stays
+// the separate client search.go's doc comment already explains, not
+// Client's httpClient. Untested directly against a live server for the
+// same reason Fetch (fetch.go) is not — both call through to a hardcoded
+// production base URL; searchTitles/fetchAt's own overridable-base tests
+// are what actually exercise the request/response handling.
+func (c *Client) Search(query string, limit int) ([]SearchResult, error) {
+	return Search(query, limit)
+}
+
 // searchResponse mirrors the title-search endpoint's JSON shape; only the
 // fields S2 needs are decoded (findings/wikimedia-api.md). Description is a
 // pointer because Wikimedia sends `null` for titles it has none for.

@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"noggin/internal/wikipedia"
 )
 
 // Picker modal proportions (M2.2): the modal's own footprint at a terminal
@@ -193,6 +195,13 @@ const (
 	pickerNoResultsStatus      = "no results"
 )
 
+// pickerWikipediaPreviewPlaceholder is the short placeholder S2 asks the
+// Preview pane to show in Wikipedia mode instead of article content
+// ("There is no Preview"): it never depends on the selection or on any
+// fetch, unlike the Preview's raw-bytes File/Grep content, so it renders
+// unconditionally whenever p.mode is wikipediaMode (renderPicker).
+const pickerWikipediaPreviewPlaceholder = "No preview — Activate to open the article"
+
 // pickerStatus is the one line under the Prompt saying what state the search
 // is in (S12's empty states, S14's unavailability). Order is priority order,
 // most fundamental first: with no ripgrep nothing can ever be searched, so
@@ -206,12 +215,22 @@ const (
 // comparison rather than an assumption — the only honest way to caption an
 // asynchronously-filled list (M2.4).
 func pickerStatus(p picker, avail ripgrepAvailability, hideDotfiles bool) string {
-	if !avail.available {
+	// C6/M3.3: Wikipedia mode needs no ripgrep (searchable's own doc
+	// comment) — S14's unavailability message is a File/Grep-only concern.
+	if !avail.available && p.mode != wikipediaMode {
 		return "Picker unavailable: " + avail.reason
 	}
 	query := p.input.Value()
 	if len([]rune(query)) < pickerQueryMinLength {
 		return pickerBelowThresholdStatus
+	}
+	// C6/M3.3: a Wikipedia search failure takes priority over the generic
+	// searching/no-results captions below — it is more specific information
+	// about the exact same "nothing new to show" state, and applyPickerResults
+	// has already relabeled p.results so resultsCurrent still holds while
+	// this is set (wikipediaErr's own doc comment).
+	if p.mode == wikipediaMode && p.wikipediaErr != "" {
+		return p.wikipediaErr
 	}
 	if !p.resultsCurrent(hideDotfiles) {
 		return pickerSearchingStatus
@@ -219,7 +238,7 @@ func pickerStatus(p picker, avail ripgrepAvailability, hideDotfiles bool) string
 	if p.searching {
 		return pickerSearchingStatus
 	}
-	if len(p.results.files) == 0 && len(p.results.grep) == 0 {
+	if len(p.results.files) == 0 && len(p.results.grep) == 0 && len(p.results.wikipedia) == 0 {
 		return pickerNoResultsStatus
 	}
 	if p.results.truncated {
@@ -556,6 +575,23 @@ func pickerGrepRow(g grepResult, query string, width int, selected bool, starred
 	return styleRow(highlightMatches(marked, shifted, selected), width, selected)
 }
 
+// pickerWikipediaRow renders one Wikipedia Picker Result (S2, C6/M3.3): the
+// article's title, plus its short description when Wikipedia supplies one
+// — its own row shape, unlike pickerFileRow/pickerGrepRow: there is no
+// Root or path to show (an article has neither) and no match highlighting
+// (S2 does not ask for one — Wikipedia's own title-search ranking is
+// trusted as-is, unlike the fuzzy/literal matching this codebase does
+// itself for File/Grep). Star marker support (M3.4) is not yet wired
+// here — this task's own scope stops at rendering title+description.
+func pickerWikipediaRow(r wikipedia.SearchResult, width int, selected bool) string {
+	line := r.Title
+	if r.Description != "" {
+		line += "  " + r.Description
+	}
+	line = rightTruncate(line, width)
+	return styleRow(line, width, selected)
+}
+
 // pickerResultsContent renders the Results list's content (M3.1, M4.1),
 // sized to exactly width x height — the same "expected to be exactly
 // r.content() in size" contract renderPane's own doc comment gives every
@@ -579,6 +615,15 @@ func pickerResultsContent(p picker, width, height int, hideDotfiles bool, docs m
 			return pickerGrepRow(g, p.results.query, width, idx == p.selected, docs[filepath.Clean(g.file.path)].Starred)
 		})
 	}
+	if p.mode == wikipediaMode {
+		results := p.results.wikipedia
+		if len(results) == 0 {
+			return ""
+		}
+		return windowedView(width, height, p.selected, len(results), func(idx int) string {
+			return pickerWikipediaRow(results[idx], width, idx == p.selected)
+		})
+	}
 	files := p.results.files
 	if len(files) == 0 {
 		return ""
@@ -587,6 +632,20 @@ func pickerResultsContent(p picker, width, height int, hideDotfiles bool, docs m
 		f := files[idx]
 		return pickerFileRow(f, p.results.query, width, idx == p.selected, docs[filepath.Clean(f.path)].Starred)
 	})
+}
+
+// pickerPreviewContent is the Preview pane's own content (M3.2, S2/C6/M3.3):
+// the Preview viewport's rendered view for File/Grep mode, or Wikipedia
+// mode's short placeholder — S2's "There is no Preview: the Preview pane
+// shows a short placeholder instead of article content" — regardless of the
+// selection or of whatever the viewport happens to still hold from a
+// previous File/Grep mode search (syncPreview never targets wikipediaMode,
+// see pickerPreviewTarget's own doc comment).
+func pickerPreviewContent(p picker) string {
+	if p.mode == wikipediaMode {
+		return pickerWikipediaPreviewPlaceholder
+	}
+	return p.preview.View()
 }
 
 // renderPicker composes the Picker modal's three regions (S1): a bordered
@@ -605,7 +664,7 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfi
 	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerModeScope(p, hideDotfiles)), promptContent)
 	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, hideDotfiles, docs)
 	results := renderBox(borderStyle, l.results, titleStyle.Render("Results"), resultsContent)
-	preview := renderBox(borderStyle, l.preview, titleStyle.Render("Preview"), p.preview.View())
+	preview := renderBox(borderStyle, l.preview, titleStyle.Render("Preview"), pickerPreviewContent(p))
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
 	return lipgloss.JoinVertical(lipgloss.Left, prompt, body)
 }

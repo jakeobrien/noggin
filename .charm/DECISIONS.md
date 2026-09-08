@@ -1413,7 +1413,7 @@
 
 ## D124: `Search`'s package-level client vs `Fetch`'s `Client` struct — no shared config surface
 
-- Status: open
+- Status: decided — revisited at M3.3, kept separate
 - Cycle: C6
 - Date: 2026-09-08
 - Context: TRIAGE T9 (code review). `internal/wikipedia.Search` is a free function backed by
@@ -1426,6 +1426,16 @@
   unifying `Search` onto `Client` (or a shared config struct) before more call sites accrete.
 - Why: Cheap to defer — both shapes work and are independently tested; deciding now would be
   speculative ahead of M3.3's actual caller shape.
+- Revisit (M3.3): The Picker's injectable-client need turned out not to require unification.
+  `cmd/noggin`'s `pickerWikipediaClient` interface asks only for a `Search(query, limit)`
+  method, so `*wikipedia.Client` satisfies it with a one-line delegating method
+  (`internal/wikipedia/search.go`) that calls straight through to the existing package-level
+  `Search`/`searchHTTPClient` — no shared `http.Client`, timeout or transport needed. Kept
+  separate: search.go's own documented reason (`searchHTTPClient`'s doc comment — Fetch's own
+  timeout is scoped to Fetch's own acceptance criterion) still holds, and forcing a shared
+  config now would be speculative ahead of M4.2 actually needing one. Revisit again only if
+  M4.2's own fetch-client wiring surfaces a concrete need (e.g. a single configurable
+  User-Agent/proxy for both calls); until then this stays decided, not open.
 
 ## D125: M2 review findings T4–T6 (medium) accepted as new hardening tasks, not a reopen of M2.1–M2.3
 
