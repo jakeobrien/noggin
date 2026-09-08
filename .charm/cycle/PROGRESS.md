@@ -217,9 +217,33 @@ subagent except M2.7 (see above). One new low-severity item surfaced along the w
 logged to TRIAGE.md for a future replan: T14 (a pre-existing GLOSSARY.md self-inconsistency,
 found during M1.6, out of that task's cmd/noggin scope).
 
+2026-09-08 validate (fresh-context subagent): independently verified M1.6, M1.7, M2.4-M2.7
+(the six queued cleanup tasks reviewed but not yet validated) against their PLAN.md
+acceptance criteria — all six PASS. Deterministic checks (`make check`, `go build/vet ./...`,
+`go test ./... -race -count=1`, `gofmt -l .`) all green. Evidence per task: M1.6's rename is
+live (`grep -rn "Roots Nav" cmd/noggin` and `grep -n '"Roots"' cmd/noggin/*.go` both empty)
+and the literal-"Sources" pane-title assertion is real — but the PROGRESS.md handoff had
+miscited *which* test proves it: `TestPaneFocusBadgesShowAtNormalWidthRegardlessOfFocus`
+(`focus_badge_test.go:13-46`) is tautological (asserts against `pane.title()`'s own return
+value, would pass even reverted to "Roots"); the real hardcoded check is
+`TestRenderPaneDropsTheBadgeNotTheTitleWhenTooNarrow` (`focus_badge_test.go:56-68`) and
+`TestTitleRowDropsTheBadgeAtExactlyOneColumnShort` (`focus_badge_test.go:80-81`) — this
+confirms TRIAGE T16's finding precisely; criterion still met, only the citation was wrong, so
+no PROGRESS.md status flip needed. M1.7's tab/newline round-trip test genuinely covers
+adjacent-record corruption (on-disk line/tab-boundary counts), not just the round-trip.
+M2.4's zero-value and concurrent-use tests genuinely exercise `var c Client` (not
+`NewClient()`), race-clean across repeats. M2.5's shadowing is gone, the redirect-detection
+logic is structural (not a doc-only claim), and both error types' doc comments now name both
+call sites. M2.6's live_test.go dedup is real (`fetchLiveArticleHTML` now calls
+`fetchCanonicalHTML`) and this session's sandbox had network reachable, so the opt-in live
+suite (`WIKISPIKE_LIVE=1`) was actually run, not just read — all 5 live tests passed. M2.7's
+`strconv.Itoa`/S3-citation swaps are both confirmed via grep and a green `TestSearch` run. No
+fix-type discrepancies beyond the already-open T16 (which this validation corroborates rather
+than supersedes — left open for replan as before); no spec-level gaps found.
+
 Next: M3.1, the first Wikipedia Picker task — read `SPEC.md` S2 and the M3 section of
-`PLAN.md` before starting. M2 already cleared its review/validate gate, so no further
-milestone-boundary check is needed before M3.
+`PLAN.md` before starting. M2 and its six follow-on cleanup tasks are now fully
+reviewed+validated; no further milestone-boundary check is needed before M3.
 
 ## Status
 
@@ -233,12 +257,12 @@ milestone-boundary check is needed before M3.
 | M2.1  | done   | 2026-09-08 | 2026-09-08 |      |
 | M2.2  | done   | 2026-09-08 | 2026-09-08 |      |
 | M2.3  | done   | 2026-09-08 | 2026-09-08 |      |
-| M1.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T2) |
-| M1.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T3) |
-| M2.4  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T4, T5) |
-| M2.5  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
-| M2.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T10) |
-| M2.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T11, T12) |
+| M1.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T2) |
+| M1.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T3) |
+| M2.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T4, T5) |
+| M2.5  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
+| M2.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T10) |
+| M2.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |
