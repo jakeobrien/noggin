@@ -249,3 +249,70 @@ func TestPickerWikipediaModeSearchesWithoutRipgrep(t *testing.T) {
 		t.Errorf("pickerStatus = %q with rg unavailable but results present, want empty", got)
 	}
 }
+
+// TestPickerAltHInWikipediaModeTogglesWithoutRequerying is M3.7's own
+// acceptance criterion (TRIAGE T21): pickerSearchCmd's wikipediaMode branch
+// never calls listFiles, so hideDotfiles has no bearing on a Wikipedia
+// search at all — alt+h there must still flip m.hideDotfiles (for later
+// File/Grep use) without firing a real, debounced network re-search that
+// could only ever come back with the exact same rows.
+func TestPickerAltHInWikipediaModeTogglesWithoutRequerying(t *testing.T) {
+	fake := &fakeWikipediaSearcher{results: map[string][]wikipedia.SearchResult{
+		"eul": {{Title: "Leonhard Euler", Description: "Swiss mathematician (1707-1783)"}},
+	}}
+	m := pickerWikipedia(t, fake)
+
+	m, seqs := typePickerQuery(t, m, "eul")
+	m, searches := deliverPickerTicks(t, m, seqs)
+	if searches != 1 {
+		t.Fatalf("dispatched %d searches, want 1", searches)
+	}
+	if len(fake.calls) != 1 {
+		t.Fatalf("Search calls = %v, want exactly one call before alt+h", fake.calls)
+	}
+	if !m.picker.resultsCurrent(m.hideDotfiles) {
+		t.Fatal("results not current before alt+h; setup is broken")
+	}
+
+	if m.hideDotfiles {
+		t.Fatal("hideDotfiles starts true; want false (S4's default: dotfiles shown)")
+	}
+	next, cmd := m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
+	m = concrete(t, next)
+
+	if !m.hideDotfiles {
+		t.Fatal("hideDotfiles after alt+h in Wikipedia mode = false, want true (the toggle itself still flips)")
+	}
+	if cmd != nil {
+		t.Fatalf("alt+h in Wikipedia mode produced a Cmd (%v), want nil: no requery", cmd())
+	}
+	if len(fake.calls) != 1 {
+		t.Fatalf("Search calls after alt+h = %v, want still exactly one (no requery)", fake.calls)
+	}
+
+	// The existing Results must still read as current — not stale — so the
+	// already-displayed rows stay on screen rather than the view reading
+	// them as belonging to a superseded search.
+	if !m.picker.resultsCurrent(m.hideDotfiles) {
+		t.Fatal("results.hideDotfiles was not patched to match the new toggle: resultsCurrent reports stale")
+	}
+	if len(m.picker.results.wikipedia) != 1 {
+		t.Errorf("results.wikipedia after alt+h = %v, want the original result untouched", m.picker.results.wikipedia)
+	}
+
+	// A second alt+h restores hideDotfiles, still without a requery.
+	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
+	m = concrete(t, next)
+	if m.hideDotfiles {
+		t.Fatal("hideDotfiles after a second alt+h in Wikipedia mode = true, want false")
+	}
+	if cmd != nil {
+		t.Fatalf("second alt+h in Wikipedia mode produced a Cmd (%v), want nil: no requery", cmd())
+	}
+	if len(fake.calls) != 1 {
+		t.Fatalf("Search calls after the second alt+h = %v, want still exactly one (no requery)", fake.calls)
+	}
+	if !m.picker.resultsCurrent(m.hideDotfiles) {
+		t.Fatal("results.hideDotfiles was not patched back: resultsCurrent reports stale")
+	}
+}

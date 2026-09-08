@@ -363,8 +363,23 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 // resultsCurrent's hideDotfiles comparison stales the previous candidate
 // set's rows immediately, exactly as it already does for a mode or Scope
 // switch.
+//
+// wikipediaMode is the one exception (TRIAGE T21): pickerSearchCmd's own
+// wikipediaMode branch never calls listFiles, so hideDotfiles has no
+// bearing on a Wikipedia search's results at all — queuePickerSearch would
+// still fire a real, debounced network request with no visible effect. The
+// toggle itself still flips (for whenever the Picker next switches to
+// File/Grep), but instead of requerying, p.results.hideDotfiles is patched
+// to match it directly — resultsCurrent's label comparison then still
+// reports the existing, still-valid Wikipedia rows as current, so they
+// stay on screen rather than reading as stale (which the view would show
+// as "searching…" for a search that was never actually dispatched).
 func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 	m.hideDotfiles = !m.hideDotfiles
+	if m.picker.mode == wikipediaMode {
+		m.picker.results.hideDotfiles = m.hideDotfiles
+		return m, nil
+	}
 	return m.queuePickerSearch()
 }
 

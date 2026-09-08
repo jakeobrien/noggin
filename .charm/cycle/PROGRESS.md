@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.7
+Current task: M4.4
 
 ## Handoff
 
@@ -227,8 +227,25 @@ hunk (`git apply --cached`) of `.charm/GLOSSARY.md`, leaving a pre-existing unre
 uncommitted hunk there (the Location-line S9a wording, present since before this session,
 out of scope) untouched in the working tree.
 
-Next: M3.7 (TRIAGE T21: alt+h requeries needlessly in wikipediaMode). Independent of
-M3.6's own work — next in cursor order.
+M3.7 done (2026-09-08, `make check` clean, `make check-pty` clean, `go test -race
+./cmd/noggin/...` clean). `toggleHiddenFiles` (alt+h) unconditionally called
+`queuePickerSearch`, firing a real debounced network search in `wikipediaMode` even
+though `pickerSearchCmd`'s own wikipediaMode branch never calls `listFiles` —
+`hideDotfiles` has no bearing on a Wikipedia search's results at all. Fixed with a
+`wikipediaMode` branch: `m.hideDotfiles` still flips (for later File/Grep use), but
+instead of requerying, `m.picker.results.hideDotfiles` is patched to match it directly
+so `resultsCurrent`'s label comparison keeps reading the existing rows as current —
+otherwise the toggle would make the view treat them as stale and show a phantom
+"searching…" for a search that was never dispatched (a mid-build correctness check,
+not named in the TRIAGE item itself). New `TestPickerAltHInWikipediaModeTogglesWithout
+Requerying` (picker_wikipedia_search_test.go) covers both toggle directions: `hideDotfiles`
+flips, the Update's `Cmd` is nil, `fakeWikipediaSearcher.calls` stays at its pre-toggle
+length, and `resultsCurrent` reports the unchanged rows current throughout. Verified the
+test catches a real regression: reverted the fix, confirmed the test failed with the
+exact predicted symptom (a non-nil requery `Cmd`), then restored.
+
+Next: M4.4 (TRIAGE T23: mirror DV-arrangement test gap for staleness/edit). Independent
+of M3.7's own work — next in cursor order.
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -275,7 +292,7 @@ accepted by design — see DECISIONS.md.
 | M1.10 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M3.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
-| M3.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |
+| M3.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T23) |
 | M6.1  | todo   | -        | -         | pre-agreed cut 1 |
 | M7.1  | todo   | -        | -         | pre-agreed cut 2 |
