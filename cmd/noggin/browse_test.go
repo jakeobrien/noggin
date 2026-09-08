@@ -42,15 +42,15 @@ func TestBrowseScopeIsANoOpInTreeMode(t *testing.T) {
 }
 
 // TestBrowseScopeCyclesRecentsTwoValues checks Recent's own scope set (S5:
-// "Active Source | All Roots"), wrapping after two values.
+// "Active Source | All Sources"), wrapping after two values.
 func TestBrowseScopeCyclesRecentsTwoValues(t *testing.T) {
 	f := newFilesNav().cycleMode() // Tree -> Recent
 	if got := f.scopeLabel(); got != "Active Source" {
 		t.Fatalf("Recent's starting scope = %q, want Active Source", got)
 	}
 	f = f.cycleScope()
-	if got := f.scopeLabel(); got != "All Roots" {
-		t.Errorf("Recent's scope after one cycle = %q, want All Roots", got)
+	if got := f.scopeLabel(); got != "All Sources" {
+		t.Errorf("Recent's scope after one cycle = %q, want All Sources", got)
 	}
 	f = f.cycleScope()
 	if got := f.scopeLabel(); got != "Active Source" {
@@ -73,18 +73,18 @@ func TestBrowseScopeCyclesStarredsThreeValues(t *testing.T) {
 
 // TestBrowseModeSwitchResetsScopeToTheNewModesFirstValue checks that a scope
 // index carried from one mode is never read against a different mode's own
-// value set: switching from Recent's second scope (All Roots) to Starred
+// value set: switching from Recent's second scope (All Sources) to Starred
 // lands on Starred's own first value (Active Source), not on Starred's
 // same-index (All Starred) or a stale label.
 func TestBrowseModeSwitchResetsScopeToTheNewModesFirstValue(t *testing.T) {
 	f := newFilesNav().cycleMode() // Tree -> Recent
-	f = f.cycleScope()             // Active Source -> All Roots
-	if got := f.scopeLabel(); got != "All Roots" {
-		t.Fatalf("setup: Recent's scope = %q, want All Roots", got)
+	f = f.cycleScope()             // Active Source -> All Sources
+	if got := f.scopeLabel(); got != "All Sources" {
+		t.Fatalf("setup: Recent's scope = %q, want All Sources", got)
 	}
 	f = f.cycleMode() // Recent -> Starred
 	if got := f.scopeLabel(); got != "Active Source" {
-		t.Errorf("Starred's scope right after switching from Recent/All Roots = %q, want Active Source", got)
+		t.Errorf("Starred's scope right after switching from Recent/All Sources = %q, want Active Source", got)
 	}
 }
 
@@ -190,7 +190,7 @@ func TestFilesModeScopeKeysCycleFromFilesNavFocus(t *testing.T) {
 	if m.files.scope != allRootsBrowseScope {
 		t.Fatalf("scope after FilesScope = %v, want allRootsBrowseScope", m.files.scope)
 	}
-	if !strings.Contains(m.frame(), "All Roots") {
+	if !strings.Contains(m.frame(), "All Sources") {
 		t.Errorf("frame does not show the new scope:\n%s", m.frame())
 	}
 }

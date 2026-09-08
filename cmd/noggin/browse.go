@@ -2,9 +2,14 @@ package main
 
 // browseMode is the Files Nav's S5 Browse Mode (GLOSSARY.md "Browse Mode"):
 // how the pane lists documents. Cycled by keys.FilesMode, in this fixed
-// order (Tree -> Recent -> Starred -> Tree ...); M4.2/M4.3 give Recent and
-// Starred their actual listings, M4.1 only the model, the cycle keys and the
-// row that shows the current pair.
+// order (Tree -> Recent -> Starred -> Tree ...) while a Root is (or
+// nothing is) the Active Source; M4.2/M4.3 give Recent and Starred their
+// actual listings, M4.1 only the model, the cycle keys and the row that
+// shows the current pair. While the Wikipedia Query Source is active
+// (C6/M1.4) there is no tree to walk, so Tree drops out of the cycle
+// entirely and it toggles directly between Recent and Starred instead
+// (filesNav.cycleMode), landing on Starred rather than Tree the first time
+// a session shows Wikipedia (filesNav.setWikipedia).
 type browseMode int
 
 const (
@@ -14,6 +19,11 @@ const (
 )
 
 // label is the mode's own name, exactly as the S5 mode/scope row shows it.
+//
+// While the Wikipedia Query Source is active (C6/M1.4) the mode field is
+// never treeBrowse — cycleMode excludes it from the cycle entirely, since
+// there is no tree to walk without a Root — so this default case is only
+// ever reached by treeBrowse itself while a Root is (or nothing is) active.
 func (m browseMode) label() string {
 	switch m {
 	case recentBrowse:
@@ -54,7 +64,7 @@ const (
 func (s browseScope) label() string {
 	switch s {
 	case allRootsBrowseScope:
-		return "All Roots"
+		return "All Sources"
 	case allStarredBrowseScope:
 		return "All Starred"
 	case orphansBrowseScope:
@@ -68,12 +78,21 @@ func (s browseScope) label() string {
 // cycles through, in cycle order: none for Tree (the scope key is a no-op,
 // filesNav.cycleScope), two for Recent, three for Starred (Orphans is the
 // pre-agreed cut 3 in PLAN.md/M4.3, but the model carries it regardless —
-// dropping M4.3's *listing* of it, if the cycle spills, costs nothing here).
-func modeScopes(m browseMode) []browseScope {
+// dropping M4.3's *listing* of it, if the cycle spills, costs nothing here)
+// — except while the Wikipedia Query Source is active (C6/M1.4), whose own
+// Starred value set drops Orphans entirely (S5: "Starred: Active Source |
+// All Starred"): Orphans names files outside any session Root, a question
+// Wikipedia's own document kind (an article, never under a Root at all) has
+// no useful answer to. wikipedia only ever changes Starred's own set; every
+// other mode's cycle is identical either way.
+func modeScopes(m browseMode, wikipedia bool) []browseScope {
 	switch m {
 	case recentBrowse:
 		return []browseScope{activeRootBrowseScope, allRootsBrowseScope}
 	case starredBrowse:
+		if wikipedia {
+			return []browseScope{activeRootBrowseScope, allStarredBrowseScope}
+		}
 		return []browseScope{activeRootBrowseScope, allStarredBrowseScope, orphansBrowseScope}
 	default:
 		return nil
@@ -99,13 +118,21 @@ func modeScopes(m browseMode) []browseScope {
 // would only be asking this func the flat modes' own question — "nothing
 // to show" — which is what emptyTreeText's "open but empty" wording
 // names.
+//
+// Active Source's own two messages (Recent's default case, Starred's own
+// default case) read "Source", not "Root": C6/M1.4 makes Wikipedia reachable
+// there too (Starred's set keeps Active Source while Wikipedia is active,
+// modeScopes above), so wording naming a Root specifically would misdescribe
+// it. Orphans keeps naming a Root — it is unreachable while Wikipedia is
+// active (modeScopes) and, unlike Active Source, names a Root-only concept
+// even when it is reachable (a document outside any session Root).
 func flatEmptyText(mode browseMode, scope browseScope) string {
 	switch mode {
 	case recentBrowse:
 		if scope == allRootsBrowseScope {
-			return "No recently viewed documents in any Root."
+			return "No recently viewed documents in any Source."
 		}
-		return "No recently viewed documents in this Root."
+		return "No recently viewed documents in this Source."
 	case starredBrowse:
 		switch scope {
 		case allStarredBrowseScope:
@@ -113,7 +140,7 @@ func flatEmptyText(mode browseMode, scope browseScope) string {
 		case orphansBrowseScope:
 			return "No starred documents outside a session Root."
 		default:
-			return "No starred documents in this Root."
+			return "No starred documents in this Source."
 		}
 	default:
 		return emptyTreeText

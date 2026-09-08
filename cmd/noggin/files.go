@@ -34,6 +34,16 @@ const emptyTreeText = "This folder has nothing to show (empty, or everything in 
 type filesNav struct {
 	root *tree.Node
 
+	// wikipedia reports whether the pane is currently showing the Wikipedia
+	// Query Source (C6/M1.4) rather than a Root — root is nil whenever this
+	// is true, mirroring rootsNav's own wikipedia flag (rootsnav.go), but
+	// kept as its own field here rather than inferred from root == nil: a
+	// brand new session (no Root ever opened, Wikipedia never activated
+	// either) also has root == nil, and that state must still cycle Tree
+	// first (S5's own "every session starts on Tree"), not Wikipedia's
+	// restricted Starred/Recent pair.
+	wikipedia bool
+
 	// expanded holds the Paths of folders currently open. A folder absent from
 	// the map is collapsed; the tree opens with every folder collapsed (S5), so
 	// the empty map is the initial state.
@@ -44,14 +54,16 @@ type filesNav struct {
 	// expansion rather than a fixed node.
 	selected int
 
-	// memory holds, per Root, the expansion set and selected node's Path last
-	// left there (M3.1/S3), and — since M4.6 — the Browse Mode and per-mode
-	// Browse Scope last left there too (S7), keyed by the Root's own Path —
-	// the same value model.activateRoot re-walks into a brand new *tree.Node
-	// each time a Root is (re)activated, even when nothing on disk changed, so
-	// memory is keyed by Path rather than Node identity, the same way expanded
-	// already is. A Root with no entry here has never been visited this
-	// session.
+	// memory holds, per Source (a Root, or — C6/M1.4 — the Wikipedia Query
+	// Source), the expansion set and selected node's Path last left there
+	// (M3.1/S3), and — since M4.6 — the Browse Mode and per-mode Browse
+	// Scope last left there too (S7), keyed by the Root's own Path (the same
+	// value model.activateRoot re-walks into a brand new *tree.Node each time
+	// a Root is (re)activated, even when nothing on disk changed, so memory
+	// is keyed by Path rather than Node identity, the same way expanded
+	// already is) or, for Wikipedia, wikipediaSourceKey — a sentinel no real
+	// Root Path can ever collide with. A Source with no entry here has never
+	// been visited this session.
 	memory map[string]filesNavMemory
 
 	// status holds S8's per-file git markers for the current root, keyed by
@@ -78,7 +90,11 @@ type filesNav struct {
 	// a session always opens on Tree (S7), and Tree's scope reads "-"
 	// (scopeLabel) regardless of the scope field's value. M4.6 gives these
 	// per-Root (mode) and per-(Root,mode) (scope) memory via scopeByMode below
-	// and setRoot/remember's own restore/capture.
+	// and setRoot/remember's own restore/capture. While the Wikipedia Query
+	// Source is active (C6/M1.4) mode is never treeBrowse and cycleMode
+	// toggles only between recentBrowse/starredBrowse; setWikipedia's own
+	// fresh-visit default is starredBrowse, not the zero value, since
+	// Wikipedia never opens on a Tree that does not exist for it.
 	mode  browseMode
 	scope browseScope
 
@@ -139,6 +155,14 @@ func newFilesNav() filesNav {
 	return filesNav{expanded: map[string]bool{}, memory: map[string]filesNavMemory{}}
 }
 
+// wikipediaSourceKey is the Files Nav's own memory key for the Wikipedia
+// Query Source (C6/M1.4) — filesNav.memory (above) is keyed by a Root's own
+// absolute filesystem Path, syntax the Wikipedia Source's per-Source browse
+// memory piggybacks on via this reserved, path-shaped-but-impossible
+// sentinel: a real Root Path always starts with a path separator or drive
+// letter, never a NUL byte, so this can never collide with one.
+const wikipediaSourceKey = "\x00wikipedia"
+
 // setRoot points the pane at root. A Root the pane has never shown this
 // session starts a fresh browse — collapsed at the top level, selection at
 // the top (S5), Tree mode at its own default scope (S7: "every session
@@ -146,9 +170,11 @@ func newFilesNav() filesNav {
 // brand new session) — the same as before M3.1. A Root shown before instead
 // restores exactly the expansion, selection, Browse Mode and per-mode Browse
 // Scope it was left with, however many other Roots were visited in between
-// (M3.1/S3, S7/M4.6). Either way, the outgoing root's own state (if there
-// was one) is captured into memory first, so leaving it is round-trippable
-// the next time it becomes active.
+// (M3.1/S3, S7/M4.6). Either way, whichever Source the pane was showing
+// before (a Root, or — C6/M1.4 — Wikipedia) is captured into memory first
+// (rememberOutgoing), so leaving it is round-trippable the next time it
+// becomes active; setWikipedia below is this method's mirror for the one
+// Source with no tree.Node to walk, sharing the restore half (restoreSource).
 //
 // The restore branch's f.selected starts out Tree-shaped — indexOfPath
 // walks visibleRows(), the tree's own flattening — even when saved.mode is
@@ -165,13 +191,58 @@ func newFilesNav() filesNav {
 // about to become, the session's Active Root, so setting it here directly
 // is exact, not a guess.
 func (f filesNav) setRoot(root *tree.Node) filesNav {
-	if f.root != nil {
-		f = f.remember(f.root.Path)
-	}
-
+	f = f.rememberOutgoing()
 	f.root = root
+	f.wikipedia = false
 	f.activeRootPath = root.Path
-	if saved, ok := f.memory[root.Path]; ok {
+	return f.restoreSource(root.Path, treeBrowse, activeRootBrowseScope)
+}
+
+// setWikipedia points the pane at the Wikipedia Query Source (C6/M1.4) —
+// setRoot's mirror for the one Source with no tree.Node to walk. There is
+// no tree to set aside gracefully, so f.root becomes nil outright: every
+// tree-shaped reader (visibleRows, expand/collapse, and Tree mode itself,
+// which cycleMode never lets f.mode become while f.wikipedia is true)
+// already treats a nil root as "nothing to show", the same tolerance an
+// empty session already relied on. A first visit this session starts fresh
+// on Starred, not Tree (S5's own Wikipedia-active default — there is no
+// Tree for it to land on at all); a visit before restores exactly what was
+// left, the same per-Source browse memory contract setRoot gives a Root
+// (S7), keyed by wikipediaSourceKey instead of a Root Path.
+func (f filesNav) setWikipedia() filesNav {
+	f = f.rememberOutgoing()
+	f.root = nil
+	f.wikipedia = true
+	f.activeRootPath = ""
+	return f.restoreSource(wikipediaSourceKey, starredBrowse, activeRootBrowseScope)
+}
+
+// rememberOutgoing captures whichever Source the pane is currently showing
+// (a Root, or — C6/M1.4 — Wikipedia) into memory under that Source's own
+// key, just before setRoot/setWikipedia switch away from it — their shared
+// first step. A pane that has shown neither yet (a fresh session, before
+// any Root or Wikipedia activation) has nothing to capture.
+func (f filesNav) rememberOutgoing() filesNav {
+	switch {
+	case f.wikipedia:
+		return f.remember(wikipediaSourceKey)
+	case f.root != nil:
+		return f.remember(f.root.Path)
+	default:
+		return f
+	}
+}
+
+// restoreSource is setRoot/setWikipedia's shared second step, run after the
+// caller has already pointed f.root/f.wikipedia/f.activeRootPath at the
+// incoming Source: install whichever memory key remembers, or — a Source
+// never shown this session — a fresh browse at defaultMode/defaultScope
+// (S5/S7), then re-clamp selection into whatever row set that leaves on
+// screen (clampSelected; see setRoot's own doc comment for why a restored
+// flat-mode index is only ever guaranteed valid, not exact, until
+// clampSelected runs).
+func (f filesNav) restoreSource(key string, defaultMode browseMode, defaultScope browseScope) filesNav {
+	if saved, ok := f.memory[key]; ok {
 		f.expanded = saved.expanded
 		f.selected = f.indexOfPath(saved.selectedPath)
 		f.mode = saved.mode
@@ -180,24 +251,24 @@ func (f filesNav) setRoot(root *tree.Node) filesNav {
 	} else {
 		f.expanded = map[string]bool{}
 		f.selected = 0
-		f.mode = treeBrowse
+		f.mode = defaultMode
 		f.scopeByMode = nil
-		f.scope = activeRootBrowseScope
+		f.scope = defaultScope
 	}
 	return f.clampSelected()
 }
 
 // remember snapshots the pane's current expansion, selection, Browse Mode
-// and per-mode Browse Scope into memory under path (the outgoing root's own
-// Path) — setRoot's own call, just before switching away from it. The
-// expansion map is stored by reference, not cloned: withExpanded never
-// mutates a map in place, it always builds a fresh one, so the copy kept
-// here can never be changed out from under it by a later expand/collapse on
-// the pane that moved on. withScopeRemembered folds the current mode's live
-// scope into scopeByMode first, so the mode being left behind right now is
-// never missing from what gets stored — the same reason cycleMode calls it
-// too.
-func (f filesNav) remember(path string) filesNav {
+// and per-mode Browse Scope into memory under key (the outgoing Source's
+// own memory key: a Root's Path, or wikipediaSourceKey) — rememberOutgoing's
+// own call, just before switching away from it. The expansion map is
+// stored by reference, not cloned: withExpanded never mutates a map in
+// place, it always builds a fresh one, so the copy kept here can never be
+// changed out from under it by a later expand/collapse on the pane that
+// moved on. withScopeRemembered folds the current mode's live scope into
+// scopeByMode first, so the mode being left behind right now is never
+// missing from what gets stored — the same reason cycleMode calls it too.
+func (f filesNav) remember(key string) filesNav {
 	f = f.withScopeRemembered()
 	selPath := ""
 	if n := f.selectedNode(); n != nil {
@@ -207,7 +278,7 @@ func (f filesNav) remember(path string) filesNav {
 	for k, v := range f.memory {
 		memory[k] = v
 	}
-	memory[path] = filesNavMemory{
+	memory[key] = filesNavMemory{
 		expanded:     f.expanded,
 		selectedPath: selPath,
 		mode:         f.mode,
@@ -322,20 +393,30 @@ func (f filesNav) withRecentSource(docs map[string]docRecord, roots []root, acti
 	return f.clampSelected()
 }
 
-// cycleMode advances S5's Browse Mode one step (Tree -> Recent -> Starred ->
-// Tree ...), keys.FilesMode's own action. The new mode's scope is whatever
-// this Root last had it on (S7/M4.6: scopeForCurrentMode, fed by
-// withScopeRemembered's snapshot of the outgoing mode's own scope just
-// below) — a scope value only means something read against the mode that
-// produced it (S5's own per-mode value sets), and modeScopes(mode)[0] (or
-// the zero value for Tree, which scopeLabel ignores anyway) is
-// scopeForCurrentMode's own fallback for a mode this Root has never shown.
+// cycleMode advances S5's Browse Mode one step, keys.FilesMode's own action:
+// Tree -> Recent -> Starred -> Tree ... while a Root is (or nothing is) the
+// Active Source, or — C6/M1.4, f.wikipedia — Recent <-> Starred directly,
+// Tree never entering the cycle at all (S5: "Browse Modes are Starred and
+// Recent only" with Wikipedia active — there is no tree to walk without a
+// Root). The new mode's scope is whatever this Source last had it on
+// (S7/M4.6: scopeForCurrentMode, fed by withScopeRemembered's snapshot of
+// the outgoing mode's own scope just below) — a scope value only means
+// something read against the mode that produced it (S5's own per-mode value
+// sets, wikipedia-adjusted for Starred), and modeScopes(mode, f.wikipedia)[0]
+// (or the zero value for Tree, which scopeLabel ignores anyway) is
+// scopeForCurrentMode's own fallback for a mode this Source has never shown.
 func (f filesNav) cycleMode() filesNav {
 	f = f.withScopeRemembered()
-	switch f.mode {
-	case treeBrowse:
+	switch {
+	case f.wikipedia:
+		if f.mode == recentBrowse {
+			f.mode = starredBrowse
+		} else {
+			f.mode = recentBrowse
+		}
+	case f.mode == treeBrowse:
 		f.mode = recentBrowse
-	case recentBrowse:
+	case f.mode == recentBrowse:
 		f.mode = starredBrowse
 	default:
 		f.mode = treeBrowse
@@ -361,26 +442,28 @@ func (f filesNav) withScopeRemembered() filesNav {
 }
 
 // scopeForCurrentMode is the scope to show for f.mode right now: whatever
-// scopeByMode remembers for it from this Root's current visit (S7/M4.6), or
-// — a mode this Root has never shown yet — the mode's own first cycle value
-// (modeScopes(mode)[0]), or the zero value for Tree (modeScopes returns
-// none for it, and scopeLabel ignores the field regardless).
+// scopeByMode remembers for it from this Source's current visit (S7/M4.6),
+// or — a mode this Source has never shown yet — the mode's own first cycle
+// value (modeScopes(mode, f.wikipedia)[0]), or the zero value for Tree
+// (modeScopes returns none for it, and scopeLabel ignores the field
+// regardless).
 func (f filesNav) scopeForCurrentMode() browseScope {
 	if s, ok := f.scopeByMode[f.mode]; ok {
 		return s
 	}
-	if scopes := modeScopes(f.mode); len(scopes) > 0 {
+	if scopes := modeScopes(f.mode, f.wikipedia); len(scopes) > 0 {
 		return scopes[0]
 	}
 	return activeRootBrowseScope
 }
 
 // cycleScope advances S5's Browse Scope one step within the current mode's
-// own value set, wrapping; a no-op while the mode is Tree, whose scope key
-// does nothing (S5: "the scope key is a no-op" for Tree) since
-// modeScopes(treeBrowse) is empty.
+// own value set (modeScopes, wikipedia-adjusted for Starred, C6/M1.4),
+// wrapping; a no-op while the mode is Tree, whose scope key does nothing
+// (S5: "the scope key is a no-op" for Tree) since modeScopes(treeBrowse, _)
+// is empty.
 func (f filesNav) cycleScope() filesNav {
-	scopes := modeScopes(f.mode)
+	scopes := modeScopes(f.mode, f.wikipedia)
 	if len(scopes) == 0 {
 		return f
 	}

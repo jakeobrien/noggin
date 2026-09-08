@@ -17,29 +17,33 @@
 
 ## Cursor
 
-Current task: M1.4
+Current task: M1.5
 
 ## Handoff
 
-M1.3 done: relabelled every non-Grep, non-Root-mechanism "Active Root" to "Active Source" —
-the two actually-rendered scope labels (`browseScope.label()`'s Recent/Starred default in
-`browse.go`, and `pickerModeScope`'s File-mode default in `picker_view.go`, now mode-aware:
-File reads "Active Source", Grep still reads "Active Root" since Grep never reaches
-Wikipedia, S6) plus every doc comment/test comment describing those same two scopes or
-general Active-Source session state (`rootsnav.go`, `files.go`, `browse_list.go`,
-`picker.go`, `keymap.go`, `model.go`'s `historyBack`/`historyForward`, and the matching test
-files). Left untouched as Root-only mechanism or Grep-scope: `scope.go`, `staleness.go`,
-`files_search.go`'s roots-based resolution comments, Refresh/staleness/git-marker comments in
-`model.go`/`files.go`/`keymap.go`, and `picker.go`'s `activatePicker`/history-walk Root-to-Root
-tests (`history_test.go`, `picker_test.go`'s Grep-mode/Root-switch cases) — `grep -rn
-"Active Root" cmd/noggin --include=*.go` now matches only those two buckets (verified by
-reading every remaining hit). `go test ./...`/`make check` pass; existing tests were updated
-in place, none deleted.
+M1.4 done: with the Wikipedia Query Source active, the Files Nav's Browse Mode cycle drops
+Tree entirely and toggles Recent<->Starred (`filesNav.cycleMode`), landing on Starred the
+first time a session shows Wikipedia (`filesNav.setWikipedia`, `f.root` set aside to nil);
+Starred's own scope set drops `Orphans` while Wikipedia is active (`modeScopes(mode,
+wikipedia)`); Recent's second scope value is relabelled `All Sources` (was `All Roots`)
+unconditionally, for every Active Source, not just Wikipedia (`browseScope.label()`,
+`flatEmptyText`'s matching wording). Per-Source browse memory now covers Wikipedia via a new
+reserved key (`wikipediaSourceKey`) in the same `filesNav.memory` map Roots use, sharing the
+remember/restore halves (`rememberOutgoing`/`restoreSource`) `setRoot` and the new
+`setWikipedia` both call — verified round-tripping a mode/scope pair across a
+Wikipedia->Root->Wikipedia switch, and that a Root's own pair is untouched by a Wikipedia
+visit in between. `model.activateWikipediaSource` now calls `filesNav.setWikipedia` (the
+piece M1.1's own comment deferred to this task). New tests: `wikipedia_browse_test.go`
+(filesNav-level: mode cycle, both scope cycles, mode/scope row labels, the memory
+round-trip) plus two model-level tests appended to `wikipedia_source_test.go`. Existing
+"All Roots"-label assertions in `browse_test.go` updated in place (3 spots); Picker's own
+separate `pickerScope.allRootsScope` label (`scope.go`/`picker_view.go`) is untouched —
+different type, different task (M3.5). `go test ./...`/`make check` pass.
 
-Next: M1.4 (Files Nav with Wikipedia active: Starred/Recent-only modes, per-Source browse
-memory) is queued next — needs M1.1, now done. M2 (Wikipedia client) remains independent of M1
-and may be interleaved instead. Read `findings/wikimedia-api.md` before M2.2/M2.3. D120 covers
-the spike extraction (M2.1).
+Next: M1.5 (Document Store admits article records) is queued next — the last M1 task, needs
+nothing further from M1.4 beyond what is already in place. M2 (Wikipedia client) remains
+independent of M1 and may be interleaved instead. Read `findings/wikimedia-api.md` before
+M2.2/M2.3. D120 covers the spike extraction (M2.1).
 
 ## Status
 
@@ -48,7 +52,7 @@ the spike extraction (M2.1).
 | M1.1  | done   | 2026-09-07 | -       |      |
 | M1.2  | done   | 2026-09-07 | -       |      |
 | M1.3  | done   | -        | -         |      |
-| M1.4  | todo   | -        | -         |      |
+| M1.4  | done   | -        | -         |      |
 | M1.5  | todo   | -        | -         |      |
 | M2.1  | todo   | -        | -         |      |
 | M2.2  | todo   | -        | -         |      |

@@ -648,18 +648,18 @@ func (m model) activateRoot() model {
 // that is never a Roots Nav row index. It refreshes exactly what a Root
 // switch already refreshes (the Files Nav's Recent/Starred snapshot, the
 // staleness baseline) so both kinds of Active Source keep those invariants
-// unconditionally, not just for Roots. It deliberately leaves the Files
-// Nav's tree (m.files.root) untouched: every Root-only subsystem that
-// matters here — tree walk (nothing to walk without an active Root path),
-// grep (scope.go's liveRootsInScope, gated on active < 0), git markers and
+// unconditionally, not just for Roots. filesNav.setWikipedia (C6/M1.4) puts
+// the Files Nav's tree aside for good (m.files.root becomes nil) and
+// restricts its Browse Modes to Starred/Recent; every other Root-only
+// subsystem — tree walk (nothing to walk without an active Root path), grep
+// (scope.go's liveRootsInScope, gated on active < 0), git markers and
 // staleness (both gated on m.files.root/the Active Root's path), and
 // Refresh (model.refresh's own m.files.root != nil guard) — already
 // tolerates "no active Root" exactly the same way an empty session does,
-// which is what rootsNav.activateWikipedia's cleared active achieves. Which
-// Browse Modes the Files Nav shows and how its tree is put aside for good
-// is M1.4's job, not this one.
+// which is what rootsNav.activateWikipedia's cleared active achieves.
 func (m model) activateWikipediaSource() model {
 	m.roots = m.roots.activateWikipedia()
+	m.files = m.files.setWikipedia()
 	m.message = ""
 	m = m.refreshFilesRecentSource()
 	return m.resetStaleBaseline()

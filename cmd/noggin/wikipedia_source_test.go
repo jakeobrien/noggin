@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -62,5 +63,47 @@ func TestActivateRootDisplacesWikipediaSource(t *testing.T) {
 	}
 	if m.roots.active != m.roots.selected {
 		t.Errorf("roots.active = %d, want %d (the activated Root)", m.roots.active, m.roots.selected)
+	}
+}
+
+// TestActivateWikipediaSourceSetsFilesNavToWikipediaStarred is C6/M1.4's
+// model-level wiring check: activateWikipediaSource puts the Files Nav's
+// tree aside (root == nil) and lands its Browse Mode on Starred, the same
+// pair filesNav.setWikipedia gives directly (wikipedia_browse_test.go),
+// visible in the rendered frame too.
+func TestActivateWikipediaSourceSetsFilesNavToWikipediaStarred(t *testing.T) {
+	m := sized(t, newModel(), 80, 24)
+	m = m.activateWikipediaSource()
+	if !m.files.wikipedia {
+		t.Fatal("activateWikipediaSource did not mark the Files Nav as showing Wikipedia")
+	}
+	if m.files.root != nil {
+		t.Error("activateWikipediaSource left the Files Nav's tree in place, want it set aside")
+	}
+	if m.files.mode != starredBrowse {
+		t.Errorf("Files Nav mode after activateWikipediaSource = %v, want starredBrowse", m.files.mode)
+	}
+	if !strings.Contains(m.frame(), "Starred") {
+		t.Errorf("frame does not show the Starred mode:\n%s", m.frame())
+	}
+}
+
+// TestActivateRootAfterWikipediaRestoresTreeMode is the mirror direction:
+// once a Root displaces Wikipedia as the Active Source (S1), the Files Nav
+// is back on Tree -- a Root the pane has never shown starts fresh, exactly
+// as it would from a brand new session (filesNav.setRoot's own contract).
+func TestActivateRootAfterWikipediaRestoresTreeMode(t *testing.T) {
+	dir := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	m := sized(t, newModel(), 80, 24)
+	m.roots = m.roots.setRoots([]root{{path: dir}}, -1)
+
+	m = m.activateWikipediaSource()
+	m = m.activateRoot()
+
+	if m.files.wikipedia {
+		t.Error("Files Nav still marked as showing Wikipedia after activateRoot")
+	}
+	if m.files.mode != treeBrowse {
+		t.Errorf("Files Nav mode after activateRoot = %v, want treeBrowse", m.files.mode)
 	}
 }
