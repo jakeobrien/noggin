@@ -21,10 +21,10 @@ Current task: M3.1
 
 ## Handoff
 
-M1 and M2 (Source model + Wikipedia client, M1.1–M1.7 and M2.1–M2.7, including the six
-replan-added cleanup tasks from TRIAGE T1–T8/T10–T12) are all `done` and fully
-Reviewed+Validated as of 2026-09-08; M1.8 is now also `done` (not yet Reviewed/Validated) —
-see the Status table. No reopen needed for M1.1–M2.7 (D125).
+M1 and M2 (Source model + Wikipedia client, M1.1–M1.8 and M2.1–M2.8, including the eight
+replan-added cleanup tasks from TRIAGE T1–T8/T10–T12/T15/T17) are all `done` as of
+2026-09-08; M1.8/M2.8 are not yet Reviewed/Validated (see the Status table). No reopen
+needed for M1.1–M2.7 (D125).
 
 M1.8 (TRIAGE T17): `escapeDocTitle`/`unescapeDocTitle` renamed to `escapeDocField`/
 `unescapeDocField` and now also applied to the C6/M1.5 five-field shape's `<key>` field
@@ -33,10 +33,14 @@ raw/unescaped so existing on-disk stores load unchanged. New test
 `TestDocStoreKeyTabAndNewlineRoundTrip` in `cmd/noggin/docstore_test.go` covers a file key
 and an article key each carrying an embedded tab or newline.
 
-M2.8 (TRIAGE T15: `NewClient` should build via `ensureInit`) is still `todo`, independent of
-M3, and can be pulled in whenever a short slot is available. TRIAGE.md is empty. DECISIONS
-D122 (fetch cache's narrower-than-documented guarantee — revisit at M4.2), D123
-(equivalence-claim verifiability) and D124 (Search/Fetch config asymmetry — revisit at
+M2.8 (TRIAGE T15): `internal/wikipedia.NewClient` now builds `&Client{}` then calls
+`ensureInit()` instead of constructing `httpClient`/`cache` directly — one init path shared
+with the lazy zero-value case. M2.4's zero-value and `-race` concurrency tests
+(`TestFetchAtZeroValueClientDoesNotPanic`, `TestFetchAtConcurrentUseIsRaceFree`) still pass.
+
+TRIAGE.md is empty; both tasks were independent of M3 and pulled forward per the plan's own
+note. DECISIONS D122 (fetch cache's narrower-than-documented guarantee — revisit at M4.2),
+D123 (equivalence-claim verifiability) and D124 (Search/Fetch config asymmetry — revisit at
 M3.3) are open by design, not blocking.
 
 SPEC.md amended 2026-09-08 (`/brainstorm amend`, user-confirmed): new S9a closes D98 (CC
@@ -67,7 +71,7 @@ Next: M3.1 (Picker query threshold → 2, per-mode debounce) — read `SPEC.md` 
 | M2.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T10) |
 | M2.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T11, T12) |
 | M1.8  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T17) |
-| M2.8  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T15) |
+| M2.8  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T15) |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |
@@ -87,5 +91,3 @@ Next: M3.1 (Picker query threshold → 2, per-mode debounce) — read `SPEC.md` 
 | M8.3  | todo   | -        | -         |      |
 | M9.1  | todo   | -        | -         | pre-agreed cut 3 |
 | M10.1 | todo   | -        | -         |      |
-</content>
-</invoke>

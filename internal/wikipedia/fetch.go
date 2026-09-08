@@ -48,12 +48,15 @@ type Client struct {
 	cache map[string]Article // keyed by canonical URL
 }
 
-// NewClient returns a Client with an empty cache, ready to Fetch.
+// NewClient returns a Client with an empty cache, ready to Fetch. It builds
+// through ensureInit (M2.8/TRIAGE T15) rather than constructing httpClient/
+// cache itself, so there is exactly one place that decides what a freshly-
+// initialized Client looks like — NewClient and a lazily-initialized
+// zero-value Client{} can never drift apart.
 func NewClient() *Client {
-	return &Client{
-		httpClient: &http.Client{Timeout: fetchTimeout},
-		cache:      make(map[string]Article),
-	}
+	c := &Client{}
+	c.ensureInit()
+	return c
 }
 
 // ensureInit lazily initializes a zero-value Client's httpClient and cache
