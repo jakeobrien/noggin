@@ -149,19 +149,26 @@ func pickerModeScope(p picker, hideDotfiles bool) string {
 	// Grep's own Scope keeps reading "Active Root" (C6/M1.3): Grep never
 	// reaches Wikipedia (S6), so its activeRootScope value always names a
 	// literal Root. File Picker's identical zero value instead reads
-	// "Active Source" — today that is still always a Root (Wikipedia's own
-	// Picker mode lands later, M3.2), but the label is ahead of that on
-	// purpose so M3.2 does not need a second relabelling pass.
+	// "Active Source" — today that can be a Root or (S6) Wikipedia itself.
+	// Wikipedia mode (S2, C6/M3.2) has no Scope at all: it always reads
+	// "-", ignoring p.scope entirely (switchPickerScope never changes it
+	// in this mode either, so there is nothing stale to worry about).
 	scope := "Active Source"
-	if p.mode == grepMode {
+	switch p.mode {
+	case grepMode:
 		mode = "Grep"
 		scope = "Active Root"
+	case wikipediaMode:
+		mode = "Wikipedia"
+		scope = "-"
 	}
-	switch p.scope {
-	case allRootsScope:
-		scope = "All Roots"
-	case starredScope:
-		scope = "Starred"
+	if p.mode != wikipediaMode {
+		switch p.scope {
+		case allRootsScope:
+			scope = "All Roots"
+		case starredScope:
+			scope = "Starred"
+		}
 	}
 	label := mode + " · " + scope
 	if hideDotfiles {

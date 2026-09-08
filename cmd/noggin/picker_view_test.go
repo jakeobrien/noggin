@@ -575,6 +575,18 @@ func TestPickerStatusStates(t *testing.T) {
 			want: []string{"Grep · All Roots"},
 		},
 		{
+			// S2/C6/M3.2: Wikipedia mode has no Scope, reading "-" regardless
+			// of p.scope's own value (left at allRootsScope here on purpose,
+			// to prove it is genuinely ignored rather than incidentally zero).
+			name:  "Wikipedia mode indicator reads a dash Scope",
+			avail: ripgrepAvailability{available: true},
+			setup: func(p *picker) {
+				p.mode, p.scope = wikipediaMode, allRootsScope
+			},
+			want: []string{"Wikipedia · -"},
+			deny: []string{"All Roots"},
+		},
+		{
 			name:  "below the query threshold",
 			avail: ripgrepAvailability{available: true},
 			setup: func(p *picker) { p.input.SetValue("r") },

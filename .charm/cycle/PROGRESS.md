@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M3.2
+Current task: M3.3
 
 ## Handoff
 
@@ -50,18 +50,29 @@ D98 is now `decided`.
 
 M3.1 (S13): `pickerQueryMinLength` dropped 3→2 (`pickerBelowThresholdStatus` now "type at
 least 2 characters"); `queuePickerSearch`'s debounce is now per-mode via `pickerDebounceFor`
-— File/Grep keep `pickerSearchDebounce` (120ms), a new `wikipediaMode` pickerMode value (not
-yet reachable from `switchPickerMode`; that wiring is M3.2's) gets its own, longer
-`pickerWikipediaSearchDebounce` (300ms). New/updated tests:
-`TestPickerWikipediaModeDebounceExceedsFileModeDebounce` (debounce ordering, direct on
-`pickerDebounceFor`), `TestPickerIssuesNoSearchBelowTheThreshold` (1 char below, 2 chars
-searches) and `TestPickerStatusStates`/pty `checks.py` (threshold string). TRIAGE T18 logs 11
-pre-existing `make check-pty` failures (verified identical with these changes stashed out, so
-not caused by M3.1); `make check` is clean. TRIAGE otherwise empty; both T1/T2 were
-independent of M3 and pulled forward per the plan's own note.
+— File/Grep keep `pickerSearchDebounce` (120ms), `wikipediaMode` gets its own, longer
+`pickerWikipediaSearchDebounce` (300ms). TRIAGE T18 logs 11 pre-existing `make check-pty`
+failures (verified identical with M3.1's changes stashed out, so not caused by it); `make
+check` is clean throughout M3.1–M3.2.
 
-Next: M3.2 (Wikipedia mode joins the File→Grep→Wikipedia cycle, needs M1.1) — read `SPEC.md`
-S2 and `PLAN.md`'s M3 section first. No further milestone-boundary gate needed before M3.2.
+M3.2 (S2): `wikipediaMode` (introduced inert in M3.1) is now wired in —
+`switchPickerMode` cycles File → Grep → Wikipedia → File instead of the old File ↔ Grep
+two-way flip; `openPicker` lands on `wikipediaMode` when `m.roots.activeIsWikipedia()`,
+otherwise still `fileMode`; `switchPickerScope` no-ops in `wikipediaMode` (no field change, no
+Cmd); `pickerModeScope` renders "Wikipedia · -" regardless of `p.scope`'s actual value. Two
+pre-existing tests baked in the old two-way toggle (`TestSwitchPickerModeNeverRewritesScope`,
+`TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch`) updated for the three-way cycle,
+the latter deliberately not asserting on Wikipedia mode's own search/results (M3.3's
+contract, not built yet — `pickerSearchCmd`'s `default` case still treats `wikipediaMode`
+like `fileMode` under the hood until M3.3 replaces it). New `picker_wikipedia_mode_test.go`
+covers the cycle from both kinds of Active Source, the landing mode, and the Scope no-op/"-"
+label directly. `make check` clean; `make check-pty` still exactly the same pre-existing 11
+failures (T18), none new.
+
+Next: M3.3 (Wikipedia search via an injectable client, async through the existing debounce;
+Results show title+description; failure keeps previous Results; Preview shows a placeholder
+— needs M2.2, M3.2) — read `SPEC.md` S2 and `PLAN.md`'s M3 section first. No further
+milestone-boundary gate needed before M3.3.
 
 ## Status
 
@@ -84,7 +95,7 @@ S2 and `PLAN.md`'s M3 section first. No further milestone-boundary gate needed b
 | M1.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T17); review found 1 low-sev finding (TRIAGE T2), independently reproduced and PASSed at validate |
 | M2.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T15); review found 1 low-sev finding (TRIAGE T1), independently reproduced and PASSed at validate |
 | M3.1  | done   | -        | -         |      |
-| M3.2  | todo   | -        | -         |      |
+| M3.2  | done   | -        | -         |      |
 | M3.3  | todo   | -        | -         |      |
 | M3.4  | todo   | -        | -         |      |
 | M3.5  | todo   | -        | -         |      |

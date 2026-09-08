@@ -46,7 +46,13 @@ func TestPickerOpensFromEveryFocusAndNavigatorHidden(t *testing.T) {
 // TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt is S1's fixed opening
 // state, checked from a picker that (if memory existed) would say
 // otherwise: Grep mode, All Roots Scope, a typed Prompt. Opening always
-// resets to File Picker / Active Source / empty Prompt regardless.
+// resets to File Picker / Active Source / empty Prompt regardless, for the
+// (here, default) case where a Root, not Wikipedia, is the Active Source —
+// S2/C6/M3.2's Wikipedia-active exception to "always File Picker" has its
+// own tests (TestOpenPickerLandsOnWikipediaModeWithWikipediaActive,
+// picker_wikipedia_mode_test.go).
+// Scope stays activeRootScope regardless of which mode is landed on: it is
+// simply unread and unrendered while Wikipedia mode is active (S2).
 func TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m.picker = picker{open: false, mode: grepMode, scope: allRootsScope, input: newPicker().input}
@@ -1277,7 +1283,12 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 // TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch is M5.1's own
 // acceptance criterion, verbatim: typing a query in File mode, switching to
 // Grep, and switching back, at each step re-running the same Prompt's
-// search in the new mode without the Prompt itself ever changing.
+// search in the new mode without the Prompt itself ever changing. C6/M3.2
+// widens the File ↔ Grep two-way flip to the three-way File → Grep →
+// Wikipedia → File cycle, so "switching back" from Grep now passes through
+// Wikipedia mode first — exercised here (Prompt still unchanged, mode is
+// wikipediaMode) without asserting on its search/results, since Wikipedia
+// mode's own search dispatch is M3.3's, not this test's, contract.
 func TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch(t *testing.T) {
 	requireRipgrep(t)
 	m, _ := pickerRoot(t)
@@ -1326,6 +1337,21 @@ func TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch(t *testing.T) {
 		t.Fatalf("Prompt after Grep results landed = %q, want unchanged %q", m.picker.input.Value(), query)
 	}
 
+	// Switch to Wikipedia (C6/M3.2's third cycle position): the Prompt is
+	// still untouched. Deliberately not delivering this leg's debounce tick
+	// or asserting on results — Wikipedia mode's own search is M3.3's.
+	next, cmd = m.Update(keyPress(keys.PickerMode.Keys()[0]))
+	m = concrete(t, next)
+	if m.picker.input.Value() != query {
+		t.Fatalf("Prompt after switching to Wikipedia = %q, want unchanged %q", m.picker.input.Value(), query)
+	}
+	if m.picker.mode != wikipediaMode {
+		t.Fatalf("mode after second PickerMode = %v, want wikipediaMode", m.picker.mode)
+	}
+	if cmd == nil {
+		t.Fatal("switching to Wikipedia mode scheduled no debounce timer")
+	}
+
 	// Switch back to File: same Prompt, results become File results again.
 	next, cmd = m.Update(keyPress(keys.PickerMode.Keys()[0]))
 	m = concrete(t, next)
@@ -1333,7 +1359,7 @@ func TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch(t *testing.T) {
 		t.Fatalf("Prompt after switching back to File = %q, want unchanged %q", m.picker.input.Value(), query)
 	}
 	if m.picker.mode != fileMode {
-		t.Fatalf("mode after second PickerMode = %v, want fileMode", m.picker.mode)
+		t.Fatalf("mode after third PickerMode = %v, want fileMode", m.picker.mode)
 	}
 	msg, ok = cmd().(pickerSearchMsg)
 	if !ok {

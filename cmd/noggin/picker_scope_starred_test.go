@@ -30,15 +30,18 @@ func TestSwitchPickerScopeCyclesThroughStarredAndBack(t *testing.T) {
 // TestSwitchPickerModeNeverRewritesScope is S8's own explicit guarantee,
 // verbatim ("available in both the File and the Grep Picker so that
 // switching mode never has to silently rewrite the scope"): leaving the
-// Picker in Starred scope and switching mode back and forth must never
-// move it off Starred, the same "only p.mode changes" contract
-// switchPickerMode's own doc comment already states.
+// Picker in Starred scope and switching mode all the way round the C6/M3.2
+// three-way File → Grep → Wikipedia → File cycle must never move it off
+// Starred, the same "only p.mode changes" contract switchPickerMode's own
+// doc comment already states — including in Wikipedia mode, where
+// switchPickerScope no-ops (S2) but p.scope itself must still read
+// unchanged once File mode is reached again.
 func TestSwitchPickerModeNeverRewritesScope(t *testing.T) {
 	m := sized(t, newModel(), 80, 24).withRipgrep(ripgrepAvailability{available: true})
 	m, _ = m.openPicker()
 	m.picker.scope = starredScope
 
-	for i, want := range []pickerMode{grepMode, fileMode} {
+	for i, want := range []pickerMode{grepMode, wikipediaMode, fileMode} {
 		next, _ := m.Update(keyPress(keys.PickerMode.Keys()[0]))
 		m = concrete(t, next)
 		if m.picker.mode != want {

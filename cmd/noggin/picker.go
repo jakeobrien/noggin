@@ -16,11 +16,10 @@ import (
 // pickerMode selects which kind of search a Picker runs (S1, GLOSSARY.md
 // "File Picker"/"Grep Picker"/"Wikipedia Picker"): fuzzy file-name matching,
 // literal grep, or a Wikipedia title search. The Picker always opens in
-// fileMode (S1's fixed default); only an in-Picker switch (M5.1) ever
-// changes it. wikipediaMode is not yet reachable through that switch — it
-// joins the File/Grep cycle in C6/M3.2 — but exists from C6/M3.1 on so its
-// own debounce (pickerDebounceFor) can be named and tested ahead of the
-// mode itself being wired in.
+// fileMode, unless the Active Source is Wikipedia, in which case it opens
+// in wikipediaMode instead (S2, C6/M3.2 — revises S1's old "always File"
+// default); the in-Picker switch (M5.1, C6/M3.2) cycles all three, File →
+// Grep → Wikipedia, regardless of which Source is active.
 type pickerMode int
 
 const (
@@ -209,11 +208,16 @@ func (m model) resetPicker() model {
 	return m
 }
 
-// openPicker opens the Picker (S1): always File Picker mode, Active Source
-// Scope, empty Prompt, regardless of what a previous open (in this or an
-// earlier session) left behind — S1's fixed opening state and S8's "no
-// memory" are the same requirement seen from two sides, so replacing the
-// whole state with newPicker() (via resetPicker) satisfies both at once.
+// openPicker opens the Picker: File Picker mode and Active Source Scope,
+// empty Prompt, regardless of what a previous open (in this or an earlier
+// session) left behind — S1's fixed opening state and S8's "no memory" are
+// the same requirement seen from two sides, so replacing the whole state
+// with newPicker() (via resetPicker) satisfies both at once. The one
+// exception is mode: S2/C6/M3.2 lands on wikipediaMode instead whenever
+// Wikipedia is the Active Source, so opening the Picker never requires a
+// manual mode switch to reach the Source that is already active. Scope
+// stays Active Source Scope regardless — wikipediaMode's own Scope reads
+// "-" (pickerModeScope) and ignores it.
 //
 // Reachable from every Focus (S1), so unlike startFind/startEdit/activate,
 // this never touches m.focus — opening the Picker is not "go to a pane",
@@ -223,6 +227,9 @@ func (m model) openPicker() (model, tea.Cmd) {
 	// S7/M7.1: opening the Picker is one of Peek's clearing triggers.
 	m = m.clearPeek()
 	m = m.resetPicker()
+	if m.roots.activeIsWikipedia() {
+		m.picker.mode = wikipediaMode
+	}
 	m.picker.open = true
 	cmd := m.picker.input.Focus()
 	return m, cmd
@@ -313,23 +320,29 @@ func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
-// switchPickerMode flips the open Picker's mode (File ↔ Grep, S7/M5.1):
-// the Prompt's text is untouched — only p.mode changes — and the switch
-// goes through queuePickerSearch exactly like a keystroke would (its own
-// doc comment already names "a mode or Scope switch from M5.1/M5.2" as a
-// caller), so the new mode's search for the same query follows the same
-// debounce/generation contract as everything else: the old mode's results
-// go stale immediately (resultsCurrent compares p.mode against
-// results.mode) even before the new search reports back, so nothing from
-// the previous mode can flash on screen while the new one is in flight.
-// selected is left alone here for the same reason a query edit leaves it
-// alone: applyPickerResults resets it once fresh results actually land,
-// and resultsCurrent already hides the stale index in the meantime.
+// switchPickerMode cycles the open Picker's mode File → Grep → Wikipedia →
+// File (S2, S7/M5.1; C6/M3.2 extends the old File ↔ Grep two-way flip to a
+// three-way cycle, reachable from any Active Source — the cycle itself
+// does not read m.roots at all): the Prompt's text is untouched — only
+// p.mode changes — and the switch goes through queuePickerSearch exactly
+// like a keystroke would (its own doc comment already names "a mode or
+// Scope switch from M5.1/M5.2" as a caller), so the new mode's search for
+// the same query follows the same debounce/generation contract as
+// everything else: the old mode's results go stale immediately
+// (resultsCurrent compares p.mode against results.mode) even before the
+// new search reports back, so nothing from the previous mode can flash on
+// screen while the new one is in flight. selected is left alone here for
+// the same reason a query edit leaves it alone: applyPickerResults resets
+// it once fresh results actually land, and resultsCurrent already hides
+// the stale index in the meantime.
 func (m model) switchPickerMode() (model, tea.Cmd) {
-	if m.picker.mode == grepMode {
-		m.picker.mode = fileMode
-	} else {
+	switch m.picker.mode {
+	case fileMode:
 		m.picker.mode = grepMode
+	case grepMode:
+		m.picker.mode = wikipediaMode
+	default:
+		m.picker.mode = fileMode
 	}
 	return m.queuePickerSearch()
 }
@@ -348,6 +361,12 @@ func (m model) switchPickerMode() (model, tea.Cmd) {
 // own convention of naming a scope's cycle order once rather than as a
 // pairwise toggle per value.
 func (m model) switchPickerScope() (model, tea.Cmd) {
+	// S2, C6/M3.2: Wikipedia mode has no Scope — the Scope key is a no-op
+	// (and pickerModeScope renders it as "-") — so there is nothing here to
+	// change and no search to re-run.
+	if m.picker.mode == wikipediaMode {
+		return m, nil
+	}
 	switch m.picker.scope {
 	case activeRootScope:
 		m.picker.scope = allRootsScope
