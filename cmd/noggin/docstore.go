@@ -133,7 +133,7 @@ func loadDocStore(path string) map[string]docRecord {
 			}
 			records[filepath.Clean(docPath)] = docRecord{Starred: starred, LastViewed: lastViewed}
 		case 5:
-			kind, title, key := fields[2], unescapeDocTitle(fields[3]), fields[4]
+			kind, title, key := fields[2], unescapeDocField(fields[3]), unescapeDocField(fields[4])
 			switch kind {
 			case "file":
 				if !filepath.IsAbs(key) {
@@ -155,34 +155,42 @@ func loadDocStore(path string) map[string]docRecord {
 	return records
 }
 
-// escapeDocTitle guards an article's <title> field (M1.7/TRIAGE T3) against
-// the tab and newline bytes that would otherwise corrupt the store's
-// tab-separated, one-record-per-line format: a raw tab in the title would
-// shift the fixed field positions loadDocStore's SplitN(line, "\t", 5)
-// relies on (the title's tail bleeding into the <key> field), and a raw
-// newline would split one record's line into two, producing a truncated,
-// unparsable orphan line. Backslash is escaped first so the encoding is
-// unambiguous to reverse. Applied unconditionally in saveDocStore — a file
-// record's title is always "", and escaping the empty string is a no-op.
-func escapeDocTitle(title string) string {
+// escapeDocField guards a C6/M1.5 five-field line's <title> field (M1.7/
+// TRIAGE T3) and, since M1.8/TRIAGE T17, its <key> field too — a file's
+// absolute path or an article's canonical URL — against the tab and
+// newline bytes that would otherwise corrupt the store's tab-separated,
+// one-record-per-line format: a raw tab in either field would shift the
+// fixed field positions loadDocStore's SplitN(line, "\t", 5) relies on
+// (bleeding into the following field, or — for <key>, the line's last
+// field — silently absorbing what should have been a separate concept),
+// and a raw newline would split one record's line into two, producing a
+// truncated, unparsable orphan line. Backslash is escaped first so the
+// encoding is unambiguous to reverse. Applied unconditionally in
+// saveDocStore for both fields — a file record's title is always "", and
+// escaping the empty string is a no-op. Only the C6/M1.5 five-field shape
+// ever escapes its <key>; the legacy three-field shape's trailing path
+// field is written and read raw so an existing on-disk store's keys keep
+// meaning exactly what they always have.
+func escapeDocField(field string) string {
 	r := strings.NewReplacer(`\`, `\\`, "\t", `\t`, "\n", `\n`)
-	return r.Replace(title)
+	return r.Replace(field)
 }
 
-// unescapeDocTitle reverses escapeDocTitle on load, restoring the tab/
-// newline/backslash bytes a title may legitimately contain. Applied to
-// every C6/M1.5 five-field line's <title> field regardless of <kind> — a
-// file record's title is always the empty string, which unescapes to
-// itself. A lone trailing backslash (malformed escaping, e.g. from a
-// hand-edited file) is left as-is rather than panicking or dropping the
-// line: escapeDocTitle itself never produces one, so this only guards
-// against a hand-edited store.
-func unescapeDocTitle(title string) string {
+// unescapeDocField reverses escapeDocField on load, restoring the tab/
+// newline/backslash bytes a <title> or <key> field may legitimately
+// contain. Applied to every C6/M1.5 five-field line's <title> field
+// regardless of <kind> (a file record's title is always the empty string,
+// which unescapes to itself) and to that same line's <key> field. A lone
+// trailing backslash (malformed escaping, e.g. from a hand-edited file) is
+// left as-is rather than panicking or dropping the line: escapeDocField
+// itself never produces one, so this only guards against a hand-edited
+// store.
+func unescapeDocField(field string) string {
 	var b strings.Builder
-	b.Grow(len(title))
-	for i := 0; i < len(title); i++ {
-		if title[i] == '\\' && i+1 < len(title) {
-			switch title[i+1] {
+	b.Grow(len(field))
+	for i := 0; i < len(field); i++ {
+		if field[i] == '\\' && i+1 < len(field) {
+			switch field[i+1] {
 			case '\\':
 				b.WriteByte('\\')
 				i++
@@ -197,7 +205,7 @@ func unescapeDocTitle(title string) string {
 				continue
 			}
 		}
-		b.WriteByte(title[i])
+		b.WriteByte(field[i])
 	}
 	return b.String()
 }
@@ -303,7 +311,7 @@ func saveDocStore(path string, records map[string]docRecord) error {
 		title := ""
 		if rec.Article {
 			kind = "article"
-			title = escapeDocTitle(rec.Title)
+			title = escapeDocField(rec.Title)
 		}
 		b.WriteString(starredField)
 		b.WriteByte('\t')
@@ -313,7 +321,7 @@ func saveDocStore(path string, records map[string]docRecord) error {
 		b.WriteByte('\t')
 		b.WriteString(title)
 		b.WriteByte('\t')
-		b.WriteString(key)
+		b.WriteString(escapeDocField(key))
 		b.WriteByte('\n')
 	}
 	return os.WriteFile(path, []byte(b.String()), 0o644)

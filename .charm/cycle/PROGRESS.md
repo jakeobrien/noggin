@@ -23,15 +23,21 @@ Current task: M3.1
 
 M1 and M2 (Source model + Wikipedia client, M1.1–M1.7 and M2.1–M2.7, including the six
 replan-added cleanup tasks from TRIAGE T1–T8/T10–T12) are all `done` and fully
-Reviewed+Validated as of 2026-09-08 — see the Status table; no reopen needed (D125).
+Reviewed+Validated as of 2026-09-08; M1.8 is now also `done` (not yet Reviewed/Validated) —
+see the Status table. No reopen needed for M1.1–M2.7 (D125).
 
-TRIAGE T15 and T17 were triaged 2026-09-08: both accepted as new trivial (effort 1) plan
-tasks rather than wontfix — M1.8 (T17: extend M1.7's title-escaping to docstore `<key>`
-fields) and M2.8 (T15: `NewClient` should build via `ensureInit`, one init path). Both are
-todo, independent of M3, and can be pulled in whenever a short slot is available; TRIAGE.md
-is now empty. DECISIONS D122 (fetch cache's narrower-than-documented guarantee — revisit at
-M4.2), D123 (equivalence-claim verifiability) and D124 (Search/Fetch config asymmetry —
-revisit at M3.3) are open by design, not blocking.
+M1.8 (TRIAGE T17): `escapeDocTitle`/`unescapeDocTitle` renamed to `escapeDocField`/
+`unescapeDocField` and now also applied to the C6/M1.5 five-field shape's `<key>` field
+(both `file` and `article` records) on save/load; the legacy three-field shape's key stays
+raw/unescaped so existing on-disk stores load unchanged. New test
+`TestDocStoreKeyTabAndNewlineRoundTrip` in `cmd/noggin/docstore_test.go` covers a file key
+and an article key each carrying an embedded tab or newline.
+
+M2.8 (TRIAGE T15: `NewClient` should build via `ensureInit`) is still `todo`, independent of
+M3, and can be pulled in whenever a short slot is available. TRIAGE.md is empty. DECISIONS
+D122 (fetch cache's narrower-than-documented guarantee — revisit at M4.2), D123
+(equivalence-claim verifiability) and D124 (Search/Fetch config asymmetry — revisit at
+M3.3) are open by design, not blocking.
 
 SPEC.md amended 2026-09-08 (`/brainstorm amend`, user-confirmed): new S9a closes D98 (CC
 BY-SA attribution, open since C4a) — a Wikipedia article's location line now reads `CC BY-SA
@@ -60,7 +66,7 @@ Next: M3.1 (Picker query threshold → 2, per-mode debounce) — read `SPEC.md` 
 | M2.5  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
 | M2.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T10) |
 | M2.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T11, T12) |
-| M1.8  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T17) |
+| M1.8  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T17) |
 | M2.8  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T15) |
 | M3.1  | todo   | -        | -         |      |
 | M3.2  | todo   | -        | -         |      |
@@ -81,3 +87,5 @@ Next: M3.1 (Picker query threshold → 2, per-mode debounce) — read `SPEC.md` 
 | M8.3  | todo   | -        | -         |      |
 | M9.1  | todo   | -        | -         | pre-agreed cut 3 |
 | M10.1 | todo   | -        | -         |      |
+</content>
+</invoke>
