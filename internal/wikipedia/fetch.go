@@ -15,11 +15,17 @@ import (
 // (cmd/wikispike/fetch.go). A redirect title answers with an HTTP 307 to the
 // canonical title's own REST URL, which Go's default http.Client follows
 // automatically; the final request URL then carries the canonical title.
-const fetchBase = "https://en.wikipedia.org/api/rest_v1/page/html/"
+//
+// A var, not a const (M2.9/TRIAGE T1, T22), solely so a test can point
+// Fetch's own hardcoded production URL at an httptest server and back —
+// every other test in this package exercises fetchAt directly with an
+// explicit overridable base and never needs this at all.
+var fetchBase = "https://en.wikipedia.org/api/rest_v1/page/html/"
 
 // wikiBase is the canonical, human-facing article URL prefix S3 records —
 // distinct from fetchBase, which is the REST path used only to fetch HTML.
-const wikiBase = "https://en.wikipedia.org/wiki/"
+// Also a var for the same test-only reason as fetchBase above.
+var wikiBase = "https://en.wikipedia.org/wiki/"
 
 // fetchTimeout bounds a single article fetch (S3: "bounds the request with a
 // timeout").
@@ -86,6 +92,11 @@ func (c *Client) ensureInit() {
 // true, which bypasses the cache and repopulates it (S3's Refresh). A title
 // that turns out to be a redirect always costs one request — there is no way
 // to know its canonical URL without asking.
+//
+// TestClientFetchViaNewClientDelegatesToFetchAt (fetch_test.go, M2.9/
+// TRIAGE T1, T22) exercises this method and NewClient directly, against an
+// httptest server via fetchBase/wikiBase's test-only override — every
+// other test in this file exercises fetchAt itself, one layer further down.
 func (c *Client) Fetch(title string, refresh bool) (Article, error) {
 	return c.fetchAt(fetchBase, wikiBase, title, refresh)
 }
@@ -93,10 +104,10 @@ func (c *Client) Fetch(title string, refresh bool) (Article, error) {
 // fetchAt is Fetch's implementation against overridable base URLs, so tests
 // point it at an httptest server instead of the network. Its parameters are
 // named fetchBaseURL/wikiBaseURL, not fetchBase/wikiBase (M2.5/TRIAGE T6),
-// so they never shadow the package-level fetchBase/wikiBase constants Fetch
+// so they never shadow the package-level fetchBase/wikiBase values Fetch
 // passes in for the production case — a shadowed name reads fine here but
 // invites a copy-paste bug the moment code inside this function ever needs
-// the real constant instead of the parameter.
+// the real value instead of the parameter.
 func (c *Client) fetchAt(fetchBaseURL, wikiBaseURL, title string, refresh bool) (Article, error) {
 	c.ensureInit()
 	candidateURL := articleURLFor(wikiBaseURL, title)

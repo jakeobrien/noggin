@@ -273,6 +273,50 @@ func TestFetchAtZeroValueClientDoesNotPanic(t *testing.T) {
 	}
 }
 
+// TestClientFetchViaNewClientDelegatesToFetchAt is M2.9's acceptance
+// criterion (TRIAGE T1, T22): NewClient() and (*Client).Fetch are this
+// package's real exported entry points for fetching an article, but every
+// other test in this file calls fetchAt directly with an explicit
+// overridable base, so a regression in Fetch's own one-line delegation
+// (`return c.fetchAt(fetchBase, wikiBase, title, refresh)` — e.g. the two
+// base arguments swapped, or refresh silently dropped) would go uncaught.
+// This test points the package's normally-hardcoded fetchBase/wikiBase at
+// an httptest server, restores them on return, and calls Fetch on a
+// NewClient()-built Client — exercising the real construction path
+// (ensureInit via NewClient, not newTestClient's direct struct literal)
+// alongside the real exported method.
+func TestClientFetchViaNewClientDelegatesToFetchAt(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/page/html/Euler", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/w/rest.php/v1/page/Leonhard_Euler/html", http.StatusTemporaryRedirect)
+	})
+	mux.HandleFunc("/w/rest.php/v1/page/Leonhard_Euler/html", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("<html><body><p>Euler content</p></body></html>"))
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	origFetchBase, origWikiBase := fetchBase, wikiBase
+	fetchBase, wikiBase = server.URL+"/page/html/", server.URL+"/wiki/"
+	defer func() { fetchBase, wikiBase = origFetchBase, origWikiBase }()
+
+	c := NewClient()
+	article, err := c.Fetch("Euler", false)
+	if err != nil {
+		t.Fatalf("Fetch: unexpected error: %v", err)
+	}
+	if article.Title != "Leonhard Euler" {
+		t.Errorf("Article.Title = %q, want %q", article.Title, "Leonhard Euler")
+	}
+	wantURL := server.URL + "/wiki/Leonhard_Euler"
+	if article.URL != wantURL {
+		t.Errorf("Article.URL = %q, want %q", article.URL, wantURL)
+	}
+	if article.Markdown == "" {
+		t.Error("Article.Markdown is empty")
+	}
+}
+
 // TestFetchAtConcurrentUseIsRaceFree backs the Client doc comment's "safe
 // for concurrent use" claim (M2.4/TRIAGE T5) with an actual test: many
 // goroutines calling fetchAt concurrently — on a zero-value Client, so

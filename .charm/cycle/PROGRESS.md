@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M2.9
+Current task: M3.6
 
 ## Handoff
 
@@ -199,8 +199,28 @@ Slash`) and a dropped backslash-key record; reverted immediately (`docstore.go` 
 after revert, confirmed via `git diff --stat`). No production code changes — test-only,
 per the task's own scope ("locking in escape-order correctness", not fixing a live bug).
 
-Next: M2.9 (TRIAGE T1, T22: a wikipedia-package test gap, merged at replan — same
-gap-shape, same package). Independent of M1.10's own work — next in cursor order.
+M2.9 done (2026-09-08, `make check` clean, `make check-pty` clean, `go test -race ./...`
+clean). Neither of `internal/wikipedia`'s two real exported entry points — `NewClient()`+
+`(*Client).Fetch` and `(*Client).Search` — was ever called directly by a test; every
+existing test called `fetchAt`/`searchTitles` one layer down with an explicit overridable
+base, so a regression in either's one-line delegation could go uncaught. Turned `fetchBase`/
+`wikiBase` (fetch.go) and `searchBase` (search.go) from `const` into package-level `var`
+(values unchanged; test-only reason, doc-commented at each) so a test can point Fetch's/
+Search's own hardcoded production URL at an `httptest` server and restore it on return —
+no other production code changed. New `TestClientFetchViaNewClientDelegatesToFetchAt`
+(fetch_test.go) calls `NewClient().Fetch` through a redirect-following httptest server;
+new `TestClientSearchDelegatesToSearchTitles` (search_test.go) calls `NewClient().Search`
+and asserts the request that actually reached the server carried `q`/`limit` unaltered
+through both delegation hops (`Client.Search` -> package `Search` -> `searchTitles`) — the
+response-only assertion tried first did not actually catch a corrupted `limit` argument
+since the mock handler doesn't filter by it, so the test was strengthened to check the
+request itself. Verified both tests catch a real regression before finalizing: temporarily
+swapped `Fetch`'s two base arguments (caught — 404) and forced `Search`'s delegation to
+always pass `limit=0` (caught — wrong query param), then reverted both mutations. Updated
+the two methods' own doc comments and the one `search.go` comment claiming `Search` is
+"untested directly against a live server" (no longer true) to point at the new tests.
+
+Next: M3.6 (TRIAGE T20). Independent of M2.9's own work — next in cursor order.
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -245,7 +265,7 @@ accepted by design — see DECISIONS.md.
 | M5.2  | done   | -        | -         | fixed the M5.1-flagged cosmetic gap (article rows rendered file-shaped); Activate/Peek widened to (model, tea.Cmd) for the new fetch dispatch |
 | M1.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
 | M1.10 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
+| M2.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M3.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T23) |

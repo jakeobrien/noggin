@@ -106,6 +106,62 @@ func TestSearchTitlesOffline(t *testing.T) {
 	}
 }
 
+// TestClientSearchDelegatesToSearchTitles is M2.9's acceptance criterion
+// (TRIAGE T1, T22): the package-level Search function and (*Client).Search
+// are this package's real exported entry points for title search, but
+// every other test in this file calls searchTitles directly with an
+// explicit overridable base, so a regression in either's one-line
+// delegation (`Search(query, limit) { return searchTitles(searchBase,
+// query, limit) }`, `(*Client).Search(query, limit) { return Search(query,
+// limit) }` — e.g. a dropped or swapped argument) would go uncaught. This
+// test points the package's normally-hardcoded searchBase at an httptest
+// server, restores it on return, and calls Search on a NewClient()-built
+// Client — exercising both delegation hops from the real exported method
+// down to searchTitles.
+func TestClientSearchDelegatesToSearchTitles(t *testing.T) {
+	var gotQuery, gotLimit string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query().Get("q")
+		gotLimit = r.URL.Query().Get("limit")
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"pages":[
+			{"title":"Leonhard Euler","description":"Swiss mathematician (1707-1783)"}
+		]}`))
+	}))
+	defer server.Close()
+
+	origSearchBase := searchBase
+	searchBase = server.URL
+	defer func() { searchBase = origSearchBase }()
+
+	c := NewClient()
+	got, err := c.Search("eul", 3)
+	if err != nil {
+		t.Fatalf("Client.Search: unexpected error: %v", err)
+	}
+
+	// The request that actually reached the server must carry Search's own
+	// arguments unaltered through both delegation hops (Client.Search ->
+	// package Search -> searchTitles) — checked directly against the
+	// request, not just inferred from a successful response, so a mutation
+	// that drops or corrupts an argument along the way (this handler does
+	// not itself filter by query/limit) cannot slip past unnoticed.
+	if gotQuery != "eul" {
+		t.Errorf("request query param %q = %q, want %q", "q", gotQuery, "eul")
+	}
+	if gotLimit != "3" {
+		t.Errorf("request query param %q = %q, want %q", "limit", gotLimit, "3")
+	}
+
+	want := []SearchResult{{Title: "Leonhard Euler", Description: "Swiss mathematician (1707-1783)"}}
+	if len(got) != len(want) {
+		t.Fatalf("Client.Search: got %d results, want %d: %+v", len(got), len(want), got)
+	}
+	if got[0] != want[0] {
+		t.Errorf("Client.Search[0] = %+v, want %+v", got[0], want[0])
+	}
+}
+
 // TestSearchTitlesUserAgent covers noggin's descriptive User-Agent header
 // (M2.2's done-when, S3).
 func TestSearchTitlesUserAgent(t *testing.T) {

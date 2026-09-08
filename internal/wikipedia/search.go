@@ -14,7 +14,12 @@ import (
 // searchBase is Wikimedia's title-search endpoint (S2): prefix/title
 // matching over article titles, not full-text search — see
 // .charm/cycle/findings/wikimedia-api.md.
-const searchBase = "https://en.wikipedia.org/w/rest.php/v1/search/title"
+//
+// A var, not a const (M2.9/TRIAGE T1, T22), solely so a test can point
+// Search's own hardcoded production URL at an httptest server and back —
+// every other test in this package exercises searchTitles directly with an
+// explicit overridable base and never needs this at all.
+var searchBase = "https://en.wikipedia.org/w/rest.php/v1/search/title"
 
 // searchHTTPClient is scoped to search. M2.3's canonical fetch bounds its own
 // requests with a timeout per its own acceptance criterion, so this is not
@@ -85,10 +90,11 @@ func Search(query string, limit int) ([]SearchResult, error) {
 // Client field: title search has no per-session cache (S2 does not ask for
 // one, unlike S3's fetch cache) and search.go's own searchHTTPClient stays
 // the separate client search.go's doc comment already explains, not
-// Client's httpClient. Untested directly against a live server for the
-// same reason Fetch (fetch.go) is not — both call through to a hardcoded
-// production base URL; searchTitles/fetchAt's own overridable-base tests
-// are what actually exercise the request/response handling.
+// Client's httpClient. TestClientSearchDelegatesToSearchTitles
+// (search_test.go, M2.9/TRIAGE T1, T22) exercises this method and the
+// package-level Search function it delegates to directly, against an
+// httptest server via searchBase's test-only override — every other test
+// in this file exercises searchTitles itself, one layer further down.
 func (c *Client) Search(query string, limit int) ([]SearchResult, error) {
 	return Search(query, limit)
 }
