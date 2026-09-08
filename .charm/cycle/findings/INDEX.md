@@ -7,4 +7,6 @@
      `.charm/knowledge/` tier, or archived with the cycle (the default). Durable knowledge
      for cross-cycle reading lives there, not here — see .charm/knowledge/INDEX.md. -->
 
-- `<topic>.md` — <one-line summary of what it covers and why it matters>
+- `wikimedia-api.md` — the title-search endpoint (title + short description) and how the
+  page-HTML endpoint's 307 redirect yields the canonical URL/title; verified live 2026-09-07.
+  Read before M2.2/M2.3.

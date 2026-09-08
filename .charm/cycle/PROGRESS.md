@@ -17,19 +17,42 @@
 
 ## Cursor
 
-Current task: <key>
+Current task: M1.1
 
 ## Handoff
 
-<!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
-     state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
-
-<current-state snapshot>
+Plan written 2026-09-07; nothing built yet. Start with M1.1 (Source model). M2 (Wikipedia
+client) is independent of M1 and may be interleaved. Read `findings/wikimedia-api.md` before
+M2.2/M2.3. D120 covers the spike extraction (M2.1).
 
 ## Status
 
-| Key  | Status      | Reviewed | Validated | Note                              |
-|------|-------------|----------|-----------|------------------------------------|
-| M1.1 | done        | -        | -         |                                    |
-| M1.2 | in-progress | -        | -         |                                    |
-| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |
+| Key   | Status | Reviewed | Validated | Note |
+|-------|--------|----------|-----------|------|
+| M1.1  | todo   | -        | -         |      |
+| M1.2  | todo   | -        | -         |      |
+| M1.3  | todo   | -        | -         |      |
+| M1.4  | todo   | -        | -         |      |
+| M1.5  | todo   | -        | -         |      |
+| M2.1  | todo   | -        | -         |      |
+| M2.2  | todo   | -        | -         |      |
+| M2.3  | todo   | -        | -         |      |
+| M3.1  | todo   | -        | -         |      |
+| M3.2  | todo   | -        | -         |      |
+| M3.3  | todo   | -        | -         |      |
+| M3.4  | todo   | -        | -         |      |
+| M3.5  | todo   | -        | -         |      |
+| M4.1  | todo   | -        | -         |      |
+| M4.2  | todo   | -        | -         |      |
+| M4.3  | todo   | -        | -         |      |
+| M5.1  | todo   | -        | -         |      |
+| M5.2  | todo   | -        | -         |      |
+| M6.1  | todo   | -        | -         | pre-agreed cut 1 |
+| M7.1  | todo   | -        | -         | pre-agreed cut 2 |
+| M7.2  | todo   | -        | -         | pre-agreed cut 2 |
+| M7.3  | todo   | -        | -         | pre-agreed cut 2 |
+| M8.1  | todo   | -        | -         |      |
+| M8.2  | todo   | -        | -         |      |
+| M8.3  | todo   | -        | -         |      |
+| M9.1  | todo   | -        | -         | pre-agreed cut 3 |
+| M10.1 | todo   | -        | -         |      |

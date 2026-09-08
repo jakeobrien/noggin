@@ -21,7 +21,9 @@
   by key from the Files Nav, remembered per Root for the session (C4).
 - **Browse Scope** — what a Browse Mode is drawn from. `Tree` has none; `Recent` is Active Root
   or All Roots; `Starred` is Active Root, All Starred or Orphans. Remembered per (Root, Mode)
-  for the session (C4). Distinct from a Picker's Scope.
+  for the session (C4). Distinct from a Picker's Scope. C6 relabels `Recent`'s scopes
+  `Active Source` | `All Sources` and `Starred`'s first scope `Active Source`; with a Query
+  Source active there is no `Tree` and no `Orphans`.
 - **Collection** — north-star language for a class of knowledge noggin admits (Notes,
   Wikipedia, Dictionary). Not an in-app entity: the entity is the **Source** (C6, resolving
   C4a's provisional definition).

@@ -1325,3 +1325,35 @@
   (`All Starred`, `All Sources`) do include articles — those are store lookups, not fetches.
 - Why: keeps every network call user-initiated and explicit (search, Activate, Peek, Refresh);
   no dead-end scopes.
+
+## D120: The C4a spike's conversion pipeline moves into an internal package; `cmd/wikispike` stays as a thin CLI
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: D97 kept `cmd/wikispike` untouched and isolated ("never imported by cmd/noggin")
+  until a cycle spec'd a real Wikipedia feature. C6 does; S3 requires the conversion at the
+  quality D112 certified, and `cmd/noggin` must import it.
+- Decision: move the fetch-agnostic transforms (math, images, chrome strip, links, convert,
+  cleanup) into an `internal/` package alongside the new search and canonical-fetch code
+  (PLAN M2). `cmd/wikispike` is not deleted: it becomes a thin CLI over the package, since the
+  scratch-root judging workflow from C4a remains the cheapest way to eyeball conversion
+  quality across many articles. No duplicate copy of the pipeline survives.
+- Why: D97 explicitly deferred extraction to "when a future cycle actually specs a real
+  Wikipedia feature"; the isolation rule it preserved has served its purpose. Keeping the CLI
+  costs a few lines and keeps the spike's `wikispike <title> <out>` recipe (and the
+  `knowledge/wikipedia-*` findings that cite it) usable for regression judging.
+
+## D121: C6 milestones are sequenced by the spec's pre-agreed cut order
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-07
+- Context: SPEC "Pre-agreed cuts" ranks Recent-for-articles, Root names, then background tint
+  as the sacrificial order on overrun. Recent and Root names also have dependants (S9/S10 fall
+  back to base names; Recent rows share M4's fetch path).
+- Decision: M6 (Recent), M7 (Root names) and M9 (tint) sit after the core Wikipedia slice
+  (M1–M5) in cut order; M8's location line and Picker rows depend on M7's label helper but are
+  written to degrade to the folder base name if M7 is cut. Product docs (M10) close the cycle.
+- Why: an overrun then costs exactly the work the spec already agreed to lose, without a
+  replan to untangle half-built dependants.

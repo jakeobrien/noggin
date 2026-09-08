@@ -25,4 +25,3 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T1 | review | high | `src/foo.ts:42` | <one-line description + concrete recommendation> | open |
