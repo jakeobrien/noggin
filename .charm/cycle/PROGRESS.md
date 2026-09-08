@@ -17,93 +17,64 @@
 
 ## Cursor
 
-Current task: M4.2
+Current task: M4.3
 
 ## Handoff
 
-M4.1 done (2026-09-08, `make check` clean). `document` (document.go) reuses `path` to hold
-either a file's path or an article's canonical URL (`isArticleKey`, shared with
-`docStoreKey`/D127); a new `title` field names an article for `label()`/pane titles.
-`articleDocument(wikipedia.Article) document` is the constructor M4.2's fetch handler should
-call. `viewer.history`/`docOffsets` needed no change (already keyed by `.path`); a new
-`viewer.articleCache` lets `walkViewerHistory` (model.go) reopen an article on Back/Forward
-without a disk read or network call — populated by `viewer.open`, consulted instead of
-`loadDocument` when `isArticleKey(path)`. No network call anywhere in this task. Full
-rationale, and two landmines for M4.2/M4.3 to inherit knowingly (Refresh/`e` on an article
-both still unguarded until M4.3, exactly as planned), in D129.
+M4.2 done (2026-09-08, `make check` clean, `go test -race ./cmd/noggin/...` clean). Async
+fetch-and-open (S3): new `model.fetchArticleInto(target, title, peek) (model, tea.Cmd)` /
+`applyArticleFetch(articleFetchMsg) model` pair (article_fetch.go), backed by a new
+`viewer.pendingFetch *pendingArticleFetch{title, peek, token}` (viewer.go) that doubles as the
+in-progress indicator (`viewer.fetching()`, checked ahead of Peek in `view()`/`paneTitle`/
+`renderPane`) and the staleness guard applyArticleFetch compares its token against. `token` is
+`model.articleFetchSeq`, a model-wide monotonic counter — uniqueness is its only job.
 
-New tests: `cmd/noggin/article_document_test.go` (identity/label, viewer open+render+title
-row, Find in an article, file↔article history walk, cache-miss defensive branch). Fresh-context
-code-reviewer pass found 3 low/medium notes; two fixed directly (title-row assertion,
-cache-miss test), one left as a `staleness.go` code comment (its `os.Stat`-on-URL failure
-accidentally already satisfies S3's "staleness never fires for an article" — flagged so it's
-not mistaken for a bug later).
+"Target moved on" invalidation: `open`/`refreshDoc`/`close`/`startPeek` (viewer.go) all clear
+`pendingFetch` unconditionally (a real navigation always invalidates whichever kind of fetch
+was pending); `clearPeek` clears it **only when `pendingFetch.peek == true`** — a fresh-context
+code-reviewer pass caught that an unconditional clear there would drop an Activate-targeted
+fetch on any of `clearPeek`'s many unrelated callers (every Focus change via `setFocus`,
+`refresh()`, a Files Nav selection move, a mouse-wheel scroll) — none of PLAN M4.2's own named
+triggers ("Peek cleared, Picker re-opened"). Fixed, with a regression test
+(`TestActivateWikipediaFetchSurvivesAnUnrelatedFocusChange`) and the full reasoning in
+`pendingFetch`'s own doc comment (viewer.go) — read it before touching `clearPeek` or adding
+another `pendingFetch`-clearing call site. `closeDV2` drops a DV2-targeted `pendingFetch`
+implicitly (the whole viewer goes with it); still correct only because `viewerFor`'s dv2→dv1
+fallback plus `articleFetchSeq`'s never-reused tokens make a false match impossible — documented
+at `closeDV2`, not a bug.
 
-Next: M4.2 (async fetch-and-open; needs M2.3, M3.3, M4.1). Route the fetch-completion handler
-through `navigate`/`openDocumentInto`, per D129's revisit note, to keep M4.1's history
-invariant (every history URL has an `articleCache` entry) true.
+Wired to real keys: `activatePickerInto` (picker.go) gained a `wikipediaMode` branch and
+replaced M3.5's `f.article` "isn't supported yet" refusal with a real `fetchArticleInto` call
+(D128's own "M4.2's job" landmine) — its signature is now `(model, tea.Cmd)`, propagated through
+`activatePicker`/`handlePickerInput`'s two call sites. `syncPreview`'s `f.article` placeholder
+was rewritten in *text only* (D131): D119 ("every network call is user-initiated") does not
+list a Results-list selection move, so the Preview still never fetches. New `wikipediaFetcher`
+interface (Fetch only, article_fetch.go) is a separate model field from `wikipediaClient`
+(Search only) — both point at the same `*wikipedia.Client` in `newModel()` so a real session
+shares one cache, but a test fake for either never has to implement the other, per
+`pickerWikipediaClient`'s own doc comment (D130/D131's full reasoning for both calls).
 
-**Validation result**: `make check` clean; `make check-pty` reproduces TRIAGE T18's
-pre-existing 11-failure baseline (same test names, not a new regression). All five
-acceptance criteria (M3.1–M3.5) and the SPEC deliverables they deliver (S2, S6, S13)
-independently verified against code + tests, not just PROGRESS.md's claim — all PASS, high
-confidence. No new discrepancies beyond the already-open TRIAGE T21/T22 (both re-confirmed
-accurately characterized, still low-severity, not gate-blocking). Manual/interactive
-confirmation of the live-TUI Wikipedia flow is still recommended (see the validator's report
-for exact steps) since all evidence so far is test-level, not pty-exercised — no pty suite
-covers Wikipedia mode yet.
+**Peek is not wired to any real key this task** — D130: PLAN M4.2's "Peeking it" is a future
+Files-Nav article row's Peek (M5.2's own job, Files Nav Recent/Starred rows do not exist yet),
+not a new Picker-internal Peek (S2 already forecloses a live Preview; GLOSSARY's Peek is
+Files-Nav-only). `fetchArticleInto`'s `peek == true` half is fully built and tested directly
+(mirroring M4.1's own `articleDocument`-ahead-of-its-caller precedent) — **M5.2 should call
+`fetchArticleInto(target, title, true)` from its Peek keypress, not reinvent this.**
 
-S6's four rules, each with its own test in new `cmd/noggin/picker_scope_wikipedia_test.go`:
+New tests: `cmd/noggin/article_fetch_test.go` (Activate into DV1/DV2 + completion, Peek start,
+a failure for each of Activate/Peek, the in-flight indicator, two stale-completion shapes —
+re-navigate-away and Picker-reopen-clears-Peek — plus the Focus-change regression above);
+`picker_scope_wikipedia_test.go`'s M3.5-era refusal test rewritten to assert the new dispatch
+behaviour instead. Fresh-context code-reviewer pass: 1 high-severity functional bug (the
+clearPeek scope above, fixed + regression-tested), 1 high-severity doc-comment misplacement
+(fixed), 2 low (a `%q`/`%s` message-format inconsistency, fixed; `closeDV2`'s implicit-fallback
+reliance, now documented) — no TRIAGE items opened, everything fixed directly (all low/medium
+risk once found). D130/D131 record the two scope judgment calls.
 
-1. With Wikipedia the Active Source, File/Grep never land on/cycle to `activeRootScope` (no
-   Active Root exists to search) — `switchPickerMode` bumps a stale `activeRootScope` to
-   `allRootsScope` when landing on File/Grep from `wikipediaMode`; `switchPickerScope` cycles
-   only `allRootsScope ↔ starredScope` while `m.roots.activeIsWikipedia()`. Unconditional on
-   Active Source (S6's other three rules apply regardless of which Source is active):
-2. File mode's Starred scope includes a starred article, matched on **title** —
-   `starredPickerFiles` (files_search.go) now also emits `pickerFile{article: true, title:
-   rec.Title}` pseudo-candidates for `docRecord.Article` records, skipping every file-specific
-   filter (pathMissing/Readable/hideDotfiles — none describe a URL); `fileNameSource.String`
-   and `pickerFileRow`/`pickerLocationLabel` (picker_view.go) branch on `f.article` to rank/
-   render/highlight against `f.title` instead of a path-derived name, and to label the row
-   `wikipediaLabel` ("Wikipedia") instead of a Root name.
-3. File's All Roots scope is files only — already true unchanged (`listFiles` never reads
-   `m.docs`); a test locks it in now that Starred's own candidate set can contain articles.
-4. Grep excludes articles in every scope — new `filesOnly` (files_search.go) filters
-   `starredPickerFiles`' article pseudo-candidates out before `pickerSearchCmd`'s grepMode
-   branch ever calls `grepPickerFiles`, rather than relying on rg's own handling of a bogus
-   URL argument.
-
-Found and fixed on M3.5's own critical path, surfaced by fresh-context code review
-(code-reviewer subagent) as a high-severity gap: M3.5 is what first makes an article
-pseudo-candidate *selectable* in File mode (Starred scope), but `activatePickerInto` and
-`syncPreview` (picker.go) were not taught about `f.article` — Activate raised a raw
-`"cannot open https://...: no such file or directory"` Footer message and selecting the row
-showed the same raw OS error in the live Preview. Both now guard on `f.article` explicitly:
-Activate refuses with "`<title>`: opening a Wikipedia article from here isn't supported yet"
-and dismisses (the same "message + dismiss" shape a genuine read-error Activate already has);
-Preview shows a fixed placeholder instead of attempting the read. Real fetch-and-render from
-this path is still M4.2's job (D128) — **M4.2 needs to confirm its acceptance criteria cover
-Activate from File mode's Starred scope, not only `wikipediaMode`'s own Results list**, and
-replace both guards with the real behaviour then, not before.
-
-`docs[filepath.Clean(f.path)]` in `pickerResultsContent`'s fileMode star-marker lookup
-(picker_view.go) had the same URL-corruption risk M3.4/D127 already fixed in model.go — fixed
-here too, now that a fileMode Result can carry an article's URL as `f.path`. Un-starring an
-article from File mode's Starred scope already works correctly as a side effect (routes
-through the same `pickerSelectedPath`/`docRecord`/`withDocRecord` path M3.4 fixed) — not one
-of S6's four named rules, so not separately tested, but noted since it satisfies part of S4's
-"every place a file can" ahead of M5.1 building it deliberately.
-
-Also added (low-severity review findings, fixed directly rather than logged): direct unit
-tests for `starredPickerFiles`'/`fileNameSource`'s article branches
-(`files_search_test.go`), and an end-to-end rendered-row assertion for the "labelled
-Wikipedia" claim (previously only checked via a direct `pickerLocationLabel` call).
-`make check` clean. TRIAGE T20 (GLOSSARY's `Result` entry) is unchanged, still open — File
-Picker Results can now also be article-shaped, which only strengthens that item's case.
-
-Next: M4.1 (`document` carries source identity — file path or article URL+title — for the
-viewer title row/Document History/Find; needs M1.5).
+Next: M4.3 (`R` re-fetches every open article bypassing the cache; staleness indicator never
+fires for one; `e` refused on an article — needs M4.2). D129's own revisit note already
+characterizes both of M4.3's `R`/`e` landmines precisely; `staleness.go`'s "already satisfies
+S3 by omission" code comment (from M4.1) is the staleness half's starting point.
 
 ## Status
 
@@ -131,7 +102,7 @@ viewer title row/Document History/Find; needs M1.5).
 | M3.4  | done   | 2026-09-08 | 2026-09-08 |      |
 | M3.5  | done   | 2026-09-08 | 2026-09-08 | review found 2 low-sev findings (TRIAGE T21, T22), independently reconfirmed at validate, still open/low-sev |
 | M4.1  | done   | 2026-09-08 | -         | review: code-reviewer subagent, same day |
-| M4.2  | todo   | -        | -         |      |
+| M4.2  | done   | 2026-09-08 | -         | review: code-reviewer subagent, same day; found 1 high-sev functional bug (clearPeek scope) + 1 high-sev doc-comment placement, both fixed directly, plus 2 low fixed directly |
 | M4.3  | todo   | -        | -         |      |
 | M5.1  | todo   | -        | -         |      |
 | M5.2  | todo   | -        | -         |      |

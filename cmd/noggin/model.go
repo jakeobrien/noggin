@@ -164,6 +164,23 @@ type model struct {
 	// searches.
 	wikipediaClient pickerWikipediaClient
 
+	// wikipediaFetcher is Fetch's own seam (S3, C6/M4.2) — wikipediaClient's
+	// counterpart, held separately so a Search-only test fake never has to
+	// also implement Fetch and vice versa (wikipediaFetcher's own doc
+	// comment, article_fetch.go). newModel points both fields at the same
+	// *wikipedia.Client instance, so a real session's Picker search and
+	// article fetch still share one session-scoped cache, exactly as
+	// wikipediaClient's own doc comment above already promises.
+	wikipediaFetcher wikipediaFetcher
+
+	// articleFetchSeq is C6/M4.2's article-fetch generation counter: every
+	// call to fetchArticleInto takes the next value as its dispatch's own
+	// token (pendingArticleFetch, viewer.go), so no two fetches — to the
+	// same viewer or different ones — can ever be confused for each other
+	// by applyArticleFetch. Model-wide, not per-viewer, since uniqueness is
+	// its only job (fetchArticleInto's own doc comment).
+	articleFetchSeq int
+
 	// staleBaseline/staleGen/stale are S10's periodic staleness check
 	// (C2a/M10.1, staleness.go): the "known good" snapshot the disk is
 	// compared against, the generation that invalidates a check dispatched
@@ -188,7 +205,12 @@ type model struct {
 }
 
 func newModel() model {
-	return model{focus: filesPane, files: newFilesNav(), dv1: newViewer(), roots: newRootsNav(), picker: newPicker(), wikipediaClient: wikipedia.NewClient()}
+	// C6/M4.2: one *wikipedia.Client backs both wikipediaClient and
+	// wikipediaFetcher, so a real session's Picker search and article fetch
+	// share the client's one session-scoped cache (M2.3) — see
+	// wikipediaFetcher's own doc comment.
+	wikipediaClient := wikipedia.NewClient()
+	return model{focus: filesPane, files: newFilesNav(), dv1: newViewer(), roots: newRootsNav(), picker: newPicker(), wikipediaClient: wikipediaClient, wikipediaFetcher: wikipediaClient}
 }
 
 // viewerFor is the viewer paired with a Document Viewer pane: dv2Pane maps
@@ -574,6 +596,16 @@ func (m model) ensureDV2() model {
 // next — otherwise a change to that now-invisible document between now and
 // then could still flip the combined m.stale signal for something no
 // longer on screen anywhere.
+//
+// C6/M4.2: dropping m.dv2 wholesale also drops any DV2-targeted
+// pendingArticleFetch it was carrying, without an explicit clear the way
+// open/refreshDoc/close/startPeek/clearPeek each give viewer.pendingFetch
+// (pendingFetch's own doc comment, viewer.go) — there is no viewer left
+// here to clear it on. Its late completion (applyArticleFetch) still drops
+// correctly, but only because viewerFor(dv2Pane) falls back to dv1 once
+// m.dv2 is nil, and DV1's own token (if any) can never coincidentally match
+// a stale DV2 fetch's (model.fetchArticleInto's counter is model-wide and
+// monotonic, never reused) — not because anything here says so directly.
 func (m model) closeDV2() model {
 	if m.dv2 == nil {
 		return m
@@ -1305,6 +1337,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.dispatchPickerSearch(msg)
 	case pickerResultsMsg:
 		return m.applyPickerResults(msg), nil
+	// C6/M4.2: a Wikipedia article fetch's completion (fetchArticleInto),
+	// the same "neither is a keypress" shape as the Picker's own pair above
+	// — applyArticleFetch's own stale-token check (article_fetch.go) is what
+	// stands in for a Picker-open-style gate here, since there is no single
+	// modal this message is scoped to the way pickerResultsMsg is scoped to
+	// m.picker.open.
+	case articleFetchMsg:
+		return m.applyArticleFetch(msg), nil
 	// S10/C2a/M10.1's own periodic pair, same shape as the Picker's above:
 	// a matured timer dispatches the actual (cheap) disk check, which
 	// reports back its own message so the check itself never blocks Update.
@@ -1837,7 +1877,10 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	// titleStyle — the one visible way S7 requires Peek to be identifiable
 	// as not the Active Document.
 	titleRenderStyle := titleStyle
-	if (p == dv1Pane || p == dv2Pane) && m.viewerFor(p).peeking() {
+	// C6/M4.2: an in-flight fetch gets the same inverted header Peek does
+	// (below) — neither is the Active Document's own title, so neither
+	// should read like one.
+	if (p == dv1Pane || p == dv2Pane) && (m.viewerFor(p).peeking() || m.viewerFor(p).fetching()) {
 		titleRenderStyle = peekTitleStyle
 	}
 	return renderBox(style, r, titleRenderStyle.Render(titleRow(m.paneTitle(p), p.focusBadge(), r.content().width)), content)
@@ -1876,6 +1919,14 @@ func titleRow(title, badge string, width int) string {
 func (m model) paneTitle(p pane) string {
 	if p == dv1Pane || p == dv2Pane {
 		v := m.viewerFor(p)
+		// C6/M4.2: named ahead of Peek since a fetch targeting Peek (peek ==
+		// true, not yet reachable from any keybinding — M5.2's own job) has
+		// no peekLabel yet to show; a fetch targeting the Active Document
+		// (peek == false) hasn't replaced v.label() yet either, for the same
+		// reason.
+		if v.fetching() {
+			return "Fetching: " + v.pendingFetch.title
+		}
 		if v.peeking() {
 			return "Peek: " + v.peekLabel()
 		}

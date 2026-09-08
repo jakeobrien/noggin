@@ -203,17 +203,18 @@ func TestFileAllRootsScopeExcludesArticles(t *testing.T) {
 	}
 }
 
-// TestPickerActivateOnArticleRowInFileModeRefusesCleanlyForNow is C6/M3.5's
-// own guard against a gap M3.5 itself opens: File mode's Starred scope now
-// selects a real article pseudo-candidate (pickerFile.article), but
-// fetching and rendering one is M4.2's job, not built yet — Activate must
-// not attempt loadDocument against the article's URL (which would surface
-// a raw "cannot open https://...: no such file or directory" read error,
-// indistinguishable from a genuinely broken file) and must not crash or
-// leave the session inconsistent, mirroring
-// TestPickerActivateWithAReadErrorLeavesSessionRunning's own shape for a
-// missing file.
-func TestPickerActivateOnArticleRowInFileModeRefusesCleanlyForNow(t *testing.T) {
+// TestPickerActivateOnArticleRowInFileModeFetchesArticle is C6/M4.2's own
+// follow-through on the gap M3.5 flagged as its job: File mode's Starred
+// scope selects a real article pseudo-candidate (pickerFile.article), and
+// Activate now fetches it exactly like a wikipediaMode Result does
+// (activatePickerInto's own f.article branch), rather than the placeholder
+// refusal M3.5 left in its place — dismissing the Picker and leaving DV1's
+// in-progress indicator up, with the Active Document itself untouched until
+// the fetch actually completes (article_fetch_test.go covers completion,
+// failure and staleness for both Activate paths together, since both route
+// through the same fetchArticleInto/applyArticleFetch pair this one only
+// dispatches).
+func TestPickerActivateOnArticleRowInFileModeFetchesArticle(t *testing.T) {
 	m := sized(t, newModel(), 80, 24).withRipgrep(ripgrepAvailability{available: true})
 	m, _ = m.openPicker()
 	m.picker.scope = starredScope
@@ -233,13 +234,16 @@ func TestPickerActivateOnArticleRowInFileModeRefusesCleanlyForNow(t *testing.T) 
 		t.Error("picker.open = true after Activate on an article row, want dismissed")
 	}
 	if got.dv1.doc.path != beforeDoc {
-		t.Errorf("Active Document = %q after Activate on an article row, want unchanged %q", got.dv1.doc.path, beforeDoc)
+		t.Errorf("Active Document = %q after Activate on an article row, want unchanged until the fetch completes: %q", got.dv1.doc.path, beforeDoc)
 	}
-	if got.message == "" {
-		t.Error("message is empty after Activate on an article row, want a footer message")
+	if got.message != "" {
+		t.Errorf("message = %q after dispatching a fetch, want none yet", got.message)
 	}
-	if strings.Contains(got.message, "no such file or directory") {
-		t.Errorf("message = %q, want a clean refusal rather than a raw filesystem error", got.message)
+	if !got.dv1.fetching() {
+		t.Fatal("dv1.fetching() = false after Activate on an article row, want a fetch dispatched")
+	}
+	if got.dv1.pendingFetch.title != "Leonhard Euler" || got.dv1.pendingFetch.peek {
+		t.Errorf("dv1.pendingFetch = %+v, want title %q, peek false", got.dv1.pendingFetch, "Leonhard Euler")
 	}
 }
 

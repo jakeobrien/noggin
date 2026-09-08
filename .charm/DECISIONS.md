@@ -1586,3 +1586,57 @@
   half-track" rule, which happens to already satisfy S3's "staleness indicator never fires for
   an article" — noted in a code comment there so it is not mistaken for a bug and "fixed" into
   tracking a URL.
+
+## D130: M4.2's "Peeking it" is a Files-Nav-triggered Peek (M5.2's own job to wire up), not a new Picker-internal Peek key; the fetch mechanism itself is built generically now and exercised directly by this task's tests
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: PLAN M4.2's own text ("Activating a Wikipedia Result or Peeking it") reads, taken
+  in isolation, as if Peek should be reachable on a Wikipedia Picker Result. But S2 is explicit
+  that "There is no Preview: the Preview pane shows a short placeholder instead of article
+  content" for wikipediaMode, and GLOSSARY.md's own Peek entry defines it as "render the Files
+  Nav's selected document ... Distinct from the Picker's Preview pane" — Peek has never been a
+  Picker concept, and a new one could not use the `p` key without colliding with the Picker's
+  own always-typing Prompt (handlePickerInput). Re-reading S3 ("Activating a Wikipedia Result, a
+  Starred or Recent article row, or Peeking one") resolves this: "one" refers back to "a
+  Starred or Recent article row" (a Files Nav flat-list row, M5.2's own deliverable), not "a
+  Wikipedia Result" — Activate reaches both surfaces, Peek only the Files-Nav one, matching
+  Peek's Files-Nav-only nature exactly.
+- Decision: `model.fetchArticleInto(target pane, title string, peek bool) (model, tea.Cmd)` and
+  its completion half `applyArticleFetch` (article_fetch.go) support Activate and Peek
+  semantics symmetrically, but only Activate is wired to a real key this task (the Picker's own
+  wikipediaMode Result and File mode's Starred-scope article pseudo-candidate, both via
+  `activatePickerInto`). Peek's half is exercised directly by this task's own model tests
+  (`article_fetch_test.go`) with no UI trigger yet, the same "test the mechanism ahead of its
+  caller" shape M4.1's `articleDocument` already set for this cycle (document.go's own doc
+  comment) — M5.2 is expected to call `fetchArticleInto(..., peek: true)` from a real Files Nav
+  Peek keypress on an article row once that row exists.
+- Why: Building a second, Picker-scoped Peek concept now would contradict S2's explicit "no
+  Preview" rule and GLOSSARY's settled definition, for a UI surface (Files Nav article rows)
+  that does not exist until M5.2 regardless — there would be nothing to test the keybinding
+  against yet. Building the underlying mechanism generically now, ahead of that keybinding,
+  keeps M4.2 to its own effort estimate while giving M5.2 nothing further to invent.
+- Revisit: none expected; M5.2 should confirm this reading holds once Files Nav article rows
+  land, and wire its Peek keypress straight to `fetchArticleInto(..., peek: true)`.
+
+## D131: syncPreview's File-mode Starred-scope article placeholder stays a placeholder — Activate now fetches, but a Picker selection move must not (D119)
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: M3.5's own handoff flagged both of `activatePickerInto`'s and `syncPreview`'s
+  `f.article` guards as "M4.2's job" to replace with real behaviour. This task replaces
+  Activate's refusal with a real fetch, but D119 (cross-cutting: "every network call is
+  user-initiated — search, Activate, Peek, Refresh") does not list a Results-list selection
+  move among the triggers allowed to reach the network, and `syncPreview` runs on exactly that
+  — every cursor move over the Picker's Results list, not a user's explicit request to open
+  anything.
+- Decision: `syncPreview`'s article placeholder is reworded ("no preview — Wikipedia articles
+  are not previewed from here") but not replaced with a live fetched preview; only
+  `activatePickerInto`'s refusal was replaced.
+- Why: Fetching on every selection move would violate D119 and would also fetch far more often
+  than necessary (every row the cursor passes over while browsing Starred, not just the one the
+  user commits to) — the same "no Preview" contract S2 already gives wikipediaMode's own
+  Results, extended consistently to File mode's Starred-scope article rows.
+- Revisit: none expected.

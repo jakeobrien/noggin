@@ -599,10 +599,16 @@ func (p picker) syncPreview(hideDotfiles bool) picker {
 			// C6/M3.5: an article pseudo-candidate's path is a URL, not a
 			// file — reading it would only ever produce a raw OS "no such
 			// file" error, the same misleading-as-broken text
-			// activatePickerInto's own article branch avoids. There is
-			// nothing to preview until it is fetched (M4.2), so this says
-			// that plainly instead of attempting the read.
-			src = []byte("no preview — Wikipedia articles are not fetched from here yet")
+			// activatePickerInto's own article branch avoids.
+			//
+			// C6/M4.2: Activate now does fetch this same row (D119's "every
+			// network call is user-initiated" list: search, Activate, Peek,
+			// Refresh — a Results-list selection move, which is what drives
+			// this method, is deliberately not on that list), so the
+			// placeholder is reworded to stay accurate about what is
+			// specifically missing: a live preview of a not-yet-fetched
+			// article, not the ability to open one at all.
+			src = []byte("no preview — Wikipedia articles are not previewed from here")
 		} else {
 			var err error
 			src, err = os.ReadFile(f.path)
@@ -770,7 +776,7 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 // grepMode is delegated to activateGrepPicker (M4.3): a Grep Result's
 // activation additionally has to land the Document Viewer on the matched
 // line (D34), which fileMode's plain openDocument has no reason to do.
-func (m model) activatePicker() model {
+func (m model) activatePicker() (model, tea.Cmd) {
 	return m.activatePickerInto(dv1Pane)
 }
 
@@ -785,9 +791,30 @@ func (m model) activatePicker() model {
 // chords are raw control bytes, matched in handlePickerInput before the
 // fallthrough to the Prompt, so a literal `l`/`L` keystroke there is
 // unaffected.
-func (m model) activatePickerInto(target pane) model {
+//
+// C6/M4.2 widens the return to (model, tea.Cmd): wikipediaMode's own Result
+// and a starred article surfaced by File mode's Starred scope (f.article,
+// below) both open asynchronously now (fetchArticleInto), unlike every
+// other Result this method handles, which still opens synchronously with a
+// nil Cmd.
+func (m model) activatePickerInto(target pane) (model, tea.Cmd) {
 	if m.picker.mode == grepMode {
-		return m.activateGrepPickerInto(target)
+		return m.activateGrepPickerInto(target), nil
+	}
+	// C6/M3.2/M3.3: wikipediaMode's own Results never populate
+	// p.results.files, so pickerPreviewCandidate (fileMode-only, below)
+	// always answers "not ok" for this mode — its own Result lookup is
+	// pickerWikipediaCandidate instead, the same one togglePickerStar
+	// already uses. A stale generation or an empty Results list is the same
+	// silent no-op every other mode's own "not ok" gives (see
+	// pickerWikipediaCandidate's own doc comment).
+	if m.picker.mode == wikipediaMode {
+		r, ok := m.picker.pickerWikipediaCandidate(m.hideDotfiles)
+		if !ok {
+			return m, nil
+		}
+		next, cmd := m.fetchArticleInto(target, r.Title, false)
+		return next.dismissPicker(), cmd
 	}
 	// Reuses pickerPreviewCandidate rather than a second selection lookup —
 	// "the Result the Preview is showing" and "the Result Activate would
@@ -801,27 +828,25 @@ func (m model) activatePickerInto(target pane) model {
 	// further for it to do once a Result has been chosen.
 	f, ok := m.picker.pickerPreviewCandidate(m.hideDotfiles)
 	if !ok {
-		return m
+		return m, nil
 	}
-	// C6/M3.5: a starred article surfaced by File mode's Starred scope
-	// (starredPickerFiles) has no bytes on disk for loadDocument to read —
-	// f.path is its canonical/derived URL, not a real file — so this would
-	// otherwise fail as a plain "cannot open https://..." read error, which
-	// reads like a broken file rather than an unbuilt feature. Fetching and
-	// rendering an article from here is M4.2's own job (its acceptance
-	// explicitly covers the File Picker's Starred scope, S3's cross-Source
-	// re-fetch guarantee); until then this refuses with a message that says
-	// what is actually true, the same shape a broken starred row's own
-	// "no longer exists; not activated" refusal already gives
-	// (activateFlatRowInto, model.go).
+	// C6/M3.5, fetch wired by C6/M4.2: a starred article surfaced by File
+	// mode's Starred scope (starredPickerFiles) has no bytes on disk for
+	// loadDocument to read — f.path is its canonical/derived URL, not a real
+	// file — so this would otherwise fail as a plain "cannot open
+	// https://..." read error, which reads like a broken file rather than
+	// an unbuilt feature. M3.5 refused this outright pending M4.2; this now
+	// fetches exactly like a wikipediaMode Result does, using f.title (the
+	// starred record's own title, M3.4) rather than f.path — Fetch takes a
+	// title, not a URL (wikipedia.Client.Fetch's own contract).
 	if f.article {
-		m.message = fmt.Sprintf("%s: opening a Wikipedia article from here isn't supported yet", f.title)
-		return m.dismissPicker()
+		next, cmd := m.fetchArticleInto(target, f.title, false)
+		return next.dismissPicker(), cmd
 	}
 	d, err := loadDocument(f.path)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot open %s: %v", f.path, err)
-		return m.dismissPicker()
+		return m.dismissPicker(), nil
 	}
 	// S4/M3.3: Picker Activate records recency the same as the Files Nav's
 	// own activateInto (M3.1) — TRIAGE T12 found this call site bypassing
@@ -831,7 +856,7 @@ func (m model) activatePickerInto(target pane) model {
 	// onto the target viewer's own back/forward stack the same way the
 	// Files Nav's activateInto does (model.navigate).
 	m = m.navigate(target, d)
-	return m.dismissPicker()
+	return m.dismissPicker(), nil
 }
 
 // togglePickerStar flips the S1 document store's star mark for the
@@ -1088,9 +1113,9 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.picker.preview.HalfPageDown()
 		return m, nil
 	case key.Matches(msg, keys.ActivateDV2):
-		return m.activatePickerInto(dv2Pane), nil
+		return m.activatePickerInto(dv2Pane)
 	case key.Matches(msg, keys.Activate):
-		return m.activatePicker(), nil
+		return m.activatePicker()
 	case key.Matches(msg, keys.PickerMode):
 		return m.switchPickerMode()
 	case key.Matches(msg, keys.PickerScope):

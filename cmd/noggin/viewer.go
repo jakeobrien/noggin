@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -83,7 +84,65 @@ type viewer struct {
 	// open() below, so a history entry is never missing from this cache.
 	// Session-only and dies with the viewer, exactly like history itself.
 	articleCache map[string]document
+
+	// pendingFetch is C6/M4.2's async fetch-in-flight marker (S3: "the UI
+	// stays responsive and shows a visible in-progress indicator"): non-nil
+	// exactly while this viewer is waiting on a Wikipedia article fetch
+	// (fetchArticleInto), targeting either this viewer's Active Document
+	// (Activate, peek == false) or its Peek (peek == true, a future trigger,
+	// M5.2's own job to wire up).
+	//
+	// open, refreshDoc, close and startPeek — every method below that
+	// replaces what this viewer's Active Document or Peek actually shows —
+	// clear it unconditionally: each is a real navigation, so it means "the
+	// target moved on" (PLAN M4.2's own phrase) regardless of which kind of
+	// fetch was pending. clearPeek only clears it when pendingFetch.peek is
+	// true: Peek's own shared invalidation chokepoint (model.clearPeek/
+	// clearPeekIn) fires from many unrelated events — any Focus change
+	// (model.setFocus), a Files Nav selection move, a refresh, reopening the
+	// Picker — none of which are a real navigation for an Activate-targeted
+	// fetch (peek == false); dropping one of those on, say, a stray Focus
+	// change would contradict S3's "on completion the targeted viewer
+	// renders the canonical article" for a fetch still legitimately in
+	// flight. A Peek-targeted fetch has no such conflict — Peek only ever
+	// exists while Focus sits on the Files Nav in the first place, so every
+	// one of clearPeek's own triggers already means its target peek is gone
+	// too, PLAN M4.2's "Peek cleared" case exactly.
+	//
+	// Either way, applyArticleFetch (article_fetch.go) tells a completion
+	// that still answers this viewer's current wait from a stale one with
+	// nothing more than a token comparison. A pointer, not a value
+	// (withOffset's own doc comment gives the same reasoning peekState's
+	// zero value uses instead): "no fetch pending" needs to be exactly nil,
+	// not a zero pendingArticleFetch that happens to compare equal to some
+	// in-flight one's zero token.
+	pendingFetch *pendingArticleFetch
 }
+
+// pendingArticleFetch is one viewer's in-flight Wikipedia article fetch
+// (C6/M4.2, see viewer.pendingFetch's own doc comment for when it is set
+// and cleared, including the asymmetry between peek's two values there).
+// title is the requested title — Fetch's own canonical title/URL is only
+// known once it reports back — shown by the in-progress indicator
+// (viewer.view/model.paneTitle) and, on failure, in the Footer message.
+// peek carries Activate/Peek semantics through to the completion handler
+// (applyArticleFetch): peek fetches never become the Active Document, move
+// Focus or record recency (S7). token is this fetch's unique identity
+// (model.fetchArticleInto's own monotonic counter) — the one thing
+// applyArticleFetch actually compares to decide whether an arriving
+// articleFetchMsg still answers this pendingFetch or has been superseded.
+type pendingArticleFetch struct {
+	title string
+	peek  bool
+	token int
+}
+
+// fetching reports whether this viewer has a Wikipedia article fetch in
+// flight (C6/M4.2) — the in-progress indicator's own condition, checked by
+// view() and model.paneTitle/renderPane ahead of Peek and the Active
+// Document, the same "one thing at a time" precedence Peek's own view()
+// branch already gives everything beneath it.
+func (v viewer) fetching() bool { return v.pendingFetch != nil }
 
 // peekState is one Peeked document: its own read-only viewport, kept
 // entirely separate from vp so Peek can never move the Active Document's
@@ -137,6 +196,10 @@ func (v viewer) setSize(width, height int) viewer {
 // first, before it is replaced, since v.offset() only ever reads the
 // outgoing document's position.
 func (v viewer) open(d document) viewer {
+	// C6/M4.2: a real load answers (or bypasses) whatever fetch this viewer
+	// might have had pending — "the target moved on", per pendingFetch's own
+	// doc comment.
+	v.pendingFetch = nil
 	if v.doc.isOpen() {
 		v = v.rememberOffset()
 	}
@@ -179,6 +242,7 @@ func (v viewer) rememberOffset() viewer {
 // drops it (T34/T43, render's own doc comment) — S2 allows this ("Find
 // state may be lost").
 func (v viewer) refreshDoc(d document) viewer {
+	v.pendingFetch = nil // C6/M4.2: see pendingFetch's own doc comment.
 	v.doc = d
 	return v.render()
 }
@@ -188,6 +252,7 @@ func (v viewer) refreshDoc(d document) viewer {
 // empty state open() never produces, since it is only ever called with a
 // document that just loaded successfully.
 func (v viewer) close() viewer {
+	v.pendingFetch = nil // C6/M4.2: see pendingFetch's own doc comment.
 	v.doc = document{}
 	return v.render()
 }
@@ -274,6 +339,7 @@ func (v viewer) cachedArticle(url string) (document, bool) {
 // the surrounding rules (not the Active Document, not already Peeking) —
 // this method only ever renders whatever it is given.
 func (v viewer) startPeek(d document) viewer {
+	v.pendingFetch = nil // C6/M4.2: see pendingFetch's own doc comment.
 	vp := viewport.New(viewport.WithWidth(v.vp.Width()), viewport.WithHeight(v.vp.Height()))
 	vp.FillHeight = true
 	v.peek = peekState{doc: d, vp: vp}
@@ -283,6 +349,12 @@ func (v viewer) startPeek(d document) viewer {
 // clearPeek ends Peek, restoring the Active Document's own view — nothing
 // to restore on vp itself, since Peek never touched it (S7, M7.1).
 func (v viewer) clearPeek() viewer {
+	// C6/M4.2: only a Peek-targeted pending fetch is invalidated here — see
+	// pendingFetch's own doc comment for why an Activate-targeted one must
+	// survive this method's much broader set of callers.
+	if v.pendingFetch != nil && v.pendingFetch.peek {
+		v.pendingFetch = nil
+	}
 	v.peek = peekState{}
 	return v
 }
@@ -367,6 +439,15 @@ var emptyViewerStyle = lipgloss.NewStyle().Foreground(dimColor)
 func (v viewer) view() string {
 	if v.vp.Width() <= 0 || v.vp.Height() <= 0 {
 		return ""
+	}
+	// C6/M4.2: an in-flight fetch takes over the content box ahead of
+	// everything below — there is nothing yet to show for either an Active
+	// Document about to be replaced (peek == false) or a Peek about to
+	// start (peek == true), so this is unconditional on which, the same way
+	// Peek's own branch just beneath it is unconditional on the Active
+	// Document's own err/empty/open state.
+	if v.fetching() {
+		return v.fill(emptyViewerStyle, fmt.Sprintf("Fetching %q\u2026", v.pendingFetch.title))
 	}
 	// A Peeked document (S7, M7.1) takes over the content box entirely,
 	// ahead of the Active Document's own err/empty/open cases below — those
