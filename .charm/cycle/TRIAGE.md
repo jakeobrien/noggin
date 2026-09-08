@@ -25,7 +25,5 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T14 | build | low | .charm/GLOSSARY.md:77 | Navigator glossary entry still says "Roots Nav above" despite the C6 rename to Sources Nav recorded at lines 114-120 (self-inconsistency, doc-only, found while doing M1.6) | open |
-| T15 | review | low | internal/wikipedia/fetch.go:52-77 | `NewClient` and `ensureInit` duplicate zero-value initialization (`&http.Client{Timeout: fetchTimeout}`, `make(map[string]Article)`) in two places that can drift; recommend `NewClient` build a zero `Client{}` and call `ensureInit()` so there is one init path | open |
-| T16 | review | low | cmd/noggin/focus_badge_test.go:13-46 | `TestPaneFocusBadgesShowAtNormalWidthRegardlessOfFocus` asserts a rendered line contains `pane.title()`'s own return value, so it is tautological and cannot pin the literal "Sources" string (would pass unchanged even if the rename were reverted); M1.6's PROGRESS.md handoff cites this test as satisfying the "pane label reads 'Sources'" acceptance criterion, but the real hardcoded-literal check is `TestRenderPaneDropsTheBadgeNotTheTitleWhenTooNarrow` (same file, lines 60/68) — criterion is met, but the handoff's citation is misleading for future maintainers; recommend correcting the citation or adding a literal "Sources" assertion to the first test | open |
-| T17 | review | low | cmd/noggin/docstore.go:157-201 | M1.7 escapes only the article `<title>` field against embedded tab/newline (correct per its acceptance criterion); the same tab-separated-format corruption risk exists in principle for path-like `<key>` fields (e.g. a file path containing a raw tab/newline byte) which are not escaped — pre-existing, not introduced by this diff, likely low real-world risk, but worth a deliberate wontfix/defer decision rather than leaving implicit | open |
+
+<!-- empty as of 2026-09-08 replan: T15 -> PLAN M2.8, T17 -> PLAN M1.8 -->

@@ -1176,15 +1176,27 @@
 
 ## D98: CC BY-SA attribution for rendered Wikipedia articles
 
-- Status: open
-- Cycle: C4a
-- Date: 2026-08-14
-- Context: SPEC OQ2. Attribution obligations appear to attach to redistribution rather than
-  purely local personal use, so a spike writing files to the user's own disk is very likely
-  clear — but this was not confirmed against a citable source during brainstorm. Wikimedia's
-  descriptive User-Agent requirement is separate, accepted, and in scope as S8.
-- Open question: what attribution (source URL + licence line on each rendered article?) is
-  required before noggin is ever *distributed* with a Wikipedia feature. Not blocking C4a.
+- Status: decided
+- Cycle: C6 (opened C4a 2026-08-14, resolved here)
+- Date: 2026-09-08
+- Context: SPEC OQ2's original framing ("attribution obligations appear to attach to
+  redistribution rather than purely local personal use") was checked against Wikipedia's own
+  reuse guide (`Wikipedia:Reusing_Wikipedia_content`) and the CC BY-SA 4.0 legal code during
+  C6 build. Two findings: (1) a URL/hyperlink back to the article is one of CC BY-SA's own
+  explicitly-sufficient options for author attribution, but attribution alone is not the full
+  obligation — a licensing notice naming the license, and an indication that the content was
+  modified (noggin's HTML→Markdown conversion is a modification, not a verbatim copy), are
+  also required; (2) the "purely local personal use is clear" assumption does not hold as
+  confidently as OQ2 hoped — CC BY-SA's "Share" trigger is defined broadly (reproduction,
+  public display, communication), and comparable reader apps (Kiwix, Wikiwand) attribute even
+  ephemeral, non-persisted, single-user renders, so noggin should not rely on that exemption.
+- Decision: **Amended SPEC.md with S9a** — the Wikipedia-article location line reads
+  `CC BY-SA 4.0 · <canonical URL> · Reformatted to markdown`, covering all three obligations
+  (attribution via the URL, a licensing notice, and the modification indication) on every
+  article view, at no extra row cost (S9 already reserved the line). Closes OQ2/D98.
+- Why: cheap to satisfy fully now (one line, already-planned real estate) versus leaving a
+  live legal-compliance gap open into a feature this cycle is building for real use, on an
+  assumption ("local display is exempt") that turned out weaker than believed.
 
 ## D112: C4a spike verdict — GO, with a known limitation
 

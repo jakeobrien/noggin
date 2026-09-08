@@ -7,7 +7,7 @@
      charm-replan then reconciles the plan. Keys are scoped to this cycle — durable docs
      referencing them qualify with the cycle key (C3/S2). -->
 
-Status: agreed 2026-09-07
+Status: agreed 2026-09-08 (amended — S9a added 2026-09-08, see DECISIONS D98)
 
 ## Framing
 
@@ -101,9 +101,18 @@ wrong, not the dictionary.
 
 - **S9** — **Document Viewer location line.** The bottom row of each Document Viewer shows,
   de-emphasized, where its document lives: `<Root name> · <path relative to the Root>` for a
-  file under a Root; the full path for an orphan; the article's **URL** for a Wikipedia
-  article. It reflects a Peeked document while the Peek lasts and is absent when the viewer
-  has no document. Costs the content one row.
+  file under a Root; the full path for an orphan; ~~the article's **URL** for a Wikipedia
+  article~~ **superseded by S9a** for a Wikipedia article. It reflects a Peeked document while
+  the Peek lasts and is absent when the viewer has no document. Costs the content one row.
+
+- **S9a** — **Wikipedia article attribution in the location line.** For a Wikipedia article,
+  S9's location line reads `CC BY-SA 4.0 · <canonical URL> · Reformatted to markdown` — three
+  de-emphasized segments separated by ` · `, replacing S9's plain URL for this case. This
+  satisfies Wikimedia's CC BY-SA 4.0 reuse terms for the article's rendering in noggin:
+  attribution via the article's own URL (Wikipedia's own "hyperlink or URL to the page"
+  option), a licensing notice naming the license, and an indication that the content has been
+  modified from the original (noggin's HTML→Markdown conversion, per D112). It reflects a
+  Peeked article's location line identically, per S9.
 
 - **S10** — **De-emphasized secondary text.** The Sources Nav's path line (line 2) and, in
   Picker File results, the file's path are rendered de-emphasized (reduced contrast), with the
@@ -162,6 +171,8 @@ wrong, not the dictionary.
   parent path.
 - The location line, path de-emphasis, background focus tint, half-page paging and 2-character
   threshold are each observable as described.
+- Every open Wikipedia article's location line shows `CC BY-SA 4.0 · <URL> · Reformatted to
+  markdown`.
 - Reading S1–S7 with "dictionary" substituted for "Wikipedia" requires no rewording beyond the
   name — reviewed at spec agreement, re-checked at validate.
 

@@ -20,6 +20,8 @@ are trivial and independent — pull them forward whenever a short slice is want
 Cross-cutting: every network call is user-initiated (search, Activate, Peek, Refresh — D119)
 and every network-touching task must be testable without the network (fake/injected client,
 `httptest`); `go test ./...` never reaches Wikimedia. Findings: `findings/wikimedia-api.md`.
+M1.8 and M2.8 are trivial code-hygiene cleanups independent of M3; pull forward whenever a
+short slot is available.
 
 ## M1 — Source model and Sources Nav
 
@@ -66,6 +68,12 @@ Delivers: S1, S5 (the mode/scope structure — lists fill in M5/M6), store groun
   docstore test round-trips an article whose title contains an embedded tab and one with an
   embedded newline without corrupting the record or adjacent fields — effort: 1 (replan:
   TRIAGE T3)
+- **M1.8** — Extend M1.7's tab/newline escaping to the Document Store's path-like `<key>`
+  fields (pre-existing corruption risk, not introduced by M1.7, low real-world likelihood) —
+  done when: a docstore test round-trips a record whose key contains an embedded tab and one
+  with an embedded newline without corrupting the record or adjacent fields, using the same
+  escape mechanism as the title field, and existing on-disk stores load unchanged — effort: 1
+  (replan: TRIAGE T17)
 
 ## M2 — Wikipedia client
 
@@ -108,6 +116,11 @@ Delivers: the fetch/search/convert capability S2 and S3 build on (`internal/` pa
   becomes `strconv.Itoa(limit)`; the descriptive-User-Agent doc comments in `search.go` and
   `search_test.go` that cite "S8" are re-pointed at "S3" (S8 is Root names, unrelated) — done
   when: both changes land and existing tests still pass — effort: 1 (replan: TRIAGE T11, T12)
+- **M2.8** — `Client.NewClient` builds its zero-value fields (`&http.Client{Timeout:
+  fetchTimeout}`, `make(map[string]Article)`) directly instead of going through
+  `ensureInit`, duplicating M2.4's lazy-init path where the two can drift — done when:
+  `NewClient` constructs via `ensureInit` (or an equivalent single init path) and M2.4's
+  zero-value-construction and concurrency tests still pass — effort: 1 (replan: TRIAGE T15)
 
 ## M3 — Wikipedia Picker
 
@@ -211,8 +224,9 @@ Delivers: S9, S10, S12
   paging test is unchanged — effort: 1
 - **M8.2** — Location line: each Document Viewer's bottom row shows, de-emphasized, `<Root
   name> · <path relative to the Root>` for a file under a Root, the full path for an orphan,
-  the URL for an article; reflects a Peeked document while the Peek lasts; absent with no
-  document; content loses one row — done when: render tests cover the four states plus Peek,
+  `CC BY-SA 4.0 · <URL> · Reformatted to markdown` for an article (S9a); reflects a Peeked
+  document while the Peek lasts; absent with no document; content loses one row — done when:
+  render tests cover the four states plus Peek, the article line's exact three-segment text,
   and the content height assertion drops by one — effort: 3 (needs: M4.1, M7.3)
 - **M8.3** — De-emphasized secondary text: the Sources Nav path line and Picker File-row paths
   render dim with matched path characters emphasized against the dim, the Root label at normal
