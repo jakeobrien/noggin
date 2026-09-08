@@ -1506,3 +1506,40 @@
   no change to file-record behaviour — `docstore.go`'s on-disk load/save path already
   branches by an explicit `<kind>` field, unaffected). Fixing in place rather than deferring to
   TRIAGE since it sits on M3.4's own critical path, not an unrelated tangent.
+
+## D128: M3.5 reuses `pickerFile` (not a new type) to represent a starred article in File mode's Starred scope, with the two now-reachable readers explicitly guarded
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-08
+- Context: S6/M3.5 needs File mode's Starred scope to include a starred article alongside
+  starred files ("the only File search that spans both classes"). `pickerFile` already carries
+  an `orphan` flag for one cross-cutting Starred-scope case (M5.1); M3.5 adds `article`/`title`
+  the same way rather than introducing a second candidate type or a discriminated union.
+  Fresh-context code review (code-reviewer subagent) flagged this as pushing the "is this
+  actually a file" invariant onto doc-comment discipline alone (medium), and, more
+  concretely, found that two existing `pickerFile` readers this reuse newly makes reachable —
+  `activatePickerInto`'s fileMode branch and `syncPreview` — were not taught about `article`,
+  so selecting or activating an article row surfaced a raw filesystem error
+  ("cannot open https://...: no such file or directory") rather than anything resembling
+  intended behaviour (high — an observably broken interaction, not just an untested one).
+- Decision: Kept the `pickerFile` reuse (a discriminated-union refactor is a larger change
+  than M3.5's own scope justifies, and the doc-comment-discipline risk is real but not
+  fundamentally different from `orphan`'s own precedent). Fixed the two reachable readers
+  directly, since M3.5 is what made them reachable: `activatePickerInto` refuses with a plain
+  Footer message ("<title>: opening a Wikipedia article from here isn't supported yet") and
+  dismisses the Picker, the same "message + dismiss" shape a genuine read-error Activate
+  already has; `syncPreview` shows a fixed placeholder string instead of attempting
+  `os.ReadFile` on the URL. Neither fetches or renders the article — that is still M4.2's job
+  — but neither surfaces a filesystem-error string for a thing that was never a file.
+- Why: The full fix (fetch-and-render from this call site) is M4.2's own acceptance
+  criterion, already covering "Activating a Wikipedia Result"; widening M4.2 to also read
+  "from any Picker mode/scope that can produce an article row" rather than reopening M3.5 or
+  building fetch-and-open early keeps the milestone boundaries the plan already drew. Leaving
+  the interim state as a raw OS error, though, was not an acceptable degrade for something
+  M3.5 itself makes newly selectable — a clean, honest refusal costs two small guards and
+  removes a confusing failure mode without pre-building any of M4.2's actual work.
+- Revisit: at M4.2, confirm its acceptance criteria are written broadly enough to cover
+  Activate from File mode's Starred scope (this task's own new path) and not only
+  `wikipediaMode`'s Results list — replace both guards added here with the real fetch/render
+  behaviour at that point, not before.

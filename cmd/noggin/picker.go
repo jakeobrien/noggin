@@ -392,6 +392,18 @@ func (m model) switchPickerMode() (model, tea.Cmd) {
 	default:
 		m.picker.mode = fileMode
 	}
+	// S6/C6/M3.5: landing back on File or Grep mode with Wikipedia still the
+	// Active Source must never land on Active Root Scope — there is no
+	// Active Root to search, and S6 explicitly rules out offering that
+	// "empty dead-end scope" at all, not just making it escapable with one
+	// more Scope press. The only way p.scope can still read activeRootScope
+	// here is the fixed zero-value state a fresh openPicker leaves it in
+	// (S1's own opening state, unconditional regardless of Active Source);
+	// switchPickerScope's own Wikipedia-active branch is what keeps it out
+	// from here on once this has run once.
+	if m.picker.mode != wikipediaMode && m.roots.activeIsWikipedia() && m.picker.scope == activeRootScope {
+		m.picker.scope = allRootsScope
+	}
 	return m.queuePickerSearch()
 }
 
@@ -414,6 +426,21 @@ func (m model) switchPickerScope() (model, tea.Cmd) {
 	// change and no search to re-run.
 	if m.picker.mode == wikipediaMode {
 		return m, nil
+	}
+	// S6/C6/M3.5: with Wikipedia the Active Source there is no Active Root
+	// to offer — File and Grep both skip it, cycling only between the
+	// remaining two values rather than the full three-way order below, so
+	// the Scope key never lands on the "no empty dead-end scope" S6 rules
+	// out. switchPickerMode's own guard is what keeps p.scope out of
+	// activeRootScope in the first place whenever this runs; this branch
+	// only has to keep it out from here on.
+	if m.roots.activeIsWikipedia() {
+		if m.picker.scope == allRootsScope {
+			m.picker.scope = starredScope
+		} else {
+			m.picker.scope = allRootsScope
+		}
+		return m.queuePickerSearch()
 	}
 	switch m.picker.scope {
 	case activeRootScope:
@@ -567,9 +594,21 @@ func (p picker) syncPreview(hideDotfiles bool) picker {
 		return p
 	}
 	if f.path != p.previewPath {
-		src, err := os.ReadFile(f.path)
-		if err != nil {
-			src = []byte("preview unavailable: " + err.Error())
+		var src []byte
+		if f.article {
+			// C6/M3.5: an article pseudo-candidate's path is a URL, not a
+			// file — reading it would only ever produce a raw OS "no such
+			// file" error, the same misleading-as-broken text
+			// activatePickerInto's own article branch avoids. There is
+			// nothing to preview until it is fetched (M4.2), so this says
+			// that plainly instead of attempting the read.
+			src = []byte("no preview — Wikipedia articles are not fetched from here yet")
+		} else {
+			var err error
+			src, err = os.ReadFile(f.path)
+			if err != nil {
+				src = []byte("preview unavailable: " + err.Error())
+			}
 		}
 		p.previewPath = f.path
 		p.preview.SetContent(string(src))
@@ -674,7 +713,11 @@ func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, 
 		}
 		switch mode {
 		case grepMode:
-			results.grep, results.truncated = grepPickerFiles(files, query)
+			// S6/C6/M3.5: "Grep never includes Wikipedia, in any scope" —
+			// starredPickerFiles' own article pseudo-candidates (Starred
+			// scope only; every other scope never produces one) are dropped
+			// before rg ever sees them.
+			results.grep, results.truncated = grepPickerFiles(filesOnly(files), query)
 		default:
 			results.files, results.truncated = fuzzyFiles(files, query)
 		}
@@ -759,6 +802,21 @@ func (m model) activatePickerInto(target pane) model {
 	f, ok := m.picker.pickerPreviewCandidate(m.hideDotfiles)
 	if !ok {
 		return m
+	}
+	// C6/M3.5: a starred article surfaced by File mode's Starred scope
+	// (starredPickerFiles) has no bytes on disk for loadDocument to read —
+	// f.path is its canonical/derived URL, not a real file — so this would
+	// otherwise fail as a plain "cannot open https://..." read error, which
+	// reads like a broken file rather than an unbuilt feature. Fetching and
+	// rendering an article from here is M4.2's own job (its acceptance
+	// explicitly covers the File Picker's Starred scope, S3's cross-Source
+	// re-fetch guarantee); until then this refuses with a message that says
+	// what is actually true, the same shape a broken starred row's own
+	// "no longer exists; not activated" refusal already gives
+	// (activateFlatRowInto, model.go).
+	if f.article {
+		m.message = fmt.Sprintf("%s: opening a Wikipedia article from here isn't supported yet", f.title)
+		return m.dismissPicker()
 	}
 	d, err := loadDocument(f.path)
 	if err != nil {

@@ -828,3 +828,60 @@ func TestStarredPickerFilesExcludesUnstarredDocuments(t *testing.T) {
 		t.Fatalf("starredPickerFiles() = %v, want %v (unstarred document excluded)", got, want)
 	}
 }
+
+// TestStarredPickerFilesIncludesStarredArticle is C6/M3.5's own unit-level
+// check for starredPickerFiles' article branch (rule 2, S6: "File mode's
+// Starred scope includes starred articles"): a starred article record
+// (docRecord.Article) surfaces as a pickerFile{article: true} pseudo-
+// candidate carrying its title and its docs-map key as path, bypassing
+// every file-specific filter above it (pathMissing, tree.IsReadable,
+// hideDotfiles) since none of them describe a URL, alongside an ordinary
+// starred file from the same store — mirroring
+// TestStarredPickerFilesIncludesOrphansAndRootCoveredFiles's own
+// "assert on a single candidate's own fields" shape for the file/orphan
+// pair.
+func TestStarredPickerFilesIncludesStarredArticle(t *testing.T) {
+	dir := t.TempDir()
+	dotdir := mkdir(t, filepath.Join(dir, ".hidden"))
+	starredFile := writeFileContent(t, filepath.Join(dotdir, "report.md"), "content\n")
+	articleKey := "https://en.wikipedia.org/wiki/Leonhard_Euler"
+
+	docs := map[string]docRecord{
+		starredFile: {Starred: true},
+		articleKey:  {Starred: true, Article: true, Title: "Leonhard Euler"},
+	}
+
+	// hideDotfiles=true would drop the dotfile-directory file above (a
+	// deliberate collision with the article check below: the article must
+	// survive this toggle exactly as it survives every other file-specific
+	// filter, since none of them are about a URL at all).
+	got := starredPickerFiles(docs, nil, true)
+	if len(got) != 1 {
+		t.Fatalf("starredPickerFiles(hideDotfiles=true) = %+v, want exactly the article (the dotfile-path file excluded)", got)
+	}
+	article := got[0]
+	if !article.article || article.title != "Leonhard Euler" || article.path != articleKey {
+		t.Errorf("article candidate = %+v, want article=true title=%q path=%q", article, "Leonhard Euler", articleKey)
+	}
+	if article.orphan || article.root.path != "" {
+		t.Errorf("article candidate = %+v, want orphan=false and a zero-value root (neither concept applies to an article)", article)
+	}
+}
+
+// TestFileNameSourceUsesArticleTitleForFuzzyRanking is C6/M3.5's own
+// unit-level check for fileNameSource's article branch (S6: "matched on
+// title"): an article pseudo-candidate's fuzzy-ranking text is its title,
+// not filepath.Base of its URL (which would read as an underscore-joined
+// slug, not the natural-language title a query is actually typed against).
+func TestFileNameSourceUsesArticleTitleForFuzzyRanking(t *testing.T) {
+	source := fileNameSource([]pickerFile{
+		{path: "/tmp/report.md"},
+		{path: "https://en.wikipedia.org/wiki/Leonhard_Euler", article: true, title: "Leonhard Euler"},
+	})
+	if got := source.String(0); got != "report.md" {
+		t.Errorf("fileNameSource.String(file) = %q, want %q", got, "report.md")
+	}
+	if got := source.String(1); got != "Leonhard Euler" {
+		t.Errorf("fileNameSource.String(article) = %q, want the title %q, not a path-derived name", got, "Leonhard Euler")
+	}
+}

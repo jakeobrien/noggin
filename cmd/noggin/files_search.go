@@ -39,6 +39,24 @@ type pickerFile struct {
 	// browseRow. Every other pickerFile producer (listFiles) leaves this
 	// false: a file found by walking a session Root always has one.
 	orphan bool
+	// article is C6/M3.5's own addition, set only by starredPickerFiles: a
+	// starred Wikipedia article (docRecord.Article) rather than a file, the
+	// "only File search that spans both classes" S6 asks Starred scope for.
+	// path holds the article's canonical/derived URL here (its docs-map key,
+	// M1.5) rather than a filesystem path — never passed to os.Stat,
+	// tree.IsReadable, filepath.Rel or rg (grepPickerFiles' own filesOnly
+	// filter keeps it out of Grep entirely, per S6's "Grep never includes
+	// Wikipedia, in any scope"). title is the article's own display title:
+	// S6's "matched on title" means fuzzy ranking (fileNameSource) and match
+	// highlighting (picker_view.go's pickerFileRow) both key off title, not
+	// off any part of path, since path here is a URL with no natural
+	// "basename" a title-oriented match would want. root/orphan are both
+	// left at their zero value for an article row — there is no covering
+	// Root, and orphan's own "no Root, but still a real file with a parent
+	// directory" meaning does not apply to something that is not a file at
+	// all.
+	article bool
+	title   string
 }
 
 // listFiles is the File Picker's candidate set (S3, S13): every Readable
@@ -110,10 +128,29 @@ func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool) [
 // order is not stable across runs, and neither fuzzyFiles' ranked-match
 // ordering nor grepPickerFiles' own (rg's batch order) would otherwise mask
 // that the way listFiles' Root-by-Root walk order already does not need to.
+// An article record (rec.Article, C6/M3.5) is included unconditionally
+// alongside starred files, as a pickerFile{article: true} pseudo-candidate
+// rather than a real file: none of the file-specific filters above apply
+// to it (there is nothing on disk to stat, no Readable-extension check, no
+// dotfile path to hide it by), matching S6's own "the only File search
+// that spans both classes". Grep's own candidate set is filtered back down
+// to files only one call site up (pickerSearchCmd's filesOnly), not here —
+// starredPickerFiles' contract is Starred scope's whole candidate set for
+// either mode, unchanged; excluding articles is Grep's own rule to apply,
+// per S6's "Grep never includes Wikipedia, in any scope", not a rule about
+// what Starred scope itself contains.
 func starredPickerFiles(docs map[string]docRecord, roots []root, hideDotfiles bool) []pickerFile {
 	var files []pickerFile
-	for path, rec := range docs {
-		if !rec.Starred || pathMissing(path) {
+	for key, rec := range docs {
+		if !rec.Starred {
+			continue
+		}
+		if rec.Article {
+			files = append(files, pickerFile{path: key, article: true, title: rec.Title})
+			continue
+		}
+		path := key
+		if pathMissing(path) {
 			continue
 		}
 		if !tree.IsReadable(filepath.Base(path)) {
@@ -132,6 +169,24 @@ func starredPickerFiles(docs map[string]docRecord, roots []root, hideDotfiles bo
 	}
 	sort.Slice(files, func(i, j int) bool { return files[i].path < files[j].path })
 	return files
+}
+
+// filesOnly drops starredPickerFiles' article pseudo-candidates (C6/M3.5)
+// before Grep ever sees them: an article's path is its canonical/derived
+// URL, not a real file rg could read, and S6 draws Grep's class boundary as
+// an absolute rule ("Grep never includes Wikipedia, in any scope") rather
+// than merely "these usually fail to match" — filtering here makes that a
+// guarantee independent of how rg happens to handle a bogus path argument.
+// fuzzyFiles (File mode) takes files unfiltered — S6 wants File's Starred
+// scope to include articles, so only Grep's own call site needs this.
+func filesOnly(files []pickerFile) []pickerFile {
+	out := make([]pickerFile, 0, len(files))
+	for _, f := range files {
+		if !f.article {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // isDotfilePath reports whether rel — a slash-relative path as rgFiles
@@ -207,10 +262,21 @@ func rgFiles(dir string) []string {
 // base name only — never its path — so fuzzy.FindFrom cannot see, and so
 // cannot be swayed by, path components (D31: the File Picker matches the
 // file name only).
+// String returns f's base name for File Picker fuzzy ranking (D31) — or,
+// for an article pseudo-candidate (C6/M3.5, pickerFile.article), its own
+// title instead: S6 asks for a starred article to be "matched on title",
+// and path here is a URL with no filepath.Base worth matching against (its
+// last segment is Wikipedia's own underscore-joined title slug, not the
+// natural-language title a query would actually be typed against).
 type fileNameSource []pickerFile
 
-func (s fileNameSource) String(i int) string { return filepath.Base(s[i].path) }
-func (s fileNameSource) Len() int            { return len(s) }
+func (s fileNameSource) String(i int) string {
+	if s[i].article {
+		return s[i].title
+	}
+	return filepath.Base(s[i].path)
+}
+func (s fileNameSource) Len() int { return len(s) }
 
 // fuzzyFiles ranks listFiles' candidate set against query by file name only
 // (D31) and caps the result at pickerResultCap, reporting whether the cap

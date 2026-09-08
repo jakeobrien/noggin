@@ -280,15 +280,23 @@ func pickerRootLabel(f pickerFile, width int, rest string) string {
 
 // pickerLocationLabel is pickerFileRow's "where is this file" segment
 // (S3/S8, C4/M5.1): a covering Root's own name+parent (pickerRootLabel)
-// for an ordinary candidate, or — for a Starred-scope orphan
-// (pickerFile.orphan, starredPickerFiles) — the document's own
-// left-truncated parent directory alone, since there is no Root name to
-// pair it with. This is Picker rows' own counterpart to
-// browse_list.go's buildBrowseRow/files.go's renderFlatRow orphan fallback
-// (orphanDir): the same "no covering Root" fact, rendered in whichever
-// layout its own caller already uses — name+parent there, Root-label+rel
-// here.
+// for an ordinary candidate, — for a Starred-scope orphan (pickerFile.
+// orphan, starredPickerFiles) — the document's own left-truncated parent
+// directory alone, since there is no Root name to pair it with, or — for a
+// starred article (pickerFile.article, C6/M3.5) — the fixed wikipediaLabel
+// (rootsnav.go's own Wikipedia Source constant, reused rather than a
+// second string literal): S6's "labelled Wikipedia where files are
+// labelled by Root name" is this segment's own third case, an article
+// having neither a Root nor a parent directory to show in its place. This
+// is Picker rows' own counterpart to browse_list.go's buildBrowseRow/
+// files.go's renderFlatRow orphan fallback (orphanDir): the same "no
+// covering Root" fact, rendered in whichever layout its own caller already
+// uses — name+parent there, Root-label+rel here.
 func pickerLocationLabel(f pickerFile, width int, rest string) string {
+	if f.article {
+		budget := max(width-lipgloss.Width(rest), 0)
+		return rightTruncate(wikipediaLabel, budget)
+	}
 	if f.orphan {
 		budget := max(width-lipgloss.Width(rest), 0)
 		return leftTruncate(filepath.Dir(f.path), budget)
@@ -332,12 +340,23 @@ func pickerLocationLabel(f pickerFile, width int, rest string) string {
 func pickerFileRow(f pickerFile, query string, width int, selected bool, starred bool) string {
 	marker := starMarker(starred)
 	contentWidth := max(width-lipgloss.Width(marker), 0)
-	// An orphan (S8) has no covering Root to be relative to —
-	// pickerLocationLabel already names its directory, so the suffix here
-	// is just the file's own name, the same "no further path to add" shape
-	// buildBrowseRow's orphan row gives the Files Nav's own flat list.
-	rel := filepath.Base(f.path)
-	if !f.orphan {
+	// name is what fuzzy-matched (fileNameMatchPositions) and so what gets
+	// highlighted; rel is that same text as it appears in the row (always
+	// name itself here — unlike a Root-covered file's own path, which needs
+	// no separate "name vs. displayed suffix" distinction either, but is
+	// spelled out for clarity next to the article/orphan cases that are).
+	// An article (C6/M3.5, S6's "matched on title") has no path worth
+	// showing at all — pickerLocationLabel already names it "Wikipedia", so
+	// the suffix here is just its title, the same "no further path to add"
+	// shape an orphan's own base-name suffix already has. An orphan (S8)
+	// likewise has no covering Root to be relative to.
+	name := filepath.Base(f.path)
+	rel := name
+	switch {
+	case f.article:
+		name = f.title
+		rel = f.title
+	case !f.orphan:
 		if r, err := filepath.Rel(f.root.path, f.path); err == nil {
 			rel = r
 		} else {
@@ -346,7 +365,6 @@ func pickerFileRow(f pickerFile, query string, width int, selected bool, starred
 	}
 	suffix := "  " + rel
 	line := pickerLocationLabel(f, contentWidth, suffix) + suffix
-	name := filepath.Base(f.path)
 	columns := suffixColumns(line, name, fileNameMatchPositions(name, query))
 	full, shifted := prependMarker(marker, line, columns)
 	return styleRow(highlightMatches(full, shifted, selected), width, selected)
@@ -638,7 +656,11 @@ func pickerResultsContent(p picker, width, height int, hideDotfiles bool, docs m
 	}
 	return windowedView(width, height, p.selected, len(files), func(idx int) string {
 		f := files[idx]
-		return pickerFileRow(f, p.results.query, width, idx == p.selected, docs[filepath.Clean(f.path)].Starred)
+		// docStoreKey, not a bare filepath.Clean (C6/M3.5): f.path is an
+		// article's canonical/derived URL for one of starredPickerFiles' own
+		// article rows, and filepath.Clean would corrupt it the same way
+		// docRecord/withDocRecord's own fix (D127) exists to prevent.
+		return pickerFileRow(f, p.results.query, width, idx == p.selected, docs[docStoreKey(f.path)].Starred)
 	})
 }
 

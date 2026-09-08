@@ -17,81 +17,67 @@
 
 ## Cursor
 
-Current task: M3.5
+Current task: M4.1 (M3 milestone complete — validation due before this starts; see Handoff)
 
 ## Handoff
 
-M3.3 (S2) is done: Wikipedia mode's search is real now. `model.wikipediaClient`
-(`pickerWikipediaClient` interface, `Search(query, limit)` only) defaults to a real
-`*wikipedia.Client` in `newModel`; tests inject a fake via `withWikipediaClient`.
-`pickerSearchCmd`'s `wikipediaMode` branch calls it and reports back via `pickerResultsMsg`'s
-new `err` field. Rows render via `pickerWikipediaRow` (title + description, no match
-highlighting, no star marker — that's M3.4). `searchable()`/`pickerStatus` no longer require
-ripgrep for `wikipediaMode` (only File/Grep do).
+M3.5 (S6, the last M3 task) is done — **M3 (Wikipedia Picker) is now complete**; a
+milestone-boundary validation-due gate applies before M4 starts (charm-build's own gate
+check, per cycle-state.md).
 
-Failure handling (S2 "leaves the last Results in place"): `picker.wikipediaErr` holds the
-last search's error text; `applyPickerResults`'s `err` branch relabels only
-`results.query/mode/scope/hideDotfiles` (so `resultsCurrent` still holds) and leaves the
-actual rows untouched rather than replacing them with the failed attempt's empty ones.
-`pickerStatus` shows `wikipediaErr` ahead of the generic searching/no-results captions;
-`queuePickerSearch` clears it on every new attempt (keystroke or mode/Scope switch) — same
-"goes stale the instant something changes" rule the Results labels already have.
+S6's four rules, each with its own test in new `cmd/noggin/picker_scope_wikipedia_test.go`:
 
-Preview: new `pickerPreviewContent(p picker)` helper (picker_view.go) returns
-`pickerWikipediaPreviewPlaceholder` for `wikipediaMode`, `p.preview.View()` otherwise;
-`renderPicker` now calls it instead of reading `p.preview.View()` directly.
+1. With Wikipedia the Active Source, File/Grep never land on/cycle to `activeRootScope` (no
+   Active Root exists to search) — `switchPickerMode` bumps a stale `activeRootScope` to
+   `allRootsScope` when landing on File/Grep from `wikipediaMode`; `switchPickerScope` cycles
+   only `allRootsScope ↔ starredScope` while `m.roots.activeIsWikipedia()`. Unconditional on
+   Active Source (S6's other three rules apply regardless of which Source is active):
+2. File mode's Starred scope includes a starred article, matched on **title** —
+   `starredPickerFiles` (files_search.go) now also emits `pickerFile{article: true, title:
+   rec.Title}` pseudo-candidates for `docRecord.Article` records, skipping every file-specific
+   filter (pathMissing/Readable/hideDotfiles — none describe a URL); `fileNameSource.String`
+   and `pickerFileRow`/`pickerLocationLabel` (picker_view.go) branch on `f.article` to rank/
+   render/highlight against `f.title` instead of a path-derived name, and to label the row
+   `wikipediaLabel` ("Wikipedia") instead of a Root name.
+3. File's All Roots scope is files only — already true unchanged (`listFiles` never reads
+   `m.docs`); a test locks it in now that Starred's own candidate set can contain articles.
+4. Grep excludes articles in every scope — new `filesOnly` (files_search.go) filters
+   `starredPickerFiles`' article pseudo-candidates out before `pickerSearchCmd`'s grepMode
+   branch ever calls `grepPickerFiles`, rather than relying on rg's own handling of a bogus
+   URL argument.
 
-D124 (Search/Fetch config asymmetry) is now `decided`, not open: `*wikipedia.Client.Search`
-is a one-line delegator to the existing free `Search`/`searchHTTPClient` — the Picker's
-injectable-client need only required *a* `Search` method, not a shared `http.Client`/config
-with Fetch. Revisit only if M4.2 surfaces a concrete shared-config need.
+Found and fixed on M3.5's own critical path, surfaced by fresh-context code review
+(code-reviewer subagent) as a high-severity gap: M3.5 is what first makes an article
+pseudo-candidate *selectable* in File mode (Starred scope), but `activatePickerInto` and
+`syncPreview` (picker.go) were not taught about `f.article` — Activate raised a raw
+`"cannot open https://...: no such file or directory"` Footer message and selecting the row
+showed the same raw OS error in the live Preview. Both now guard on `f.article` explicitly:
+Activate refuses with "`<title>`: opening a Wikipedia article from here isn't supported yet"
+and dismisses (the same "message + dismiss" shape a genuine read-error Activate already has);
+Preview shows a fixed placeholder instead of attempting the read. Real fetch-and-render from
+this path is still M4.2's job (D128) — **M4.2 needs to confirm its acceptance criteria cover
+Activate from File mode's Starred scope, not only `wikipediaMode`'s own Results list**, and
+replace both guards with the real behaviour then, not before.
 
-New `cmd/noggin/picker_wikipedia_search_test.go` (`fakeWikipediaSearcher`) covers results
-rendering (title+description), stale-generation discard, failure-keeps-rows, the error
-clearing on the next attempt, the Preview placeholder, and no-ripgrep-needed. `make check`
-clean; `make check-pty` unchanged at the same pre-existing 11 failures (TRIAGE T18).
+`docs[filepath.Clean(f.path)]` in `pickerResultsContent`'s fileMode star-marker lookup
+(picker_view.go) had the same URL-corruption risk M3.4/D127 already fixed in model.go — fixed
+here too, now that a fileMode Result can carry an article's URL as `f.path`. Un-starring an
+article from File mode's Starred scope already works correctly as a side effect (routes
+through the same `pickerSelectedPath`/`docRecord`/`withDocRecord` path M3.4 fixed) — not one
+of S6's four named rules, so not separately tested, but noted since it satisfies part of S4's
+"every place a file can" ahead of M5.1 building it deliberately.
 
-M3.4 (S2's "star key works on a Wikipedia Result exactly as on a file Result") is done.
-`togglePickerStar` (picker.go) gains a `wikipediaMode` branch: a new `pickerWikipediaCandidate`
-(mirrors `pickerGrepCandidate`'s resultsCurrent+bounds gating) names the selected
-`wikipedia.SearchResult`, and the store key is `wikipedia.ArticleURL(r.Title)` — a new
-exported `internal/wikipedia` helper (`articleURLFor(wikiBase, title)`, the exact escaping
-`Fetch`'s own request-building already uses) since a title-search result carries no URL of
-its own and only `Fetch` (M4.2) would otherwise learn one. D126 records why a title-derived
-key is accepted rather than requiring a fetch first (byte-identical to a real Fetch's
-canonical URL for the common non-redirect case; D122 precedent for the rare redirect-title
-gap, left unreconciled here). The record is stamped `Article: true, Title: r.Title` so it
-reads exactly like one M4.1 will later write.
+Also added (low-severity review findings, fixed directly rather than logged): direct unit
+tests for `starredPickerFiles`'/`fileNameSource`'s article branches
+(`files_search_test.go`), and an end-to-end rendered-row assertion for the "labelled
+Wikipedia" claim (previously only checked via a direct `pickerLocationLabel` call).
+`make check` clean. TRIAGE T20 (GLOSSARY's `Result` entry) is unchanged, still open — File
+Picker Results can now also be article-shaped, which only strengthens that item's case.
 
-Found and fixed on M3.4's own critical path (D127): `docRecord`/`withDocRecord` (model.go)
-unconditionally ran every key through `filepath.Clean`, which corrupts a URL (collapses
-`"https://"` to `"https:/"`) — a latent bug since M1.5 introduced article keys, surfaced only
-once M3.4 became the first real writer of one. Both now route through a new `docStoreKey`
-helper (`"://"`-detection — absent from any file path this codebase itself builds — to decide
-whether to Clean).
-
-`pickerWikipediaRow` (picker_view.go) takes a new `starred bool` and prepends `starMarker`
-before the single whole-row `styleRow` call (no per-character highlighting to keep separately
-styled, unlike File/Grep rows); `pickerResultsContent`'s wikipediaMode branch looks the flag
-up via `docs[wikipedia.ArticleURL(r.Title)].Starred`, live off `m.docs` every render like
-File/Grep rows already do — no separate refresh path needed.
-
-New `cmd/noggin/picker_wikipedia_star_test.go` covers star/un-star + persisted-record-after-
-restart (Article/Title preserved on un-star), the no-op-with-nothing-selected shape, and the
-live marker render; `internal/wikipedia/fetch_test.go` gained
-`TestArticleURLMatchesCanonicalFromURLEscaping` locking `ArticleURL` to `fetchAt`'s own
-resolved URL for a title needing escaping (`C++`). `make check` clean; fresh-context code
-review (code-reviewer subagent) found only two low findings, both logged rather than fixed
-in place where trivial: TRIAGE T20 (GLOSSARY's `Result` entry still doesn't mention Wikipedia
-Results) and a softened `docStoreKey` doc-comment overclaim (applied directly, no TRIAGE entry
-needed).
-
-Next: M3.5 (cross-class Picker rules — with Wikipedia active, File/Grep skip `Active Root`
-and offer only `All Roots` | `Starred`; File `Starred` includes starred articles matched on
-title, labelled `Wikipedia`; File `All Roots` and Grep in every scope exclude articles —
-needs M1.5, M3.2). No milestone-boundary gate before M3.5 itself, but M3.5 is M3's last task
-— its completion should trigger the usual milestone-boundary validation-due check before M4
-starts.
+Next: **ask the user before starting M4** — M3's milestone boundary is a validation-due gate
+(cycle-state.md), and this session (the builder) should not also be the one that validates.
+If validation is deferred, M4.1 (`document` carries source identity — file path or article
+URL+title — for the viewer title row/Document History/Find; needs M1.5) is the next task.
 
 ## Status
 
@@ -117,7 +103,7 @@ starts.
 | M3.2  | done   | -        | -         |      |
 | M3.3  | done   | -        | -         |      |
 | M3.4  | done   | -        | -         |      |
-| M3.5  | todo   | -        | -         |      |
+| M3.5  | done   | -        | -         |      |
 | M4.1  | todo   | -        | -         |      |
 | M4.2  | todo   | -        | -         |      |
 | M4.3  | todo   | -        | -         |      |
