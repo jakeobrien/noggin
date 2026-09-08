@@ -38,12 +38,17 @@ func (m model) withWikipediaFetcher(f wikipediaFetcher) model {
 // pendingArticleFetch's own doc comment (viewer.go) for the full list of
 // what invalidates a token. peek carries Activate/Peek semantics through to
 // the handler, since msg alone — not the model — is what a tea.Cmd's
-// goroutine can report. title is the requested title, kept for a failure's
+// goroutine can report. refresh marks a C6/M4.3 re-fetch (refreshArticleFetchInto,
+// below): mutually exclusive with peek (a refresh always targets an already-
+// open Active Document, never a Peek), and tells applyArticleFetch to
+// re-render the article in place (viewer.refreshDoc) rather than navigate to
+// it or start a Peek. title is the requested title, kept for a failure's
 // Footer message; article is only meaningful when err is nil.
 type articleFetchMsg struct {
 	pane    pane
 	token   int
 	peek    bool
+	refresh bool
 	title   string
 	article wikipedia.Article
 	err     error
@@ -100,22 +105,53 @@ func (m model) fetchArticleInto(target pane, title string, peek bool) (model, te
 	}
 }
 
-// applyArticleFetch is fetchArticleInto's completion half (S3, C6/M4.2): a
-// stale token — msg.pane's viewer either never had this fetch pending
-// (already resolved, or dropped by open/refreshDoc/close/startPeek/
-// clearPeek in the meantime, see pendingArticleFetch's own doc comment in
-// viewer.go) or has since started a newer one of its own — is silently
-// dropped, exactly as a stale Picker search generation already is
-// (applyPickerResults' own precedent). A real failure surfaces as a Footer
-// message (S3's own wording: "offline, article gone, timeout") and leaves
-// the viewer exactly as pendingFetch found it — neither open()'s document
-// nor startPeek's peek was ever touched by fetchArticleInto itself, so
-// there is nothing further to undo. A success builds the canonical
-// articleDocument (D129, M4.1) and either starts Peek (peek == true, S7's
-// own "never becomes the Active Document, never moves Focus, never records
-// recency") or records recency and navigates (peek == false, S4/S9 — the
-// same recordViewed-then-navigate pair activatePickerInto's own fileMode
-// branch already gives a file).
+// refreshArticleFetchInto starts an async re-fetch of target's already-open
+// article, bypassing the session cache (S3/C6/M4.3: "R re-fetches any open
+// Wikipedia article"). Unlike fetchArticleInto (Activate/Peek), it never
+// moves Focus and never creates DV2: refresh only ever acts on a viewer that
+// already has an article open (model.refreshViewer's own isArticle() guard
+// is what routes here instead of loadDocument), so target already exists
+// and already holds whatever Focus it held before R was pressed. Sharing
+// fetchArticleInto's pendingFetch/token machinery gives a re-fetch the same
+// in-progress indicator and the same "target moved on" staleness guard
+// (applyArticleFetch's token check) a plain Activate/Peek fetch already has,
+// for the same reasons — a refresh is exactly as much a real network fetch
+// as either of those (D119).
+func (m model) refreshArticleFetchInto(target pane) (model, tea.Cmd) {
+	v := m.viewerFor(target)
+	title := v.doc.title
+	m.articleFetchSeq++
+	token := m.articleFetchSeq
+	v.pendingFetch = &pendingArticleFetch{title: title, token: token}
+	m = m.withViewerFor(target, v)
+	fetcher := m.wikipediaFetcher
+	return m, func() tea.Msg {
+		article, err := fetcher.Fetch(title, true) // bypass the cache (S3's own Refresh rule)
+		return articleFetchMsg{pane: target, token: token, refresh: true, title: title, article: article, err: err}
+	}
+}
+
+// applyArticleFetch is fetchArticleInto's/refreshArticleFetchInto's shared
+// completion handler (S3, C6/M4.2, refresh half C6/M4.3): a stale token —
+// msg.pane's viewer either never had this fetch pending (already resolved,
+// or dropped by open/refreshDoc/close/startPeek/clearPeek in the meantime,
+// see pendingArticleFetch's own doc comment in viewer.go) or has since
+// started a newer one of its own — is silently dropped, exactly as a stale
+// Picker search generation already is (applyPickerResults' own precedent).
+// A real failure surfaces as a Footer message (S3's own wording: "offline,
+// article gone, timeout") and leaves the viewer exactly as pendingFetch
+// found it — neither open()'s document, startPeek's peek, nor a refresh's
+// own previously-open article was ever touched by the dispatching method
+// itself, so there is nothing further to undo. A success builds the
+// canonical articleDocument (D129, M4.1) and one of three things: a refresh
+// (msg.refresh, C6/M4.3) re-renders it in place via viewer.refreshDoc — the
+// same scroll-preserving, find-dropping re-render a file's own refresh
+// already gives, with no recency/history write since nothing navigated —
+// or, for Activate/Peek (mutually exclusive with refresh), starts Peek
+// (peek == true, S7's own "never becomes the Active Document, never moves
+// Focus, never records recency") or records recency and navigates (peek ==
+// false, S4/S9 — the same recordViewed-then-navigate pair
+// activatePickerInto's own fileMode branch already gives a file).
 func (m model) applyArticleFetch(msg articleFetchMsg) model {
 	v := m.viewerFor(msg.pane)
 	if v.pendingFetch == nil || v.pendingFetch.token != msg.token {
@@ -124,10 +160,22 @@ func (m model) applyArticleFetch(msg articleFetchMsg) model {
 	v.pendingFetch = nil
 	m = m.withViewerFor(msg.pane, v)
 	if msg.err != nil {
-		m.message = fmt.Sprintf("cannot fetch %s: %v", msg.title, msg.err)
+		// D61's own priority rule (model.combineDropMessages, model.go): never
+		// clobber a message already set. Matters most for msg.refresh (C6/
+		// M4.3), whose completion arrives after refresh()'s own synchronous
+		// half (the other viewer's read failure or dropped-find message) has
+		// already returned — without this guard, a failed article re-fetch
+		// would silently erase whatever refresh() already reported about the
+		// other viewer in the very same R press.
+		if m.message == "" {
+			m.message = fmt.Sprintf("cannot fetch %s: %v", msg.title, msg.err)
+		}
 		return m
 	}
 	doc := articleDocument(msg.article)
+	if msg.refresh {
+		return m.withViewerFor(msg.pane, m.viewerFor(msg.pane).refreshDoc(doc))
+	}
 	if msg.peek {
 		return m.withViewerFor(msg.pane, m.viewerFor(msg.pane).startPeek(doc))
 	}

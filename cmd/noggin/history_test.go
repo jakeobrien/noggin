@@ -176,7 +176,7 @@ func TestHistoryBackIsANoOpAtTheStart(t *testing.T) {
 func TestActivatingAfterGoingBackDiscardsForwardEntries(t *testing.T) {
 	m, dir, docA, _, _ := threeDocFixture(t)
 	docD := writeFileContent(t, filepath.Join(dir, "d.md"), "doc d\n")
-	m = m.refresh() // pick up d.md, written after the fixture's own tree.Walk
+	m, _ = m.refresh() // pick up d.md, written after the fixture's own tree.Walk
 
 	m = activateSelected(t, m) // a
 	m.files = m.files.move(1)
@@ -286,7 +286,7 @@ func TestRefreshCreatesNoHistoryEntry(t *testing.T) {
 	before := historyPaths(m.dv1)
 	beforePos := m.dv1.historyPos
 
-	m = m.refresh()
+	m, _ = m.refresh()
 	if got := historyPaths(m.dv1); len(got) != len(before) || got[len(got)-1] != before[len(before)-1] {
 		t.Errorf("history after refresh = %v, want unchanged %v", got, before)
 	}

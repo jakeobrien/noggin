@@ -98,7 +98,9 @@
   `$EDITOR` handoff; Peek does not count. Recency only, never frecency (C4).
 - **Refresh** — the on-demand re-read of the Active Root's file tree and, as of C3, every open
   Document Viewer's Active Document from disk in one action, preserving tree expansion,
-  selection and each viewer's scroll position. Manual only; noggin never watches the
+  selection and each viewer's scroll position. An open Wikipedia article (C6) has nothing on
+  disk to re-read: Refresh re-fetches it instead, bypassing the session cache — the one case
+  where Refresh reaches the network. Otherwise manual only; noggin never watches the
   filesystem (C2a).
 - **Result** — one row in a Picker: a file (File Picker) or a file-and-line (Grep Picker) (C2).
 - **Results list** — the Picker pane listing its Results, one row per Result, below the

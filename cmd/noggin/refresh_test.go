@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"noggin/internal/tree"
+	"noggin/internal/wikipedia"
 )
 
 // --- filesNav.refreshRoot / nearestSurvivingIndex (S2, C2a/M5.1) -----------
@@ -734,6 +736,241 @@ func TestRefreshDoesNotTouchOtherRoots(t *testing.T) {
 	}
 	if m.roots.rows[1].broken {
 		t.Errorf("inactive root's broken mark flipped true after a refresh that should never re-check it (its own snapshot, taken before deletion, must stand)")
+	}
+}
+
+// --- model.refresh with a Wikipedia article (S3, C6/M4.3) ------------------
+
+// TestRefreshRefetchesAnOpenArticleBypassingTheCache is S3/C6/M4.3's own
+// acceptance clause verbatim: R re-fetches an open Wikipedia article,
+// bypassing the session cache (Fetch's own refresh argument), rather than
+// trying to re-read a URL from disk (loadDocument would fail loudly on
+// that, D129's own named landmine) or serving a stale cached copy. The UI
+// stays responsive in the meantime — the same in-progress indicator
+// Activate/Peek's own fetch already shows (M4.2) — and the fetched content
+// replaces the article in place once it completes.
+func TestRefreshRefetchesAnOpenArticleBypassingTheCache(t *testing.T) {
+	updated := wikipedia.Article{Title: eulerArticle.Title, URL: eulerArticle.URL, Markdown: "# Leonhard Euler\n\nRe-fetched content.\n"}
+	fetcher := &fakeWikipediaFetcher{articles: map[string]wikipedia.Article{euler.Title: updated}}
+	m := sized(t, newModel(), 80, 24).withWikipediaFetcher(fetcher)
+	m = m.navigate(dv1Pane, fixtureArticle())
+	if got := m.dv1.view(); !strings.Contains(got, "Leonhard Euler was a Swiss") {
+		t.Fatalf("setup: DV1 view = %q, want the original article content", got)
+	}
+
+	after, cmd := m.refresh()
+	if cmd == nil {
+		t.Fatal("refresh() returned a nil Cmd with an article open, want the re-fetch dispatched")
+	}
+	if !after.dv1.fetching() {
+		t.Error("dv1.fetching() = false immediately after refresh, want the in-progress indicator up")
+	}
+	if after.dv1.doc.path != fixtureArticle().path {
+		t.Errorf("DV1 Active Document path changed before the re-fetch completed: %q", after.dv1.doc.path)
+	}
+	if len(fetcher.calls) != 0 {
+		t.Fatalf("Fetch calls = %v before the Cmd has run, want none yet", fetcher.calls)
+	}
+
+	got := runArticleFetch(t, after, cmd)
+
+	if !strings.Contains(got.dv1.view(), "Re-fetched content") {
+		t.Errorf("view after the refresh completed = %q, want the re-fetched content", got.dv1.view())
+	}
+	if got.dv1.fetching() {
+		t.Error("dv1.fetching() = true after the re-fetch completed, want the indicator cleared")
+	}
+	if got.message != "" {
+		t.Errorf("message = %q after a successful article refresh, want silence", got.message)
+	}
+	if len(fetcher.calls) != 1 || fetcher.calls[0] != euler.Title {
+		t.Fatalf("Fetch calls = %v, want exactly one call for %q", fetcher.calls, euler.Title)
+	}
+	if !fetcher.refreshFlags[0] {
+		t.Error("Fetch's own refresh argument = false, want true (the cache must be bypassed)")
+	}
+}
+
+// TestRefreshFailedArticleFetchLeavesTheArticleUntouchedAndReportsMessage is
+// S3's failure clause applied to Refresh ("a failed fetch ... leaves the
+// viewer's current document untouched"): the article stays exactly as it
+// was before R was pressed, and the failure surfaces as a Footer message,
+// the same shape Activate's own failed fetch already gives (M4.2).
+func TestRefreshFailedArticleFetchLeavesTheArticleUntouchedAndReportsMessage(t *testing.T) {
+	fetcher := &fakeWikipediaFetcher{errs: map[string]error{euler.Title: errors.New("offline")}}
+	m := sized(t, newModel(), 80, 24).withWikipediaFetcher(fetcher)
+	m = m.navigate(dv1Pane, fixtureArticle())
+	beforeView := m.dv1.view()
+
+	after, cmd := m.refresh()
+	got := runArticleFetch(t, after, cmd)
+
+	if got.message == "" {
+		t.Error("message is empty after a failed article refresh, want a Footer message")
+	}
+	if got.dv1.doc.path != fixtureArticle().path {
+		t.Errorf("DV1 Active Document = %q after a failed refresh, want unchanged %q", got.dv1.doc.path, fixtureArticle().path)
+	}
+	if got.dv1.view() != beforeView {
+		t.Errorf("DV1 view changed after a failed refresh, want unchanged content")
+	}
+	if got.dv1.fetching() {
+		t.Error("dv1.fetching() = true after a failed refresh, want the indicator cleared")
+	}
+}
+
+// TestRefreshFailedArticleFetchDoesNotClobberDV2sOwnRefreshMessage is a
+// fresh-context review catch (C6/M4.3): refresh()'s own synchronous half
+// (the file side) and the article's async re-fetch completion both write
+// into the single m.message slot for the very same R press. Here DV2's own
+// committed find is dropped by its ordinary synchronous re-render (setting
+// "refreshed; dv2 search cleared", combineDropMessages' own precedent) at
+// the same moment DV1's article re-fetch is dispatched; the article's fetch
+// then fails. D61's "never clobber a message already set" rule
+// (combineDropMessages) must hold across that sync/async boundary too, not
+// just within refresh()'s own single call.
+func TestRefreshFailedArticleFetchDoesNotClobberDV2sOwnRefreshMessage(t *testing.T) {
+	fetcher := &fakeWikipediaFetcher{errs: map[string]error{euler.Title: errors.New("offline")}}
+	dir := t.TempDir()
+	filePath := writeFile(t, filepath.Join(dir, "note.md")) // "# note\n"
+
+	m := sized(t, newModel(), 80, 24).withWikipediaFetcher(fetcher)
+	m = m.navigate(dv1Pane, fixtureArticle())
+	fileDoc, err := loadDocument(filePath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m = m.openDocumentInto(dv2Pane, fileDoc)
+
+	m = press(t, m, keys.FocusDV2.Keys()[0])
+	m = press(t, m, "/")
+	m = typeText(t, m, "note")
+	m = press(t, m, "enter")
+	if !m.dv2.hasFindMatches() {
+		t.Fatal("setup: DV2's find did not commit")
+	}
+
+	after, cmd := m.refresh()
+	if !strings.Contains(after.message, "dv2 search cleared") {
+		t.Fatalf("setup: message after the synchronous half of refresh = %q, want it to mention dv2's dropped search", after.message)
+	}
+
+	got := runArticleFetch(t, after, cmd)
+
+	if !strings.Contains(got.message, "dv2 search cleared") {
+		t.Errorf("message after the article's fetch failed = %q, want DV2's own refresh message preserved, not clobbered", got.message)
+	}
+}
+
+// TestStaleArticleRefreshDroppedWhenTargetNavigatesAway mirrors M4.2's own
+// "a completion whose target moved on ... is dropped" test
+// (TestStaleWikipediaFetchDroppedWhenTargetActivatesElsewhere) for a
+// Refresh-triggered re-fetch: DV1 navigates to something else while its own
+// article re-fetch is still in flight, and the stale completion must not
+// overwrite whatever DV1 has since moved on to.
+func TestStaleArticleRefreshDroppedWhenTargetNavigatesAway(t *testing.T) {
+	updated := wikipedia.Article{Title: eulerArticle.Title, URL: eulerArticle.URL, Markdown: "# Leonhard Euler\n\nRe-fetched content.\n"}
+	fetcher := &fakeWikipediaFetcher{articles: map[string]wikipedia.Article{euler.Title: updated}}
+	m := sized(t, newModel(), 80, 24).withWikipediaFetcher(fetcher)
+	m = m.navigate(dv1Pane, fixtureArticle())
+
+	after, cmd := m.refresh()
+	if !after.dv1.fetching() {
+		t.Fatal("setup: dv1 is not fetching after refresh")
+	}
+
+	// The target "moves on" before the re-fetch resolves: a real file lands
+	// in DV1 via the ordinary open() path (navigate's own underlying call).
+	moved := after.navigate(dv1Pane, document{path: "/tmp/other.md", src: []byte("# Other\n")})
+	if moved.dv1.fetching() {
+		t.Fatal("setup: dv1 still reports fetching after a real navigation, want it cleared")
+	}
+
+	got := runArticleFetch(t, moved, cmd)
+
+	if got.dv1.doc.path != "/tmp/other.md" {
+		t.Errorf("DV1 Active Document = %q after a stale refresh completion arrived, want the file it moved on to (%q)", got.dv1.doc.path, "/tmp/other.md")
+	}
+	if got.message != "" {
+		t.Errorf("message = %q after a dropped stale refresh completion, want none", got.message)
+	}
+}
+
+// TestRefreshUpdatesAnArticleInDV1BesideAFileInDV2 is M4.3's own stated
+// done-when ("an article in DV1 beside a file in DV2"): a single R press
+// re-fetches the article (async) and re-reads the file (synchronous, same
+// as ever) in the same action, each independently, mirroring S6/C3/M3.1's
+// two-viewer independence guarantee for this new mixed case.
+func TestRefreshUpdatesAnArticleInDV1BesideAFileInDV2(t *testing.T) {
+	updated := wikipedia.Article{Title: eulerArticle.Title, URL: eulerArticle.URL, Markdown: "# Leonhard Euler\n\nRe-fetched content.\n"}
+	fetcher := &fakeWikipediaFetcher{articles: map[string]wikipedia.Article{euler.Title: updated}}
+	dir := t.TempDir()
+	filePath := writeFileContent(t, filepath.Join(dir, "note.md"), "# A file\n\nOriginal.\n")
+
+	m := sized(t, newModel(), 80, 24).withWikipediaFetcher(fetcher)
+	m = m.navigate(dv1Pane, fixtureArticle())
+	fileDoc, err := loadDocument(filePath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m = m.openDocumentInto(dv2Pane, fileDoc)
+
+	writeFileContent(t, filePath, "# A file\n\nEdited outside noggin.\n")
+
+	after, cmd := m.refresh()
+	if after.dv2.doc.path == "" || !strings.Contains(after.dv2.view(), "Edited outside noggin") {
+		t.Errorf("DV2 view after refresh = %q, want the file's on-disk edit picked up immediately", after.dv2.view())
+	}
+	if !after.dv1.fetching() {
+		t.Fatal("dv1.fetching() = false after refresh, want the article's re-fetch in flight")
+	}
+
+	got := runArticleFetch(t, after, cmd)
+
+	if !strings.Contains(got.dv1.view(), "Re-fetched content") {
+		t.Errorf("DV1 view after the re-fetch completed = %q, want the re-fetched article content", got.dv1.view())
+	}
+	if !strings.Contains(got.dv2.view(), "Edited outside noggin") {
+		t.Errorf("DV2 view after the article's fetch completed = %q, want its own file edit still showing", got.dv2.view())
+	}
+}
+
+// TestRefreshUpdatesAFileInDV1BesideAnArticleInDV2 is the mirror of
+// TestRefreshUpdatesAnArticleInDV1BesideAFileInDV2: refreshViewer/
+// refreshArticleFetchInto are written pane-symmetrically (dv1Pane/dv2Pane
+// are just a parameter), so this pins that the same behaviour holds with
+// the article on the *other* side, not only DV1.
+func TestRefreshUpdatesAFileInDV1BesideAnArticleInDV2(t *testing.T) {
+	updated := wikipedia.Article{Title: eulerArticle.Title, URL: eulerArticle.URL, Markdown: "# Leonhard Euler\n\nRe-fetched content.\n"}
+	fetcher := &fakeWikipediaFetcher{articles: map[string]wikipedia.Article{euler.Title: updated}}
+	dir := t.TempDir()
+	filePath := writeFileContent(t, filepath.Join(dir, "note.md"), "# A file\n\nOriginal.\n")
+
+	m := sized(t, newModel(), 80, 24).withWikipediaFetcher(fetcher)
+	fileDoc, err := loadDocument(filePath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m = m.navigate(dv1Pane, fileDoc)
+	m = m.navigate(dv2Pane, fixtureArticle())
+
+	writeFileContent(t, filePath, "# A file\n\nEdited outside noggin.\n")
+
+	after, cmd := m.refresh()
+	if !strings.Contains(after.dv1.view(), "Edited outside noggin") {
+		t.Errorf("DV1 view after refresh = %q, want the file's on-disk edit picked up immediately", after.dv1.view())
+	}
+	if !after.dv2.fetching() {
+		t.Fatal("dv2.fetching() = false after refresh, want the article's re-fetch in flight")
+	}
+
+	got := runArticleFetch(t, after, cmd)
+
+	if !strings.Contains(got.dv2.view(), "Re-fetched content") {
+		t.Errorf("DV2 view after the re-fetch completed = %q, want the re-fetched article content", got.dv2.view())
+	}
+	if !strings.Contains(got.dv1.view(), "Edited outside noggin") {
+		t.Errorf("DV1 view after the article's fetch completed = %q, want its own file edit still showing", got.dv1.view())
 	}
 }
 

@@ -197,7 +197,7 @@ func TestRunStaleCheckAlwaysDispatchesAgainstTheCurrentBaseline(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	m := sized(t, newModel().openFolder(walkFor(t, root)), 80, 24)
 
-	m = m.refresh() // advances staleGen without any staleness
+	m, _ = m.refresh() // advances staleGen without any staleness
 	genAfterRefresh := m.staleGen
 
 	// A timer matured before this refresh (an empty staleCheckMsg carries
@@ -267,7 +267,7 @@ func TestApplyStaleResultDropsASupersededResult(t *testing.T) {
 	m := sized(t, newModel().openFolder(walkFor(t, root)), 80, 24)
 	staleGenAtDispatchTime := m.staleGen
 
-	m = m.refresh() // advances staleGen
+	m, _ = m.refresh() // advances staleGen
 
 	final, _ := m.applyStaleResult(staleResultMsg{gen: staleGenAtDispatchTime, stale: true})
 	if final.stale {
@@ -294,6 +294,63 @@ func TestRefreshClearsTheIndicatorAndRebaselines(t *testing.T) {
 	m = press(t, m, keys.Refresh.Keys()[0])
 	if m.stale {
 		t.Error("stale = true after a refresh, want it cleared")
+	}
+}
+
+// TestStaleBaselineNeverTracksAnOpenArticle is S3/C6/M4.3's own "staleness
+// indicator never fires for one" clause: snapshotStaleness's pre-existing
+// "omit, don't half-track" rule for a Stat failure (staleness.go's own
+// C6/M4.1 note) already covers a URL by construction — os.Stat on
+// https://... fails exactly like any other unreadable path — so this
+// pins that behaviour directly rather than trusting the code comment alone:
+// an article's path never appears in the baseline's tracked doc paths, and
+// the periodic check reports not-stale even though nothing about the
+// article was ever "kept in sync" with anything.
+func TestStaleBaselineNeverTracksAnOpenArticle(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	m := sized(t, newModel().openFolder(walkFor(t, root)), 80, 24)
+	m = m.navigate(dv1Pane, fixtureArticle())
+	m = m.resetStaleBaseline()
+
+	if got := m.staleBaseline.trackedDocPaths(); len(got) != 0 {
+		t.Errorf("tracked doc paths with an article open = %v, want none (a URL is never tracked)", got)
+	}
+
+	m = m.runStaleCheckSync(t)
+	if m.stale {
+		t.Error("stale = true with only an article open and nothing else changed, want false")
+	}
+}
+
+// TestStaleBaselineNeverTracksAnOpenArticleBesideAFile is the same claim
+// with a file also open in DV2: the file's own path is still tracked as
+// ever (a real on-disk edit to it must still be caught), only the
+// article's is omitted.
+func TestStaleBaselineNeverTracksAnOpenArticleBesideAFile(t *testing.T) {
+	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
+	filePath := writeFile(t, filepath.Join(root, "note.md"))
+	m := sized(t, newModel().openFolder(walkFor(t, root)), 80, 24)
+	fileDoc, err := loadDocument(filePath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m = m.navigate(dv1Pane, fixtureArticle())
+	m = m.openDocumentInto(dv2Pane, fileDoc)
+	m = m.resetStaleBaseline()
+
+	got := m.staleBaseline.trackedDocPaths()
+	if len(got) != 1 || got[0] != filePath {
+		t.Errorf("tracked doc paths = %v, want exactly [%q] (the file only, not the article)", got, filePath)
+	}
+
+	// The file changes on disk; the article does not (nothing to change).
+	bumpMtimeForward(t, filePath)
+	if err := os.WriteFile(filePath, []byte("edited\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	m = m.runStaleCheckSync(t)
+	if !m.stale {
+		t.Error("stale = false after the file beside the article was edited on disk, want true")
 	}
 }
 

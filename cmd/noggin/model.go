@@ -901,6 +901,14 @@ func (m model) startEdit() (model, tea.Cmd) {
 		m.message = "no document open to edit"
 		return m, nil
 	}
+	// S3/C6/M4.3: an article has nothing on disk for $EDITOR to open, and
+	// the out-of-scope list rules out building a handoff for one — refused
+	// with a Footer message, the same shape as "no document open" above,
+	// rather than a silent no-op (Edit is not one of Peek's carve-outs).
+	if v.doc.isArticle() {
+		m.message = "cannot edit a Wikipedia article"
+		return m, nil
+	}
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
 		editor = "vi"
@@ -1124,7 +1132,7 @@ func (m model) clearPeekIn(p pane) model {
 // reading "search cleared"/"search dismissed" verbatim still passes. Either
 // drop message still loses to a read-failure message above, the same
 // priority resize gives cause over its own dismissed/cleared text.
-func (m model) refresh() model {
+func (m model) refresh() (model, tea.Cmd) {
 	// S7/M7.1: a refresh is one of Peek's clearing triggers.
 	m = m.clearPeek()
 	if m.files.root != nil {
@@ -1140,20 +1148,28 @@ func (m model) refresh() model {
 	// scroll's "whichever viewer has Focus" routing. dv1Drop/dv2Drop mirror
 	// resize's own pair (this doc comment's third paragraph) so the two
 	// call sites combine two simultaneous find-drops into m.message the
-	// same way.
+	// same way. C6/M4.3: an open article's own "drop" step is deferred into
+	// its own async fetch cmd (below) instead — see refreshViewer's own doc
+	// comment for why there is nothing to combine into dv1Drop/dv2Drop for
+	// that case.
 	var dv1Drop, dv2Drop string
-	m, dv1Drop = m.refreshViewer(dv1Pane)
+	var dv1Cmd, dv2Cmd tea.Cmd
+	m, dv1Drop, dv1Cmd = m.refreshViewer(dv1Pane)
 	if m.dv2 != nil {
-		m, dv2Drop = m.refreshViewer(dv2Pane)
+		m, dv2Drop, dv2Cmd = m.refreshViewer(dv2Pane)
 	}
 	m = m.combineDropMessages("refreshed", dv1Drop, dv2Drop)
 	// S10/C2a/M10.1: a refresh is the user acting on the indicator ("press
 	// R"), so it both clears it and re-baselines against whatever the model
 	// ends up showing above — including a read failure's fallback (an
 	// emptied viewer, an untouched tree) — since that is the state now
-	// actually on screen, known-good by construction.
+	// actually on screen, known-good by construction. An article's own
+	// refetch (dv1Cmd/dv2Cmd, still in flight) contributes no doc path here
+	// either way — snapshotStaleness already omits a URL from tracking
+	// (staleness.go's own "omit, don't half-track" note, C6/M4.1), which is
+	// exactly S3's "the staleness indicator never fires for one".
 	m = m.resetStaleBaseline()
-	return m
+	return m, tea.Batch(dv1Cmd, dv2Cmd)
 }
 
 // refreshViewer is refresh's per-viewer step (C3/M3.1), applied to whichever
@@ -1165,10 +1181,26 @@ func (m model) refresh() model {
 // "search cleared"/"search dismissed" when the re-render silently dropped
 // that viewer's committed find, "" otherwise, for refresh's caller to
 // combine with the other viewer's own verdict.
-func (m model) refreshViewer(p pane) (model, string) {
+//
+// C6/M4.3: an open article routes to refreshArticleFetchInto instead —
+// loadDocument would try os.ReadFile on a URL and fail loudly, the exact
+// landmine D129's own revisit note named. The returned Cmd is what refresh's
+// caller batches to actually run the re-fetch; nothing here can report a
+// dropped find synchronously the way the file branch does, since the article
+// content (and whatever it does to hasFindMatches) does not change until
+// that Cmd's own completion (applyArticleFetch) runs — that asymmetry is
+// accepted for this task's scope (a dropped find loses its Footer message
+// for an article's own refresh only; the find itself is still dropped, same
+// as any other re-render, T34/T43's rule), rather than threading refresh's
+// whole message-combining machinery through an async completion.
+func (m model) refreshViewer(p pane) (model, string, tea.Cmd) {
 	v := m.viewerFor(p)
 	if !v.doc.isOpen() {
-		return m, ""
+		return m, "", nil
+	}
+	if v.doc.isArticle() {
+		next, cmd := m.refreshArticleFetchInto(p)
+		return next, "", cmd
 	}
 	path := v.doc.path
 	findHadMatches := v.hasFindMatches()
@@ -1182,9 +1214,9 @@ func (m model) refreshViewer(p pane) (model, string) {
 	}
 	m = m.withViewerFor(p, v)
 	if findHadMatches && !v.hasFindMatches() {
-		return m, "search cleared"
+		return m, "search cleared", nil
 	}
-	return m, ""
+	return m, "", nil
 }
 
 // combineDropMessages builds refresh's and resize's shared m.message shape
@@ -1410,7 +1442,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.CloseDV2):
 			return m.closeDV2(), nil
 		case key.Matches(msg, keys.Refresh):
-			return m.refresh(), nil
+			return m.refresh()
 		case key.Matches(msg, keys.Help):
 			return m.openHelp(), nil
 		case key.Matches(msg, keys.Picker):

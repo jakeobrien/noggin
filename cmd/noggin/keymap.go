@@ -51,7 +51,8 @@ type keyMap struct {
 	// Edit hands the active document to $EDITOR (S10, D3): noggin releases the
 	// terminal, resumes on exit and re-renders it from disk. Global, not
 	// pane-specific — with no document open it reports that instead of doing
-	// nothing (M4.1).
+	// nothing (M4.1). Refused with a Footer message on a Wikipedia article
+	// (S3, C6/M4.3): there is nothing on disk to hand $EDITOR.
 	Edit key.Binding
 
 	// Find starts an incremental search over the open document (S8, M5.1):
@@ -121,7 +122,11 @@ type keyMap struct {
 	// a committed find's matches the same way any other re-render already
 	// does (an in-progress query can't reach this binding at all —
 	// handleFindInput owns every key but Cancel/Activate while typing), and
-	// recomputes S8's git markers in the same pass.
+	// recomputes S8's git markers in the same pass. An open Wikipedia
+	// article (S3, C6/M4.3) re-fetches instead of re-reading from disk,
+	// bypassing the session cache — the one case where Refresh reaches the
+	// network (D119) — and never trips the staleness indicator (nothing
+	// about an article is ever tracked by it, staleness.go's own note).
 	Refresh key.Binding
 
 	// Cancel dismisses a modal or in-progress input without acting on it.

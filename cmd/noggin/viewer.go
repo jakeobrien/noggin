@@ -133,6 +133,15 @@ type viewer struct {
 // articleFetchMsg still answers this pendingFetch or has been superseded.
 type pendingArticleFetch struct {
 	title string
+	// peek == false covers both Activate and a C6/M4.3 Refresh re-fetch —
+	// there is no separate refresh field here (unlike articleFetchMsg's own
+	// refresh field, article_fetch.go) because both currently need the exact
+	// same clearPeek treatment as an ordinary Activate-targeted fetch
+	// (viewer.pendingFetch's own doc comment, above): neither is Peek, so
+	// clearPeek's peek-only partial clear must leave either one alone. If a
+	// future change ever needs to tell a Refresh-in-flight apart from an
+	// Activate-in-flight at this layer, that is the moment to add a field
+	// here rather than relying on this implicit equivalence.
 	peek  bool
 	token int
 }
@@ -241,9 +250,23 @@ func (v viewer) rememberOffset() viewer {
 // otherwise. Find state is dropped the same way any other re-render already
 // drops it (T34/T43, render's own doc comment) — S2 allows this ("Find
 // state may be lost").
+//
+// C6/M4.3's own caller (applyArticleFetch's refresh branch) hands this an
+// article re-fetched with the cache bypassed: d replaces articleCache's own
+// entry for its URL the same way open() populates one, so a later Back/
+// Forward through history (walkViewerHistory) reopens the freshly-refreshed
+// content rather than the stale copy cached before R was pressed — refresh
+// is the one caller other than open() that ever leaves a genuinely new
+// version of an article's content behind for the same path.
 func (v viewer) refreshDoc(d document) viewer {
 	v.pendingFetch = nil // C6/M4.2: see pendingFetch's own doc comment.
 	v.doc = d
+	if d.isArticle() {
+		if v.articleCache == nil {
+			v.articleCache = map[string]document{}
+		}
+		v.articleCache[d.path] = d
+	}
 	return v.render()
 }
 

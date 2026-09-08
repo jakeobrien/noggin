@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M4.3
+Current task: M5.1
 
 ## Handoff
 
@@ -71,10 +71,45 @@ clearPeek scope above, fixed + regression-tested), 1 high-severity doc-comment m
 reliance, now documented) — no TRIAGE items opened, everything fixed directly (all low/medium
 risk once found). D130/D131 record the two scope judgment calls.
 
-Next: M4.3 (`R` re-fetches every open article bypassing the cache; staleness indicator never
-fires for one; `e` refused on an article — needs M4.2). D129's own revisit note already
-characterizes both of M4.3's `R`/`e` landmines precisely; `staleness.go`'s "already satisfies
-S3 by omission" code comment (from M4.1) is the staleness half's starting point.
+M4.3 done (2026-09-08, `make check` clean, `go test -race ./cmd/noggin/...` clean). `R`/e on an
+article (S3's remaining three clauses): `model.refresh()` now returns `(model, tea.Cmd)` —
+`refreshViewer` (model.go) routes an open article to a new `refreshArticleFetchInto` (article_
+fetch.go) instead of `loadDocument` (which would `os.ReadFile` a URL and fail loudly, D129's
+named landmine), reusing fetchArticleInto's `pendingFetch`/token machinery unchanged — same
+in-progress indicator, same "target moved on" staleness guard — but never moving Focus or
+creating DV2 (a refresh only ever acts on a viewer that already has the article open).
+`articleFetchMsg` gained a `refresh bool` (mutually exclusive with `peek`); `applyArticleFetch`'s
+new branch calls `viewer.refreshDoc` in place (preserving scroll, same as a file) rather than
+`navigate`/`startPeek` — no recency/history write, since nothing navigated. `refreshDoc` itself
+now also refreshes the viewer's `articleCache` entry for the doc's URL, so a later Back/Forward
+through history reopens the freshly-refetched content instead of the stale pre-refresh copy.
+`fetcher.Fetch(title, true)` is the cache-bypass call (S3's own "bypasses the cache"); pinned by
+a `fakeWikipediaFetcher.refreshFlags` addition. Staleness needed **no new code**: `staleness.go`'s
+pre-existing "omit, don't half-track" `os.Stat`-failure rule already keeps a URL untracked (its
+own C6/M4.1 code comment already named this) — M4.3's job there was pinning it with a test, not
+building anything. `e` (startEdit, model.go) gains one guard: `v.doc.isArticle()` refuses with a
+Footer message before the `$EDITOR` handoff, the same shape as "no document open" just above it
+(not a silent no-op — Edit does not share Peek's carve-out).
+
+Fresh-context code-reviewer pass (same day): 1 medium functional bug — `applyArticleFetch`'s
+failure branch unconditionally overwrote `m.message`, silently clobbering whatever refresh()'s
+own synchronous half (the *other* viewer's read failure or dropped-find message) had already set
+for the same `R` press, breaking D61's "never clobber a message already set" rule right at the
+sync/async boundary a mixed article+file refresh introduces — fixed with an `if m.message == ""`
+guard, regression-tested
+(`TestRefreshFailedArticleFetchDoesNotClobberDV2sOwnRefreshMessage`). 1 medium test gap (no
+stale/superseded **refresh**-completion test existed, only Activate/Peek's) — added
+(`TestStaleArticleRefreshDroppedWhenTargetNavigatesAway`). 2 low: every new test only covered
+"article in DV1, file in DV2" per PLAN's literal wording — added the DV2-article/DV1-file mirror
+(`TestRefreshUpdatesAFileInDV1BesideAnArticleInDV2`); GLOSSARY's "Refresh" entry updated for the
+article-refetches-over-the-network case. No TRIAGE items opened — everything fixed directly.
+
+Next: M5.1 (star/un-star an article from the focused viewer and a Files Nav row). `document.
+isArticle()`/`label()` (M4.1) and the store's article-record shape (M1.5) are already in place;
+M5.1's own job is wiring the Star key and rendering the marker on both surfaces — see M3.4's
+Picker-star precedent for the store-toggle shape. **Peek is still not wired to any real key**
+(D130 — that is M5.2's job, not M5.1's): M5.1 only needs `fetchArticleInto`'s Activate half, which
+M4.2 already built and M4.3 leaves untouched.
 
 ## Status
 
@@ -103,7 +138,7 @@ S3 by omission" code comment (from M4.1) is the staleness half's starting point.
 | M3.5  | done   | 2026-09-08 | 2026-09-08 | review found 2 low-sev findings (TRIAGE T21, T22), independently reconfirmed at validate, still open/low-sev |
 | M4.1  | done   | 2026-09-08 | -         | review: code-reviewer subagent, same day |
 | M4.2  | done   | 2026-09-08 | -         | review: code-reviewer subagent, same day; found 1 high-sev functional bug (clearPeek scope) + 1 high-sev doc-comment placement, both fixed directly, plus 2 low fixed directly |
-| M4.3  | todo   | -        | -         |      |
+| M4.3  | done   | 2026-09-08 | -       | review: code-reviewer subagent, same day; found 1 medium functional bug (m.message clobber across sync/async refresh) + 1 medium test gap (stale refresh completion) + 2 low (mirror-case test, GLOSSARY drift), all fixed/added directly |
 | M5.1  | todo   | -        | -         |      |
 | M5.2  | todo   | -        | -         |      |
 | M6.1  | todo   | -        | -         | pre-agreed cut 1 |

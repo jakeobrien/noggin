@@ -39,7 +39,7 @@ func TestActivateWikipediaSourceWithZeroRootsTolerated(t *testing.T) {
 	// Refresh must not panic or set an error message: there is no active
 	// Root's tree to walk, so the tree-walk branch is a no-op, exactly as it
 	// already is for a Root-less session.
-	m = m.refresh()
+	m, _ = m.refresh()
 	if m.message != "" {
 		t.Errorf("refresh() message = %q, want \"\" (nothing to refresh)", m.message)
 	}

@@ -19,10 +19,18 @@ type fakeWikipediaFetcher struct {
 	articles map[string]wikipedia.Article
 	errs     map[string]error
 	calls    []string
+
+	// refreshFlags records each call's own refresh argument, index-aligned
+	// with calls (C6/M4.3): a plain []string can't distinguish a cache-hit
+	// Fetch(title, false) from a Refresh's Fetch(title, true), which is
+	// exactly the bit S3's "R ... bypasses the cache" claim needs a test to
+	// pin.
+	refreshFlags []bool
 }
 
 func (f *fakeWikipediaFetcher) Fetch(title string, refresh bool) (wikipedia.Article, error) {
 	f.calls = append(f.calls, title)
+	f.refreshFlags = append(f.refreshFlags, refresh)
 	if err, ok := f.errs[title]; ok {
 		return wikipedia.Article{}, err
 	}

@@ -54,6 +54,43 @@ func TestEditWithOpenDocumentReleasesTheTerminal(t *testing.T) {
 	}
 }
 
+// TestEditOnAWikipediaArticleIsRefusedWithFooterMessage is S3/C6/M4.3's own
+// refusal clause, checked with the plan's own "article in DV1 beside a file
+// in DV2" shape: an article has nothing on disk to hand $EDITOR, so `e` on
+// one (Focus on DV1) reports a Footer message and produces no command — the
+// same "refused, not silently ignored" shape
+// TestEditWithNoDocumentReportsFooterMessage already gives the no-document
+// case, distinct from Peek's own silent no-op (S7/M7.1's carve-out, which
+// Edit does not share) — and DV2's own file is left completely untouched,
+// since Edit acts only on the focused viewer's Active Document.
+func TestEditOnAWikipediaArticleIsRefusedWithFooterMessage(t *testing.T) {
+	filePath := writeFileContent(t, filepath.Join(t.TempDir(), "note.md"), "# A file\n\nUnaffected.\n")
+	fileDoc, err := loadDocument(filePath)
+	if err != nil {
+		t.Fatalf("loadDocument: %v", err)
+	}
+	m := sized(t, newModel(), 80, 24)
+	m = m.navigate(dv1Pane, fixtureArticle())
+	m = m.openDocumentInto(dv2Pane, fileDoc)
+	m.focus = dv1Pane
+
+	next, cmd := m.Update(keyPress(keys.Edit.Keys()[0]))
+	got := concrete(t, next)
+
+	if cmd != nil {
+		t.Errorf("cmd = %v, want nil (no $EDITOR handoff for an article)", cmd)
+	}
+	if got.message == "" {
+		t.Error("message is empty, want a report that a Wikipedia article cannot be edited")
+	}
+	if got.dv1.doc.path != fixtureArticle().path {
+		t.Errorf("DV1 Active Document = %q after a refused edit, want unchanged %q", got.dv1.doc.path, fixtureArticle().path)
+	}
+	if got.dv2.doc.path != filePath {
+		t.Errorf("DV2 Active Document = %q after DV1's edit was refused, want unchanged %q", got.dv2.doc.path, filePath)
+	}
+}
+
 // TestFinishEditReloadsDocumentFromDisk covers D3's "re-renders from disk":
 // finishEdit is what M4.1's handoff resumes into once $EDITOR exits, and it
 // must reuse loadDocument (per the PROGRESS.md handoff) rather than duplicate
