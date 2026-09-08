@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M1.10
+Current task: M2.9
 
 ## Handoff
 
@@ -184,8 +184,23 @@ were already correct and only the cross-cycle regression suite had drifted. Pre-
 uncommitted `GLOSSARY.md`/`PROGRESS.md` changes in the tree (S9a Location-line wording,
 a D52/TRIAGE-T13 citation fix) predate this task and were left untouched, out of scope.
 
-Next: M1.10 (TRIAGE T2: a backslash round-trip test gap in `escapeDocField`'s docstore
-encoding). Independent of M1.9's own work — next in cursor order.
+M1.10 done (2026-09-08, `make check` clean, `go test -race ./cmd/noggin/...` clean). New
+`TestDocStoreBackslashRoundTrip` (docstore_test.go) covers the one gap M1.7/M1.8's own
+tab/newline round-trip tests left: a literal backslash in both a `<title>` and a `<key>`,
+each also placed directly beside a literal `t`/`n` letter (not an actual tab/newline byte)
+— the shape that would decode into a phantom tab/newline if `escapeDocField` ever stopped
+escaping a raw backslash into `\\`, since `unescapeDocField`'s byte-at-a-time scan reads
+any `\` immediately followed by `t`/`n` as an escape sequence regardless of intent.
+Confirmed the test actually catches this class of regression, not just restates the
+existing tab/newline coverage: temporarily stripped backslash from `escapeDocField`'s
+`strings.NewReplacer` call and reran the test in isolation — it failed with exactly the
+predicted phantom-tab corruption (`Title:Back\tSlash` decoded back as `Title:Back<TAB>
+Slash`) and a dropped backslash-key record; reverted immediately (`docstore.go` diff empty
+after revert, confirmed via `git diff --stat`). No production code changes — test-only,
+per the task's own scope ("locking in escape-order correctness", not fixing a live bug).
+
+Next: M2.9 (TRIAGE T1, T22: a wikipedia-package test gap, merged at replan — same
+gap-shape, same package). Independent of M1.10's own work — next in cursor order.
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -229,7 +244,7 @@ accepted by design — see DECISIONS.md.
 | M5.1  | done   | -        | -         | fixed a real persistence bug found while building (D133: toggleActiveDocStar didn't stamp Article/Title for a never-before-starred article) |
 | M5.2  | done   | -        | -         | fixed the M5.1-flagged cosmetic gap (article rows rendered file-shaped); Activate/Peek widened to (model, tea.Cmd) for the new fetch dispatch |
 | M1.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
-| M1.10 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
+| M1.10 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M3.6  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |

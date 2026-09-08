@@ -404,6 +404,85 @@ func TestDocStoreKeyTabAndNewlineRoundTrip(t *testing.T) {
 	}
 }
 
+// TestDocStoreBackslashRoundTrip is M1.10's acceptance criterion (TRIAGE
+// T2): a literal backslash in a <title> and in a <key> — the one character
+// escapeDocField's own doc comment says is escaped first so the tab/
+// newline encoding stays unambiguous to reverse — round-trips through
+// save/load byte-for-byte. Each case also places the backslash directly
+// beside a literal "t" or "n" letter (not an actual tab/newline byte): a
+// raw backslash always encodes to exactly `\\`, so unescapeDocField's
+// byte-at-a-time scan must not mistake the following letter for part of
+// the backslash's own escape sequence and manufacture a phantom tab or
+// newline that was never in the original field.
+func TestDocStoreBackslashRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "documents")
+	const (
+		backslashURL  = "https://en.wikipedia.org/wiki/Backslash_Title"
+		backslashTURL = "https://en.wikipedia.org/wiki/Backslash_T_Title"
+	)
+	backslashTitle := `Embedded\Backslash`
+	backslashTTitle := `Back\tSlash` // literal backslash + 't', not a tab
+	backslashFileKey := filepath.Join(dir, `embedded\backslash`, "file.md")
+	backslashNFileKey := filepath.Join(dir, `back\nslash`, "file.md") // literal backslash + 'n', not a newline
+	want := map[string]docRecord{
+		backslashURL:      {Article: true, Title: backslashTitle},
+		backslashTURL:     {Article: true, Title: backslashTTitle, Starred: true},
+		backslashFileKey:  {},
+		backslashNFileKey: {Starred: true},
+	}
+	if err := saveDocStore(path, want); err != nil {
+		t.Fatalf("saveDocStore: %v", err)
+	}
+
+	// The escaped on-disk bytes must still be exactly one line per record
+	// and exactly 5 tab-separated fields per line — a raw backslash never
+	// introduces a literal tab or newline byte of its own, but this is
+	// checked directly against the file anyway, for the same reason the
+	// M1.7/M1.8 tab/newline round-trip tests do: inferring correctness only
+	// from a successful load could let a subtly-broken line/field count
+	// that happened to still parse slip past unnoticed.
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading store file: %v", err)
+	}
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	if len(lines) != len(want) {
+		t.Fatalf("on-disk store has %d lines, want %d (a raw backslash likely escaped incorrectly): %q", len(lines), len(want), raw)
+	}
+	for _, line := range lines {
+		if n := strings.Count(line, "\t"); n != 4 {
+			t.Errorf("line %q has %d tab-separated field boundaries, want 4 (5 fields)", line, n)
+		}
+	}
+	if !strings.Contains(string(raw), `Embedded\\Backslash`) {
+		t.Errorf("on-disk store does not contain the escaped backslash title %q: %q", `Embedded\\Backslash`, raw)
+	}
+	if !strings.Contains(string(raw), `Back\\tSlash`) {
+		t.Errorf("on-disk store does not contain the escaped backslash+t title %q: %q", `Back\\tSlash`, raw)
+	}
+	if !strings.Contains(string(raw), `embedded\\backslash`) {
+		t.Errorf("on-disk store does not contain the escaped backslash file key %q: %q", `embedded\\backslash`, raw)
+	}
+	if !strings.Contains(string(raw), `back\\nslash`) {
+		t.Errorf("on-disk store does not contain the escaped backslash+n file key %q: %q", `back\\nslash`, raw)
+	}
+
+	got := loadDocStore(path)
+	if len(got) != len(want) {
+		t.Fatalf("loadDocStore returned %d records, want %d: %+v", len(got), len(want), got)
+	}
+	for key, wantRec := range want {
+		gotRec, ok := got[key]
+		if !ok {
+			t.Fatalf("loadDocStore missing record for %q: %+v", key, got)
+		}
+		if gotRec.Title != wantRec.Title || gotRec.Article != wantRec.Article || gotRec.Starred != wantRec.Starred {
+			t.Errorf("record for %q = %+v, want %+v", key, gotRec, wantRec)
+		}
+	}
+}
+
 // TestLoadDocStoreArticleRequiresTitle checks S1's "pointer — canonical URL
 // and title", both halves required: an article line with an empty <title>
 // is dropped like any other malformed line, never kept with a blank title.
