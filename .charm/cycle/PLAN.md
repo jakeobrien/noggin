@@ -15,11 +15,11 @@ M2 is independent of M1 and can be built in either order or interleaved. Milesto
 M9 are the spec's pre-agreed cuts in cut order (Recent → Root names → background tint) and are
 sequenced late so overrun costs the least-valued work; M8's location line and Picker rows fall
 back to the folder base name if M7 is cut. M8.1 (half-page paging) and M3.1 (2-char threshold)
-are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.10,
-M2.9, M3.6–M3.7 and M4.4 are replan-added hygiene/test-gap tasks, independent of the milestone
-sequencing above; pull forward whenever a short slot is available. M1.9 (the `make check-pty`
-string-drift fix) is worth doing before M9.1 specifically, since M9.1's own acceptance
-criterion leans on that gate.
+are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.11,
+M2.9–M2.10, M3.6–M3.7, M4.4 and M5.3 are replan-added hygiene/test-gap tasks, independent of
+the milestone sequencing above; pull forward whenever a short slot is available. M1.9 and
+M1.11 (the `make check-pty` string-drift fixes) are worth doing before M9.1 specifically,
+since M9.1's own acceptance criterion leans on that gate.
 
 Cross-cutting: every network call is user-initiated (search, Activate, Peek, Refresh — D119)
 and every network-touching task must be testable without the network (fake/injected client,
@@ -92,6 +92,14 @@ Delivers: S1, S5 (the mode/scope structure — lists fill in M5/M6), store groun
   first (per its doc comment) — done when: a docstore test adds a backslash case for both the
   title and key round-trips, locking in escape-order correctness — effort: 1 (replan: TRIAGE
   T2)
+- **M1.11** — `test/pty/checks.py` residual string-drift M1.9's own pass missed: line 937's
+  `"Roots" not in hidden_lines` assertion is vacuous since the M1.6 rename (the literal string
+  never appears regardless of Navigator visibility, so the check passes unconditionally); four
+  check() description strings (lines 398, 490, 551, 1428) still read "...Roots" while their own
+  assertions already check "Sources" — done when: the line-937 assertion reads `"Sources" not
+  in hidden_lines` and is confirmed to actually fail on a temporary Navigator-hide-toggle
+  revert (then restored), and no description string in checks.py says "Roots" while its own
+  assertion checks "Sources" — effort: 1 (replan: TRIAGE T1, T3)
 
 ## M2 — Wikipedia client
 
@@ -146,6 +154,11 @@ Delivers: the fetch/search/convert capability S2 and S3 build on (`internal/` pa
   uncaught — done when: an `httptest`-backed test exercises `NewClient()`'s `Fetch` and a
   separate test exercises `(*Client).Search` against an `httptest` server via the existing
   overridable-base pattern — effort: 1 (replan: TRIAGE T1, T22)
+- **M2.10** — M2.9's two new tests mutate package-level vars (`fetchBase`, `wikiBase`,
+  `searchBase`) with a save/restore-on-defer pattern but no not-parallel-safe doc warning, the
+  convention the codebase already establishes for this exact hazard class
+  (`cmd/noggin/files_search.go`'s `grepArgMaxBytes` note) — done when: both tests (or their var
+  declarations) carry an equivalent doc comment — effort: 1 (replan: TRIAGE T2)
 
 ## M3 — Wikipedia Picker
 
@@ -225,6 +238,10 @@ Delivers: S4 (star parts), S5 (Starred rows), S6 (Files Nav lists)
   Activate and Peek on an article row fetch per M4.2 — done when: browse_starred tests cover
   each scope from both kinds of Active Source and an Activate from a row — effort: 3 (needs:
   M1.4, M1.5, M4.2)
+- **M5.3** — `browseRow.rootLabel`'s doc comment predates the article case M5.2 introduced
+  (rootLabel holds the fixed `wikipediaLabel` for an article row, not a Root's base name) and
+  doesn't cross-reference it — done when: the comment names all three cases (Root-covered
+  file, orphan file, article) — effort: 1 (replan: TRIAGE T4)
 
 ## M6 — Recent for articles
 

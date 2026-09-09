@@ -288,9 +288,25 @@ no new discrepancies found, still `open` pending charm-replan; none block M6.1. 
 in the tree throughout (unrelated to this validate pass, pre-existing per M1.9's own note):
 `.charm/GLOSSARY.md`'s S9a Location-line wording hunk.
 
-Next: M6.1 (pre-agreed cut 1) is still `todo` — untouched this session, nothing to build or
-validate there yet. TRIAGE.md's 4 open items are a replan trigger before or alongside M6.1
-starts (charm-replan, not charm-build, per the doc-map).
+**Replan pass (2026-09-08, third pass):** triaged all 4 open TRIAGE.md items (T1-T4, filed by
+the validate pass above against M5.1/M5.2/M1.9/M2.9). All four are low/medium-risk,
+non-blocking hygiene fixes following the exact pattern the prior replan pass already
+established (M1.9/M1.10/M2.9/M3.6/M3.7/M4.4) — accepted straight into PLAN.md, no DECISIONS.md
+entries (none material enough), nothing deferred to ROADMAP.md: **M1.11** (T1+T3, merged —
+both are `test/pty/checks.py` "Roots"/"Sources" string-drift M1.9's own pass missed: a vacuous
+line-937 assertion and 4 cosmetic description strings), **M2.10** (T2 — not-parallel-safe doc
+note missing on M2.9's var-mutating tests), **M5.3** (T4 — `rootLabel` comment doesn't
+cross-reference the article case). TRIAGE.md is now empty. Checked D133's own "Revisit" note
+(a future M6.1 making unstarred articles reachable via Recent flat rows will need
+`toggleDocStar`'s flat-mode branch to stamp `Article`/`Title` the same way M5.1 fixed for the
+viewer) — still accurate, already documented in-line at the code (per D133's own intent for
+"a future M6.1 reader"), no PLAN change needed: M6.1's builder will hit the comment naturally
+when wiring flat rows; if it doesn't get caught there, that's a review/validate finding at
+M6.1's own gate, not a gap to pre-empt here.
+
+Next: M6.1 (pre-agreed cut 1) is still `todo` — untouched this session, nothing built or
+validated there yet. M1.11/M2.10/M5.3 are independent hygiene tasks (per PLAN.md's own note)
+— pull forward whenever a short slot is available, otherwise resume at M6.1 in cursor order.
 
 ## Status
 
@@ -325,9 +341,12 @@ starts (charm-replan, not charm-build, per the doc-map).
 | M1.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness); fresh-context review: found 1 medium-sev vacuous check M1.9 itself missed (TRIAGE T1) + 1 low-sev cosmetic string drift (TRIAGE T3); validate: fresh-context validator subagent, PASS (make check-pty 0 failures) |
 | M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
 | M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22); fresh-context review: 1 low-sev doc-comment gap re: t.Parallel hazard (TRIAGE T2); validate: fresh-context validator subagent, PASS |
+| M2.10 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T2, second occurrence) |
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
+| M1.11 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3, second occurrence) |
+| M5.3  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | todo   | -        | -         | pre-agreed cut 1 |
 | M7.1  | todo   | -        | -         | pre-agreed cut 2 |
 | M7.2  | todo   | -        | -         | pre-agreed cut 2 |
