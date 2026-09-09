@@ -285,6 +285,15 @@ func TestFetchAtZeroValueClientDoesNotPanic(t *testing.T) {
 // NewClient()-built Client — exercising the real construction path
 // (ensureInit via NewClient, not newTestClient's direct struct literal)
 // alongside the real exported method.
+//
+// Test-only mutation contract (TRIAGE T2, same hazard class as
+// files_search.go's grepArgMaxBytes): this test mutates the package-level
+// fetchBase/wikiBase vars directly (save the originals, point them at the
+// httptest server, defer restoring them). That save/point/restore pattern
+// is not goroutine-safe: no test in this package may call t.Parallel()
+// while this test (or TestClientSearchDelegatesToSearchTitles) still
+// mutates a package-level base var this way, or the mutation could leak
+// across concurrently running tests.
 func TestClientFetchViaNewClientDelegatesToFetchAt(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/page/html/Euler", func(w http.ResponseWriter, r *http.Request) {

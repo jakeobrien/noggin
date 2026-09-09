@@ -68,15 +68,23 @@ normal terminal sizes) but should be fixed before cycle close — it stays `open
 TRIAGE.md for the next charm-replan pass to promote into a PLAN task; T27/T28 (low, doc-comment
 staleness) confirmed accurate, no functional impact, left `open` for hygiene.
 
+M2.10 is now done: TRIAGE T2's not-parallel-safe doc-comment gap on M2.9's two package-level-
+var-mutating tests (`TestClientFetchViaNewClientDelegatesToFetchAt` in fetch_test.go,
+`TestClientSearchDelegatesToSearchTitles` in search_test.go) is closed — each test now carries
+a doc comment stating the save/point/restore mutation of `fetchBase`/`wikiBase`/`searchBase`
+is not goroutine-safe and cross-references the other test, mirroring the convention
+`files_search.go`'s `grepArgMaxBytes` comment already establishes for this exact hazard class.
+`make check` (build/vet/fmt/test) is green. Not yet reviewed/validated (dates left `-`).
+
 Cursor is now M1.11 (the `make check-pty` string-drift fix, pulled forward ahead of M9.1 per
 the milestone-order note at the top of PLAN.md — M9.1's own acceptance criterion leans on that
-same check-pty gate). M2.10 and M5.3 remain independent replan-added hygiene tasks,
-pull-forward-anytime. Working tree: M8.3's code+test changes are committed as that task's own
-commit; PROGRESS.md/TRIAGE.md carry this session's own edits (Reviewed-date backfill for
-M8.1/M8.2 plus T26/T27/T28 from the preceding review pass, and this session's Validated-date
-stamps) — not yet committed.
+same check-pty gate). M5.3 remains an independent replan-added hygiene task,
+pull-forward-anytime. Working tree: M2.10's own change is committed as its own commit;
+PROGRESS.md carries this session's own edits (M2.10 Status row + this Handoff) — not yet
+committed at the time this section was written (see the commit that follows).
 
-No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — see above.
+No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — carried over from
+the preceding session, unrelated to M2.10.
 
 ## Status
 
@@ -111,7 +119,7 @@ No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — see
 | M1.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T18) |
 | M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22) |
-| M2.10 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
+| M2.10 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |

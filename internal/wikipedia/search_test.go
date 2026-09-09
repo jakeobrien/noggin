@@ -118,6 +118,15 @@ func TestSearchTitlesOffline(t *testing.T) {
 // server, restores it on return, and calls Search on a NewClient()-built
 // Client — exercising both delegation hops from the real exported method
 // down to searchTitles.
+//
+// Test-only mutation contract (TRIAGE T2, same hazard class as
+// files_search.go's grepArgMaxBytes): this test mutates the package-level
+// searchBase var directly (save the original, point it at the httptest
+// server, defer restoring it). That save/point/restore pattern is not
+// goroutine-safe: no test in this package may call t.Parallel() while
+// this test (or TestClientFetchViaNewClientDelegatesToFetchAt) still
+// mutates a package-level base var this way, or the mutation could leak
+// across concurrently running tests.
 func TestClientSearchDelegatesToSearchTitles(t *testing.T) {
 	var gotQuery, gotLimit string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
