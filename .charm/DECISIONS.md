@@ -1723,3 +1723,45 @@
 - Revisit: if M6.1 makes an unstarred, never-before-seen article reachable as a Files Nav flat
   row, `toggleDocStar`'s flat-mode branch will need the same stamping, from a real title source
   (not `row.name`, which is `filepath.Base(row.path)` — a URL slug, not the article's title).
+
+## D134: M9.1's S11 background tint is a post-render SGR-tracking pass over already-rendered content, not per-style `Background()` calls threaded through every row renderer; tint colour is ANSI256 236
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-09
+- Context: S11 asks every unfocused pane (rootsPane, filesPane, dv1Pane, dv2Pane) to render on
+  a subtly lighter background. The pane's content is built from many independently-rendered
+  runs (each nav row its own `Style.Render` call; DV1/DV2's open-document case is glamour-
+  rendered markdown with its own dense internal styling) — wrapping the whole pane once in an
+  outer `Style.Background(...)` fails outright (`lipgloss-v2-row-rendering-gotchas.md`'s own
+  finding: any nested `Style.Render` always closes with a bare full reset, cancelling an outer
+  background for everything after the first run), and threading an explicit `Background()`
+  through every individual style variable across rootsnav.go/files.go/viewer.go (and glamour's
+  own, uncontrolled styling) would be both far more invasive and still miss glamour entirely.
+- Decision: a single function, `tintPaneBackground` (`cmd/noggin/style.go`), post-processes a
+  pane's already-rendered title/content string: an SGR-tracking scan that (re-)injects the
+  tint after every reset, skips it entirely while `SGR 7` (reverse video) is in force — a
+  selected row (S5) or Peek's inverted title (S7) swaps whatever colours are already active,
+  so an explicit background there becomes the swapped-in text colour instead of the terminal's
+  own default pair — and explicitly clears the tint (not just declines to write it) immediately
+  before every `"\n"` it wrote, because a second, outer `Style.Render` (`renderBox`'s own
+  border-drawing wrap) re-asserts whatever SGR was merely *active* at a line break otherwise
+  (`lipgloss-reflow-sgr-continuity.md`, this cycle's own finding, confirmed live via
+  `make check-pty`). `renderPane` calls it on the title and content separately, only when
+  `m.focus != p`; the border itself is never touched (S11's own "the existing border-colour cue
+  stays"), and Picker's unrelated `renderBox` call sites (no per-pane Focus of their own) are
+  untouched since the tinting happens in `renderPane`, not inside the shared `renderBox`.
+  Tint colour: ANSI256 236 (a dark grey a shade above a typical terminal's own near-black), a
+  fresh, unclaimed value distinct from every existing pane colour (240 unfocused border, 205
+  focused border, 245 dim text, 214 stale row) — no prior D-number fixed a specific value, and
+  SPEC.md's own OQ1 resolution left the exact shade to implementation, matching S11's explicit
+  "provisional... not a final palette" framing.
+- Why: this is the only approach that reaches every pane's content uniformly — including DV1/
+  DV2's glamour-rendered markdown, which no per-style-variable change could touch — without
+  rewriting how any existing row is rendered, and it is a self-contained, independently unit-
+  testable function (`focus_background_test.go`) rather than a change scattered across four
+  files' worth of style variables.
+- Revisit: the roadmap's own style pass (SPEC.md's "Out of scope") may replace this evaluation
+  entirely with a real palette; if it does, `tintPaneBackground`'s SGR-tracking shape (not just
+  its colour constant) is the piece worth keeping or deliberately superseding, since the reflow
+  interaction it works around is a lipgloss v2 property, not specific to this shade of grey.

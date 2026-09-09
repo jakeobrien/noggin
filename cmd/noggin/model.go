@@ -2075,7 +2075,8 @@ func (m model) frame() string {
 // v1 required.
 func (m model) renderPane(p pane, r rect, content string) string {
 	style := borderStyle
-	if m.focus == p {
+	focused := m.focus == p
+	if focused {
 		style = focusedBorderStyle
 	}
 	// S7/M7.1: a Peeked document gets the inverted header instead of the
@@ -2089,7 +2090,17 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	if (p == dv1Pane || p == dv2Pane) && (m.viewerFor(p).peeking() || m.viewerFor(p).fetching()) {
 		titleRenderStyle = peekTitleStyle
 	}
-	return renderBox(style, r, titleRenderStyle.Render(titleRow(m.paneTitle(p), p.focusBadge(), r.content().width)), content)
+	title := titleRenderStyle.Render(titleRow(m.paneTitle(p), p.focusBadge(), r.content().width))
+	// S11/M9.1: the tint applies to the title row and content alike — the
+	// whole pane except its border, whose own colour cue (borderStyle vs
+	// focusedBorderStyle above) stays exactly as it was. Applied here, not
+	// inside renderBox, so the Picker's own unrelated renderBox call sites
+	// (no per-pane Focus of their own) are untouched.
+	if !focused {
+		title = tintPaneBackground(title)
+		content = tintPaneBackground(content)
+	}
+	return renderBox(style, r, title, content)
 }
 
 // titleRow lays out a pane's title row: the title on the left, its focus-key

@@ -1656,4 +1656,44 @@ check("M8.3 pty: the File Picker row's path segment reaches the wire de-emphasiz
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("M8.3 pty: exits 0 after the de-emphasis/no-fragment check", code == 0, f"exit {code}")
 
+# --- M9.1 (S11): unfocused panes carry a background tint ------------------
+# focus_background_test.go already pins tintPaneBackground's own SGR
+# tracking (reset-recovery across rows, reverse-video runs — a selected
+# row's bar, Peek's inverted title — always left alone) directly; this is
+# the one thing only a real terminal proves: the tint's own ANSI256
+# background escape (48;5;236, style.go's unfocusedTintCode) actually
+# reaches the wire for an unfocused pane, is absent from the focused one,
+# and never gets mixed into a selected row's own reverse-video escape
+# (confirmed live during this task's own development: lipgloss's word-wrap
+# step, invoked by renderBox's outer Style.Render, re-asserts whatever SGR
+# was active right before a "\n" at the start of the next line — an early
+# version of tintPaneBackground left the tint "active" but unwritten across
+# a row boundary and that re-assertion alone leaked it into the very next
+# row's own reverse escape, with no fix visible at the tintPaneBackground-
+# output level, only on the wire).
+
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.2)
+out = s.out.decode("utf-8", "replace")
+footer = screen_of(s.out, 80, 24).raw_lines()[-1]
+check("M9.1 pty: focus starts on Files, leaving Sources and DV1 unfocused",
+      footer.startswith("Files"), repr(footer))
+check("M9.1 pty: the unfocused Sources Nav's Wikipedia row reaches the wire tinted (48;5;236)",
+      re.search(r"48;5;236m[\s\S]{0,60}Wikipedia", out) is not None, repr(s.out[-1500:]))
+check("M9.1 pty: the unfocused DV1's empty-state text reaches the wire tinted (48;5;236)",
+      re.search(r"48;5;236[^\x1b]*(?:\x1b\[[0-9;]*m)*No document open", out) is not None, repr(s.out[-1500:]))
+
+mark = len(s.out)
+s.send(KEY["FocusRoots"], 0.5)  # "r" -> Sources Nav gains Focus, Files Nav loses it
+delta = s.out[mark:].decode("utf-8", "replace")
+check("M9.1 pty: moving Focus to Sources Nav redraws it untinted",
+      re.search(r"48;5;236m[\s\S]{0,60}Wikipedia", delta) is None, repr(delta[:600]))
+check("M9.1 pty: the now-unfocused Files Nav's own unselected row redraws tinted",
+      re.search(r"48;5;236m[\s\S]{0,60}empty", delta) is not None, repr(delta[:900]))
+check("M9.1 pty: the now-unfocused Files Nav's selected row keeps its own reverse-video bar untinted",
+      re.search(r"48;5;236[^m]*;7m|;7;[^m]*48;5;236m", delta) is None, repr(delta[:900]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M9.1 pty: exits 0 after the background-tint check", code == 0, f"exit {code}")
+
 done()

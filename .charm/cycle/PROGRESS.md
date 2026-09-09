@@ -17,74 +17,45 @@
 
 ## Cursor
 
-Current task: M9.1
+Current task: M10.1
 
 ## Handoff
 
-M8.3 (de-emphasized secondary text, S10/D117) is done, completing milestone M8: the Sources
-Nav's path line (line 2, both a Root row's and the Wikipedia row's) renders de-emphasized via
-`rootsPathStyle = Foreground(dimColor)` (rootsnav.go); a File Picker row's path segment (from
-the location label's own trailing gap onward) renders the same way, with a fuzzy-matched
-character never dimmed even inside that segment (`highlightMatches`' new `dimFrom int`
-parameter and per-column `class` priority — matched beats dim beats base — picker_view.go);
-`pickerGrepRow` passes the new `noDim` sentinel, unaffected. D117's own change — dropping the
-Root's parent-path fragment from Picker File rows entirely — landed in the same task:
-`pickerRootLabel` is now just `rightTruncate(f.root.displayName(), budget)`, no parent segment;
-two now-obsolete disambiguation/budget tests tied to that fragment
-(`TestPickerFileResultsDisambiguateSameBasenameRoots`, `TestPickerFileRowFillsItsFullBudget`)
-are retired with an explanatory note in picker_view_test.go, replaced by
-`TestPickerRootLabelTruncatesALongName` (the label's own remaining truncation case) and three
-new S10-specific tests (`TestPickerFileRowDropsTheParentPathFragment`,
-`TestPickerFileRowDimsThePathButNotTheRootLabel`,
-`TestPickerFileRowMatchedPathCharactersAreNeverDimmed`). `TestRootsNavPathLineIsDeEmphasized`
-covers the Sources Nav half. `cellStyles` (picker_view_test.go) gained a `dim bool` field and
-ANSI256-foreground-sequence parsing (`38;5;<n>` vs `dimColorCode`), reused by a new
-`dimColumns` helper and by rootsnav_test.go's new `lineFullyReversed` (a fresh-context review
-found the two rewritten reverse-video assertions in `TestRootsNavHighlightsActiveRoot`/
-`TestRootsNavSelectionHighlightsBothLines` were only passing on a lucky padding-run coincidence
-once a combined-attribute row filled its width exactly — confirmed by tracing lipgloss's own
-SGR serialization directly). 5 new `make check-pty` checks added (S10 dim-styling-reaches-
-the-wire + fragment absence). A second reviewer pass (stale-comment sweep across
-picker_view.go/picker_view_test.go/rootlabel_test.go/files_search.go, all fixed) found no
-further issues. `make check` and `make check-pty` (~255 checks) both green.
+M9.1 (Focus by background, S11, pre-agreed cut 3) is done. Unfocused panes (rootsPane,
+filesPane, dv1Pane, dv2Pane) now render on ANSI256 236, a subtly-lighter-than-black tint; the
+focused pane keeps the terminal's own background; the border-colour cue (borderStyle vs
+focusedBorderStyle) is untouched, per S11.
 
-Milestone M8 (M8.1/M8.2/M8.3) has now been validated fresh-context (charm-validate,
-2026-09-09, via a read-only validator subagent): `make check` and `make check-pty` (~255
-checks) both green; each task's acceptance criterion independently re-derived from code, not
-taken from this Handoff's own prose — M8.1's pgdn/ctrl+d same-offset claim traced to
-`TestScrollActionsMoveTheViewport`'s exact-offset subtest (not just same formula); M8.2's four
-location-line states, the S9a three-segment text (byte-for-byte) and the content-height-minus-
-one clause all independently confirmed in location.go/location_test.go; M8.3's dim-styling and
-D117 parent-fragment removal confirmed via the real ANSI-parsing `dimColumns` helper, not a
-substring check. All three: PASS. All three Status rows now carry today's `Validated` date.
+The pane's content is many independently-`Style.Render`ed runs (each nav row its own call;
+DV1/DV2's open-document case is glamour-rendered markdown), so a single wrapping
+`Style.Background(...)` fails outright (`lipgloss-v2-row-rendering-gotchas.md`'s own finding —
+any nested `Style.Render` always closes with a bare full reset). The fix is a new function,
+`tintPaneBackground` (style.go): an SGR-tracking pass over already-rendered content that
+(re-)injects the tint after every reset, skips it entirely while `SGR 7` (reverse video) is in
+force (a selected row, S5; Peek's inverted title, S7 — an explicit background there would
+become the swapped-in text colour instead of the terminal's default pair), and — the one
+genuinely new gotcha this task found — explicitly *clears* the tint immediately before every
+`"\n"` it wrote, not just declines to write more: `renderBox`'s own outer `Style.Render` (the
+border-drawing wrap) re-asserts whatever SGR was merely *active* at a line break, for its own
+unrelated soft-wrap-continuity reasons, which was leaking the tint into the very next row's own
+reverse-video escape until this was added — confirmed live via `make check-pty`, not visible
+from `tintPaneBackground`'s own isolated output (see `lipgloss-reflow-sgr-continuity.md`,
+condensed as this cycle's finding; D134 records the design/colour decision). `renderPane` calls
+it on the title and content separately, only when `m.focus != p`.
 
-Validate also independently reproduced TRIAGE **T26** (high severity, open, filed against
-M8.2's location.go by the preceding code-review pass): at a pathologically short terminal
-(DV1 content height 0), the location line is still composed and `renderBox`'s `MaxHeight`
-silently clips the pane, dropping DV1's own bottom border — a real, reproducible frame-
-corruption bug, confirmed by direct trace + a scratch repro (not merely plausible). It does
-**not** block M8.2's own sign-off (its documented acceptance criterion is independently met at
-normal terminal sizes) but should be fixed before cycle close — it stays `open`/`high` in
-TRIAGE.md for the next charm-replan pass to promote into a PLAN task; T27/T28 (low, doc-comment
-staleness) confirmed accurate, no functional impact, left `open` for hygiene.
+Tests: `focus_background_test.go` — direct `tintPaneBackground` unit coverage (reset-recovery
+across rows, reverse-video left alone, the cross-"\n"-into-reverse-video regression pinned
+directly, and the same regression re-pinned end to end through `renderPane` since the isolated
+function alone didn't show it) plus `TestUnfocusedPanesCarryTheS11BackgroundTint` — the
+acceptance criterion itself, asserting the tint on every unfocused pane and its absence on the
+focused one across all four focus targets. 6 new `make check-pty` checks (tint reaches the
+wire for an unfocused Sources/DV1 pane at startup; moving Focus redraws both sides correctly;
+the now-unfocused Files Nav's selected row keeps its reverse-video bar untinted). `make check`
+and `make check-pty` (268 checks) both green.
 
-M5.3 is now done: `browseRow.rootLabel`'s field-level doc comment (browse_list.go) predated
-the article case M5.2 introduced and only described the Root-covered/orphan split. It now
-names all three shapes explicitly — Root-covered file (root.displayName, S8/M7.3), orphan
-file (meaningless, left "", orphanDir carries the label instead), and article (the fixed
-`wikipediaLabel`, cross-referencing buildDocBrowseRow/C6/M5.2 and S6's "labelled Wikipedia
-where files are labelled by Root name"). `make check` (build/vet/fmt/test) is green. Doc-only
-change; no behavior touched.
-
-All of M1.9–M1.11, M2.9–M2.10, M3.6–M3.7, M4.4 and M5.3 (the replan-added hygiene/test-gap
-tasks) are now done. Cursor moves to M9.1 (Focus by background, pre-agreed cut 3) — the next
-milestone-sequenced task; its own acceptance criterion leans on the check-pty gate M1.9/M1.11
-just finished hardening. Working tree: M5.3's own change is committed as its own commit;
-PROGRESS.md carries this session's own edits (M5.3 Status row + cursor move + this Handoff)
-— not yet committed at the time this section was written (see the commit that follows).
-
-No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — carried over,
-unrelated to M5.3.
+Cursor moves to M10.1 (README, needs M1–M9 as built) — the cycle's last task. Not yet reviewed
+or validated. No blockers. T26 (open, high, TRIAGE.md, filed against M8.2's location.go) is a
+real bug but not a blocker — still carried over, unrelated to M9.1.
 
 ## Status
 
@@ -132,5 +103,5 @@ unrelated to M5.3.
 | M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
-| M9.1  | todo   | -        | -         | pre-agreed cut 3 |
+| M9.1  | done   | -        | -         | pre-agreed cut 3 |
 | M10.1 | todo   | -        | -         |      |
