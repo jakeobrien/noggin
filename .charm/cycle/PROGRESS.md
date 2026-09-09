@@ -257,10 +257,8 @@ DV1/DV2-swapped M4.3 counterparts exactly, both passing on first run. Test-only,
 production code changes.
 
 This closes out the last of the replan-added hygiene/test-gap tasks (M1.9–M1.10, M2.9,
-M3.6–M3.7, M4.4); TRIAGE.md is empty and every row in Status is `done` up to this point.
-
-Next: M6.1 (pre-agreed cut 1). Independent of M4.4's own work — next in cursor order,
-resuming the milestone sequence.
+M3.6–M3.7, M4.4); TRIAGE.md was empty at this moment and every row in Status was `done` up
+to this point (see the Validate-pass paragraph below: no longer true by end of day).
 
 **Replan note (2026-09-08):** triaged all seven open TRIAGE.md items into new PLAN tasks
 (M1.9, M1.10, M2.9, M3.6, M3.7, M4.4 — see PLAN.md for each; none block the M5.1 cursor).
@@ -272,6 +270,27 @@ DECISIONS.md's correction entry. Also closed the open D122 judgment question (M2
 cache-key guarantee): now that M4.2/M3.4 have real callers, the codebase's own doc comments
 (picker.go's `togglePickerStar`) already show the narrower guarantee is understood and
 accepted by design — see DECISIONS.md.
+
+**Validate pass (2026-09-08, fresh-context validator subagent):** covered every `done`/
+Validated=`-` task accumulated since the last validate stamp — M5.1, M5.2, M1.9, M1.10,
+M2.9, M3.6, M3.7, M4.4. Deterministic: `make check` clean, `make check-pty` 0 failures
+(needs a >120s budget — the harness's own sleeps, not a sandbox limit, ran it directly with
+300s), `go test -race ./...` clean across all 4 packages. All 8 tasks independently
+re-verified PASS against their PLAN.md acceptance criteria (named tests read, executed, and
+confirmed to exercise the described mechanism, not just trusted from this Handoff's prose).
+Correction to the M4.4 paragraph above: "TRIAGE.md is empty" was true only at that moment —
+the M5.1/M5.2/M1.9/M2.9 code-review passes (each dated 2026-09-08, same day) each opened one
+finding afterward, so TRIAGE.md currently holds 4 open items (T1-T4: a vacuous `make
+check-pty` check at checks.py:937 assumed fixed by M1.9 but not, a missing not-parallel-safe
+doc note on M2.9's var-mutating tests, cosmetic stale description strings in checks.py, and
+a doc-comment gap in browse_list.go's `rootLabel`) — all four reconfirmed accurate as filed,
+no new discrepancies found, still `open` pending charm-replan; none block M6.1. Uncommitted
+in the tree throughout (unrelated to this validate pass, pre-existing per M1.9's own note):
+`.charm/GLOSSARY.md`'s S9a Location-line wording hunk.
+
+Next: M6.1 (pre-agreed cut 1) is still `todo` — untouched this session, nothing to build or
+validate there yet. TRIAGE.md's 4 open items are a replan trigger before or alongside M6.1
+starts (charm-replan, not charm-build, per the doc-map).
 
 ## Status
 
@@ -301,14 +320,14 @@ accepted by design — see DECISIONS.md.
 | M4.1  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; validate: fresh-context validator subagent, same day, PASS |
 | M4.2  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 high-sev functional bug (clearPeek scope) + 1 high-sev doc-comment placement, both fixed directly, plus 2 low fixed directly; validate: fresh-context validator subagent, same day, PASS (Peek mechanism correctly not yet wired to a key per D130, deferred to M5.2) |
 | M4.3  | done   | 2026-09-08 | 2026-09-08 | review: code-reviewer subagent, same day; found 1 medium functional bug (m.message clobber across sync/async refresh) + 1 medium test gap (stale refresh completion) + 2 low (mirror-case test, GLOSSARY drift), all fixed/added directly; validate: fresh-context validator subagent, same day, PASS (TRIAGE T23: mirror DV-arrangement test gap for staleness/edit) |
-| M5.1  | done   | -        | -         | fixed a real persistence bug found while building (D133: toggleActiveDocStar didn't stamp Article/Title for a never-before-starred article) |
-| M5.2  | done   | -        | -         | fixed the M5.1-flagged cosmetic gap (article rows rendered file-shaped); Activate/Peek widened to (model, tea.Cmd) for the new fetch dispatch |
-| M1.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness) |
-| M1.10 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.9  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T22) |
-| M3.6  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T20) |
-| M3.7  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T21) |
-| M4.4  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T23) |
+| M5.1  | done   | 2026-09-08 | 2026-09-08 | fixed a real persistence bug found while building (D133: toggleActiveDocStar didn't stamp Article/Title for a never-before-starred article); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
+| M5.2  | done   | 2026-09-08 | 2026-09-08 | fixed the M5.1-flagged cosmetic gap (article rows rendered file-shaped); Activate/Peek widened to (model, tea.Cmd) for the new fetch dispatch; fresh-context review: 1 low-sev doc-comment gap (TRIAGE T4); validate: fresh-context validator subagent, PASS |
+| M1.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T18, corrected: real regression from M1.3/M1.6 renames, not flakiness); fresh-context review: found 1 medium-sev vacuous check M1.9 itself missed (TRIAGE T1) + 1 low-sev cosmetic string drift (TRIAGE T3); validate: fresh-context validator subagent, PASS (make check-pty 0 failures) |
+| M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
+| M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22); fresh-context review: 1 low-sev doc-comment gap re: t.Parallel hazard (TRIAGE T2); validate: fresh-context validator subagent, PASS |
+| M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
+| M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
+| M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23); fresh-context review: no findings; validate: fresh-context validator subagent, PASS |
 | M6.1  | todo   | -        | -         | pre-agreed cut 1 |
 | M7.1  | todo   | -        | -         | pre-agreed cut 2 |
 | M7.2  | todo   | -        | -         | pre-agreed cut 2 |
