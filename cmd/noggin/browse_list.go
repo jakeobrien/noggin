@@ -23,8 +23,13 @@ const recentPerRootCap = 100
 type browseRow struct {
 	path string
 	name string
-	// rootLabel is the covering Root's own label (root.displayName, S8/M7.3)
-	// when orphan is false; meaningless (and left "") otherwise.
+	// rootLabel is the row's right-hand label across all three shapes a
+	// browseRow can take: the covering Root's own label (root.displayName,
+	// S8/M7.3) for a Root-covered file; meaningless (and left "") for an
+	// orphan file (orphan is true, orphanDir carries its label instead); the
+	// fixed wikipediaLabel for an article row (buildDocBrowseRow, C6/M5.2 —
+	// article is true, S6's "labelled Wikipedia where files are labelled by
+	// Root name").
 	rootLabel string
 	// orphanDir is the document's own parent directory when orphan is true
 	// (render truncates it, this field never is, since the budget is only

@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M5.3
+Current task: M9.1
 
 ## Handoff
 
@@ -68,30 +68,23 @@ normal terminal sizes) but should be fixed before cycle close — it stays `open
 TRIAGE.md for the next charm-replan pass to promote into a PLAN task; T27/T28 (low, doc-comment
 staleness) confirmed accurate, no functional impact, left `open` for hygiene.
 
-M1.11 is now done, closing out the `test/pty/checks.py` string-drift M1.9 missed: line 937's
-`"Roots" not in "\n".join(hidden_lines)` assertion (M5.2's "toggling hides the whole sidebar"
-check) was vacuous since the M1.6 rename — the literal string "Roots" never appears in the
-rendered UI regardless of Navigator visibility, so the check passed unconditionally. Fixed to
-`"Sources" not in ...`; confirmed the fixed check is load-bearing by temporarily breaking
-`toggleNavigator` (cmd/noggin/model.go) to not flip `m.navigatorHidden` — `make check-pty`
-then showed 2 real failures (this check plus its neighboring re-wrap check) — then restoring
-it, confirmed by `git status`/`git diff` showing zero residual diff on model.go and
-`make check-pty` green again (261 checks, 0 failures). Also fixed four stale check()
-description strings whose own assertions already checked "Sources" while the description
-still said "...Roots" (lines 398, 490, 551, 1428 — M3.3, M3.2 restart fixture, M3.4,
-C2a/M2.1). Remaining "Roots" occurrences in checks.py (Grep's "Active Root"/"All Roots"
-labels, which M1.3 deliberately keeps un-renamed, plus a few generic pane-purpose comments
-not asserting the literal string) were swept and confirmed out of scope. `make check` and
-`make check-pty` both green.
+M5.3 is now done: `browseRow.rootLabel`'s field-level doc comment (browse_list.go) predated
+the article case M5.2 introduced and only described the Root-covered/orphan split. It now
+names all three shapes explicitly — Root-covered file (root.displayName, S8/M7.3), orphan
+file (meaningless, left "", orphanDir carries the label instead), and article (the fixed
+`wikipediaLabel`, cross-referencing buildDocBrowseRow/C6/M5.2 and S6's "labelled Wikipedia
+where files are labelled by Root name"). `make check` (build/vet/fmt/test) is green. Doc-only
+change; no behavior touched.
 
-Cursor is now M5.3 (the `browseRow.rootLabel` doc-comment gap, an independent replan-added
-hygiene task, pull-forward-anytime — M9.1 is the next milestone-sequenced task once M5.3 is
-taken or skipped). Working tree: M1.11's checks.py change is committed as its own commit;
-PROGRESS.md carries this session's own edits (M1.11 Status row + cursor move + this Handoff)
+All of M1.9–M1.11, M2.9–M2.10, M3.6–M3.7, M4.4 and M5.3 (the replan-added hygiene/test-gap
+tasks) are now done. Cursor moves to M9.1 (Focus by background, pre-agreed cut 3) — the next
+milestone-sequenced task; its own acceptance criterion leans on the check-pty gate M1.9/M1.11
+just finished hardening. Working tree: M5.3's own change is committed as its own commit;
+PROGRESS.md carries this session's own edits (M5.3 Status row + cursor move + this Handoff)
 — not yet committed at the time this section was written (see the commit that follows).
 
 No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — carried over,
-unrelated to M1.11.
+unrelated to M5.3.
 
 ## Status
 
@@ -131,7 +124,7 @@ unrelated to M1.11.
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
 | M1.11 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3) |
-| M5.3  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
+| M5.3  | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
