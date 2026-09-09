@@ -25,10 +25,12 @@ type root struct {
 
 // displayName is what S8 calls a Root's own name: its persisted name if it
 // has one, otherwise the default — the folder's base name. The Sources Nav
-// row (M7.2) is the first reader; M7.3 promotes this into the one helper
-// every other Root-label site (Picker results, cross-Source Files Nav rows)
-// reads from too, so no `filepath.Base(<root path>)` label computation is
-// left outside it.
+// row (M7.2) was the first reader; M7.3 promoted this into the one helper
+// every other Root-label site reads from too — browse_list.go's
+// buildBrowseRow (cross-Source Files Nav rows, S6) and picker_view.go's
+// pickerRootLabel (Picker result labels, S3) both call it in place of the
+// bare `filepath.Base(<root path>)` each shipped with — so no such
+// computation is left outside it.
 func (r root) displayName() string {
 	if r.name != "" {
 		return r.name

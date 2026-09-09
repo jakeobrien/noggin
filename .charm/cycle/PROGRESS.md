@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M7.3
+Current task: M8.1
 
 ## Handoff
 
@@ -82,10 +82,29 @@ no DECISIONS entries needed — the implementation followed M7.1's handoff plan 
 no judgment calls beyond what's already in the code's own doc comments. Not yet reviewed or
 validated.
 
-Cursor is now M7.3 (Root-label helper), `todo`. M1.11, M2.10 and M5.3 are independent
-replan-added hygiene tasks, pull-forward-anytime per PLAN.md's own note; M8.1 (half-page
-paging) is also independent and pullable. TRIAGE.md is empty; working tree is clean (M7.2's
-changes are committed).
+M7.3 (Root-label helper) is done: `root.displayName()` (roots.go, already introduced by
+M7.1/M7.2) is now the one helper feeding all three places S6/S3/S8 show a Root's label —
+Sources Nav line 1 (already wired by M7.2), `buildBrowseRow`'s `rootLabel` field
+(browse_list.go:67, cross-Source Files Nav rows in Recent/Starred, consumed verbatim by
+`filesNav.renderFlatRow`), and `pickerRootLabel` (picker_view.go:274, File Picker Results).
+Both remaining call sites previously called `filepath.Base(<root path>)` directly instead of
+`displayName()`, silently dropping a Root's Name outside the Sources Nav; changing each to
+`r.displayName()` / `f.root.displayName()` was the entire code change — no new field, no
+new type, `displayName`'s own fallback (empty Name → folder base name) made both call sites
+behave identically to before for every existing (unnamed) fixture, confirmed by the full
+existing suite passing unmodified. New `rootlabel_test.go` pins the helper itself and all
+three call sites against a renamed Root; each of the three was confirmed to actually fail
+against the pre-fix code (temporary revert, mutation-tested, then restored) before being
+trusted. Grepped the whole package after: no `filepath.Base(<root path>)` label computation
+remains outside `displayName()` (the only other `filepath.Base` calls left are on a
+document's own path/file name — document.go's `label()`, files_search.go's fuzzy-match
+source — which are a different thing, a file's own name, not a Root's). `make check` green;
+`go test ./... -count=1` (uncached) green. Not yet reviewed or validated.
+
+Cursor is now M8.1 (half-page paging), `todo` — independent and pullable, per PLAN.md's own
+note. M7's three tasks (S8, Root names) are now all done; M1.11, M2.10 and M5.3 remain
+independent replan-added hygiene tasks, pull-forward-anytime. TRIAGE.md is empty; working
+tree is clean (M7.3's changes are committed).
 
 No blockers.
 
@@ -131,7 +150,7 @@ No blockers.
 | M6.1  | done   | 2026-09-09 | -         | pre-agreed cut 1 |
 | M7.1  | done   | -        | -         | pre-agreed cut 2 |
 | M7.2  | done   | -        | -         | pre-agreed cut 2 |
-| M7.3  | todo   | -        | -         | pre-agreed cut 2 |
+| M7.3  | done   | -        | -         | pre-agreed cut 2 |
 | M8.1  | todo   | -        | -         |      |
 | M8.2  | todo   | -        | -         | scope widened by replan 2026-09-08: S9a attribution line |
 | M8.3  | todo   | -        | -         |      |

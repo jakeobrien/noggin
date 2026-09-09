@@ -14,16 +14,17 @@ const recentPerRootCap = 100
 
 // browseRow is one rendered row in a Files Nav flat list (Recent, M4.2;
 // Starred, M4.3): a document's own path, its display name, and its
-// right-hand label per S6 — either the base name of the session Root that
-// covers it, or, when no session Root does (an "orphan" document, S1's "not
-// attached to Roots"), that document's own parent directory, left-truncated
-// at render time the same way the Sources Nav already disambiguates two
-// same-named Roots (rootsnav.go's leftTruncate).
+// right-hand label per S6 — either the covering session Root's own label
+// (root.displayName, S8/M7.3 — its persisted Name if it has one, else the
+// folder's base name), or, when no session Root does (an "orphan"
+// document, S1's "not attached to Roots"), that document's own parent
+// directory, left-truncated at render time the same way the Sources Nav
+// already disambiguates two same-named Roots (rootsnav.go's leftTruncate).
 type browseRow struct {
 	path string
 	name string
-	// rootLabel is the covering Root's base name when orphan is false;
-	// meaningless (and left "") otherwise.
+	// rootLabel is the covering Root's own label (root.displayName, S8/M7.3)
+	// when orphan is false; meaningless (and left "") otherwise.
 	rootLabel string
 	// orphanDir is the document's own parent directory when orphan is true
 	// (render truncates it, this field never is, since the budget is only
@@ -56,15 +57,15 @@ type browseRow struct {
 }
 
 // buildBrowseRow derives one browseRow for path against roots (S6): the
-// covering session Root's base name, or the parent-directory/orphan form
-// when no Root covers it, plus whether the file is currently missing on
-// disk (S3's broken mark) — harmless to compute unconditionally, since
-// recentRows only ever calls this after its own existence check already
-// passed, and starredRows needs it every time.
+// covering session Root's own label (root.displayName, S8/M7.3), or the
+// parent-directory/orphan form when no Root covers it, plus whether the
+// file is currently missing on disk (S3's broken mark) — harmless to
+// compute unconditionally, since recentRows only ever calls this after its
+// own existence check already passed, and starredRows needs it every time.
 func buildBrowseRow(path string, roots []root) browseRow {
 	row := browseRow{path: path, name: filepath.Base(path), broken: pathMissing(path)}
 	if r, ok := rootForPath(roots, path); ok {
-		row.rootLabel = filepath.Base(r.path)
+		row.rootLabel = r.displayName()
 	} else {
 		row.orphan = true
 		row.orphanDir = filepath.Dir(path)

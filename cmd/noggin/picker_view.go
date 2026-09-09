@@ -254,24 +254,28 @@ func pickerStatus(p picker, avail ripgrepAvailability, hideDotfiles bool) string
 var pickerSelectedStyle = lipgloss.NewStyle().Reverse(true)
 
 // pickerRootLabel renders a Root's label for a File Picker row (S3, M3.1a/
-// D50): its base name, then a gap, then its left-truncated parent path
-// (`leftTruncate`, rootsnav.go) — the exact same "prominent base name plus
-// disambiguating parent" layout rootsNav.renderRow gives every Root row,
-// reused here rather than the bare filepath.Base(f.root.path) M3.1 shipped
-// with, which read two Roots sharing a base name (different parents)
-// identically. budget is what's left of width after the name, the one gap
-// ahead of the parent segment, and rest (everything the row still renders
-// after the Root label, including that segment's own connecting gap — e.g.
-// "  " plus the file's relative path) — the same single-gap "reserve
-// everything else first" shape rootsNav.renderRow's own budget calculation
-// uses for its row's suffix. Subtracting gap's width a second time here
-// (TRIAGE T13/D52) double-counted a gap that only appears once in the
-// rendered row, under-computing budget by one gap width (~2 cols) on every
-// row — caught only after M3.1a's own disambiguation test happened to run
-// at a width wide enough (140x30, not the project's standard 80x24) to not
-// need the lost budget.
+// D50): its own label (root.displayName, S8/M7.3 — persisted Name if it
+// has one, else the folder's base name), then a gap, then its
+// left-truncated parent path (`leftTruncate`, rootsnav.go) — the exact
+// same "prominent label plus disambiguating parent" layout rootsNav.
+// renderRow gives every Root row, reused here rather than the bare
+// filepath.Base(f.root.path) M3.1 shipped with (M7.3 replaced it with
+// displayName, the one helper every Root-label site now reads from), which
+// read two Roots sharing a base name (different parents), or a renamed and
+// an unnamed Root sharing a folder name, identically. budget is what's
+// left of width after the name, the one gap ahead of the parent segment,
+// and rest (everything the row still renders after the Root label,
+// including that segment's own connecting gap — e.g. "  " plus the file's
+// relative path) — the same single-gap "reserve everything else first"
+// shape rootsNav.renderRow's own budget calculation uses for its row's
+// suffix. Subtracting gap's width a second time here (TRIAGE T13/D52)
+// double-counted a gap that only appears once in the rendered row,
+// under-computing budget by one gap width (~2 cols) on every row — caught
+// only after M3.1a's own disambiguation test happened to run at a width
+// wide enough (140x30, not the project's standard 80x24) to not need the
+// lost budget.
 func pickerRootLabel(f pickerFile, width int, rest string) string {
-	name := filepath.Base(f.root.path)
+	name := f.root.displayName()
 	parent := filepath.Dir(f.root.path) + string(filepath.Separator)
 	const gap = "  "
 	budget := max(width-lipgloss.Width(name)-lipgloss.Width(gap)-lipgloss.Width(rest), 0)
