@@ -2,9 +2,9 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -58,6 +58,15 @@ type rootsNav struct {
 	selected  int // index into rows the cursor sits on
 
 	storePath string
+
+	// renaming is true while the Sources Nav's rename input (S8/M7.2) has
+	// the keyboard — this pane's own version of the viewer's find.editing:
+	// every key but Cancel and Activate types into renameInput instead of
+	// acting on its usual binding (model.handleRenameInput). Unlike find,
+	// the input renders inline on the selected row itself (renderRow), not
+	// in the footer — S8's own "edits ... inline on its row".
+	renaming    bool
+	renameInput textinput.Model
 
 	width, height int
 }
@@ -206,6 +215,74 @@ func (r rootsNav) toggleStarred(i int) rootsNav {
 	return r
 }
 
+// startRename begins editing rows[r.selected]'s Name (S8/M7.2) inline,
+// seeded with its current effective label (root.displayName) so editing
+// starts from what is already on screen rather than blank. The caller
+// (model.startRename) has already confirmed the selection is a starred
+// Root, not the Wikipedia row or an unstarred ad-hoc one — this has no
+// refusal of its own to give.
+func (r rootsNav) startRename() (rootsNav, tea.Cmd) {
+	row, ok := r.selectedRow()
+	if !ok {
+		return r, nil
+	}
+	// Focus is called on r.renameInput itself, once it already holds the
+	// fresh textinput — not on a separate local copy beforehand (Focus is a
+	// pointer-receiver method, T-shaped the same way promptView's own
+	// comment describes: r is a parameter here, so r.renameInput is
+	// addressable). Focusing a local copy first and only then assigning it
+	// to r.renameInput would copy the *pre-focus* state over the mutation,
+	// leaving the stored input's own Focused() false — and
+	// textinput.Model.Update ignores every keystroke while unfocused, which
+	// would silently swallow the whole rename.
+	r.renaming = true
+	r.renameInput = textinput.New()
+	r.renameInput.Prompt = ""
+	r.renameInput.SetValue(row.root.displayName())
+	r.renameInput.CursorEnd()
+	return r, r.renameInput.Focus()
+}
+
+// updateRenameQuery routes one keypress into the rename input — the same
+// incremental-typing shape find.go's updateFindQuery gives its own query,
+// minus a match recompute (a Root's Name has nothing to search).
+func (r rootsNav) updateRenameQuery(msg tea.KeyPressMsg) (rootsNav, tea.Cmd) {
+	next, cmd := r.renameInput.Update(msg)
+	r.renameInput = next
+	return r, cmd
+}
+
+// cancelRename discards the in-progress edit without touching the selected
+// Root's Name — S8's "Esc cancels".
+func (r rootsNav) cancelRename() rootsNav {
+	r.renaming = false
+	r.renameInput = textinput.Model{}
+	return r
+}
+
+// applyRename ends editing and sets the selected row's Name (S8) to name —
+// "" reverts to the default (root.displayName's own fallback). Pure
+// pane-local state; the caller (model.commitRename) is responsible for
+// persisting the change first (renameStore) so a Name that fails to save
+// never appears applied here either — the same "must not appear to have
+// flipped" discipline toggleStar already gives a star that cannot persist.
+func (r rootsNav) applyRename(name string) rootsNav {
+	r.renaming = false
+	r.renameInput = textinput.Model{}
+	if r.selected < 0 || r.selected >= len(r.rows) {
+		return r
+	}
+	rows := make([]rootRow, len(r.rows))
+	copy(rows, r.rows)
+	rows[r.selected].root.name = name
+	r.rows = rows
+	return r
+}
+
+// renameEditing reports whether the Sources Nav's rename input currently has
+// the keyboard.
+func (r rootsNav) renameEditing() bool { return r.renaming }
+
 // handleKey applies the Sources Nav binding msg is bound to, reporting whether
 // it was one. Only selection movement lives here — Activate and Star have
 // cross-cutting effects (re-rooting the Files Nav, persisting to disk) that
@@ -251,9 +328,10 @@ func (r rootsNav) view() string {
 }
 
 // renderRow lays out one entry across its two lines (S5). Line 1 carries the
-// active marker, the starred marker, the base name in bold (S3's
-// "prominently") and the broken-root suffix. Line 2 carries the entry's full
-// path alone, unbold and left-truncated the same way the single-line layout
+// active marker, the starred marker, the Root's own name in bold (S3's
+// "prominently", S8/M7.2's displayName in place of the bare folder base
+// name) and the broken-root suffix. Line 2 carries the entry's full path
+// alone, unbold and left-truncated the same way the single-line layout
 // truncated its parent path, so same-named roots still read apart
 // (`…/work/admin/project`) — markers never repeat on line 2, per S5. A
 // broken root is dimmed on both lines, since it cannot be activated. The
@@ -261,6 +339,16 @@ func (r rootsNav) view() string {
 // Nav's bar; each line's style is fully specified (not a partial run), so
 // reverse video never gets cancelled mid-line
 // (lipgloss-v2-row-rendering-gotchas.md).
+//
+// While this row is mid-rename (S8/M7.2, r.renaming && idx == r.selected),
+// line 1's name-and-suffix is replaced by the live rename input instead —
+// S8's own "edits ... inline on its row", unlike find's query, which the
+// footer renders (model.renderFooter). The input already carries its own
+// styling (the cursor); line 1 is rendered through a bare, unstyled
+// Width/MaxWidth wrap in that case — the same treatment find.go's findView
+// gets in the footer — rather than Bold or Reverse, so nothing here risks
+// the mid-line reverse-video cancellation lipgloss-v2-row-rendering-
+// gotchas.md documents for a partial styled run inside one.
 func (r rootsNav) renderRow(idx int) []string {
 	if idx == len(r.rows) {
 		return r.renderWikipediaRow()
@@ -276,26 +364,37 @@ func (r rootsNav) renderRow(idx int) []string {
 		starMark = "★ "
 	}
 
-	suffix := ""
-	if row.broken {
-		suffix = " (missing)"
+	editingThisRow := r.renaming && idx == r.selected
+
+	var line1 string
+	style1, style2 := rootsNameStyle, rootsPathStyle
+	if editingThisRow {
+		prefixWidth := lipgloss.Width(activeMark + starMark)
+		r.renameInput.SetWidth(max(r.width-prefixWidth, 0))
+		line1 = activeMark + starMark + r.renameInput.View()
+		style1 = lipgloss.NewStyle()
+	} else {
+		suffix := ""
+		if row.broken {
+			suffix = " (missing)"
+		}
+		// line2 is already protected by leftTruncate below; line1 needs the
+		// same guard — a long name/suffix combination would otherwise
+		// word-wrap under Width().Render() instead of truncating
+		// (lipgloss-v2-row-rendering-gotchas.md), the same class of bug fixed
+		// in files.go's renderRow/renderFlatRow.
+		line1 = rightTruncate(activeMark+starMark+row.root.displayName()+suffix, r.width)
+		if row.broken {
+			style1, style2 = rootsBrokenStyle, rootsBrokenStyle
+		}
 	}
-	line1 := activeMark + starMark + filepath.Base(row.root.path) + suffix
-	// line2 is already protected by leftTruncate below; line1 needs the same
-	// guard — a long base name/suffix combination would otherwise word-wrap
-	// under Width().Render() instead of truncating
-	// (lipgloss-v2-row-rendering-gotchas.md), the same class of bug fixed in
-	// files.go's renderRow/renderFlatRow.
-	line1 = rightTruncate(line1, r.width)
 	line2 := leftTruncate(row.root.path, r.width)
 
-	style1, style2 := rootsNameStyle, rootsPathStyle
-	if row.broken {
-		style1, style2 = rootsBrokenStyle, rootsBrokenStyle
-	}
 	if idx == r.selected {
-		style1 = style1.Reverse(true)
 		style2 = style2.Reverse(true)
+		if !editingThisRow {
+			style1 = style1.Reverse(true)
+		}
 	}
 	return []string{
 		style1.Width(r.width).MaxWidth(r.width).Render(line1),

@@ -258,6 +258,21 @@ type keyMap struct {
 	// typing context the way the Picker's Prompt is.
 	HistoryBack    key.Binding
 	HistoryForward key.Binding
+
+	// Rename (S8/M7.2) edits the Sources Nav's selected Root's Name inline on
+	// its row: Enter confirms, Cancel (esc) discards, an empty name reverts
+	// to the default (the folder's base name) — model.handleRenameInput owns
+	// every other key while it is open, the identical exclusivity
+	// handleFindInput already gives an in-progress find query. Refused with a
+	// Footer message for the Wikipedia row and for an unstarred ad-hoc Root
+	// (S8), matched in Update's rootsPane case beside Activate/Star. "r" and
+	// "n"/"N" — the obvious mnemonics for "rename"/"name" — are already
+	// FocusRoots and FindNext/FindPrevious, both global, so this binds "c"
+	// instead (free, and — like every binding in this file — a plain letter
+	// rather than a function key: the codebase has no F-key precedent, for
+	// the same portability reason D55's ActivateDV2 comment gives for
+	// avoiding raw escape sequences a terminal might not forward).
+	Rename key.Binding
 }
 
 // keys is the program's keymap.
@@ -421,5 +436,9 @@ var keys = keyMap{
 	HistoryForward: key.NewBinding(
 		key.WithKeys("]"),
 		key.WithHelp("]", "forward"),
+	),
+	Rename: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "rename"),
 	),
 }

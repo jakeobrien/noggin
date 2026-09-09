@@ -823,6 +823,72 @@ func (m model) toggleStar() model {
 	return m
 }
 
+// startRename begins editing the Sources Nav's selected Root's Name inline
+// (S8/M7.2). The Wikipedia row is refused earlier, in Update's rootsPane
+// case (mirroring toggleStar's own split there for Star); this only has to
+// guard the other refusal S8 asks for — an unstarred ad-hoc Root cannot be
+// renamed until it is starred.
+func (m model) startRename() (model, tea.Cmd) {
+	row, ok := m.roots.selectedRow()
+	if !ok {
+		return m, nil
+	}
+	if !row.root.starred {
+		m.message = "star this root before renaming it"
+		return m, nil
+	}
+	next, cmd := m.roots.startRename()
+	m.roots = next
+	return m, cmd
+}
+
+// handleRenameInput is where a keypress goes while the Sources Nav's rename
+// input has the keyboard (m.roots.renameEditing()): Cancel discards the
+// edit, Activate (enter) commits it (commitRename) — and everything else,
+// including keys bound elsewhere, types into the input instead of acting on
+// its usual binding. The identical exclusivity handleFindInput already
+// gives an in-progress find query.
+func (m model) handleRenameInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, keys.Cancel):
+		m.roots = m.roots.cancelRename()
+		return m, nil
+	case key.Matches(msg, keys.Activate):
+		return m.commitRename(), nil
+	}
+	next, cmd := m.roots.updateRenameQuery(msg)
+	m.roots = next
+	return m, cmd
+}
+
+// commitRename applies the Sources Nav's in-progress rename (S8): the typed
+// Name, trimmed, or "" (the default) when it is empty or all whitespace. A
+// data directory that could not be resolved (m.roots.storePath == "")
+// declines with a Footer message and leaves the edit open rather than
+// discarding it silently — the same "must not appear applied if it cannot
+// persist" discipline toggleStar already gives a star write, with the
+// caveat that here nothing was ever displayed as applied in the first place
+// for a Cancel-shaped undo to restore. A write failure gets the identical
+// treatment.
+func (m model) commitRename() model {
+	row, ok := m.roots.selectedRow()
+	if !ok {
+		m.roots = m.roots.cancelRename()
+		return m
+	}
+	name := strings.TrimSpace(m.roots.renameInput.Value())
+	if m.roots.storePath == "" {
+		m.message = "cannot save the rename: no resolvable data directory"
+		return m
+	}
+	if _, err := renameStore(m.roots.storePath, row.root.path, name); err != nil {
+		m.message = fmt.Sprintf("cannot save the rename: %v", err)
+		return m
+	}
+	m.roots = m.roots.applyRename(name)
+	return m
+}
+
 // toggleDocStar flips the Files Nav selection's starred mark in the S1
 // document store and persists it immediately via withDocRecord, the same
 // generic accessor pair M1.4 exposed for every future caller of this store
@@ -1497,6 +1563,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focusedViewer().findEditing() {
 			return m.handleFindInput(msg)
 		}
+		// The Sources Nav's rename input (S8/M7.2) owns the keyboard the same
+		// exclusive way a find-in-progress does — see handleRenameInput.
+		if m.roots.renameEditing() {
+			return m.handleRenameInput(msg)
+		}
 		if m.helpOpen {
 			return m.handleHelpInput(msg), nil
 		}
@@ -1652,12 +1723,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.message = "the Wikipedia Source cannot be starred"
 					return m, nil
 				}
+				if key.Matches(msg, keys.Rename) {
+					m.message = "the Wikipedia Source cannot be renamed"
+					return m, nil
+				}
 			}
 			if key.Matches(msg, keys.Activate) {
 				return m.activateRoot(), nil
 			}
 			if key.Matches(msg, keys.Star) {
 				return m.toggleStar(), nil
+			}
+			if key.Matches(msg, keys.Rename) {
+				return m.startRename()
 			}
 			if next, handled := m.roots.handleKey(msg); handled {
 				m.roots = next
@@ -2068,26 +2146,37 @@ func (m model) paneTitle(p pane) string {
 }
 
 // renderFooter draws the footer line: an in-progress find query (M5.1)
-// first, since it needs the keyboard and so must be shown; otherwise a
-// transient message (D22) when one is set; otherwise the open Picker's own
-// hints (pickerHintText, M2.3) when it is open, or the focused pane's key
-// hints (hintText) otherwise, truncated to fit (S11). Update clears
-// m.message on every keypress, so a message shown here never survives past
-// the next key.
+// first, since it needs the keyboard and so must be shown; the Sources
+// Nav's in-progress rename (S8/M7.2) next, for the identical reason —
+// unlike find, the rename input itself renders inline on its row
+// (rootsnav.go's renderRow), not here, so this only names what Enter/Esc do
+// right now, since rootsPane's ordinary hints (Activate "open", Star
+// "star" …) no longer apply while every other key types into the row's
+// input instead (model.handleRenameInput); otherwise a transient message
+// (D22) when one is set; otherwise the open Picker's own hints
+// (pickerHintText, M2.3) when it is open, or the focused pane's key hints
+// (hintText) otherwise, truncated to fit (S11). Update clears m.message on
+// every keypress, so a message shown here never survives past the next key.
 //
 // The find prompt is not run through footerStyle's dim foreground: it is
 // already a complete rendering (textinput.Model.View(), cursor included) and
 // muting its own styling would fight it rather than match the other two
-// cases, which are plain, unstyled text until footerStyle colours them.
+// cases, which are plain, unstyled text until footerStyle colours them. The
+// rename line is plain, unstyled text like the message/hints cases, so it
+// does go through footerStyle, unlike the find prompt.
 //
 // S10's indicator (m.stale) no longer touches this line at all (C3/M5.1
 // moved it to its own dedicated row, renderStaleRow, per S9) — the Footer's
-// own priority order (find, then message, then hints) is unaffected by
-// staleness either way.
+// own priority order (find, then rename, then message, then hints) is
+// unaffected by staleness either way.
 func (m model) renderFooter(r rect) string {
 	if m.focusedViewer().findEditing() {
 		return lipgloss.NewStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
 			Render(m.focusedViewer().findView(r.width))
+	}
+	if m.roots.renameEditing() {
+		return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
+			Render(renameFooterText)
 	}
 	text := hintText(m.focus, r.width)
 	// The open Picker (S2, M2.3) owns the keyboard the same exclusive way a

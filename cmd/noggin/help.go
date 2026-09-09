@@ -47,6 +47,10 @@ import (
 // TestHelpModalListsThePaneOwnBindings's filesPane/dv1Pane cases were
 // reworded from pinning keys.Star's absence to pinning its presence.
 //
+// keys.Rename (S8/M7.2) joins rootsPane's own list only, right after Star,
+// the identical Sources-Nav-only reasoning as keys.Peek/ActivateDV2/PeekDV2
+// being filesPane-only below: only a Root row can ever be renamed.
+//
 // keys.FocusRoots/FocusFiles/FocusDV1 (S5/S6) and keys.Refresh (S2)
 // (C2a/M9.1) are added to every case for the same reason keys.Picker
 // already is: all are global, reachable from any Focus. keys.FocusDV2
@@ -87,7 +91,7 @@ func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{
-			keys.Activate, keys.Star, keys.LineUp, keys.LineDown,
+			keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.Navigator, keys.Picker,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,

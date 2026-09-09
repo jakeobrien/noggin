@@ -10,9 +10,30 @@ import (
 // root is one of the session's note sources: an absolute path plus whether it
 // is starred. A launch argument produces an unstarred ad-hoc root; roots loaded
 // from the store (M3.2) are starred. M3.3's Sources Nav renders these.
+//
+// name is S8/M7.2's persisted Root name: empty means the Root carries none
+// of its own yet, in which case displayName below falls back to the
+// folder's base name. Only ever non-empty for a starred Root (an ad-hoc
+// Root cannot be renamed until it is starred, model.startRename's own
+// guard) and only ever set from the store (starredRoots) or a live rename
+// (rootsNav.applyRename) — never invented anywhere else.
 type root struct {
 	path    string
 	starred bool
+	name    string
+}
+
+// displayName is what S8 calls a Root's own name: its persisted name if it
+// has one, otherwise the default — the folder's base name. The Sources Nav
+// row (M7.2) is the first reader; M7.3 promotes this into the one helper
+// every other Root-label site (Picker results, cross-Source Files Nav rows)
+// reads from too, so no `filepath.Base(<root path>)` label computation is
+// left outside it.
+func (r root) displayName() string {
+	if r.name != "" {
+		return r.name
+	}
+	return filepath.Base(r.path)
 }
 
 // resolution is the outcome of applying the S1 launch contract to a command
@@ -68,7 +89,7 @@ func resolveCwd() (string, error) {
 // resolvePathArg with needsCwd's own stat result (when it took one) rather
 // than letting resolveRoots stat the same path a second time — the TOCTOU
 // window a second, independent stat would open (T37).
-func resolveLaunch(args []string, starred []string, cwd string, cwdErr error) resolution {
+func resolveLaunch(args []string, starred []storedRoot, cwd string, cwdErr error) resolution {
 	if cwdErr == nil {
 		return resolveRoots(args, starred, cwd)
 	}
@@ -126,12 +147,13 @@ func needsCwd(args []string) (needs bool, info os.FileInfo, statErr error, state
 }
 
 // resolveRoots applies the S1 launch contract. args is the command line beyond
-// the program name; starred is the stored starred-root paths (M3.2 supplies
-// them, empty until then); cwd anchors a relative argument. It never touches
+// the program name; starred is the store's entries (M3.2 supplies them,
+// empty until then; each Root's Name, S8/M7.2, rides along via
+// starredRoots below); cwd anchors a relative argument. It never touches
 // the filesystem beyond a stat of the single argument, so the resulting active
 // root is a path for the caller to walk — the side-effecting steps (walking a
 // tree, reading a document) stay out of this pure decision.
-func resolveRoots(args []string, starred []string, cwd string) resolution {
+func resolveRoots(args []string, starred []storedRoot, cwd string) resolution {
 	base := baseResolution(starred)
 
 	switch {
@@ -157,7 +179,7 @@ func resolveRoots(args []string, starred []string, cwd string) resolution {
 // anyway, so this only matters for the bare-launch case where roots is
 // starred roots alone. Shared by resolveRoots and resolveLaunch's
 // already-stat'd single-argument path (T37), so both build the same base.
-func baseResolution(starred []string) resolution {
+func baseResolution(starred []storedRoot) resolution {
 	roots := starredRoots(starred)
 	active := -1
 	if len(roots) > 0 {
@@ -227,12 +249,14 @@ func prependAdhoc(path string, starred []root) resolution {
 	return resolution{roots: roots, active: 0}
 }
 
-// starredRoots turns stored paths into starred roots, cleaned for exact-path
-// comparison. Missing paths are kept (S2): this does not stat them.
-func starredRoots(paths []string) []root {
-	roots := make([]root, 0, len(paths))
-	for _, p := range paths {
-		roots = append(roots, root{path: filepath.Clean(p), starred: true})
+// starredRoots turns the store's entries into starred roots, cleaned for
+// exact-path comparison, carrying each one's Name (S8/M7.2 — "" for a Root
+// with none of its own; root.displayName falls back to the folder base
+// name). Missing paths are kept (S2): this does not stat them.
+func starredRoots(stored []storedRoot) []root {
+	roots := make([]root, 0, len(stored))
+	for _, s := range stored {
+		roots = append(roots, root{path: filepath.Clean(s.Path), starred: true, name: s.Name})
 	}
 	return roots
 }

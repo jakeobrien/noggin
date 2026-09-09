@@ -94,31 +94,17 @@ type storedRoot struct {
 // loadStarredRoots resolves the store path and loads it, folding a
 // non-resolvable config directory into the same "no starred roots" outcome
 // as a missing or garbage file. This is the entry point main.go wires into
-// resolveRoots' starred argument — paths only: S8's Names are not yet
-// threaded through the launch-resolution pipeline (resolveRoots/
-// resolveLaunch, roots.go — M7.2's job), so this keeps loadStarredRoots'
-// existing []string contract rather than leaking storedRoot into every
-// launch-resolution call site ahead of that wiring actually existing.
-func loadStarredRoots() []string {
+// resolveRoots' starred argument — the full []storedRoot, Name included
+// (S8/M7.2): resolveRoots/resolveLaunch/starredRoots (roots.go) carry a
+// Root's Name from the store into its runtime root.name (root.displayName),
+// so a Root renamed in an earlier session shows its name from the moment a
+// fresh one launches, not only after an in-session rename.
+func loadStarredRoots() []storedRoot {
 	path, err := storePath()
 	if err != nil {
 		return nil
 	}
-	return storedRootPaths(loadStore(path))
-}
-
-// storedRootPaths extracts just the paths, in order, from a []storedRoot —
-// for loadStarredRoots above and any other caller that does not yet need
-// Names.
-func storedRootPaths(roots []storedRoot) []string {
-	if len(roots) == 0 {
-		return nil
-	}
-	paths := make([]string, len(roots))
-	for i, r := range roots {
-		paths[i] = r.Path
-	}
-	return paths
+	return loadStore(path)
 }
 
 // loadStore reads the starred-roots file at path: one entry per non-blank,
@@ -205,6 +191,31 @@ func toggleStore(path, target string) ([]storedRoot, error) {
 		updated = append(append([]storedRoot{}, current...), storedRoot{Path: target})
 	}
 
+	if err := saveStore(path, updated); err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
+// renameStore sets target's Name (S8) in the store at path, leaving
+// membership untouched — a rename (M7.2), not a star/unstar. name == ""
+// reverts to the default (the folder's base name, computed by the caller,
+// never stored). Returns the resulting stored roots; target not present is
+// a no-op (defensive: every caller — model.commitRename — has already
+// confirmed target is starred before a rename is even offered, so this
+// should not occur in practice, but a store that has drifted out from
+// under the running session must not panic or corrupt the file over it).
+func renameStore(path, target, name string) ([]storedRoot, error) {
+	target = filepath.Clean(target)
+	current := loadStore(path)
+	updated := make([]storedRoot, len(current))
+	copy(updated, current)
+	for i, r := range updated {
+		if r.Path == target {
+			updated[i].Name = name
+			break
+		}
+	}
 	if err := saveStore(path, updated); err != nil {
 		return nil, err
 	}

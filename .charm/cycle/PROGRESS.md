@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M7.2
+Current task: M7.3
 
 ## Handoff
 
@@ -60,10 +60,32 @@ unnamed Roots in the same store, a Name containing the escape scheme's own delim
 a newline and a backslash, a legacy-format (bare-path) store, and toggle-on/off interaction
 with a Name. `make check` green. Not yet reviewed or validated.
 
-Cursor is now M7.2 (inline rename in Sources Nav), `todo`. M1.11, M2.10 and M5.3 are
-independent replan-added hygiene tasks, pull-forward-anytime per PLAN.md's own note; M8.1
-(half-page paging) is also independent and pullable. TRIAGE.md is empty; working tree is clean
-(M7.1's changes are committed).
+M7.2 (inline rename in Sources Nav) is done, completing a session that a previous run had
+left in-progress and uncommitted: `keys.Rename` ("c", the obvious mnemonics `r`/`n`/`N` being
+taken by FocusRoots/FindNext/FindPrevious) opens an inline edit on the Sources Nav's selected
+row (rootsnav.go's `renderRow`/`startRename`), Enter commits (`model.commitRename` →
+`renameStore`), Esc cancels, and an empty/whitespace-only name reverts to the default (the
+folder base name via `root.displayName`). The Wikipedia row and an unstarred ad-hoc Root are
+both refused with a Footer message (mirroring Star's own refusals); starring an ad-hoc Root
+first (already unnamed per M7.1's `toggleStore`) then lets it be renamed, seeded with its
+default name. `keys.Rename` is in rootsPane's Footer hints and Help Modal only. The session
+also finished M7.1's deliberately-deferred wiring: `loadStarredRoots` now returns the full
+`[]storedRoot` (Name included) instead of bare paths, and `resolveRoots`/`resolveLaunch`/
+`starredRoots` (roots.go) thread each Root's persisted Name into the runtime `root.name` —
+so a Root renamed in an earlier session shows its name from the moment a fresh one launches,
+not only after an in-session rename (`TestRenamePersistsAcrossReload`). `rename_test.go` (new)
+covers every path in the acceptance criterion: seed-from-current-name, commit, cancel, empty/
+whitespace revert, both refusals, post-star allowance, keyboard exclusivity while editing,
+cross-session persistence, Footer-hints/Help-Modal presence, and the footer/row rendering
+switch. `make check` green (build, vet, fmt, `go test ./...`); no findings, no TRIAGE items,
+no DECISIONS entries needed — the implementation followed M7.1's handoff plan directly with
+no judgment calls beyond what's already in the code's own doc comments. Not yet reviewed or
+validated.
+
+Cursor is now M7.3 (Root-label helper), `todo`. M1.11, M2.10 and M5.3 are independent
+replan-added hygiene tasks, pull-forward-anytime per PLAN.md's own note; M8.1 (half-page
+paging) is also independent and pullable. TRIAGE.md is empty; working tree is clean (M7.2's
+changes are committed).
 
 No blockers.
 
@@ -108,7 +130,7 @@ No blockers.
 | M5.3  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | -         | pre-agreed cut 1 |
 | M7.1  | done   | -        | -         | pre-agreed cut 2 |
-| M7.2  | todo   | -        | -         | pre-agreed cut 2 |
+| M7.2  | done   | -        | -         | pre-agreed cut 2 |
 | M7.3  | todo   | -        | -         | pre-agreed cut 2 |
 | M8.1  | todo   | -        | -         |      |
 | M8.2  | todo   | -        | -         | scope widened by replan 2026-09-08: S9a attribution line |

@@ -241,11 +241,13 @@ func TestLoadStarredRootsNoDataDir(t *testing.T) {
 	}
 }
 
-// TestLoadStarredRootsReturnsPathsOnly pins loadStarredRoots' own contract
-// (store.go's doc comment on it): it extracts paths from the store, dropping
-// any Name, since S8's Names are not yet threaded through launch resolution
-// (M7.2).
-func TestLoadStarredRootsReturnsPathsOnly(t *testing.T) {
+// TestLoadStarredRootsIncludesNames is M7.2's own acceptance criterion for
+// this function (store.go's doc comment on it): loadStarredRoots now hands
+// back the full []storedRoot, Name included, not just paths — a Root
+// renamed in an earlier session must show its Name from the moment a fresh
+// one launches (resolveRoots/starredRoots, roots.go), not only after an
+// in-session rename.
+func TestLoadStarredRootsIncludesNames(t *testing.T) {
 	dataHome := t.TempDir()
 	t.Setenv("XDG_DATA_HOME", dataHome)
 
@@ -259,9 +261,9 @@ func TestLoadStarredRootsReturnsPathsOnly(t *testing.T) {
 	}
 
 	got := loadStarredRoots()
-	want := []string{root}
+	want := []storedRoot{{Path: root, Name: "Custom"}}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("loadStarredRoots() = %v, want %v", got, want)
+		t.Errorf("loadStarredRoots() = %+v, want %+v", got, want)
 	}
 }
 
@@ -337,8 +339,8 @@ func TestStoreIgnoresConfigDirCleanBreak(t *testing.T) {
 	if _, err := toggleStore(path, root); err != nil {
 		t.Fatalf("toggleStore(star): %v", err)
 	}
-	if got := loadStarredRoots(); !reflect.DeepEqual(got, []string{root}) {
-		t.Fatalf("loadStarredRoots() after star = %v, want [%s]", got, root)
+	if got := loadStarredRoots(); !reflect.DeepEqual(got, []storedRoot{{Path: root}}) {
+		t.Fatalf("loadStarredRoots() after star = %+v, want [%s]", got, root)
 	}
 
 	if _, err := toggleStore(path, root); err != nil {

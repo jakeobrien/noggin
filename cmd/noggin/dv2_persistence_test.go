@@ -24,7 +24,7 @@ import (
 // does, resolves the launch argument (root, always) and applies it.
 func launchFixture(t *testing.T, storePath, root string) model {
 	t.Helper()
-	starred := storedRootPaths(loadStore(storePath))
+	starred := loadStore(storePath)
 	res := resolveLaunch([]string{root}, starred, filepath.Dir(root), nil)
 	return sized(t, newModel().withStorePath(storePath).applyResolution(res), 80, 24)
 }

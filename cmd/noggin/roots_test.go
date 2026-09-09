@@ -17,6 +17,19 @@ func rootPaths(res resolution) []string {
 	return paths
 }
 
+// toStoredRoots wraps plain paths as store entries with no Name (S8/M7.2's
+// default case) — this file's tests are about launch-resolution semantics,
+// not Names, so their build closures keep returning []string and this is
+// the one place that adapts them to resolveRoots/resolveLaunch's actual
+// (post-M7.2) []storedRoot parameter.
+func toStoredRoots(paths []string) []storedRoot {
+	roots := make([]storedRoot, len(paths))
+	for i, p := range paths {
+		roots[i] = storedRoot{Path: p}
+	}
+	return roots
+}
+
 // mkdir makes dir under a fresh temp base and returns its cleaned path.
 func mkdir(t *testing.T, path string) string {
 	t.Helper()
@@ -209,7 +222,7 @@ func TestResolveRoots(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			args, starred, cwd := tt.build(t)
-			res := resolveRoots(args, starred, cwd)
+			res := resolveRoots(args, toStoredRoots(starred), cwd)
 			tt.check(t, res)
 		})
 	}
@@ -286,7 +299,7 @@ func TestResolveLaunchDropsArgOnUnresolvableCwd(t *testing.T) {
 	star := mkdir(t, filepath.Join(base, "star"))
 	cwdErr := errors.New("getwd: no such file or directory")
 
-	res := resolveLaunch([]string{"note.md"}, []string{star}, "", cwdErr)
+	res := resolveLaunch([]string{"note.md"}, toStoredRoots([]string{star}), "", cwdErr)
 
 	wantLen(t, res, 1)
 	wantActiveStarred(t, res, 0)
@@ -350,7 +363,7 @@ func TestResolveLaunchIgnoresCwdErrWithNoArguments(t *testing.T) {
 	star := mkdir(t, filepath.Join(base, "star"))
 	cwdErr := errors.New("getwd: no such file or directory")
 
-	res := resolveLaunch(nil, []string{star}, "", cwdErr)
+	res := resolveLaunch(nil, toStoredRoots([]string{star}), "", cwdErr)
 
 	wantLen(t, res, 1)
 	wantActiveStarred(t, res, 0)
@@ -370,7 +383,7 @@ func TestResolveLaunchIgnoresCwdErrWithTooManyArguments(t *testing.T) {
 	two := mkdir(t, filepath.Join(base, "two"))
 	cwdErr := errors.New("getwd: no such file or directory")
 
-	res := resolveLaunch([]string{one, two}, []string{star}, "", cwdErr)
+	res := resolveLaunch([]string{one, two}, toStoredRoots([]string{star}), "", cwdErr)
 
 	wantLen(t, res, 1)
 	wantActiveStarred(t, res, 0)
@@ -397,7 +410,7 @@ func TestResolveLaunchAbsoluteNotFoundArgOnUnresolvableCwd(t *testing.T) {
 	missing := filepath.Join(base, "missing.md")
 	cwdErr := errors.New("getwd: no such file or directory")
 
-	res := resolveLaunch([]string{missing}, []string{star}, "", cwdErr)
+	res := resolveLaunch([]string{missing}, toStoredRoots([]string{star}), "", cwdErr)
 
 	wantLen(t, res, 1)
 	wantActiveStarred(t, res, 0)

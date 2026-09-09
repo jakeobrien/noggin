@@ -61,10 +61,16 @@ import (
 // design (DV1/DV2 each walk their own history; Sources Nav and Files Nav have
 // none), so they appear only in the default case, placed right after Star —
 // the pane's other own document action — and before Edit.
+//
+// keys.Rename (S8/M7.2) joins rootsPane's own list, right after Star — the
+// same "pane's other own row action" placement FilesMode/FilesScope and
+// HistoryBack/HistoryForward each got above. Sources-Nav-only by design
+// (only a Root row can be renamed), so it appears only here, not in
+// filesPane's or the viewer's own lists.
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
-		return []key.Binding{keys.Activate, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh}
+		return []key.Binding{keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh}
 	case filesPane:
 		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
 	default: // dv1Pane, dv2Pane
@@ -97,6 +103,22 @@ func pickerHints() []key.Binding {
 		keys.ToggleHidden, keys.PickerStar,
 	}
 }
+
+// renameFooterText is the Footer's line while the Sources Nav's rename
+// input (S8/M7.2) has the keyboard. Unlike find's own query, which
+// model.renderFooter renders directly (findView), the rename input lives
+// inline on the selected row instead (rootsnav.go's renderRow — S8's own
+// "edits ... inline on its row"), so the footer has nothing of its own to
+// draw there; it only needs to say what Enter/Esc do right now, since
+// rootsPane's ordinary hints (Activate "open", Star "star" …) no longer
+// apply while every other key types into the row's input instead
+// (model.handleRenameInput). A plain string, not built through
+// key.Binding/joinHints like every other footer line: reusing keys.Activate
+// or keys.Cancel's own Help() text here would misdescribe them ("open" is
+// not what Enter does mid-rename), and Help/Quit are both unreachable while
+// renaming (the same exclusivity that keeps them off the footer during an
+// in-progress find query, which likewise shows no hint line at all).
+const renameFooterText = "renaming — enter confirms · esc cancels"
 
 // alwaysHints appear last on every footer, in this order, and are never
 // dropped by hintText's truncation: S11 requires quit always shown, and the
