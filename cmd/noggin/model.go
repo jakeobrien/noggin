@@ -380,6 +380,25 @@ func (m model) recordViewed(path string) model {
 	return m.withDocRecord(path, rec)
 }
 
+// recordArticleViewed is recordViewed's article-aware sibling (C6/M6.1),
+// used only by applyArticleFetch's own Activate completion (article_fetch.go):
+// unlike a file path, an article's very first view can arrive for a record
+// that has never been starred and so has never had toggleActiveDocStar's own
+// Article/Title stamp applied — recordViewed's plain "copy the existing
+// record, touch LastViewed" shape would otherwise leave such a record
+// Article-false/Title-empty forever, which recentRows (C6/M6.1) and
+// buildDocBrowseRow both read as a bare, missing-on-disk file rather than an
+// article. title (S1's "pointer — canonical URL and title") is stamped
+// unconditionally, the same as toggleActiveDocStar's own stamp — a
+// re-Activate of an already-starred article just re-writes the same value.
+func (m model) recordArticleViewed(path, title string) model {
+	rec := m.docRecord(path)
+	rec.LastViewed = time.Now()
+	rec.Article = true
+	rec.Title = title
+	return m.withDocRecord(path, rec)
+}
+
 // withRipgrep installs the S14 ripgrep detection result (detectRipgrep())
 // that main.go resolves once at startup, the same one-shot-then-carry
 // pattern as withStorePath.
@@ -670,8 +689,9 @@ func (m model) activate() (model, tea.Cmd) {
 //
 // C6/M5.2 widens the return to (model, tea.Cmd) for activateFlatRowInto's
 // own new article branch; the tree branch below always returns a nil Cmd,
-// since Recent/Starred are the only modes a starred article can appear in
-// today (M6.1 gives Recent one; Tree never shows an article at all).
+// since Recent/Starred (C6/M6.1 widens Recent to a starred-or-not article,
+// not only a starred one) are the only modes an article can appear in at
+// all — Tree never shows one.
 func (m model) activateInto(target pane) (model, tea.Cmd) {
 	if m.files.flatMode() {
 		row, ok := m.files.selectedFlatRow()
@@ -708,7 +728,7 @@ func (m model) activateInto(target pane) (model, tea.Cmd) {
 // C6/M5.2: row.article routes through fetchArticleInto (S3) instead of
 // loadDocument — row.path is the article's canonical URL here, not a real
 // file, the same D129 landmine M4.3's Refresh already sidestepped; row.name
-// already carries the article's title (buildStarredBrowseRow), exactly
+// already carries the article's title (buildDocBrowseRow), exactly
 // what Fetch takes, mirroring activatePickerInto's own f.article branch
 // (picker.go). fetchArticleInto handles Focus, DV2 creation and recency
 // itself on completion (applyArticleFetch), so this returns its Cmd
@@ -830,21 +850,24 @@ func (m model) toggleDocStar() model {
 		}
 		rec := m.docRecord(row.path)
 		rec.Starred = !rec.Starred
-		// C6/M5.1: unlike toggleActiveDocStar, this does not stamp
-		// Article/Title itself when row.path isArticleKey — a flat row only
-		// ever shows a document already in m.docs (recentRows/starredRows
-		// both build rows from existing records), and today the only mode an
-		// article can appear in at all is Starred (Recent's own pathMissing
-		// check omits every article until M6.1 gives it an article-aware
-		// existence test), which by definition only lists rec.Starred ==
-		// true records — so row.path here already carries a record some
-		// earlier star (the viewer or the Picker) already stamped correctly.
+		// C6/M5.1, re-confirmed still correct at C6/M6.1: unlike
+		// toggleActiveDocStar, this does not stamp Article/Title itself when
+		// row.path isArticleKey — a flat row only ever shows a document
+		// already in m.docs (recentRows/starredRows both build rows from
+		// existing records), and every article record reaching m.docs at all
+		// is already stamped correctly by the time it does: a star
+		// (toggleActiveDocStar/togglePickerStar) stamps it directly, and an
+		// Activate (recordArticleViewed, C6/M6.1 — the only other way an
+		// article record is ever created, ahead of M6.1 the sole reason an
+		// unstarred article could reach a flat row at all) stamps it too — so
+		// row.path here always already carries a correctly-stamped record
+		// regardless of which of those wrote it first.
 		// Re-deriving a title from row.name would be actively wrong: it is
 		// filepath.Base(row.path), which for a URL yields the slug
-		// ("Leonhard_Euler"), not the article's real title. If a future
-		// milestone (M6.1) makes an unstarred, never-before-seen article
-		// reachable as a flat row, this will need the same stamping
-		// toggleActiveDocStar does, from a real title source, not row.name.
+		// ("Leonhard_Euler"), not the article's real title. This is why that
+		// re-derivation is never needed, even now that Recent's own rows
+		// (M6.1) let an unstarred article reach this flat-row branch for the
+		// first time — recordArticleViewed already got there first.
 		return m.withDocRecord(row.path, rec)
 	}
 	n := m.files.selectedNode()

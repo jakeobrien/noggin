@@ -548,7 +548,7 @@ func (f filesNav) flatMode() bool {
 func (f filesNav) flatRows() []browseRow {
 	switch f.mode {
 	case recentBrowse:
-		return recentRows(f.docs, f.sessionRoots, f.activeRootPath, f.scope)
+		return recentRows(f.docs, f.sessionRoots, f.activeRootPath, f.wikipedia, f.scope)
 	case starredBrowse:
 		return starredRows(f.docs, f.sessionRoots, f.activeRootPath, f.wikipedia, f.scope)
 	default:

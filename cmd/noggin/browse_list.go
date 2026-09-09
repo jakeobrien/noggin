@@ -32,24 +32,26 @@ type browseRow struct {
 	orphan    bool
 	// broken is S3's "broken starred document" mark (rootRow.broken's own
 	// definition, pathMissing, reused verbatim): the file cannot be stat'd.
-	// recentRows never produces a row for a missing file at all (S6's
-	// "silently omitted"), so this is always false there; starredRows
-	// (M4.3) is the one caller that shows a broken row rather than
-	// dropping it, since a star carries user intent a timestamp does not.
+	// recentRows (C6/M6.1) and starredRows (M4.3) both never produce a
+	// row for a missing file at all: recentRows omits it (S6's "silently
+	// omitted"), while starredRows shows it as a *broken* row instead of
+	// dropping it, since a star carries user intent a timestamp does not —
+	// so this is only ever true from starredRows' own file branch.
 	// Always false for an article row (below) — an article has no on-disk
 	// existence to stat at all; S3 never names a "broken" state for one,
 	// only a fetch that can fail at Activate/Peek time, which is a Footer
 	// message (article_fetch.go), not a static row mark.
 	broken bool
-	// article is C6/M5.2's own addition, set only by buildStarredBrowseRow:
-	// a starred Wikipedia article rather than a file (docRecord.Article) —
-	// name already holds its display title (buildStarredBrowseRow, not
-	// filepath.Base(path), since path here is the article's canonical URL,
-	// M1.5's own store key), and model.go's activateFlatRowInto/
-	// togglePeekFlatRowInto read this to route through fetchArticleInto
-	// (S3) instead of loadDocument, which would just fail reading a URL as
-	// a file (D129's own named landmine, M4.3's precedent for Refresh).
-	// Mirrors pickerFile's own article/title pair (files_search.go).
+	// article is C6/M5.2's own addition, widened to Recent by C6/M6.1, set
+	// only by buildDocBrowseRow: a Wikipedia article rather than a file
+	// (docRecord.Article) — name already holds its display title
+	// (buildDocBrowseRow, not filepath.Base(path), since path here is the
+	// article's canonical URL, M1.5's own store key), and model.go's
+	// activateFlatRowInto/togglePeekFlatRowInto read this to route through
+	// fetchArticleInto (S3) instead of loadDocument, which would just fail
+	// reading a URL as a file (D129's own named landmine, M4.3's precedent
+	// for Refresh). Mirrors pickerFile's own article/title pair
+	// (files_search.go).
 	article bool
 }
 
@@ -96,32 +98,51 @@ func sortByRecency(entries []docTimestamp) {
 // "" when no root is active).
 //
 // A record with a zero LastViewed has never been (Activate/$EDITOR-)viewed
-// (S4), so it never appears regardless of scope; a record whose file no
+// (S4), so it never appears regardless of scope; a file record whose file no
 // longer exists is silently omitted (S6, unlike a broken star, which is
-// still shown — M4.3's own concern). Every other record is bucketed by
-// which session Root covers its path via rootForPath, with a "" key for the
+// still shown — M4.3's own concern) — an article record has no on-disk
+// existence to check at all (buildDocBrowseRow's own doc comment), so it is
+// never omitted this way (C6/M6.1). Every other record is bucketed by which
+// session Root covers its path via rootForPath, with a "" key for the
 // no-Root ("orphan") bucket — a document last viewed while covered by a
-// Root no longer in the session, or never covered by one at all. Each
-// bucket is ordered newest-first and capped at recentPerRootCap (S6's own
-// per-Root cap) independently, before scope is applied:
+// Root no longer in the session, or never covered by one at all — except an
+// article record, which buckets under the reserved wikipediaSourceKey
+// sentinel instead (starredRows' own precedent, C6/M5.2): an article's path
+// is a URL, which rootForPath can never match, so without its own bucket it
+// would silently fall into the "" orphan bucket alongside a genuine
+// Root-orphan file. Each bucket is ordered newest-first and capped at
+// recentPerRootCap (S6's own per-Root cap) independently, before scope is
+// applied:
 //
-//   - Active Source scope reads only the bucket keyed by activeRootPath (nil
-//     when activeRootPath is "", i.e. no root is active — there is no
+//   - Active Source scope reads the bucket keyed by activeRootPath, or —
+//     wikipedia (true only while the Files Nav's own Active Source is the
+//     Wikipedia Query Source, files.go's f.wikipedia, C6/M6.1) — the article
+//     bucket instead, the same activeRootPath-is-always-""-while-Wikipedia's-
+//     -active distinction starredRows' own Active Source branch already
+//     makes (nil when neither applies, i.e. no root is active — there is no
 //     bucket for "no active root" to fall back to).
 //   - All Roots scope merges every bucket's own (already-capped) list,
-//     orphans included, sorted by timestamp with no further cap (S6) —
-//     this is where Recent's own two right-hand label forms (S6) both
-//     appear, since Recent's scope set (S5) has no dedicated Orphans value
-//     the way Starred's does.
-func recentRows(docs map[string]docRecord, roots []root, activeRootPath string, scope browseScope) []browseRow {
+//     orphans and articles both included, sorted by timestamp with no
+//     further cap (S6/S7) — this is where Recent's own two right-hand label
+//     forms (S6) both appear, since Recent's scope set (S5) has no dedicated
+//     Orphans value the way Starred's does.
+func recentRows(docs map[string]docRecord, roots []root, activeRootPath string, wikipedia bool, scope browseScope) []browseRow {
 	buckets := map[string][]docTimestamp{}
 	for path, rec := range docs {
-		if rec.LastViewed.IsZero() || pathMissing(path) {
+		if rec.LastViewed.IsZero() {
 			continue
 		}
 		key := ""
-		if r, ok := rootForPath(roots, path); ok {
-			key = r.path
+		switch {
+		case rec.Article:
+			key = wikipediaSourceKey
+		default:
+			if pathMissing(path) {
+				continue
+			}
+			if r, ok := rootForPath(roots, path); ok {
+				key = r.path
+			}
 		}
 		buckets[key] = append(buckets[key], docTimestamp{path: path, ts: rec.LastViewed})
 	}
@@ -135,7 +156,10 @@ func recentRows(docs map[string]docRecord, roots []root, activeRootPath string, 
 
 	var merged []docTimestamp
 	if scope == activeRootBrowseScope {
-		if activeRootPath != "" {
+		switch {
+		case wikipedia:
+			merged = buckets[wikipediaSourceKey]
+		case activeRootPath != "":
 			merged = buckets[activeRootPath]
 		}
 	} else {
@@ -147,23 +171,25 @@ func recentRows(docs map[string]docRecord, roots []root, activeRootPath string, 
 
 	rows := make([]browseRow, 0, len(merged))
 	for _, e := range merged {
-		rows = append(rows, buildBrowseRow(e.path, roots))
+		rows = append(rows, buildDocBrowseRow(e.path, docs[e.path], roots))
 	}
 	return rows
 }
 
-// buildStarredBrowseRow derives one Starred-mode browseRow for path (C6/
-// M5.2): rec.Article routes to the article's own display shape — name is
-// the article's title (rec.Title, S1's own store-record title, never
-// filepath.Base(path): path here is the article's canonical URL, M1.5's
-// store key, with no filesystem basename worth showing), rootLabel is the
-// fixed wikipediaLabel (rootsnav.go's own Wikipedia Source constant, S6's
-// "labelled Wikipedia where files are labelled by Root name"), and orphan/
-// broken both stay false — pathMissing/rootForPath would both give a URL a
-// meaningless answer, and S3 never gives an article a static "broken" mark
-// at all (browseRow.article's own doc comment). A file record delegates to
-// buildBrowseRow unchanged — the same fields Recent's own rows already use.
-func buildStarredBrowseRow(path string, rec docRecord, roots []root) browseRow {
+// buildDocBrowseRow derives one flat-list browseRow for path (C6/M5.2,
+// widened from Starred-only to also serve recentRows at C6/M6.1): rec.Article
+// routes to the article's own display shape — name is the article's title
+// (rec.Title, S1's own store-record title, never filepath.Base(path): path
+// here is the article's canonical URL, M1.5's store key, with no filesystem
+// basename worth showing), rootLabel is the fixed wikipediaLabel
+// (rootsnav.go's own Wikipedia Source constant, S6's "labelled Wikipedia
+// where files are labelled by Root name"), and orphan/broken both stay
+// false — pathMissing/rootForPath would both give a URL a meaningless
+// answer, and S3 never gives an article a static "broken" mark at all
+// (browseRow.article's own doc comment). A file record delegates to
+// buildBrowseRow unchanged — the same fields Recent's and Starred's own rows
+// both use.
+func buildDocBrowseRow(path string, rec docRecord, roots []root) browseRow {
 	if rec.Article {
 		return browseRow{path: path, name: rec.Title, rootLabel: wikipediaLabel, article: true}
 	}
@@ -186,7 +212,7 @@ func buildStarredBrowseRow(path string, rec docRecord, roots []root) browseRow {
 //     named nowhere in S5's Starred scope table) and no timestamp to order
 //     by, so rows sort by name (tie-broken by path for determinism, mirroring
 //     sortByRecency's own tie-break) — an article's own name is its title
-//     (buildStarredBrowseRow), so it sorts alongside files by that same key.
+//     (buildDocBrowseRow), so it sorts alongside files by that same key.
 //
 // Buckets key on the same rootForPath-derived Root path, "" for a document
 // under no session Root (an "orphan", S1), or — C6/M5.2 — the reserved
@@ -203,8 +229,8 @@ func buildStarredBrowseRow(path string, rec docRecord, roots []root) browseRow {
 // Source, files.go's f.wikipedia) is what lets Active Source tell those two
 // ""-shaped meanings apart: with it set, Active Source reads the article
 // bucket instead of activeRootPath's (always "" while Wikipedia is active,
-// filesNav.setWikipedia) — the same distinction recentRows does not yet
-// need to make (M6.1's own future job). All Starred merges every bucket,
+// filesNav.setWikipedia) — the same distinction recentRows' own Active
+// Source branch now makes too (C6/M6.1). All Starred merges every bucket,
 // files and articles alike (S6); Orphans (the pre-agreed cut 3 in PLAN.md/
 // M4.3, carried regardless — see browse.go's modeScopes, which already
 // excludes it entirely while Wikipedia is active) reads just the "" bucket
@@ -224,7 +250,7 @@ func starredRows(docs map[string]docRecord, roots []root, activeRootPath string,
 				key = r.path
 			}
 		}
-		buckets[key] = append(buckets[key], buildStarredBrowseRow(path, rec, roots))
+		buckets[key] = append(buckets[key], buildDocBrowseRow(path, rec, roots))
 	}
 
 	var rows []browseRow

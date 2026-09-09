@@ -148,6 +148,13 @@ func TestActivateWikipediaResultOpensCanonicalArticleInDV1(t *testing.T) {
 	if rec := got.docRecord(eulerArticle.URL); rec.LastViewed.IsZero() {
 		t.Error("LastViewed is zero after Activate completed, want recency recorded (S4)")
 	}
+	// C6/M6.1: a first-time Activate on an article never starred before must
+	// stamp Article/Title itself (recordArticleViewed), not just LastViewed
+	// — otherwise recentRows/buildDocBrowseRow would misread the record as a
+	// bare, missing-on-disk file.
+	if rec := got.docRecord(eulerArticle.URL); !rec.Article || rec.Title != eulerArticle.Title {
+		t.Errorf("docRecord after Activate = %+v, want Article true, Title %q", rec, eulerArticle.Title)
+	}
 	if !got.dv1.canGoBack() && got.dv1.historyPos != 0 {
 		t.Errorf("history position = %d after the first navigation, want 0", got.dv1.historyPos)
 	}
@@ -218,6 +225,12 @@ func TestPeekWikipediaArticleStartsPeekWithoutActivating(t *testing.T) {
 	}
 	if rec := got.docRecord(eulerArticle.URL); !rec.LastViewed.IsZero() {
 		t.Error("LastViewed is set after a Peek, want recency not recorded (S4)")
+	}
+	// C6/M6.1: Peek must not stamp Article/Title either — recordArticleViewed
+	// is Activate-only (applyArticleFetch's own peek guard), so a Peeked,
+	// never-Activated article leaves no record behind at all.
+	if rec := got.docRecord(eulerArticle.URL); rec.Article || rec.Title != "" {
+		t.Errorf("docRecord after Peek = %+v, want the zero record (nothing written)", rec)
 	}
 }
 

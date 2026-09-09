@@ -17,21 +17,26 @@
 
 ## Cursor
 
-Current task: M6.1
+Current task: M7.1
 
 ## Handoff
 
-Cursor is M6.1 (Recent for articles), still `todo` — nothing built or validated there yet.
-M1.11, M2.10 and M5.3 are independent replan-added hygiene tasks (TRIAGE-sourced doc/test
-gaps), pull-forward-anytime per PLAN.md's own note; otherwise resume at M6.1 in cursor order.
-TRIAGE.md is empty; working tree is clean except one pre-existing, unrelated, out-of-scope
-hunk: `.charm/GLOSSARY.md`'s S9a Location-line wording (predates this session).
+M6.1 (Recent for articles) is done: `recordArticleViewed` (model.go) now stamps Article/Title
+on Activate (not Peek), `recentRows` (browse_list.go) takes a `wikipedia bool` param mirroring
+`starredRows`, buckets article records under `wikipediaSourceKey` instead of `rootForPath`,
+skips the disk-existence check for them (a URL always looks "missing" to `pathMissing`), and
+builds rows via the renamed `buildDocBrowseRow` (was `buildStarredBrowseRow`, now shared by both
+Recent and Starred). The D133 gotcha (toggleDocStar's flat-mode branch) turned out to need no
+code change: `recordArticleViewed` always writes a fully-stamped record, so by the time an
+article can reach a flat row at all it is already correct — only the stale doc comment there
+was updated to explain why. Reviewed by a fresh-context code-reviewer subagent pass (2026-09-09, Status table); two
+low-severity stale-comment findings fixed, no functional issues. Not yet validated
+(charm-validate) — only reviewed so far. `make check` green; `go test ./...` covers recording,
+non-recording-on-Peek, ordering, the per-Source cap and the Wikipedia label, all new.
 
-Gotcha for whoever builds M6.1: D133's own Revisit note flags that once Recent exposes an
-unstarred article via a Files Nav flat row, `toggleDocStar`'s flat-mode branch will need the
-same Article/Title-stamping fix M5.1 made in `toggleActiveDocStar` — already documented
-in-line at the code (`toggleDocStar`'s own doc comment); read it before wiring Recent's flat
-rows for articles.
+Cursor is now M7.1 (Root names, pre-agreed cut 2), still `todo`. M1.11, M2.10 and M5.3 are
+independent replan-added hygiene tasks, pull-forward-anytime per PLAN.md's own note; M8.1
+(half-page paging) is also independent and pullable. TRIAGE.md is empty; working tree is clean.
 
 No blockers.
 
@@ -74,7 +79,7 @@ No blockers.
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
 | M1.11 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3) |
 | M5.3  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
-| M6.1  | todo   | -        | -         | pre-agreed cut 1 |
+| M6.1  | done   | 2026-09-09 | -         | pre-agreed cut 1 |
 | M7.1  | todo   | -        | -         | pre-agreed cut 2 |
 | M7.2  | todo   | -        | -         | pre-agreed cut 2 |
 | M7.3  | todo   | -        | -         | pre-agreed cut 2 |

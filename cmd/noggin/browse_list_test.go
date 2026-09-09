@@ -37,7 +37,7 @@ func TestRecentRowsOrdersByTimestamp(t *testing.T) {
 	}
 	roots := []root{{path: rootDir}}
 
-	rows := recentRows(docs, roots, rootDir, activeRootBrowseScope)
+	rows := recentRows(docs, roots, rootDir, false, activeRootBrowseScope)
 	want := []string{newest, middle, oldest}
 	if len(rows) != len(want) {
 		t.Fatalf("recentRows returned %d rows, want %d", len(rows), len(want))
@@ -70,7 +70,7 @@ func TestRecentRowsCapsAtOneHundredPerRoot(t *testing.T) {
 	}
 	roots := []root{{path: rootDir}}
 
-	rows := recentRows(docs, roots, rootDir, activeRootBrowseScope)
+	rows := recentRows(docs, roots, rootDir, false, activeRootBrowseScope)
 	if len(rows) != recentPerRootCap {
 		t.Fatalf("recentRows returned %d rows, want the cap %d", len(rows), recentPerRootCap)
 	}
@@ -163,7 +163,7 @@ func TestRecentRowsCapsOrphanBucketAtOneHundred(t *testing.T) {
 		}
 	}
 	// No roots at all: every document above lands in the "" (orphan) bucket.
-	rows := recentRows(docs, nil, "", allRootsBrowseScope)
+	rows := recentRows(docs, nil, "", false, allRootsBrowseScope)
 	if len(rows) != recentPerRootCap {
 		t.Fatalf("recentRows returned %d orphan rows, want the cap %d", len(rows), recentPerRootCap)
 	}
@@ -205,7 +205,7 @@ func TestRecentRowsAllRootsMergesByTimestampAcrossRootsAndOrphans(t *testing.T) 
 	}
 	roots := []root{{path: rootA}, {path: rootB}}
 
-	rows := recentRows(docs, roots, rootA, allRootsBrowseScope)
+	rows := recentRows(docs, roots, rootA, false, allRootsBrowseScope)
 	wantOrder := []string{bDoc, orphanDoc, aDoc}
 	if len(rows) != len(wantOrder) {
 		t.Fatalf("recentRows returned %d rows, want %d", len(rows), len(wantOrder))
@@ -252,7 +252,7 @@ func TestRecentRowsActiveRootScopeOnlyShowsThatRoot(t *testing.T) {
 	}
 	roots := []root{{path: rootA}, {path: rootB}}
 
-	rows := recentRows(docs, roots, rootA, activeRootBrowseScope)
+	rows := recentRows(docs, roots, rootA, false, activeRootBrowseScope)
 	if len(rows) != 1 || rows[0].path != aDoc {
 		t.Errorf("Active Source scope rows = %+v, want exactly [%q]", rows, aDoc)
 	}
@@ -274,7 +274,7 @@ func TestRecentRowsOmitsDeletedFile(t *testing.T) {
 	}
 	roots := []root{{path: rootDir}}
 
-	rows := recentRows(docs, roots, rootDir, activeRootBrowseScope)
+	rows := recentRows(docs, roots, rootDir, false, activeRootBrowseScope)
 	if len(rows) != 1 || rows[0].path != present {
 		t.Errorf("recentRows = %+v, want exactly the present file, gone.md silently omitted", rows)
 	}
@@ -292,10 +292,10 @@ func TestRecentRowsIgnoresNeverViewedRecords(t *testing.T) {
 	docs := map[string]docRecord{neverViewed: {Starred: true}}
 	roots := []root{{path: rootDir}}
 
-	if rows := recentRows(docs, roots, rootDir, activeRootBrowseScope); len(rows) != 0 {
+	if rows := recentRows(docs, roots, rootDir, false, activeRootBrowseScope); len(rows) != 0 {
 		t.Errorf("Active Source scope rows = %+v, want none (zero LastViewed)", rows)
 	}
-	if rows := recentRows(docs, roots, rootDir, allRootsBrowseScope); len(rows) != 0 {
+	if rows := recentRows(docs, roots, rootDir, false, allRootsBrowseScope); len(rows) != 0 {
 		t.Errorf("All Roots scope rows = %+v, want none (zero LastViewed)", rows)
 	}
 }
@@ -308,7 +308,7 @@ func TestRecentRowsActiveRootScopeWithNoActiveRootIsEmpty(t *testing.T) {
 	orphanDoc := recentFixtureFile(t, dir, "orphan.md")
 	docs := map[string]docRecord{orphanDoc: {LastViewed: time.Now()}}
 
-	rows := recentRows(docs, nil, "", activeRootBrowseScope)
+	rows := recentRows(docs, nil, "", false, activeRootBrowseScope)
 	if len(rows) != 0 {
 		t.Errorf("recentRows with no active root = %+v, want none", rows)
 	}
@@ -412,5 +412,137 @@ func TestFilesNavRecentModeShowsStarMarker(t *testing.T) {
 	}
 	if strings.Contains(unstarredLine, "\u2605") {
 		t.Errorf("unstarred.md row = %q, want no star marker", unstarredLine)
+	}
+}
+
+// TestRecentRowsNeverOmitsAnArticleAsMissing is C6/M6.1's own fix pinned
+// directly: an article's path is a URL, which pathMissing (os.Stat) always
+// reports as missing, so recentRows must skip that check for an article
+// record entirely rather than silently omitting every article the way it
+// would a genuinely deleted file (TestRecentRowsOmitsDeletedFile's own
+// clause) — S7's "same omission of entries that can no longer be
+// resolved" has nothing for a fetchable-on-demand article to ever fail.
+func TestRecentRowsNeverOmitsAnArticleAsMissing(t *testing.T) {
+	article := fixtureArticle()
+	docs := map[string]docRecord{
+		article.path: {LastViewed: time.Now(), Article: true, Title: article.title},
+	}
+
+	rows := recentRows(docs, nil, "", true, activeRootBrowseScope)
+	if len(rows) != 1 || rows[0].path != article.path {
+		t.Fatalf("recentRows = %+v, want exactly the article, never omitted as missing", rows)
+	}
+}
+
+// TestRecentRowsWikipediaActiveSourceShowsArticlesByRecency is C6/M6.1's
+// own S5 clause for Recent (mirroring starredRows'
+// TestStarredRowsWikipediaActiveSourceShowsArticlesByTitle): with Wikipedia
+// the Active Source (wikipedia == true), Active Source scope reads the
+// article bucket, not activeRootPath's (always "" while Wikipedia is
+// active) — ordered newest-first like any other Recent list, rows named by
+// title and labelled Wikipedia, never leaking a Root-orphan file that
+// happens to share the "" key.
+func TestRecentRowsWikipediaActiveSourceShowsArticlesByRecency(t *testing.T) {
+	dir := t.TempDir()
+	orphanDoc := recentFixtureFile(t, dir, "orphan.md")
+	older := fixtureArticle()
+	newer := document{path: "https://en.wikipedia.org/wiki/Carl_Friedrich_Gauss", title: "Carl Friedrich Gauss"}
+
+	now := time.Now()
+	docs := map[string]docRecord{
+		orphanDoc:  {LastViewed: now},
+		older.path: {LastViewed: now.Add(-time.Hour), Article: true, Title: older.title},
+		newer.path: {LastViewed: now, Article: true, Title: newer.title},
+	}
+
+	rows := recentRows(docs, nil, "", true, activeRootBrowseScope)
+	want := []string{newer.path, older.path}
+	if len(rows) != len(want) {
+		t.Fatalf("Wikipedia Active Source rows = %+v, want exactly the two articles (orphan file excluded)", rows)
+	}
+	for i, w := range want {
+		if rows[i].path != w {
+			t.Errorf("row %d path = %q, want %q (newest-first)", i, rows[i].path, w)
+		}
+		if !rows[i].article {
+			t.Errorf("row %d article = false, want true", i)
+		}
+		if rows[i].rootLabel != wikipediaLabel {
+			t.Errorf("row %d rootLabel = %q, want %q", i, rows[i].rootLabel, wikipediaLabel)
+		}
+	}
+	if rows[0].name != newer.title || rows[1].name != older.title {
+		t.Errorf("row names = [%q, %q], want [%q, %q]", rows[0].name, rows[1].name, newer.title, older.title)
+	}
+}
+
+// TestRecentRowsAllSourcesIncludesArticlesLabelledWikipediaWithARootActive
+// is S6's own clause applied to Recent (mirroring starredRows'
+// TestStarredRowsAllStarredIncludesArticlesLabelledWikipediaWithARootActive):
+// with a Root active (not Wikipedia), All Sources still merges in a
+// recently-viewed article alongside the Root's own recent files, labelled
+// Wikipedia where a file is labelled by its covering Root's name, ordered
+// by recency across both.
+func TestRecentRowsAllSourcesIncludesArticlesLabelledWikipediaWithARootActive(t *testing.T) {
+	dir := t.TempDir()
+	rootA := mkdir(t, filepath.Join(dir, "root-a"))
+	aDoc := recentFixtureFile(t, rootA, "a.md")
+	article := fixtureArticle()
+	roots := []root{{path: rootA}}
+
+	now := time.Now()
+	docs := map[string]docRecord{
+		aDoc:         {LastViewed: now.Add(-time.Hour)},
+		article.path: {LastViewed: now, Article: true, Title: article.title},
+	}
+
+	rows := recentRows(docs, roots, rootA, false, allRootsBrowseScope)
+	want := []string{article.path, aDoc}
+	if len(rows) != len(want) {
+		t.Fatalf("All Sources rows = %+v, want exactly %v", rows, want)
+	}
+	for i, w := range want {
+		if rows[i].path != w {
+			t.Errorf("row %d path = %q, want %q (newest-first)", i, rows[i].path, w)
+		}
+	}
+	if !rows[0].article || rows[0].name != article.title || rows[0].rootLabel != wikipediaLabel {
+		t.Errorf("article row = %+v, want name %q labelled %q", rows[0], article.title, wikipediaLabel)
+	}
+	if rows[1].article || rows[1].rootLabel != "root-a" {
+		t.Errorf("a.md row = %+v, want rootLabel %q, article false", rows[1], "root-a")
+	}
+}
+
+// TestRecentRowsCapsWikipediaArticleBucketAtOneHundred is S7's own "same
+// per-Source cap as files" clause: an article bucket (keyed by
+// wikipediaSourceKey) is capped at recentPerRootCap exactly like any Root's
+// own bucket (TestRecentRowsCapsAtOneHundredPerRoot's own shape), oldest
+// articles dropped first.
+func TestRecentRowsCapsWikipediaArticleBucketAtOneHundred(t *testing.T) {
+	const total = recentPerRootCap + 10
+	docs := make(map[string]docRecord, total)
+	now := time.Now()
+	var newestPaths []string
+	for i := 0; i < total; i++ {
+		p := fmt.Sprintf("https://en.wikipedia.org/wiki/Article_%03d", i)
+		docs[p] = docRecord{LastViewed: now.Add(time.Duration(i) * time.Minute), Article: true, Title: fmt.Sprintf("Article %03d", i)}
+		if i >= total-recentPerRootCap {
+			newestPaths = append(newestPaths, p)
+		}
+	}
+
+	rows := recentRows(docs, nil, "", true, activeRootBrowseScope)
+	if len(rows) != recentPerRootCap {
+		t.Fatalf("recentRows returned %d article rows, want the cap %d", len(rows), recentPerRootCap)
+	}
+	got := map[string]bool{}
+	for _, r := range rows {
+		got[r.path] = true
+	}
+	for _, p := range newestPaths {
+		if !got[p] {
+			t.Errorf("newest article %q missing from the capped list; want only the oldest dropped", p)
+		}
 	}
 }

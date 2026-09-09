@@ -150,8 +150,9 @@ func (m model) refreshArticleFetchInto(target pane) (model, tea.Cmd) {
 // or, for Activate/Peek (mutually exclusive with refresh), starts Peek
 // (peek == true, S7's own "never becomes the Active Document, never moves
 // Focus, never records recency") or records recency and navigates (peek ==
-// false, S4/S9 — the same recordViewed-then-navigate pair
-// activatePickerInto's own fileMode branch already gives a file).
+// false, S4/S9 — recordArticleViewed-then-navigate, the article-aware form
+// (C6/M6.1) of the same recordViewed-then-navigate pair activatePickerInto's
+// own fileMode branch already gives a file).
 func (m model) applyArticleFetch(msg articleFetchMsg) model {
 	v := m.viewerFor(msg.pane)
 	if v.pendingFetch == nil || v.pendingFetch.token != msg.token {
@@ -179,6 +180,10 @@ func (m model) applyArticleFetch(msg articleFetchMsg) model {
 	if msg.peek {
 		return m.withViewerFor(msg.pane, m.viewerFor(msg.pane).startPeek(doc))
 	}
-	m = m.recordViewed(doc.path)
+	// C6/M6.1: recordArticleViewed, not recordViewed — a first-time Activate
+	// on an article never starred before has no existing Article/Title stamp
+	// for recordViewed's plain LastViewed-only write to preserve (see its own
+	// doc comment).
+	m = m.recordArticleViewed(doc.path, doc.title)
 	return m.navigate(msg.pane, doc)
 }

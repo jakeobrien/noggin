@@ -9,6 +9,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestWikipediaBrowseModeCycleIsStarredRecentOnly is S5's own
@@ -83,6 +84,31 @@ func TestWikipediaModeScopeRowShowsTheCurrentPair(t *testing.T) {
 			t.Errorf("mode/scope row = %q, want it to show %q and %q", lines[0], c.mode, c.scope)
 		}
 		f = f.cycleMode()
+	}
+}
+
+// TestWikipediaRecentModeRendersArticleRowByTitle is C6/M6.1's own
+// filesNav-level wiring check, mirroring TestFilesNavRecentModeRendersFlatRows:
+// with Wikipedia the Active Source, Recent mode's Active Source scope
+// renders a recently-viewed article by its title, labelled Wikipedia
+// (renderFlatRow's rootLabel column), never a URL-derived name.
+func TestWikipediaRecentModeRendersArticleRowByTitle(t *testing.T) {
+	article := fixtureArticle()
+	docs := map[string]docRecord{
+		article.path: {LastViewed: time.Now(), Article: true, Title: article.title},
+	}
+	f := newFilesNav().setWikipedia().withRecentSource(docs, nil, "").setSize(40, 8)
+	f = f.cycleMode() // Starred -> Recent
+	if f.mode != recentBrowse {
+		t.Fatalf("setup: mode = %v, want recentBrowse", f.mode)
+	}
+
+	view := f.view()
+	if !strings.Contains(view, article.title) {
+		t.Errorf("Wikipedia Recent view does not show the article's title:\n%s", view)
+	}
+	if !strings.Contains(view, wikipediaLabel) {
+		t.Errorf("Wikipedia Recent view does not label the row %q:\n%s", wikipediaLabel, view)
 	}
 }
 

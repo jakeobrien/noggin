@@ -492,14 +492,13 @@ func TestToggleDocStarInStarredModeDropsTheRowImmediately(t *testing.T) {
 // togglePickerStar/toggleActiveDocStar both stamp it) appears in a Starred
 // flat list like any starred file, and un-starring it from that row drops
 // it immediately, the same shape TestToggleDocStarInStarredModeDropsThe
-// RowImmediately already pins for a file. An article can only ever reach a
-// Files Nav row already-starred today (Recent's own pathMissing check omits
-// every article until M6.1 gives it an article-aware existence test, and
-// Starred's own row set is Starred==true by definition) — All Starred scope
-// is used here, not Active Source, since a Root is never activated in this
-// test (a real title/`Wikipedia`-label row either way, C6/M5.2's own fix to
-// the cosmetic gap this test used to pin: buildStarredBrowseRow now renders
-// the article's own title, not a URL-derived name).
+// RowImmediately already pins for a file. This fixture reaches its Files Nav
+// row already-starred (Starred's own row set is Starred==true by
+// definition) — All Starred scope is used here, not Active Source, since a
+// Root is never activated in this test (a real title/`Wikipedia`-label row
+// either way, C6/M5.2's own fix to the cosmetic gap this test used to pin:
+// buildDocBrowseRow, renamed at C6/M6.1 when Recent started sharing it,
+// renders the article's own title, not a URL-derived name).
 func TestToggleDocStarInStarredModeDropsAStarredArticleRowImmediately(t *testing.T) {
 	storePath := filepath.Join(t.TempDir(), "documents")
 	article := fixtureArticle()
