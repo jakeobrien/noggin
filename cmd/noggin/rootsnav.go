@@ -313,7 +313,14 @@ const rootRowHeight = 2
 var (
 	rootsBrokenStyle = lipgloss.NewStyle().Faint(true)
 	rootsNameStyle   = lipgloss.NewStyle().Bold(true)
-	rootsPathStyle   = lipgloss.NewStyle()
+	// rootsPathStyle is S10/M8.3's de-emphasized path line (line 2): the same
+	// dimColor every pane's empty-state/footer text and the S9/S9a location
+	// line (locationLineStyle, style.go) already use, so a Root's path reads
+	// as secondary the same way those do. There is nothing to match-highlight
+	// against it (unlike a Picker File row's path, S10's other half) — the
+	// Sources Nav has no search/filter of its own — so this is the row's
+	// entire path-line treatment, not a base a highlighter layers onto.
+	rootsPathStyle = lipgloss.NewStyle().Foreground(dimColor)
 )
 
 // view renders the pane's content box at exactly its width x height, the same
@@ -331,10 +338,12 @@ func (r rootsNav) view() string {
 // active marker, the starred marker, the Root's own name in bold (S3's
 // "prominently", S8/M7.2's displayName in place of the bare folder base
 // name) and the broken-root suffix. Line 2 carries the entry's full path
-// alone, unbold and left-truncated the same way the single-line layout
-// truncated its parent path, so same-named roots still read apart
-// (`…/work/admin/project`) — markers never repeat on line 2, per S5. A
-// broken root is dimmed on both lines, since it cannot be activated. The
+// alone, de-emphasized (rootsPathStyle, S10/M8.3) and left-truncated the
+// same way the single-line layout truncated its parent path, so same-named
+// roots still read apart (`…/work/admin/project`) — markers never repeat on
+// line 2, per S5. A broken root is dimmed on both lines via rootsBrokenStyle
+// instead (Faint, not rootsPathStyle's colour), since it cannot be
+// activated. The
 // selection cursor draws both lines in reverse video, matching the Files
 // Nav's bar; each line's style is fully specified (not a partial run), so
 // reverse video never gets cancelled mid-line

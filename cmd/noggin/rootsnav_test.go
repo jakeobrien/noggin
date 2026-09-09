@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"noggin/internal/tree"
 )
 
@@ -84,6 +86,27 @@ func TestRootsNavMarksMissingPathBroken(t *testing.T) {
 	}
 }
 
+// lineFullyReversed reports whether every visible cell of s carries reverse
+// video (cellStyles, picker_view_test.go), rather than checking for a
+// literal "\x1b[7m" substring: a row that exactly fills its width leaves no
+// separately-styled padding run to carry that code in isolation, and
+// combining reverse with another attribute or S10/M8.3's dim foreground
+// serializes as one multi-param SGR ("\x1b[1;7m", "\x1b[7;38;5;245m") that
+// does not contain the bare substring either, even though the whole line is
+// genuinely reversed throughout.
+func lineFullyReversed(s string) bool {
+	cells := cellStyles(s)
+	if len(cells) == 0 {
+		return false
+	}
+	for _, c := range cells {
+		if !c.reverse {
+			return false
+		}
+	}
+	return true
+}
+
 // TestRootsNavHighlightsActiveRoot checks S3's "the active root is
 // highlighted": the ● marker moves with the active index, not the selection
 // cursor. S5 makes every entry's name line bold unconditionally (not just
@@ -107,7 +130,7 @@ func TestRootsNavHighlightsActiveRoot(t *testing.T) {
 	}
 	// The selection cursor (row 0 after the move) is reverse-video on both of
 	// its lines, regardless of which row is active.
-	if !strings.Contains(lines[0], "\x1b[7m") || !strings.Contains(lines[1], "\x1b[7m") {
+	if !lineFullyReversed(lines[0]) || !lineFullyReversed(lines[1]) {
 		t.Errorf("selected row 0 lines = %q / %q, want both reverse-video", lines[0], lines[1])
 	}
 }
@@ -149,6 +172,46 @@ func TestRootsNavRendersTwoLinesPerEntry(t *testing.T) {
 	}
 }
 
+// TestRootsNavPathLineIsDeEmphasized is S10/M8.3's own acceptance criterion
+// for the Sources Nav: the path line (line 2) renders de-emphasized
+// (dimColor, the same styling the Wikipedia row's own domain line and the
+// S9/S9a Document Viewer location line already use), while the name line
+// (line 1) stays at normal weight — the Sources Nav has no search/filter of
+// its own, so unlike a Picker File row there is no matched-character
+// exception to check here (S10's other half, TestPickerFileRowMatchedPath
+// CharactersAreNeverDimmed, covers that).
+func TestRootsNavPathLineIsDeEmphasized(t *testing.T) {
+	a := mkdir(t, filepath.Join(t.TempDir(), "alpha"))
+	r := newRootsNav().setRoots([]root{{path: a}}, -1).setSize(60, 2)
+	r = r.move(1) // cursor off row 0, so neither line is reverse-video
+
+	lines := strings.Split(r.view(), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("view has %d lines, want 2", len(lines))
+	}
+
+	plain := ansi.Strip(lines[1])
+	contentEnd := strings.TrimRight(plain, " ")
+	if contentEnd == "" {
+		t.Fatalf("path line %q has no content to check", lines[1])
+	}
+	dim := dimColumns(lines[1])
+	dimSet := make(map[int]bool, len(dim))
+	for _, d := range dim {
+		dimSet[d] = true
+	}
+	for i := range contentEnd {
+		if !dimSet[i] {
+			t.Errorf("path line column %d (%q) is not dimmed\nline: %q", i, string(contentEnd[i]), lines[1])
+			break
+		}
+	}
+
+	if dim := dimColumns(lines[0]); len(dim) != 0 {
+		t.Errorf("name line dim columns = %v, want none (S10: the label stays at normal weight)", dim)
+	}
+}
+
 // TestRootsNavSelectionHighlightsBothLines is S5's "both lines of the
 // selected entry carry the selection highlight".
 func TestRootsNavSelectionHighlightsBothLines(t *testing.T) {
@@ -157,7 +220,7 @@ func TestRootsNavSelectionHighlightsBothLines(t *testing.T) {
 	r := newRootsNav().setRoots([]root{{path: a}, {path: b}}, -1).setSize(40, 4)
 
 	lines := strings.Split(r.view(), "\n")
-	if !strings.Contains(lines[0], "\x1b[7m") || !strings.Contains(lines[1], "\x1b[7m") {
+	if !lineFullyReversed(lines[0]) || !lineFullyReversed(lines[1]) {
 		t.Errorf("selected row 0 lines = %q / %q, want both reverse-video", lines[0], lines[1])
 	}
 	if strings.Contains(lines[2], "\x1b[7m") || strings.Contains(lines[3], "\x1b[7m") {
@@ -169,7 +232,7 @@ func TestRootsNavSelectionHighlightsBothLines(t *testing.T) {
 	if strings.Contains(lines[0], "\x1b[7m") || strings.Contains(lines[1], "\x1b[7m") {
 		t.Errorf("row 0 lines after moving selection away = %q / %q, want neither reverse-video", lines[0], lines[1])
 	}
-	if !strings.Contains(lines[2], "\x1b[7m") || !strings.Contains(lines[3], "\x1b[7m") {
+	if !lineFullyReversed(lines[2]) || !lineFullyReversed(lines[3]) {
 		t.Errorf("row 1 lines after moving selection = %q / %q, want both reverse-video", lines[2], lines[3])
 	}
 }

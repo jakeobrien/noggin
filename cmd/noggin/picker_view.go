@@ -253,49 +253,39 @@ func pickerStatus(p picker, avail ripgrepAvailability, hideDotfiles bool) string
 // lists, so a Picker Result reads the same way a Nav selection does.
 var pickerSelectedStyle = lipgloss.NewStyle().Reverse(true)
 
-// pickerRootLabel renders a Root's label for a File Picker row (S3, M3.1a/
-// D50): its own label (root.displayName, S8/M7.3 — persisted Name if it
-// has one, else the folder's base name), then a gap, then its
-// left-truncated parent path (`leftTruncate`, rootsnav.go) — the exact
-// same "prominent label plus disambiguating parent" layout rootsNav.
-// renderRow gives every Root row, reused here rather than the bare
-// filepath.Base(f.root.path) M3.1 shipped with (M7.3 replaced it with
-// displayName, the one helper every Root-label site now reads from), which
-// read two Roots sharing a base name (different parents), or a renamed and
-// an unnamed Root sharing a folder name, identically. budget is what's
-// left of width after the name, the one gap ahead of the parent segment,
-// and rest (everything the row still renders after the Root label,
-// including that segment's own connecting gap — e.g. "  " plus the file's
-// relative path) — the same single-gap "reserve everything else first"
-// shape rootsNav.renderRow's own budget calculation uses for its row's
-// suffix. Subtracting gap's width a second time here (TRIAGE T13/D52)
-// double-counted a gap that only appears once in the rendered row,
-// under-computing budget by one gap width (~2 cols) on every row — caught
-// only after M3.1a's own disambiguation test happened to run at a width
-// wide enough (140x30, not the project's standard 80x24) to not need the
-// lost budget.
+// pickerRootLabel renders a Root's own label for a File Picker row (S3,
+// S10/M8.3/D117): just its displayName (S8/M7.3 — persisted Name if it has
+// one, else the folder's base name), right-truncated to whatever budget is
+// left of width after rest (everything the row still renders after this
+// label, including its own connecting gap — e.g. "  " plus the file's
+// relative path). Before D117 this also appended a left-truncated parent
+// path (`leftTruncate`, rootsnav.go) to disambiguate two Roots sharing a
+// base name; that fragment is dropped — a row is now exactly "<Root name>"
+// + path relative to the Root, and S8's own per-Root names cover the rare
+// disambiguation case the fragment used to (TestPickerFileResultsDisambig
+// uateSameBasenameRoots and TestPickerFileRowFillsItsFullBudget, which
+// pinned the fragment's own budget math, are retired along with it — see
+// picker_view_test.go's note where they used to be).
 func pickerRootLabel(f pickerFile, width int, rest string) string {
 	name := f.root.displayName()
-	parent := filepath.Dir(f.root.path) + string(filepath.Separator)
-	const gap = "  "
-	budget := max(width-lipgloss.Width(name)-lipgloss.Width(gap)-lipgloss.Width(rest), 0)
-	return name + gap + leftTruncate(parent, budget)
+	budget := max(width-lipgloss.Width(rest), 0)
+	return rightTruncate(name, budget)
 }
 
 // pickerLocationLabel is pickerFileRow's "where is this file" segment
-// (S3/S8, C4/M5.1): a covering Root's own name+parent (pickerRootLabel)
-// for an ordinary candidate, — for a Starred-scope orphan (pickerFile.
-// orphan, starredPickerFiles) — the document's own left-truncated parent
-// directory alone, since there is no Root name to pair it with, or — for a
-// starred article (pickerFile.article, C6/M3.5) — the fixed wikipediaLabel
-// (rootsnav.go's own Wikipedia Source constant, reused rather than a
-// second string literal): S6's "labelled Wikipedia where files are
-// labelled by Root name" is this segment's own third case, an article
-// having neither a Root nor a parent directory to show in its place. This
-// is Picker rows' own counterpart to browse_list.go's buildBrowseRow/
-// files.go's renderFlatRow orphan fallback (orphanDir): the same "no
-// covering Root" fact, rendered in whichever layout its own caller already
-// uses — name+parent there, Root-label+rel here.
+// (S3/S8, C4/M5.1): a covering Root's own name (pickerRootLabel, D117 — no
+// parent fragment) for an ordinary candidate, — for a Starred-scope orphan
+// (pickerFile.orphan, starredPickerFiles) — the document's own
+// left-truncated parent directory alone, since there is no Root name to
+// pair it with, or — for a starred article (pickerFile.article, C6/M3.5)
+// — the fixed wikipediaLabel (rootsnav.go's own Wikipedia Source constant,
+// reused rather than a second string literal): S6's "labelled Wikipedia
+// where files are labelled by Root name" is this segment's own third case,
+// an article having neither a Root nor a parent directory to show in its
+// place. This is Picker rows' own counterpart to browse_list.go's
+// buildBrowseRow/files.go's renderFlatRow orphan fallback (orphanDir): the
+// same "no covering Root" fact, rendered in whichever layout its own
+// caller already uses — name there, Root-label here.
 func pickerLocationLabel(f pickerFile, width int, rest string) string {
 	if f.article {
 		budget := max(width-lipgloss.Width(rest), 0)
@@ -310,25 +300,34 @@ func pickerLocationLabel(f pickerFile, width int, rest string) string {
 
 // pickerFileRow renders one File Picker Result (S3): the file's Root and its
 // path relative to that Root, so two same-named files in different Roots
-// read apart (M3.1's own acceptance criterion), including when two Roots
-// also share a base name (M3.1a/D50, pickerRootLabel). f.path is always
-// inside f.root.path (both pickerFile's own fields and listFiles'
-// construction guarantee it) for every non-orphan candidate, so
-// filepath.Rel here cannot fail in practice for one; the fallback to the
-// absolute path exists only so a row still renders *something* if that
-// invariant were ever broken, rather than silently dropping the row. A
-// Starred-scope orphan (S8, C4/M5.1) has no f.root at all —
-// starredPickerFiles leaves it the zero value — so rel is just the file's
-// own base name there, paired with pickerLocationLabel's parent-directory
-// fallback rather than a Root's own name+parent. suffix ("  "+rel) is
-// computed once and reused both as pickerLocationLabel's rest argument and
-// as the literal text appended after it (TRIAGE T17/D52) — the two must
+// read apart (M3.1's own acceptance criterion) — two Roots that also share a
+// base name are no longer told apart by this row at all (D117/M8.3; S8's
+// per-Root name is where that now lives). f.path is always inside
+// f.root.path (both pickerFile's own fields and listFiles' construction
+// guarantee it) for every non-orphan candidate, so filepath.Rel here cannot
+// fail in practice for one; the fallback to the absolute path exists only so
+// a row still renders *something* if that invariant were ever broken, rather
+// than silently dropping the row. A Starred-scope orphan (S8, C4/M5.1) has
+// no f.root at all — starredPickerFiles leaves it the zero value — so rel is
+// just the file's own base name there, paired with pickerLocationLabel's
+// parent-directory fallback rather than a Root's own name. suffix ("  "+rel)
+// is computed once and reused both as pickerLocationLabel's rest argument
+// and as the literal text appended after it (TRIAGE T17/D52) — the two must
 // always agree since they describe the same rendered characters, so a
 // single local var makes that structural rather than something two call
 // sites have to keep in sync by hand.
 // query is what the row was matched against, needed only to highlight the
 // matched characters of the file name (S5/M6.1) — an empty query renders
-// exactly the unhighlighted row M3.1 shipped.
+// exactly the unhighlighted row M3.1 shipped (still de-emphasized per S10
+// below — dimming is unconditional, unlike match highlighting).
+// S10/M8.3: everything from suffix onward (the gap plus rel/title) is
+// de-emphasized (dimColor, the same muted foreground the Sources Nav's own
+// path line and the S9/S9a location line use) — the location label ahead of
+// it (pickerLocationLabel: a Root's name, an orphan's parent directory, or
+// "Wikipedia") stays normal weight to anchor the row. A matched character
+// inside the dim segment is never dimmed, regardless of dimFrom — S10's own
+// "emphasized against it" — so highlightMatches resolves matched before dim
+// for every column.
 // starred is S3/D72's Picker-side star marker: a starred Result renders the
 // same "\u2605 "/"  " two-column field Files Nav, Sources Nav and the Document
 // Viewer already use, computed live from the caller's docs lookup rather
@@ -369,9 +368,12 @@ func pickerFileRow(f pickerFile, query string, width int, selected bool, starred
 	}
 	suffix := "  " + rel
 	line := pickerLocationLabel(f, contentWidth, suffix) + suffix
+	// dimFrom is where suffix begins within line — everything from there on
+	// (S10/M8.3) is de-emphasized; the location label ahead of it is not.
+	dimFrom := len([]rune(line)) - len([]rune(suffix))
 	columns := suffixColumns(line, name, fileNameMatchPositions(name, query))
 	full, shifted := prependMarker(marker, line, columns)
-	return styleRow(highlightMatches(full, shifted, selected), width, selected)
+	return styleRow(highlightMatches(full, shifted, dimFrom+len([]rune(marker)), selected), width, selected)
 }
 
 // starMarker returns the two-column starred-state field used by Picker rows
@@ -436,11 +438,21 @@ func clipColumns(columns []int, visible int) []int {
 	return kept
 }
 
+// noDim is the dimFrom sentinel meaning "never dim any column of this row"
+// — pickerGrepRow's own rows, which S10/M8.3 does not de-emphasize (only a
+// File row's path segment is; a Grep row's file:line prefix and matched
+// line text are not).
+const noDim = -1
+
 // highlightMatches bolds line's runes at the given columns (rune indexes
-// into line itself), leaving every other character alone — S5's match
-// emphasis, shared by both modes' rows (M6.1's fuzzy-matched file-name
+// into line itself) and, from dimFrom on (noDim disables this), renders the
+// rest de-emphasized — S5's match emphasis (M6.1's fuzzy-matched file-name
 // characters via suffixColumns, M6.2's literal query occurrences via
-// grepMatchPositions).
+// grepMatchPositions) shared by both modes' rows, now also carrying
+// pickerFileRow's own path de-emphasis (S10/M8.3) since the two decisions
+// resolve per column together: a matched character at or past dimFrom is
+// never dimmed — S10's own "emphasized against it" — so dim can't simply
+// wrap this function's output after the fact.
 //
 // A matched character is picked out with bold, and bold only. The emphasis
 // has to read both on a plain row and on the selected row's reverse-video
@@ -452,17 +464,25 @@ func clipColumns(columns []int, visible int) []int {
 // derived from the row's own base style (base.Bold(true)) rather than being
 // a standalone style that would drop the selection's reverse.
 //
+// The dim run does use a foreground colour (dimColor, the same one
+// locationLineStyle/rootsPathStyle use) despite that same reverse-video
+// caveat — S10 says nothing about selected-row behaviour, and every column
+// of a selected row still stays reversed regardless (dim/highlight/base all
+// derive from the same reversed base), which is what the nesting hazard
+// below actually protects against, not the colour's own visibility.
+//
 // Every run is rendered with its style fully specified, including the
-// unmatched runs and including the selection's own reverse video, rather
-// than styling only the matched runs and letting styleRow's outer
-// pickerSelectedStyle wrap the result. Nesting is what forces that: lipgloss
-// closes an inner style with a full reset (`ESC[m`, verified against v2.0.5),
-// which also cancels the enclosing reverse video, so an outer-wrapped
-// selected row would lose its bar from the first highlight to the end of the
-// text. Self-contained runs have nothing to cancel. styleRow still applies
-// the same base style outside for the row's padding and width clamp.
-func highlightMatches(line string, columns []int, selected bool) string {
-	if len(columns) == 0 {
+// unmatched/undimmed runs and including the selection's own reverse video,
+// rather than styling only the matched/dimmed runs and letting styleRow's
+// outer pickerSelectedStyle wrap the result. Nesting is what forces that:
+// lipgloss closes an inner style with a full reset (`ESC[m`, verified
+// against v2.0.5), which also cancels the enclosing reverse video, so an
+// outer-wrapped selected row would lose its bar from the first highlight to
+// the end of the text. Self-contained runs have nothing to cancel. styleRow
+// still applies the same base style outside for the row's padding and width
+// clamp.
+func highlightMatches(line string, columns []int, dimFrom int, selected bool) string {
+	if len(columns) == 0 && dimFrom < 0 {
 		return line
 	}
 	runes := []rune(line)
@@ -475,15 +495,34 @@ func highlightMatches(line string, columns []int, selected bool) string {
 		base = pickerSelectedStyle
 	}
 	highlight := base.Bold(true)
+	dim := base.Foreground(dimColor)
+
+	// class classifies rune i for run-merging: 2 (matched, never dim) beats
+	// 1 (dim) beats 0 (base) -- matched wins regardless of dimFrom, per this
+	// function's own doc comment.
+	class := func(i int) int {
+		switch {
+		case matched[i]:
+			return 2
+		case dimFrom >= 0 && i >= dimFrom:
+			return 1
+		default:
+			return 0
+		}
+	}
 
 	var b strings.Builder
 	for i := 0; i < len(runes); {
+		c := class(i)
 		j := i
-		for j < len(runes) && matched[j] == matched[i] {
+		for j < len(runes) && class(j) == c {
 			j++
 		}
 		style := base
-		if matched[i] {
+		switch c {
+		case 1:
+			style = dim
+		case 2:
 			style = highlight
 		}
 		b.WriteString(style.Render(string(runes[i:j])))
@@ -540,16 +579,19 @@ func rightTruncate(s string, width int) string {
 // count — D34 records why the Document Viewer hand-off cannot use it
 // directly, but the Preview/Results side of the Picker always addresses the
 // raw file, so rg's number is exactly right here) and the line's own text.
-// Unlike pickerFileRow's Root label (M3.1a/D50), this does not disambiguate
-// same-named Roots — S4 only asks for "the file, the line number and the
-// line", not Root disambiguation, and the line text itself is almost always
-// enough to tell two matches apart. A Starred-scope orphan (S8, C4/M5.1)
-// falls out of the same filepath.Rel call for free: g.file.root is the zero
-// value (root.path == ""), so filepath.Rel("", g.file.path) errors and rel
-// falls back to g.file.path — the absolute path, which is exactly what an
-// orphan (no Root to be relative to) should show here; no orphan-specific
-// branch is needed the way pickerFileRow's own rel computation needs one,
-// since this row never tries a name+parent Root label in the first place.
+// Unlike pickerFileRow's Root label, this never shows the Root at all — S4
+// only asks for "the file, the line number and the line", not the Root,
+// and the line text itself is almost always enough to tell two matches
+// apart (D117/M8.3 dropped pickerFileRow's own former disambiguation too,
+// so post-D117 the two rows differ only in whether a Root label appears at
+// all, not in how much of one they show). A Starred-scope orphan (S8,
+// C4/M5.1) falls out of the same filepath.Rel call for free: g.file.root is
+// the zero value (root.path == ""), so filepath.Rel("", g.file.path) errors
+// and rel falls back to g.file.path — the absolute path, which is exactly
+// what an orphan (no Root to be relative to) should show here; no
+// orphan-specific branch is needed the way pickerFileRow's own rel
+// computation needs one, since this row never tries a Root label in the
+// first place.
 //
 // The assembled line is right-truncated (rightTruncate) to width *before*
 // styling, unlike pickerFileRow's budget-computed-to-fit construction:
@@ -594,7 +636,7 @@ func pickerGrepRow(g grepResult, query string, width int, selected bool, starred
 	}
 	clipped := clipColumns(columns, visible)
 	marked, shifted := prependMarker(marker, line, clipped)
-	return styleRow(highlightMatches(marked, shifted, selected), width, selected)
+	return styleRow(highlightMatches(marked, shifted, noDim, selected), width, selected)
 }
 
 // pickerWikipediaRow renders one Wikipedia Picker Result (S2, C6/M3.3/

@@ -62,8 +62,9 @@ func TestBuildBrowseRowUsesRenamedRootLabel(t *testing.T) {
 // TestPickerRootLabelUsesRenamedRootLabel is M7.3's Picker-result-labels
 // case: pickerRootLabel (picker_view.go, feeding pickerFileRow's Results
 // rows) leads with a Root's Name when it has one, not its folder's base
-// name — the same "prominent label plus disambiguating parent" layout it
-// already gives an unnamed Root's base name.
+// name — the same substitution it already gives an unnamed Root's base
+// name (D117/M8.3 dropped the parent-path fragment this label used to pair
+// it with; only the name itself remains).
 func TestPickerRootLabelUsesRenamedRootLabel(t *testing.T) {
 	f := pickerFile{
 		root: root{path: "/home/user/work/admin/project", name: "Work"},

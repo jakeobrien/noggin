@@ -1624,4 +1624,36 @@ check("M8.2 pty: Peeking a second file switches the location line to the Peeked 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M8.2 pty: exits 0 after the location-line check", code == 0, f"exit {code}")
 
+# --- C6/M8.3 (S10): de-emphasized secondary text ---------------------------
+# rootsnav_test.go/picker_view_test.go already pin the per-column dim/bold
+# classification exactly (cellStyles); what a real terminal alone can
+# confirm is that S10's dim styling and D117's dropped Picker-row parent
+# fragment both actually reach the wire.
+
+s = Session([BINARY, TREE], 80, 24)
+s.pump(1.2)
+s.send(KEY["FocusRoots"], 0.4)
+out = s.out.decode("utf-8", "replace")
+check("M8.3 pty: the Sources Nav path line reaches the wire de-emphasized (dimColor 245)",
+      re.search(r"38;5;245;?\d*m[^\x1b]*testdata/tree", out) is not None,
+      repr(s.out[-1200:]))
+check("M8.3 pty: the Wikipedia row's domain line reaches the wire de-emphasized (dimColor 245)",
+      re.search(r"38;5;245;?\d*men\.wikipedia\.org", out) is not None,
+      repr(s.out[-1200:]))
+
+s.send(KEY["Picker"], 0.5)
+s.send(b"guide", 0.9)  # matches only docs/guide.md by fuzzy file-name subsequence
+lines = screen_of(s.out, 80, 24).lines()
+result_line = next((l for l in lines if "docs/guide.md" in l), "")
+check("M8.3 pty: the File Picker row is the Root's own label plus the path relative to it, no parent fragment",
+      "tree  docs/guide.md" in result_line and "testdata" not in result_line and "\u2026" not in result_line,
+      repr(result_line))
+out = s.out.decode("utf-8", "replace")
+check("M8.3 pty: the File Picker row's path segment reaches the wire de-emphasized (dimColor 245)",
+      re.search(r"38;5;245;?\d*m[^\x1b]*docs/", out) is not None,
+      repr(s.out[-1200:]))
+
+code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
+check("M8.3 pty: exits 0 after the de-emphasis/no-fragment check", code == 0, f"exit {code}")
+
 done()

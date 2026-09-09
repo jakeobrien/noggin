@@ -189,117 +189,50 @@ func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
 	}
 }
 
-// TestPickerFileResultsDisambiguateSameBasenameRoots is M3.1a's own
-// acceptance criterion (D50/TRIAGE T10): two Roots sharing a base name but
-// different parents must render distinguishable Root labels in File Picker
-// rows, the same way rootsNav.renderRow already disambiguates two same-named
-// roots by their left-truncated parent path
-// (TestRootsNavDistinguishesSameNamedRootsByParent) — pickerRootLabel
-// (picker_view.go) reuses that exact strategy instead of the bare
-// filepath.Base(f.root.path) M3.1 shipped with.
-//
-// This test's own rowA/rowB comparison is over whole rendered terminal
-// lines (plainLines(m.View().Content)), not pickerFileRow's output in
-// isolation (M7.1b/TRIAGE T3) — it can only tell two Roots' rows apart,
-// not prove pickerRootLabel's budget math correct in isolation from
-// incidental surrounding frame content (nav pane, footer). That isolated
-// proof is TestPickerFileRowFillsItsFullBudget below, which pins an
-// independently hand-computed pickerFileRow string directly, confirmed by
-// mutation to catch T13/D52's now-fixed bug (which this test's own
-// wider-fixture history, T16/D52, shows it once missed).
-func TestPickerFileResultsDisambiguateSameBasenameRoots(t *testing.T) {
-	base := t.TempDir()
-	rootA := mkdir(t, filepath.Join(base, "work", "admin", "project"))
-	rootB := mkdir(t, filepath.Join(base, "other", "project"))
-	fileA := filepath.Join(rootA, "report.md")
-	fileB := filepath.Join(rootB, "report.md")
+// C1/D22's Picker-row disambiguation tests (TestPickerFileResultsDisambig
+// uateSameBasenameRoots, M3.1a/D50/TRIAGE T10, and TestPickerFileRowFillsIts
+// FullBudget, which pinned the same parent-fragment's budget math against
+// TRIAGE T13/T15/D52) are retired here, not merely updated: D117/M8.3
+// dropped the Root's parent-path fragment from Picker File rows entirely
+// (pickerRootLabel), so there is no longer a disambiguating budget for
+// either test to pin — two Roots sharing a base name are now, by design,
+// indistinguishable in a File Picker row (S8's own per-Root name is meant to
+// cover that case instead). TestRootsNavDistinguishesSameNamedRootsByParent
+// (rootsnav_test.go) is unaffected — D117 only ever touched Picker rows, not
+// the Sources Nav's own path line. TestPickerRootLabelTruncatesALongName
+// below is this file's replacement budget-pinning test, scoped to what
+// pickerRootLabel actually does post-D117.
 
-	// The project's standard fixture size (TRIAGE T16/D52): this test used
-	// to run at a wider 140x30 that masked pickerRootLabel's double-counted
-	// gap budget (T13/D52) by having budget to spare either way. At 80x24
-	// the Results list's content width (23, computePickerLayout) is tight
-	// enough that the bug actually mattered — both rows' parent segments
-	// collapsed to a bare, identical "…" — so this size is what the fix
-	// must be verified against, not the wider one the bug hid behind.
-	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
-	m, _ = m.openPicker()
-	m.picker.input.SetValue("report")
-	m.picker.results = pickerResults{
-		query: "report",
-		mode:  fileMode,
-		scope: activeRootScope,
-		files: []pickerFile{
-			{root: root{path: rootA}, path: fileA},
-			{root: root{path: rootB}, path: fileB},
-		},
+// TestPickerRootLabelTruncatesALongName is pickerRootLabel's own remaining
+// budget-math case now that D117 dropped the parent fragment: a Root name
+// too long for what's left of width after rest is right-truncated
+// (rightTruncate, the same "keep the prefix, ellipsis the tail" rule every
+// other name-like segment in this file uses), rather than overflowing the
+// row for styleRow's Width/MaxWidth to silently word-wrap
+// (pickerGrepRow's own doc comment describes exactly that hazard for an
+// unbounded segment).
+func TestPickerRootLabelTruncatesALongName(t *testing.T) {
+	f := pickerFile{root: root{path: "/tmp/x", name: "A Very Long Persisted Root Name"}}
+	const width = 20
+	const rest = "  report.md" // 11 cells, leaving a 9-cell budget for the name
+
+	// want is a hand-computed literal, not derived by calling rightTruncate
+	// (the same independence TestPickerFileRowFillsItsFullBudget's own now-
+	// retired doc comment describes): budget is 20-11=9, so leftTruncate
+	// keeps the name's first 8 runes ("A Very L") plus a trailing ellipsis.
+	const want = "A Very L\u2026"
+	if got := pickerRootLabel(f, width, rest); got != want {
+		t.Errorf("pickerRootLabel() = %q, want %q (right-truncated to the budget rest leaves)", got, want)
+	}
+	if w := lipgloss.Width(want + rest); w > width {
+		t.Fatalf("test's own want+rest = %d cells, want at most %d (width) — fixture is broken", w, width)
 	}
 
-	lines := plainLines(m.View().Content)
-	var rowA, rowB string
-	for _, l := range lines {
-		if !strings.Contains(l, "report.md") {
-			continue
-		}
-		if rowA == "" {
-			rowA = l
-		} else if rowB == "" {
-			rowB = l
-		}
-	}
-	if rowA == "" || rowB == "" {
-		t.Fatalf("expected two rows containing report.md, got:\n%s", strings.Join(lines, "\n"))
-	}
-	// At this width, the parent's disambiguating budget (3, see
-	// TestPickerFileRowFillsItsFullBudget) is only enough for a short tail
-	// like "…n/"/"…r/", not the full "admin"/"other" segment a wider
-	// terminal (140x30, this test's own size before D52) would show — the
-	// row-inequality check above is what this criterion (S3's
-	// disambiguation, not full readability) actually requires.
-	if rowA == rowB {
-		t.Errorf("two Roots sharing a base name (%q) rendered identical rows, want their parent paths to distinguish them:\n%s", filepath.Base(rootA), strings.Join(lines, "\n"))
-	}
-}
-
-// TestPickerFileRowFillsItsFullBudget pins pickerRootLabel/pickerFileRow's
-// exact output at the project's standard 80x24 fixture (TRIAGE T13/T15,
-// D52), independently of pickerRootLabel itself: the expected string below
-// is hand-computed from computePickerLayout's own results content width
-// (23) and leftTruncate's documented suffix-keeping behaviour, not derived
-// by calling the function under test — unlike
-// TestPickerFileResultsShowRootAndRelativePath, which builds its expected
-// strings by calling pickerRootLabel and so cannot catch a bug in
-// pickerRootLabel's own budget math (T15). Synthetic (non-tempdir) paths
-// are used so every character of the expected string is knowable ahead of
-// time: pickerFileRow never touches the filesystem, only filepath
-// arithmetic. Before the T13 fix, pickerRootLabel's budget formula
-// double-subtracted the name/parent gap, under-computing the parent's
-// truncation budget by one gap width (3 vs. the correct 5) and rendering a
-// bare "…" for both a root's label here instead of the disambiguating
-// "…n/" this pins.
-func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
-	f := pickerFile{
-		root: root{path: "/home/user/work/admin/project"},
-		path: "/home/user/work/admin/project/report.md",
-	}
-	const width = 23        // computePickerLayout(80, 24).results.content().width
-	const contentWidth = 21 // width minus the 2-column star marker field (D72)
-
-	wantLabel := "project  \u2026" // name(7) + gap(2) + leftTruncate(".../work/admin/", 1)
-	if got := pickerRootLabel(f, contentWidth, "  report.md"); got != wantLabel {
-		t.Fatalf("pickerRootLabel() = %q, want %q", got, wantLabel)
-	}
-
-	wantRow := "  " + wantLabel + "  report.md" // "  " is the (unstarred) marker
-	// Empty query: this test pins the row's layout arithmetic, so it renders
-	// the row with no match highlighting (M6.1) in play — the exact-string
-	// comparison below is over plain text, and highlighting is pinned
-	// separately by TestPickerFileRowHighlightsMatchedNameCharacters.
-	got := pickerFileRow(f, "", width, false, false)
-	if got != wantRow {
-		t.Errorf("pickerFileRow() = %q, want %q", got, wantRow)
-	}
-	if w := lipgloss.Width(got); w != width {
-		t.Errorf("pickerFileRow() rendered width = %d, want exactly %d (the Results content width) — the budget formula is leaving the parent segment short of what's actually available", w, width)
+	// A name that already fits is left untouched — no truncation ellipsis
+	// where there's room enough not to need one.
+	short := pickerFile{root: root{path: "/tmp/x", name: "Work"}}
+	if got := pickerRootLabel(short, width, rest); got != "Work" {
+		t.Errorf("pickerRootLabel() = %q, want the untruncated name %q", got, "Work")
 	}
 }
 
@@ -308,14 +241,17 @@ func TestPickerFileRowFillsItsFullBudget(t *testing.T) {
 // (buildBrowseRow/renderFlatRow): a Starred-scope orphan candidate
 // (pickerFile.orphan, starredPickerFiles) has no Root to disambiguate it
 // with, so pickerLocationLabel shows the document's own left-truncated
-// parent directory instead of a Root's name+parent pair, and the trailing
+// parent directory instead of a Root's own name label, and the trailing
 // path segment is just the file's own base name (no meaningful
-// "relative to a Root" path exists for it).
+// "relative to a Root" path exists for it). Checks run against
+// ansi.Strip'd text: S10/M8.3 dims the trailing suffix (dimColor), so the
+// raw string carries SGR codes around it that a literal HasSuffix/Contains
+// would otherwise trip on without changing what the row actually shows.
 func TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory(t *testing.T) {
 	f := pickerFile{path: "/home/user/elsewhere/orphan.md", orphan: true}
 	const width = 20
 
-	got := pickerFileRow(f, "", width, false, false)
+	got := ansi.Strip(pickerFileRow(f, "", width, false, false))
 	wantSuffix := "  orphan.md"
 	if !strings.HasSuffix(strings.TrimRight(got, " "), wantSuffix) {
 		t.Fatalf("pickerFileRow(orphan) = %q, want it to end (ignoring trailing pad) with %q (the file's own base name, no Root-relative path)", got, wantSuffix)
@@ -328,11 +264,10 @@ func TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory(t *testing
 	}
 
 	// Wide enough that leftTruncate has no need to truncate: the orphan's
-	// full parent directory shows plainly, mirroring what a Root's own
-	// name+parent label would show for a non-orphan candidate at the same
-	// width.
+	// full parent directory shows plainly, mirroring what a Root's own name
+	// label would show for a non-orphan candidate at the same width.
 	const wideWidth = 80
-	wide := pickerFileRow(f, "", wideWidth, false, false)
+	wide := ansi.Strip(pickerFileRow(f, "", wideWidth, false, false))
 	if !strings.Contains(wide, "/home/user/elsewhere") {
 		t.Errorf("pickerFileRow(orphan) at width %d = %q, want the full parent directory visible", wideWidth, wide)
 	}
@@ -344,7 +279,8 @@ func TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory(t *testing
 // one. A starred Result's row now carries the same "\u2605 "/"  " two-column
 // field Files Nav and Sources Nav rows already use, prepended ahead of the
 // Root label rather than appended — the marker is styling-adjacent state,
-// not part of the disambiguating path text pickerRootLabel computes.
+// not part of the Root label text pickerRootLabel computes (D117/M8.3: no
+// longer disambiguating, just the Root's own name).
 func TestPickerFileRowShowsStarMarkerForAStarredResult(t *testing.T) {
 	f := pickerFile{root: root{path: "/home/user/notes"}, path: "/home/user/notes/report.md"}
 	const width = 40
@@ -665,7 +601,7 @@ func TestPickerStatusStates(t *testing.T) {
 // as far as the Picker's row highlighting cares: bold (the match emphasis,
 // M6.1) and reverse video (the selection bar, pickerSelectedStyle).
 type cellStyle struct {
-	bold, reverse bool
+	bold, reverse, dim bool
 }
 
 // cellStyles walks a rendered string's SGR escape sequences and reports the
@@ -673,8 +609,12 @@ type cellStyle struct {
 // highlight landed, which ansi.Strip (plainLines) deliberately discards and
 // a string comparison against a hand-built expected string could only check
 // by pinning lipgloss's exact escape serialization. Handles the subset
-// lipgloss emits here: bold on/off (1/21/22), reverse on/off (7/27) and a
-// full reset (0, or the empty parameter list lipgloss writes as `ESC[m`).
+// lipgloss emits here: bold on/off (1/21/22), reverse on/off (7/27), the
+// ANSI256 foreground sequence (38;5;<n>) S10/M8.3's dim styling
+// (dimColor/rootsPathStyle/locationLineStyle, all lipgloss.Color("245"))
+// serializes as — tracked as dim only when n is exactly dimColorCode, not
+// any other foreground colour — and a full reset (0, or the empty
+// parameter list lipgloss writes as `ESC[m`).
 func cellStyles(s string) []cellStyle {
 	var (
 		cells   []cellStyle
@@ -692,8 +632,9 @@ func cellStyles(s string) []cellStyle {
 				if params == "" {
 					current = cellStyle{}
 				}
-				for _, p := range strings.Split(params, ";") {
-					switch p {
+				tokens := strings.Split(params, ";")
+				for k := 0; k < len(tokens); k++ {
+					switch tokens[k] {
 					case "", "0":
 						current = cellStyle{}
 					case "1":
@@ -704,6 +645,16 @@ func cellStyles(s string) []cellStyle {
 						current.reverse = true
 					case "27":
 						current.reverse = false
+					case "38":
+						// ANSI256 foreground is "38;5;<n>"; anything else
+						// (e.g. truecolor's "38;2;r;g;b") is a foreground this
+						// codebase never emits and is left un-classified as dim.
+						if k+2 < len(tokens) && tokens[k+1] == "5" {
+							current.dim = tokens[k+2] == dimColorCode
+							k += 2
+						}
+					case "39":
+						current.dim = false
 					}
 				}
 			}
@@ -715,11 +666,28 @@ func cellStyles(s string) []cellStyle {
 	return cells
 }
 
+// dimColorCode is dimColor's (style.go) own ANSI256 code, as a string —
+// what cellStyles matches "38;5;<n>" against to tell S10/M8.3's
+// de-emphasis apart from some other foreground colour.
+const dimColorCode = "245"
+
 // boldColumns is which cells of a rendered row carry the match emphasis.
 func boldColumns(s string) []int {
 	var cols []int
 	for i, c := range cellStyles(s) {
 		if c.bold {
+			cols = append(cols, i)
+		}
+	}
+	return cols
+}
+
+// dimColumns is boldColumns' own S10/M8.3 counterpart: which cells of a
+// rendered row carry the de-emphasized (dimColor) styling.
+func dimColumns(s string) []int {
+	var cols []int
+	for i, c := range cellStyles(s) {
+		if c.dim {
 			cols = append(cols, i)
 		}
 	}
@@ -734,8 +702,7 @@ func boldColumns(s string) []int {
 // t(5) (those are the name's only r/p/t after the first, in order), offset by
 // where the name starts in the row — so a highlighter that drifted onto the
 // path, the Root label or the wrong characters of the name fails here.
-// Synthetic (non-tempdir) paths keep every column knowable, the same reason
-// TestPickerFileRowFillsItsFullBudget uses them.
+// Synthetic (non-tempdir) paths keep every column knowable.
 func TestPickerFileRowHighlightsMatchedNameCharacters(t *testing.T) {
 	f := pickerFile{
 		root: root{path: "/home/user/notes"},
@@ -747,9 +714,12 @@ func TestPickerFileRowHighlightsMatchedNameCharacters(t *testing.T) {
 	got := pickerFileRow(f, "rpt", width, false, false)
 
 	// The highlight is styling only: the row's displayed characters must be
-	// exactly the unhighlighted row's.
+	// exactly the unhighlighted row's. Both sides are ansi.Strip'd — unlike
+	// before S10/M8.3, the "unhighlighted" call still carries the path
+	// segment's unconditional dim styling (dimColor), so it is not itself
+	// plain text to compare against directly.
 	plain := ansi.Strip(got)
-	if want := pickerFileRow(f, "", width, false, false); plain != want {
+	if want := ansi.Strip(pickerFileRow(f, "", width, false, false)); plain != want {
 		t.Fatalf("highlighted row's plain text = %q, want %q (highlighting must not change the row's content or width)", plain, want)
 	}
 
@@ -799,6 +769,110 @@ func TestPickerFileRowHighlightKeepsSelectionBar(t *testing.T) {
 	}
 	if bold := boldColumns(got); len(bold) != 3 {
 		t.Errorf("selected row bold columns = %v, want 3 (the match's own characters)", bold)
+	}
+}
+
+// TestPickerFileRowDropsTheParentPathFragment is S10/D117/M8.3's own
+// acceptance criterion, the fragment-absence half: a row is exactly
+// "<Root name>" + path relative to the Root, with no left-truncated parent
+// segment (leftTruncate's own "…" ellipsis, or any part of the Root's own
+// parent directory) in between — unlike the pre-D117 layout
+// TestPickerFileResultsDisambiguateSameBasenameRoots/TestPickerFileRowFills
+// ItsFullBudget (both retired, see the note above
+// TestPickerRootLabelTruncatesALongName) used to pin.
+func TestPickerFileRowDropsTheParentPathFragment(t *testing.T) {
+	f := pickerFile{
+		root: root{path: "/home/user/work/admin/project"},
+		path: "/home/user/work/admin/project/report.md",
+	}
+	const width = 40
+
+	got := ansi.Strip(pickerFileRow(f, "", width, false, false))
+	want := "  project  report.md" + strings.Repeat(" ", width-len("  project  report.md"))
+	if got != want {
+		t.Errorf("pickerFileRow() = %q, want %q (Root name + path relative to the Root, no parent fragment)", got, want)
+	}
+	if strings.Contains(got, "…") || strings.Contains(got, "admin") || strings.Contains(got, "work") {
+		t.Errorf("pickerFileRow() = %q, want no trace of the Root's parent path (D117 dropped the fragment)", got)
+	}
+}
+
+// TestPickerFileRowDimsThePathButNotTheRootLabel is S10/M8.3's own
+// acceptance criterion, the styling half: the Root label (pickerLocation
+// Label) renders at normal weight, and everything from the path's own gap
+// onward (S10's "the file's path") renders de-emphasized (dimColor) — with
+// no query, so no matched-character emphasis is in play (that's
+// TestPickerFileRowMatchedPathCharactersAreNeverDimmed below).
+func TestPickerFileRowDimsThePathButNotTheRootLabel(t *testing.T) {
+	f := pickerFile{root: root{path: "/home/user/notes"}, path: "/home/user/notes/sub/report.md"}
+	const width = 40
+
+	got := pickerFileRow(f, "", width, false, false)
+	plain := ansi.Strip(got)
+	labelAt := strings.Index(plain, "notes")
+	pathAt := strings.Index(plain, "sub/report.md")
+	if labelAt < 0 || pathAt < 0 {
+		t.Fatalf("row %q missing the Root label or path; fixture is broken", plain)
+	}
+
+	dim := dimColumns(got)
+	for i := labelAt; i < labelAt+len("notes"); i++ {
+		for _, d := range dim {
+			if d == i {
+				t.Errorf("column %d (Root label \"notes\") is dimmed, want normal weight\nrow: %q", i, got)
+			}
+		}
+	}
+	// Only the row's own content is checked, not styleRow's trailing pad
+	// past it (an unselected row's pad renders with no properties at all,
+	// dim included — the same behaviour an unselected Bold row's own pad
+	// already has, TestRootsNavRendersTwoLinesPerEntry's own comment notes
+	// it for reverse+bold): S10 only asks that the path *text* read
+	// de-emphasized, not that trailing blank cells carry any styling.
+	contentEnd := strings.TrimRight(plain, " ")
+	for i := pathAt; i < len(contentEnd); i++ {
+		found := false
+		for _, d := range dim {
+			if d == i {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("column %d (path %q) is not dimmed\nrow: %q", i, plain[i:], got)
+			break
+		}
+	}
+}
+
+// TestPickerFileRowMatchedPathCharactersAreNeverDimmed is S10's own
+// "matched characters of the path emphasized against it": a matched file-
+// name character that falls inside the de-emphasized path segment (every
+// File Picker row's match is inside that segment — D31, the Root label is
+// never matched against) is bold and never dim, even though every other
+// character alongside it is dimmed.
+func TestPickerFileRowMatchedPathCharactersAreNeverDimmed(t *testing.T) {
+	f := pickerFile{root: root{path: "/home/user/notes"}, path: "/home/user/notes/sub/report.md"}
+	const width = 40
+
+	got := pickerFileRow(f, "rpt", width, false, false)
+	bold := boldColumns(got)
+	if len(bold) == 0 {
+		t.Fatalf("row %q has no bold (matched) columns; fixture/query is broken", got)
+	}
+	dim := make(map[int]bool)
+	for _, d := range dimColumns(got) {
+		dim[d] = true
+	}
+	for _, b := range bold {
+		if dim[b] {
+			t.Errorf("matched column %d is both bold and dim, want emphasis to win (S10's \"emphasized against it\")\nrow: %q", b, got)
+		}
+	}
+	// The dim segment must still have plenty of non-matched, actually-dimmed
+	// columns — otherwise this test would trivially pass by having nothing to
+	// dim in the first place.
+	if len(dimColumns(got)) == 0 {
+		t.Fatal("row has no dimmed columns at all; fixture is broken")
 	}
 }
 

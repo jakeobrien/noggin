@@ -17,47 +17,47 @@
 
 ## Cursor
 
-Current task: M8.3
+Current task: M1.11
 
 ## Handoff
 
-M8.2 (Document Viewer location line, S9/S9a) is done: each Document Viewer's bottom row
-shows, de-emphasized, `<Root name> · <relative path>` for a file under a Root, the full path
-for an orphan, or S9a's fixed `CC BY-SA 4.0 · <URL> · Reformatted to markdown` for an article
-(location.go, new: `documentLocation`, `viewer.locationDoc`, `model.viewerLocationLine`/
-`composeViewerContent`); reflects a Peeked document while the Peek lasts, absent with no
-document, and costs the content exactly one row — the Active Document's viewport and Peek's
-own each independently reserve that row via a new `viewer.boxHeight` field (the raw per-pane
-content height from layout) plus `docContentHeight`/`peekContentHeight`, recomputed at the end
-of `render()`/`renderPeek()` once `v.err`/`v.peek.err` are known. `model.composeViewerContent`
-(called from `frame()` for both DV1/DV2) is the one place the line's text joins the rendered
-content, reading `m.roots.rootList()` fresh each render; `viewer.view()` itself is unchanged in
-signature. `fill()`'s signature widened to take explicit width/height (not always `v.vp`'s)
-since Peek's own dimensions can now genuinely differ from the Active Document's.
+M8.3 (de-emphasized secondary text, S10/D117) is done, completing milestone M8: the Sources
+Nav's path line (line 2, both a Root row's and the Wikipedia row's) renders de-emphasized via
+`rootsPathStyle = Foreground(dimColor)` (rootsnav.go); a File Picker row's path segment (from
+the location label's own trailing gap onward) renders the same way, with a fuzzy-matched
+character never dimmed even inside that segment (`highlightMatches`' new `dimFrom int`
+parameter and per-column `class` priority — matched beats dim beats base — picker_view.go);
+`pickerGrepRow` passes the new `noDim` sentinel, unaffected. D117's own change — dropping the
+Root's parent-path fragment from Picker File rows entirely — landed in the same task:
+`pickerRootLabel` is now just `rightTruncate(f.root.displayName(), budget)`, no parent segment;
+two now-obsolete disambiguation/budget tests tied to that fragment
+(`TestPickerFileResultsDisambiguateSameBasenameRoots`, `TestPickerFileRowFillsItsFullBudget`)
+are retired with an explanatory note in picker_view_test.go, replaced by
+`TestPickerRootLabelTruncatesALongName` (the label's own remaining truncation case) and three
+new S10-specific tests (`TestPickerFileRowDropsTheParentPathFragment`,
+`TestPickerFileRowDimsThePathButNotTheRootLabel`,
+`TestPickerFileRowMatchedPathCharactersAreNeverDimmed`). `TestRootsNavPathLineIsDeEmphasized`
+covers the Sources Nav half. `cellStyles` (picker_view_test.go) gained a `dim bool` field and
+ANSI256-foreground-sequence parsing (`38;5;<n>` vs `dimColorCode`), reused by a new
+`dimColumns` helper and by rootsnav_test.go's new `lineFullyReversed` (a fresh-context review
+found the two rewritten reverse-video assertions in `TestRootsNavHighlightsActiveRoot`/
+`TestRootsNavSelectionHighlightsBothLines` were only passing on a lucky padding-run coincidence
+once a combined-attribute row filled its width exactly — confirmed by tracing lipgloss's own
+SGR serialization directly). 5 new `make check-pty` checks added (S10 dim-styling-reaches-
+the-wire + fragment absence). A second reviewer pass (stale-comment sweep across
+picker_view.go/picker_view_test.go/rootlabel_test.go/files_search.go, all fixed) found no
+further issues. `make check` and `make check-pty` (~255 checks) both green.
 
-A fresh-context code-reviewer pass (mid-task) found, and this session then fixed, two Major
-gaps: (1) starting an article fetch (Activate or Refresh) into a pane whose location line was
-already showing left the viewport's reserved row stale during the fetch, and a *failed* fetch
-never restored it either — fixed via two new viewer methods, `beginFetch`/`endFetch`, now the
-sole way `pendingFetch` is ever set/cleared (`article_fetch.go`'s three call sites updated).
-(2) `view()`'s fetching branch filled to the Active Document's own dimensions even when the
-pending fetch targets Peek (dead code today, pending M5.2's real trigger) — fixed to branch on
-`pendingFetch.peek`. Both fixes are pinned by regression tests, each confirmed to actually fail
-against the pre-fix code (temporary revert, mutation-tested, then restored). A second reviewer
-pass after both fixes found no further issues.
+Milestone M8 (M8.1/M8.2/M8.3) is now all `done` but none of the three rows carry a `Validated`
+date and only M8.3 (this task) has a `Reviewed` date — per cycle-state.md's state table, the
+next build session's own orient gate check will hit "current milestone complete, validation
+due" and should surface it rather than pushing further into M9 first (see Status below).
 
-`location_test.go` (new) covers every acceptance clause: the four states (file/orphan/article/
-no-document) with exact-text assertions, a renamed-Root variant, Peek reflection, DV1/DV2
-independence, the content-height drop (direct + `TestViewerRewrapsOnResize`'s updated
-expectation), an end-to-end `model.render()` frame check, and the two fetch-height regression
-tests. Added 3 pty checks (`test/pty/checks.py`, before `done()`). `make check` and
-`make check-pty` (~250 checks) both green. Not yet reviewed (tracked `Reviewed` gate) or
-validated.
-
-Cursor is now M8.3 (de-emphasized secondary text — Sources Nav path line, Picker File-row
-paths; needs: M7.3, already done). M8.1 and M8.2 both done, neither reviewed/validated yet.
-M1.11, M2.10 and M5.3 remain independent replan-added hygiene tasks, pull-forward-anytime.
-Working tree: M8.2's code+test changes are committed as this task's own commit.
+Cursor is now M1.11 (the `make check-pty` string-drift fix, pulled forward ahead of M9.1 per
+the milestone-order note at the top of PLAN.md — M9.1's own acceptance criterion leans on that
+same check-pty gate). M2.10 and M5.3 remain independent replan-added hygiene tasks,
+pull-forward-anytime. Working tree: M8.3's code+test changes are committed as this task's own
+commit.
 
 No blockers.
 
@@ -106,6 +106,6 @@ No blockers.
 | M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M8.1  | done   | -        | -         |      |
 | M8.2  | done   | -        | -         | scope widened by replan 2026-09-08: S9a attribution line |
-| M8.3  | todo   | -        | -         |      |
+| M8.3  | done   | 2026-09-09 | -       |      |
 | M9.1  | todo   | -        | -         | pre-agreed cut 3 |
 | M10.1 | todo   | -        | -         |      |

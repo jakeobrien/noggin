@@ -34,10 +34,10 @@ type pickerFile struct {
 	// starredPickerFiles (below): root is the zero value when this is true
 	// (there is no covering Root to carry), and the Results/Preview row
 	// renderers (picker_view.go's pickerLocationLabel) fall back to the
-	// document's own parent directory instead of a Root's name+parent, the
-	// same fallback browse_list.go's buildBrowseRow already gives an orphan
-	// browseRow. Every other pickerFile producer (listFiles) leaves this
-	// false: a file found by walking a session Root always has one.
+	// document's own parent directory instead of a Root's own name (D117/
+	// M8.3), the same fallback browse_list.go's buildBrowseRow already gives
+	// an orphan browseRow. Every other pickerFile producer (listFiles) leaves
+	// this false: a file found by walking a session Root always has one.
 	orphan bool
 	// article is C6/M3.5's own addition, set only by starredPickerFiles: a
 	// starred Wikipedia article (docRecord.Article) rather than a file, the
