@@ -71,7 +71,8 @@
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
   footer's help affordance and dismissible with one key.
 - **Location line** — the de-emphasized bottom row of a Document Viewer naming where its
-  document lives: Root name + relative path, full path for an orphan, URL for an Article (C6).
+  document lives: Root name + relative path, full path for an orphan; for a Wikipedia
+  article, `CC BY-SA 4.0 · <canonical URL> · Reformatted to markdown` (C6, amended S9a/D98).
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
   vim-oriented. Provisional, like all bindings.
 - **Navigator** — the left sidebar: Sources Nav above, Files Nav below. Hideable.
