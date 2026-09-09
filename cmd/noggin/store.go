@@ -77,82 +77,178 @@ func storePath() (string, error) {
 	return filepath.Join(dir, storeSubdir, storeName), nil
 }
 
+// storedRoot is one entry in the S1/S2 Roots store: an absolute Path plus
+// an optional Name (S8). Every entry in this store is, by construction, a
+// starred Root — toggleStore is the only writer besides a future rename
+// (M7.2). An empty Name means the Root carries no name of its own yet, so
+// S8's default (the folder's base name) applies wherever a Root's label is
+// shown; that default is computed from Path by the caller that needs a
+// label, not stored here, since storing it would go stale the moment the
+// folder itself is renamed on disk. Only a rename (M7.2) ever writes a
+// non-empty Name.
+type storedRoot struct {
+	Path string
+	Name string
+}
+
 // loadStarredRoots resolves the store path and loads it, folding a
 // non-resolvable config directory into the same "no starred roots" outcome
 // as a missing or garbage file. This is the entry point main.go wires into
-// resolveRoots' starred argument.
+// resolveRoots' starred argument — paths only: S8's Names are not yet
+// threaded through the launch-resolution pipeline (resolveRoots/
+// resolveLaunch, roots.go — M7.2's job), so this keeps loadStarredRoots'
+// existing []string contract rather than leaking storedRoot into every
+// launch-resolution call site ahead of that wiring actually existing.
 func loadStarredRoots() []string {
 	path, err := storePath()
 	if err != nil {
 		return nil
 	}
-	return loadStore(path)
+	return storedRootPaths(loadStore(path))
 }
 
-// loadStore reads the starred-roots file at path: one absolute path per
-// non-blank, non-`#`-comment line (comments and blank lines are ignored, in
-// the spirit of the `.gitignore` files noggin already parses, so the format
-// stays comfortable to hand-edit). A missing file, an unreadable one, or one
-// whose lines are not absolute paths (garbage) all yield an empty list
-// rather than an error — S2: "a missing or unparseable file yields an empty
-// root list rather than a failure." Paths are not stat'd here: a stored path
-// that no longer exists on disk is still returned, unpruned (S2).
-func loadStore(path string) []string {
-	data, err := os.ReadFile(path)
-	if err != nil {
+// storedRootPaths extracts just the paths, in order, from a []storedRoot —
+// for loadStarredRoots above and any other caller that does not yet need
+// Names.
+func storedRootPaths(roots []storedRoot) []string {
+	if len(roots) == 0 {
 		return nil
 	}
-	var paths []string
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") || !filepath.IsAbs(line) {
-			continue
-		}
-		paths = append(paths, filepath.Clean(line))
+	paths := make([]string, len(roots))
+	for i, r := range roots {
+		paths[i] = r.Path
 	}
 	return paths
 }
 
-// saveStore writes paths to the store at path, one absolute path per line,
-// creating the config directory first if it does not exist yet.
-func saveStore(path string, paths []string) error {
+// loadStore reads the starred-roots file at path: one entry per non-blank,
+// non-`#`-comment line (comments and blank lines are ignored, in the spirit
+// of the `.gitignore` files noggin already parses, so the format stays
+// comfortable to hand-edit). Each line is an absolute path, optionally
+// followed by a tab and an escaped Name (S8, escapeStoreField) — the tab and
+// everything after it is new with S8; every pre-S8 line (a bare path, the
+// only shape that ever existed before) still parses the same way, yielding
+// an entry with an empty Name, so an existing store loads with S8's default
+// names (the caller derives them from Path) exactly as it always resolved
+// those paths. A missing file, an unreadable one, or a line whose path
+// field is not absolute (garbage) is dropped rather than failing the whole
+// load — S2: "a missing or unparseable file yields an empty root list
+// rather than a failure." Paths are not stat'd here: a stored path that no
+// longer exists on disk is still returned, unpruned (S2).
+func loadStore(path string) []storedRoot {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var roots []storedRoot
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		p, name := line, ""
+		if i := strings.IndexByte(line, '\t'); i >= 0 {
+			p, name = line[:i], unescapeStoreField(line[i+1:])
+		}
+		if !filepath.IsAbs(p) {
+			continue
+		}
+		roots = append(roots, storedRoot{Path: filepath.Clean(p), Name: name})
+	}
+	return roots
+}
+
+// saveStore writes roots to the store at path, one entry per line: a bare
+// path for an unnamed Root (S8's default applies, and this is also the
+// pre-S8 format — a store holding only unnamed Roots round-trips
+// byte-for-byte the same as it always has), or `<path>\t<name>`
+// (escapeStoreField) once a rename (M7.2) has given it a Name. Creates the
+// store's directory first if it does not exist yet.
+func saveStore(path string, roots []storedRoot) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
 	var b strings.Builder
-	for _, p := range paths {
-		b.WriteString(p)
+	for _, r := range roots {
+		b.WriteString(r.Path)
+		if r.Name != "" {
+			b.WriteByte('\t')
+			b.WriteString(escapeStoreField(r.Name))
+		}
 		b.WriteByte('\n')
 	}
 	return os.WriteFile(path, []byte(b.String()), 0o644)
 }
 
-// toggleStore flips target's membership in the store at path — adds it if
-// absent, drops it if present — and writes the result through immediately:
-// S2's star toggle is not batched, so a star survives a process restart. It
-// returns the resulting starred-paths list.
-func toggleStore(path, target string) ([]string, error) {
+// toggleStore flips target's membership in the store at path — adds it,
+// unnamed (S8: a freshly-starred Root has no Name until it is renamed), if
+// absent; drops it, Name and all, if present — and writes the result
+// through immediately: S2's star toggle is not batched, so a star survives
+// a process restart. It returns the resulting stored roots.
+func toggleStore(path, target string) ([]storedRoot, error) {
 	target = filepath.Clean(target)
 	current := loadStore(path)
 
 	i := -1
-	for j, p := range current {
-		if p == target {
+	for j, r := range current {
+		if r.Path == target {
 			i = j
 			break
 		}
 	}
 
-	var updated []string
+	var updated []storedRoot
 	if i >= 0 {
 		updated = append(updated, current[:i]...)
 		updated = append(updated, current[i+1:]...)
 	} else {
-		updated = append(append([]string{}, current...), target)
+		updated = append(append([]storedRoot{}, current...), storedRoot{Path: target})
 	}
 
 	if err := saveStore(path, updated); err != nil {
 		return nil, err
 	}
 	return updated, nil
+}
+
+// escapeStoreField and unescapeStoreField guard a Roots-store Name field
+// against the tab and newline bytes that would otherwise corrupt the
+// store's one-entry-per-line, tab-delimited-when-named format (S8) — the
+// same hazard, and the same escaping scheme, as the Document store's
+// <title>/<key> fields (docstore.go's escapeDocField/unescapeDocField,
+// M1.7/M1.8). Kept as this store's own copy rather than a shared call,
+// since the two stores are deliberately separate formats (D61) that should
+// not need to import each other's parsing details to stay correct.
+func escapeStoreField(field string) string {
+	r := strings.NewReplacer(`\`, `\\`, "\t", `\t`, "\n", `\n`)
+	return r.Replace(field)
+}
+
+// unescapeStoreField reverses escapeStoreField on load. A lone trailing
+// backslash (malformed escaping, e.g. from a hand-edited file) is left
+// as-is rather than panicking or dropping the line: escapeStoreField itself
+// never produces one, so this only guards against a hand-edited store.
+func unescapeStoreField(field string) string {
+	var b strings.Builder
+	b.Grow(len(field))
+	for i := 0; i < len(field); i++ {
+		if field[i] == '\\' && i+1 < len(field) {
+			switch field[i+1] {
+			case '\\':
+				b.WriteByte('\\')
+				i++
+				continue
+			case 't':
+				b.WriteByte('\t')
+				i++
+				continue
+			case 'n':
+				b.WriteByte('\n')
+				i++
+				continue
+			}
+		}
+		b.WriteByte(field[i])
+	}
+	return b.String()
 }

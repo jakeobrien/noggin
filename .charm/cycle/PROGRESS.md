@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M7.1
+Current task: M7.2
 
 ## Handoff
 
@@ -34,9 +34,36 @@ low-severity stale-comment findings fixed, no functional issues. Not yet validat
 (charm-validate) — only reviewed so far. `make check` green; `go test ./...` covers recording,
 non-recording-on-Peek, ordering, the per-Source cap and the Wikipedia label, all new.
 
-Cursor is now M7.1 (Root names, pre-agreed cut 2), still `todo`. M1.11, M2.10 and M5.3 are
+M7.1 (Root names' store layer) is done: store.go's Roots store now persists an optional per-
+Root `Name` (S8) alongside its `Path` — `storedRoot{Path, Name}` replaces the old bare
+`[]string`. Format stays hand-editable and backward-compatible: a line is `<path>` (unnamed —
+S8's default, the folder's base name, applies) or `<path>\t<name>` (name escaped via a new
+`escapeStoreField`/`unescapeStoreField`, a store.go-local copy of docstore.go's tab/newline/
+backslash scheme — kept separate per D61, the two stores' formats deliberately don't share
+parsing code). `saveStore` never writes the trailing tab for an unnamed Root, so an
+all-unnamed store round-trips byte-for-byte identical to the pre-S8 format; a legacy plain-
+path-per-line store loads straight into unnamed entries. `toggleStore` adds a freshly-starred
+Root unnamed and drops a Root's Name entirely on unstar (re-starring starts fresh, not with
+the old name).
+
+Deliberately NOT done in M7.1 (left for M7.2, which needs it): threading Name through the
+launch-resolution pipeline (`resolveRoots`/`resolveLaunch`/`starredRoots` in roots.go still
+take/produce plain `[]string`/`root{path, starred}` with no `name` field) or into the runtime
+`root` struct at all. `loadStarredRoots()` kept its existing `[]string` contract (a new
+`storedRootPaths` helper extracts paths from `loadStore`'s `[]storedRoot`) specifically so
+roots.go's ~15 existing call sites (resolveRoots/resolveLaunch/baseResolution, exercised by a
+large table-driven roots_test.go) stay untouched — none of that logic needs a Root's name to
+decide which root is active or how a launch argument resolves. M7.2's rename UI is the natural
+point to add `root.name`, wire it from the store at startup, and read/write it live; M7.1 only
+had to prove the store itself can carry and round-trip a name. Round-trip coverage: named +
+unnamed Roots in the same store, a Name containing the escape scheme's own delimiter (tab),
+a newline and a backslash, a legacy-format (bare-path) store, and toggle-on/off interaction
+with a Name. `make check` green. Not yet reviewed or validated.
+
+Cursor is now M7.2 (inline rename in Sources Nav), `todo`. M1.11, M2.10 and M5.3 are
 independent replan-added hygiene tasks, pull-forward-anytime per PLAN.md's own note; M8.1
-(half-page paging) is also independent and pullable. TRIAGE.md is empty; working tree is clean.
+(half-page paging) is also independent and pullable. TRIAGE.md is empty; working tree is clean
+(M7.1's changes are committed).
 
 No blockers.
 
@@ -80,7 +107,7 @@ No blockers.
 | M1.11 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3) |
 | M5.3  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | -         | pre-agreed cut 1 |
-| M7.1  | todo   | -        | -         | pre-agreed cut 2 |
+| M7.1  | done   | -        | -         | pre-agreed cut 2 |
 | M7.2  | todo   | -        | -         | pre-agreed cut 2 |
 | M7.3  | todo   | -        | -         | pre-agreed cut 2 |
 | M8.1  | todo   | -        | -         |      |

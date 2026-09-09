@@ -408,8 +408,8 @@ func TestToggleStarPersistsAndUpdatesDisplay(t *testing.T) {
 	if !ok || !row.root.starred {
 		t.Fatalf("selected row after toggleStar: ok=%v starred=%v, want true/true", ok, row.root.starred)
 	}
-	if got := loadStore(storeFile); !reflect.DeepEqual(got, []string{target}) {
-		t.Errorf("loadStore after toggleStar = %v, want [%s]", got, target)
+	if got := loadStore(storeFile); !reflect.DeepEqual(got, []storedRoot{{Path: target}}) {
+		t.Errorf("loadStore after toggleStar = %+v, want [%s]", got, target)
 	}
 
 	// Toggling again unstars and removes it from the persisted file — the
