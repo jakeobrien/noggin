@@ -395,7 +395,7 @@ check("M3.3 bare launch with starred roots opens focused on Files",
 # S5: Tab-cycling is removed).
 s.send(KEY["FocusRoots"], 0.4)
 footer = screen_of(s.out, 80, 30).lines()[-1]
-check("M3.3 FocusRoots from Files moves focus to Roots",
+check("M3.3 FocusRoots from Files moves focus to Sources",
       footer.split(" \u00b7")[0] == "Sources", repr(footer))
 
 
@@ -487,7 +487,7 @@ s = Session([BINARY, persist_target], 80, 24, env=persist_env)
 s.pump(1.5)
 s.send(KEY["FocusRoots"], 0.4)  # Files -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
-check("M3.2 restart fixture: focus reaches Roots to star the ad-hoc root",
+check("M3.2 restart fixture: focus reaches Sources to star the ad-hoc root",
       footer.split(" \u00b7")[0] == "Sources", repr(footer))
 
 s.send(KEY["Star"], 0.5)
@@ -548,7 +548,7 @@ viewer_before = [line[nav_edge + 1:] for line in lines_before[:-1]]
 
 s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
-check("M3.4 pty: FocusRoots from the Document pane reaches Roots",
+check("M3.4 pty: FocusRoots from the Document pane reaches Sources",
       footer.split(" \u00b7")[0] == "Sources", repr(footer))
 
 s.send(KEY["Down"], 0.4)   # selection off the ad-hoc TREE root, onto root-b
@@ -934,7 +934,7 @@ out = s.send(KEY["Navigator"], 0.6)
 hidden = screen_of(s.out, 80, 24)
 hidden_lines = hidden.raw_lines()
 check("M5.2 toggling hides the whole sidebar",
-      "Roots" not in "\n".join(hidden_lines) and "Files" not in "\n".join(hidden_lines),
+      "Sources" not in "\n".join(hidden_lines) and "Files" not in "\n".join(hidden_lines),
       repr(hidden_lines[0]))
 check("M5.2 the document viewer's border now spans the full width",
       hidden_lines[0][0] == "╭" and hidden_lines[0][-1] == "╮",
@@ -1425,7 +1425,7 @@ check("C2a/M2.1 pty: focus starts on Files", footer.startswith("Files"), repr(fo
 mark = len(s.out)
 s.send(KEY["FocusRoots"], 0.5)
 footer = screen_of(s.out, 80, 24).raw_lines()[-1]
-check("C2a/M2.1 pty: r moves the footer's focus name to Roots", footer.startswith("Sources"), repr(footer))
+check("C2a/M2.1 pty: r moves the footer's focus name to Sources", footer.startswith("Sources"), repr(footer))
 check("C2a/M2.1 pty: r redraws a border in the focused colour",
       focused_sgr.search(s.out[mark:]) is not None, repr(s.out[mark:][:200]))
 check("C2a/M2.1 pty: r redraws the vacated pane's border in the unfocused colour",

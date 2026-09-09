@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M1.11
+Current task: M5.3
 
 ## Handoff
 
@@ -68,23 +68,30 @@ normal terminal sizes) but should be fixed before cycle close — it stays `open
 TRIAGE.md for the next charm-replan pass to promote into a PLAN task; T27/T28 (low, doc-comment
 staleness) confirmed accurate, no functional impact, left `open` for hygiene.
 
-M2.10 is now done: TRIAGE T2's not-parallel-safe doc-comment gap on M2.9's two package-level-
-var-mutating tests (`TestClientFetchViaNewClientDelegatesToFetchAt` in fetch_test.go,
-`TestClientSearchDelegatesToSearchTitles` in search_test.go) is closed — each test now carries
-a doc comment stating the save/point/restore mutation of `fetchBase`/`wikiBase`/`searchBase`
-is not goroutine-safe and cross-references the other test, mirroring the convention
-`files_search.go`'s `grepArgMaxBytes` comment already establishes for this exact hazard class.
-`make check` (build/vet/fmt/test) is green. Not yet reviewed/validated (dates left `-`).
+M1.11 is now done, closing out the `test/pty/checks.py` string-drift M1.9 missed: line 937's
+`"Roots" not in "\n".join(hidden_lines)` assertion (M5.2's "toggling hides the whole sidebar"
+check) was vacuous since the M1.6 rename — the literal string "Roots" never appears in the
+rendered UI regardless of Navigator visibility, so the check passed unconditionally. Fixed to
+`"Sources" not in ...`; confirmed the fixed check is load-bearing by temporarily breaking
+`toggleNavigator` (cmd/noggin/model.go) to not flip `m.navigatorHidden` — `make check-pty`
+then showed 2 real failures (this check plus its neighboring re-wrap check) — then restoring
+it, confirmed by `git status`/`git diff` showing zero residual diff on model.go and
+`make check-pty` green again (261 checks, 0 failures). Also fixed four stale check()
+description strings whose own assertions already checked "Sources" while the description
+still said "...Roots" (lines 398, 490, 551, 1428 — M3.3, M3.2 restart fixture, M3.4,
+C2a/M2.1). Remaining "Roots" occurrences in checks.py (Grep's "Active Root"/"All Roots"
+labels, which M1.3 deliberately keeps un-renamed, plus a few generic pane-purpose comments
+not asserting the literal string) were swept and confirmed out of scope. `make check` and
+`make check-pty` both green.
 
-Cursor is now M1.11 (the `make check-pty` string-drift fix, pulled forward ahead of M9.1 per
-the milestone-order note at the top of PLAN.md — M9.1's own acceptance criterion leans on that
-same check-pty gate). M5.3 remains an independent replan-added hygiene task,
-pull-forward-anytime. Working tree: M2.10's own change is committed as its own commit;
-PROGRESS.md carries this session's own edits (M2.10 Status row + this Handoff) — not yet
-committed at the time this section was written (see the commit that follows).
+Cursor is now M5.3 (the `browseRow.rootLabel` doc-comment gap, an independent replan-added
+hygiene task, pull-forward-anytime — M9.1 is the next milestone-sequenced task once M5.3 is
+taken or skipped). Working tree: M1.11's checks.py change is committed as its own commit;
+PROGRESS.md carries this session's own edits (M1.11 Status row + cursor move + this Handoff)
+— not yet committed at the time this section was written (see the commit that follows).
 
-No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — carried over from
-the preceding session, unrelated to M2.10.
+No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — carried over,
+unrelated to M1.11.
 
 ## Status
 
@@ -123,7 +130,7 @@ the preceding session, unrelated to M2.10.
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
-| M1.11 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3) |
+| M1.11 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3) |
 | M5.3  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
