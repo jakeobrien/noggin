@@ -25,6 +25,8 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T24 | review | low | cmd/noggin/store.go:82 | `storedRoot`'s doc comment says "toggleStore is the only writer besides a future rename (M7.2)" — M7.2 landed in this same diff and `renameStore` (store.go) is now a second writer; "future" is stale. Update to state both writers plainly (no tense implying M7.2 is still pending). | open |
+| T25 | review | low | cmd/noggin/store.go:231 (also .charm/cycle/PROGRESS.md M7.1 handoff paragraph) | `escapeStoreField`/`unescapeStoreField`'s doc comment cites D61 ("the two stores are deliberately separate formats (D61)") to justify not sharing parsing code with docstore.go, but D61 is "Document memory is one global, path-keyed store — shadow Roots rejected" — unrelated to keeping the two stores' escaping code separate. The actual format decisions are D21 (Roots store: line-based text file) and D67 (Document store: tab-separated fields); neither states the two shouldn't share code. Either correct the citation to D21/D67 or drop the D-number and state the reasoning as new (D61 does not cover it). | open |
 
 <!-- empty as of 2026-09-08 replan (third pass): T1 -> PLAN M1.11 (checks.py:937 vacuous
      Roots/Sources assertion); T2 -> PLAN M2.10 (not-parallel-safe doc note on M2.9's

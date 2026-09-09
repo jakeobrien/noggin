@@ -101,10 +101,25 @@ document's own path/file name — document.go's `label()`, files_search.go's fuz
 source — which are a different thing, a file's own name, not a Root's). `make check` green;
 `go test ./... -count=1` (uncached) green. Not yet reviewed or validated.
 
+M6.1, M7.1, M7.2 and M7.3 were validated fresh-context (charm-validate, 2026-09-08, via a
+read-only validator subagent): `make check` and `go test ./... -count=1` both green; each
+task's acceptance criterion independently re-derived from code (not taken from this Handoff's
+own prose) — M6.1's Activate/Peek recording split traced through `applyArticleFetch`'s two
+branches to confirm no other path reaches `recordArticleViewed`; M7.1's store round-trip
+confirmed for named/unnamed/legacy/escaped-delimiter cases; M7.2's two refusal conditionals
+(unstarred ad-hoc, Wikipedia) traced directly in `model.go`, not just trusted from tests;
+M7.3's "single helper" claim re-checked with an independent `filepath.Base` grep across the
+whole repo (found the handoff's own exception list under-enumerates the survivors — `tree.go`,
+`picker_view.go:357`, `browse_list.go:66` — but all are non-Root-label uses, so the claim holds
+functionally; cosmetic only, not worth a TRIAGE item). All four: PASS, no gaps, no new
+findings. TRIAGE.md still holds T24/T25 (stale doc-comment findings from M7.1/M7.2's code
+review, unrelated to functional correctness) — open, awaiting the next replan pass, not
+blocking.
+
 Cursor is now M8.1 (half-page paging), `todo` — independent and pullable, per PLAN.md's own
-note. M7's three tasks (S8, Root names) are now all done; M1.11, M2.10 and M5.3 remain
-independent replan-added hygiene tasks, pull-forward-anytime. TRIAGE.md is empty; working
-tree is clean (M7.3's changes are committed).
+note. M7's three tasks (S8, Root names) are now all done and validated; M1.11, M2.10 and
+M5.3 remain independent replan-added hygiene tasks, pull-forward-anytime. Working tree is
+clean (M7.3's changes are committed); PROGRESS.md/TRIAGE.md carry this session's own edits.
 
 No blockers.
 
@@ -147,10 +162,10 @@ No blockers.
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
 | M1.11 | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3) |
 | M5.3  | todo   | -        | -         | added by replan 2026-09-08 (TRIAGE T4) |
-| M6.1  | done   | 2026-09-09 | -         | pre-agreed cut 1 |
-| M7.1  | done   | -        | -         | pre-agreed cut 2 |
-| M7.2  | done   | -        | -         | pre-agreed cut 2 |
-| M7.3  | done   | -        | -         | pre-agreed cut 2 |
+| M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
+| M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
+| M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
+| M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M8.1  | todo   | -        | -         |      |
 | M8.2  | todo   | -        | -         | scope widened by replan 2026-09-08: S9a attribution line |
 | M8.3  | todo   | -        | -         |      |
