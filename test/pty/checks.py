@@ -1585,4 +1585,43 @@ check("C3/M2.1a pty: ctrl+x moves focus to DV1 (G scrolls DV1)",
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C3/M2.1a pty: exits 0 after the ctrl+x close-DV2 check", code == 0, f"exit {code}")
 
+# --- C6/M8.2 (S9/S9a): the Document Viewer's own location line -----------
+# location_test.go already covers every text/height case at the model layer;
+# what a real terminal alone can confirm is that the row actually reaches
+# the wire, at the right screen position, styled de-emphasized.
+
+m82_root = tempfile.mkdtemp()
+with open(os.path.join(m82_root, "notes.md"), "w") as f:
+    f.write("# Notes\n\nSome content.\n")
+with open(os.path.join(m82_root, "other.md"), "w") as f:
+    f.write("# Other\n\nMore content.\n")
+m82_root_name = os.path.basename(m82_root)
+
+s = Session([BINARY, m82_root], 80, 24)
+s.pump(1.2)
+s.send(KEY["Activate"], 0.5)  # notes.md -> DV1
+sc = screen_of(s.out, 80, 24)
+lines = sc.lines()
+want_line = f"{m82_root_name} \u00b7 notes.md"
+check("M8.2 pty: the location line names the Root and the file's relative path",
+      any(want_line in line for line in lines), repr(lines))
+check("M8.2 pty: the location line sits on the viewer box's own last content row, above its border",
+      want_line in lines[21] and lines[22].endswith("\u256f"),
+      f"row21={lines[21]!r} row22={lines[22]!r}")
+check("M8.2 pty: the location line reaches the wire de-emphasized (dimColor 245)",
+      re.search(r"38;5;245m[^\x1b]*" + re.escape(want_line), s.out.decode("utf-8", "replace")) is not None,
+      repr(s.out[-2000:]))
+
+s.send(KEY["FocusFiles"], 0.4)
+s.send(KEY["Down"], 0.4)  # select other.md
+s.send(KEY["Peek"], 0.6)
+lines = screen_of(s.out, 80, 24).lines()
+want_peek_line = f"{m82_root_name} \u00b7 other.md"
+check("M8.2 pty: Peeking a second file switches the location line to the Peeked document",
+      any(want_peek_line in line for line in lines) and not any(want_line in line for line in lines),
+      repr(lines))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("M8.2 pty: exits 0 after the location-line check", code == 0, f"exit {code}")
+
 done()

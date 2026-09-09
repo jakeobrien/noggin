@@ -95,8 +95,7 @@ func (m model) fetchArticleInto(target pane, title string, peek bool) (model, te
 	}
 	m.articleFetchSeq++
 	token := m.articleFetchSeq
-	v := m.viewerFor(target)
-	v.pendingFetch = &pendingArticleFetch{title: title, peek: peek, token: token}
+	v := m.viewerFor(target).beginFetch(title, peek, token)
 	m = m.withViewerFor(target, v)
 	fetcher := m.wikipediaFetcher
 	return m, func() tea.Msg {
@@ -122,7 +121,7 @@ func (m model) refreshArticleFetchInto(target pane) (model, tea.Cmd) {
 	title := v.doc.title
 	m.articleFetchSeq++
 	token := m.articleFetchSeq
-	v.pendingFetch = &pendingArticleFetch{title: title, token: token}
+	v = v.beginFetch(title, false, token)
 	m = m.withViewerFor(target, v)
 	fetcher := m.wikipediaFetcher
 	return m, func() tea.Msg {
@@ -158,7 +157,7 @@ func (m model) applyArticleFetch(msg articleFetchMsg) model {
 	if v.pendingFetch == nil || v.pendingFetch.token != msg.token {
 		return m
 	}
-	v.pendingFetch = nil
+	v = v.endFetch(msg.peek)
 	m = m.withViewerFor(msg.pane, v)
 	if msg.err != nil {
 		// D61's own priority rule (model.combineDropMessages, model.go): never

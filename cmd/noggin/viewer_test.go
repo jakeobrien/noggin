@@ -267,8 +267,10 @@ func TestViewerRewrapsOnResize(t *testing.T) {
 		if got := tc.m.dv1.renderedWidth; got != want.width {
 			t.Errorf("%s: rendered at width %d, want %d", tc.name, got, want.width)
 		}
-		if got := tc.m.dv1.height(); got != want.height {
-			t.Errorf("%s: viewport height = %d, want %d", tc.name, got, want.height)
+		// M8.2/S9: openedFixture's document is open, so the location line
+		// costs the viewport one row of want.height's own content box.
+		if got := tc.m.dv1.height(); got != want.height-1 {
+			t.Errorf("%s: viewport height = %d, want %d", tc.name, got, want.height-1)
 		}
 	}
 

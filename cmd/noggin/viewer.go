@@ -85,6 +85,19 @@ type viewer struct {
 	// Session-only and dies with the viewer, exactly like history itself.
 	articleCache map[string]document
 
+	// boxHeight is the pane's own content box height, exactly as setSize was
+	// last called with — the one thing docContentHeight/peekContentHeight
+	// (location.go, S9/M8.2) need that v.vp.Height() itself can no longer
+	// give directly, now that vp's operative height is boxHeight minus one
+	// row whenever the S9/S9a location line will render beneath it. Kept
+	// decoupled from vp.Height() precisely so the Active Document and Peek
+	// (whose own location-line visibility can differ) each derive their own
+	// viewport height from the same undivided box rather than from each
+	// other's already-adjusted one (renderPeek's own former "copy v.vp's
+	// height" shortcut would otherwise hand Peek the Active Document's row
+	// reservation, not its own).
+	boxHeight int
+
 	// pendingFetch is C6/M4.2's async fetch-in-flight marker (S3: "the UI
 	// stays responsive and shows a visible in-progress indicator"): non-nil
 	// exactly while this viewer is waiting on a Wikipedia article fetch
@@ -153,6 +166,58 @@ type pendingArticleFetch struct {
 // branch already gives everything beneath it.
 func (v viewer) fetching() bool { return v.pendingFetch != nil }
 
+// beginFetch marks pending an async article fetch targeting either the
+// Active Document (peek == false) or Peek (peek == true), and resets
+// whichever viewport it targets back to its full boxHeight (S9/M8.2):
+// view()'s fetching branch takes over the content box unconditionally
+// (its own doc comment) and locationDoc's identical "case v.fetching():
+// false" draws no location line beneath it, so nothing should stay
+// reserved for one meanwhile — without this, a pane whose location line was
+// already showing before the fetch started would leave the fetching
+// placeholder one row short of the box, an unstyled blank row where the
+// placeholder's own last row belongs (renderBox's Height floor pads
+// instead of drawing anything there). article_fetch.go's
+// fetchArticleInto/refreshArticleFetchInto are the two callers;
+// applyArticleFetch's own completion handler is what restores the correct
+// height again once the fetch resolves (success routes through
+// open/refreshDoc/startPeek, which already recompute it; a failure
+// recomputes it directly, since neither the document nor its own error
+// state changed).
+func (v viewer) beginFetch(title string, peek bool, token int) viewer {
+	v.pendingFetch = &pendingArticleFetch{title: title, peek: peek, token: token}
+	if peek {
+		// A Peek-targeted fetch can be the very first thing that ever touches
+		// v.peek (no Peek open yet to have sized it) — v.peek.vp's own width
+		// would still be its zero value without this, unlike v.vp's (always
+		// kept current by setSize). renderPeek/startPeek already do the same
+		// "copy v.vp's width" once Peek actually starts; this just gives the
+		// fetching placeholder the same width a moment earlier.
+		v.peek.vp.SetWidth(v.vp.Width())
+		v.peek.vp.SetHeight(v.boxHeight)
+	} else {
+		v.vp.SetHeight(v.boxHeight)
+	}
+	return v
+}
+
+// endFetch clears a resolved fetch (success or failure) and restores
+// whichever viewport it targeted to its own current, correct height
+// (docContentHeight/peekContentHeight) — the beginFetch's own doc comment
+// explains why a failure needs this explicitly: open/refreshDoc/startPeek
+// never run on that path, so nothing else would undo beginFetch's own
+// unconditional full-boxHeight reset. A success's own follow-up call
+// (open/refreshDoc/startPeek) harmlessly recomputes the same height again
+// right after, since v.doc/v.err (or v.peek's) have changed by then.
+func (v viewer) endFetch(peek bool) viewer {
+	v.pendingFetch = nil
+	if peek {
+		v.peek.vp.SetHeight(v.peekContentHeight())
+	} else {
+		v.vp.SetHeight(v.docContentHeight())
+	}
+	return v
+}
+
 // peekState is one Peeked document: its own read-only viewport, kept
 // entirely separate from vp so Peek can never move the Active Document's
 // scroll position — clearing Peek must restore vp exactly as it was found.
@@ -184,11 +249,12 @@ func newViewer() viewer {
 // the content on a width change, but a stale height would clip Peek wrong
 // on a height-only resize if this didn't run unconditionally.
 func (v viewer) setSize(width, height int) viewer {
+	v.boxHeight = max(height, 0)
 	v.vp.SetWidth(max(width, 0))
-	v.vp.SetHeight(max(height, 0))
+	v.vp.SetHeight(v.docContentHeight())
 	if v.peeking() {
 		v.peek.vp.SetWidth(max(width, 0))
-		v.peek.vp.SetHeight(max(height, 0))
+		v.peek.vp.SetHeight(v.peekContentHeight())
 	}
 	if v.vp.Width() != v.renderedWidth {
 		v = v.render()
@@ -393,14 +459,20 @@ func (v viewer) renderPeek() viewer {
 		return v
 	}
 	v.peek.vp.SetWidth(v.vp.Width())
-	v.peek.vp.SetHeight(v.vp.Height())
 	out, err := renderMarkdown(v.peek.doc.src, v.peek.vp.Width())
 	if err != nil {
 		v.peek.err = err
+		// S9/M8.2: Peek's own location-line visibility (peekContentHeight)
+		// is independent of the Active Document's (v.vp.Height() may now
+		// differ from v.peek.vp.Height() — boxHeight's own doc comment) --
+		// no longer simply "copy v.vp's height", now that the two can
+		// reserve their row independently.
+		v.peek.vp.SetHeight(v.peekContentHeight())
 		v.peek.vp.SetContent("")
 		return v
 	}
 	v.peek.err = nil
+	v.peek.vp.SetHeight(v.peekContentHeight())
 	v.peek.vp.SetContent(strings.TrimRight(out, "\n"))
 	v.peek.vp.GotoTop()
 	return v
@@ -418,11 +490,19 @@ func (v viewer) render() viewer {
 	v.findState = newFind()
 	v.vp.StyleLineFunc = nil
 	if !v.doc.isOpen() {
+		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
 	} else if out, err := renderMarkdown(v.doc.src, v.vp.Width()); err != nil {
 		v.err = err
+		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
 	} else {
+		// docContentHeight is set only now, not up front: it reads v.err,
+		// which this branch (and the err one above) only just settled
+		// (S9/M8.2 — the location line, and so the row it costs, depends
+		// on whether rendering actually succeeded, not just whether a
+		// document is open).
+		v.vp.SetHeight(v.docContentHeight())
 		// Glamour pads the document with trailing blank lines; they would
 		// be scrollable emptiness past the end.
 		v.vp.SetContent(strings.TrimRight(out, "\n"))
@@ -470,33 +550,47 @@ func (v viewer) view() string {
 	// Peek's own branch just beneath it is unconditional on the Active
 	// Document's own err/empty/open state.
 	if v.fetching() {
-		return v.fill(emptyViewerStyle, fmt.Sprintf("Fetching %q\u2026", v.pendingFetch.title))
+		// S9/M8.2: a Peek-targeted fetch (pendingFetch.peek) fills Peek's own
+		// box, not the Active Document's — beginFetch (above) already resizes
+		// whichever one it targets to match, mirroring the identical peek.err
+		// branch just below.
+		width, height := v.vp.Width(), v.vp.Height()
+		if v.pendingFetch.peek {
+			width, height = v.peek.vp.Width(), v.peek.vp.Height()
+		}
+		return v.fill(emptyViewerStyle, width, height, fmt.Sprintf("Fetching %q\u2026", v.pendingFetch.title))
 	}
 	// A Peeked document (S7, M7.1) takes over the content box entirely,
 	// ahead of the Active Document's own err/empty/open cases below — those
 	// describe vp, which Peek never touches or replaces.
 	if v.peeking() {
 		if v.peek.err != nil {
-			return v.fill(emptyViewerStyle, v.peek.err.Error())
+			// S9/M8.2: Peek's own dimensions, not v.vp's — the two viewports
+			// can now differ in height (boxHeight's own doc comment), so
+			// filling to the wrong one would over- or under-fill Peek's box.
+			return v.fill(emptyViewerStyle, v.peek.vp.Width(), v.peek.vp.Height(), v.peek.err.Error())
 		}
 		return v.peek.vp.View()
 	}
 	switch {
 	case v.err != nil:
-		return v.fill(emptyViewerStyle, v.err.Error())
+		return v.fill(emptyViewerStyle, v.vp.Width(), v.vp.Height(), v.err.Error())
 	case !v.doc.isOpen():
-		return v.fill(emptyViewerStyle, emptyViewerText)
+		return v.fill(emptyViewerStyle, v.vp.Width(), v.vp.Height(), emptyViewerText)
 	default:
 		return v.vp.View()
 	}
 }
 
-// fill lays text out over the whole content box, padding and truncating so the
-// result is exactly the box's size — the same contract viewport.View() keeps.
-func (v viewer) fill(style lipgloss.Style, text string) string {
+// fill lays text out over a width x height content box, padding and
+// truncating so the result is exactly that size — the same contract
+// viewport.View() keeps. Takes width/height explicitly (S9/M8.2), rather
+// than always reading v.vp's own, since a caller filling Peek's box needs
+// Peek's own dimensions, which can now differ from the Active Document's.
+func (v viewer) fill(style lipgloss.Style, width, height int, text string) string {
 	return style.
-		Width(v.vp.Width()).Height(v.vp.Height()).
-		MaxWidth(v.vp.Width()).MaxHeight(v.vp.Height()).
+		Width(width).Height(height).
+		MaxWidth(width).MaxHeight(height).
 		Render(text)
 }
 

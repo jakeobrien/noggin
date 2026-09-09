@@ -2042,9 +2042,11 @@ func (m model) frame() string {
 	l := m.layout()
 
 	dv1Rect, dv2Rect := l.splitViewer(m.dv2 != nil)
-	body := m.renderPane(dv1Pane, dv1Rect, m.dv1.view())
+	dv1Content := m.composeViewerContent(dv1Pane, dv1Rect.content().width, m.dv1.view())
+	body := m.renderPane(dv1Pane, dv1Rect, dv1Content)
 	if m.dv2 != nil {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, body, m.renderPane(dv2Pane, dv2Rect, m.dv2.view()))
+		dv2Content := m.composeViewerContent(dv2Pane, dv2Rect.content().width, m.dv2.view())
+		body = lipgloss.JoinHorizontal(lipgloss.Top, body, m.renderPane(dv2Pane, dv2Rect, dv2Content))
 	}
 	if l.navigatorWidth() > 0 {
 		navigator := lipgloss.JoinVertical(lipgloss.Left,

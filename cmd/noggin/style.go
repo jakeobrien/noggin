@@ -16,3 +16,9 @@ var dimColor = lipgloss.Color("245")
 // modalStyle's own "a color no pane border uses" pick) — reused here rather
 // than adding a second, arbitrary "pay attention" color.
 var staleRowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Reverse(true)
+
+// locationLineStyle is S9/S9a's own de-emphasized bottom row (M8.2): the
+// same dimColor every pane's empty-state/footer text already uses, plain
+// (no Reverse) unlike staleRowStyle — S9 never calls it out for attention
+// the way S10's staleness row does, only asks that it read as secondary.
+var locationLineStyle = lipgloss.NewStyle().Foreground(dimColor)
