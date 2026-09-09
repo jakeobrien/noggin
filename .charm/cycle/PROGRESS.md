@@ -17,7 +17,7 @@
 
 ## Cursor
 
-Current task: M8.1
+Current task: M8.2
 
 ## Handoff
 
@@ -101,6 +101,26 @@ document's own path/file name — document.go's `label()`, files_search.go's fuz
 source — which are a different thing, a file's own name, not a Root's). `make check` green;
 `go test ./... -count=1` (uncached) green. Not yet reviewed or validated.
 
+M8.1 (half-page paging) is done: `keys.PageUp`/`keys.PageDown` (pgup/pgdn, plus their
+ctrl+b/ctrl+f alt keys) now move a Document Viewer by the same distance as `HalfPageUp`/
+`HalfPageDown` (ctrl+u/ctrl+d) — viewer.go's `scrollActions` table changes only the two
+move funcs (`vp.HalfPageUp()`/`vp.HalfPageDown()` instead of `vp.PageUp()`/`vp.PageDown()`);
+the bindings themselves (keymap.go) are untouched, so nothing else sharing them moves. The
+Picker's own Preview reuses the identical `keys.PageUp`/`keys.PageDown` bindings in a wholly
+separate call site (picker.go's `handlePickerInput`) that still calls `.PageUp()`/`.PageDown()`
+directly — confirmed untouched by both a code read and `TestPickerPreviewScrollsOnScrollKeys`
+still passing; Files Nav never bound PageUp/PageDown at all (`files.go` only handles
+LineUp/LineDown), so it needed no test and has nothing to regress. `TestScrollActionsMoveThe
+Viewport`'s page-up/page-down cases were updated to the new expected offsets, plus a new
+subtest asserting pgdn and ctrl+d land on the exact same offset from the same start (the
+acceptance criterion's own wording). New `TestHelpModalListsPageAndHalfPageTogetherForThe
+Viewer` (help_test.go) pins the Help Modal showing all four scroll-distance bindings as one
+contiguous block for both dv1Pane/dv2Pane. Left `keys.PageUp`/`PageDown`'s shared `WithHelp`
+text ("page up"/"page down") unchanged — a per-pane fork of that description was judged not
+worth it for an effort-1 task; both viewer.go's and keymap.go's comments were updated instead
+to explain the two call sites now move by different distances on purpose. `make check` and
+`go test ./... -count=1` green. Not yet reviewed or validated.
+
 M6.1, M7.1, M7.2 and M7.3 were validated fresh-context (charm-validate, 2026-09-08, via a
 read-only validator subagent): `make check` and `go test ./... -count=1` both green; each
 task's acceptance criterion independently re-derived from code (not taken from this Handoff's
@@ -116,10 +136,11 @@ findings. TRIAGE.md still holds T24/T25 (stale doc-comment findings from M7.1/M7
 review, unrelated to functional correctness) — open, awaiting the next replan pass, not
 blocking.
 
-Cursor is now M8.1 (half-page paging), `todo` — independent and pullable, per PLAN.md's own
-note. M7's three tasks (S8, Root names) are now all done and validated; M1.11, M2.10 and
-M5.3 remain independent replan-added hygiene tasks, pull-forward-anytime. Working tree is
-clean (M7.3's changes are committed); PROGRESS.md/TRIAGE.md carry this session's own edits.
+Cursor is now M8.2 (location line), the next M8 task (`needs: M4.1, M7.3`, both already done).
+M7's three tasks (S8, Root names) are now all done and validated; M8.1 is done (not yet
+reviewed/validated); M1.11, M2.10 and M5.3 remain independent replan-added hygiene tasks,
+pull-forward-anytime. Working tree is clean except this session's own tracking-doc edits
+(M8.1's code+test changes are committed).
 
 No blockers.
 
@@ -166,7 +187,7 @@ No blockers.
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M8.1  | todo   | -        | -         |      |
+| M8.1  | done   | -        | -         |      |
 | M8.2  | todo   | -        | -         | scope widened by replan 2026-09-08: S9a attribution line |
 | M8.3  | todo   | -        | -         |      |
 | M9.1  | todo   | -        | -         | pre-agreed cut 3 |

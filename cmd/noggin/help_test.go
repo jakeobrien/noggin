@@ -84,6 +84,49 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 	}
 }
 
+// TestHelpModalListsPageAndHalfPageTogetherForTheViewer pins M8.1's own
+// "the Help Modal lists them together" acceptance clause: since pgup/pgdn
+// now land on the same offset as ctrl+u/ctrl+d (viewer.go's scrollActions),
+// the modal must still show both bindings, immediately adjacent, for both
+// Document Viewer panes — not merged into one, since they remain distinct
+// key.Bindings (different chords), just the same move.
+func TestHelpModalListsPageAndHalfPageTogetherForTheViewer(t *testing.T) {
+	for _, p := range []pane{dv1Pane, dv2Pane} {
+		bindings := helpBindings(p)
+		idx := func(want key.Binding) int {
+			for i, b := range bindings {
+				if b.Help().Key == want.Help().Key && b.Help().Desc == want.Help().Desc {
+					return i
+				}
+			}
+			return -1
+		}
+		halfUp, halfDown := idx(keys.HalfPageUp), idx(keys.HalfPageDown)
+		pageUp, pageDown := idx(keys.PageUp), idx(keys.PageDown)
+		for name, i := range map[string]int{"half page up": halfUp, "half page down": halfDown, "page up": pageUp, "page down": pageDown} {
+			if i < 0 {
+				t.Fatalf("pane %v: helpBindings missing %s", p, name)
+			}
+		}
+		// "Together" means the four scroll-distance bindings form one
+		// contiguous block, in either half/page order, not scattered among
+		// unrelated bindings.
+		group := []int{halfUp, halfDown, pageUp, pageDown}
+		min, max := group[0], group[0]
+		for _, i := range group {
+			if i < min {
+				min = i
+			}
+			if i > max {
+				max = i
+			}
+		}
+		if max-min != len(group)-1 {
+			t.Errorf("pane %v: half-page/page bindings not adjacent in helpBindings, got indices %v", p, group)
+		}
+	}
+}
+
 // TestHelpOverlayLeavesTheFrameVisibleAroundIt checks the "opens over" half
 // of S12 directly: the composited view still shows the pane underneath
 // outside the modal's own box (here, the top row's border and the footer,

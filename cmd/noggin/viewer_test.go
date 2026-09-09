@@ -182,8 +182,10 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 		{"line up", keys.LineUp, 5, 4},
 		{"half page down", keys.HalfPageDown, 0, page / 2},
 		{"half page up", keys.HalfPageUp, page, page - page/2},
-		{"page down", keys.PageDown, 0, page},
-		{"page up", keys.PageUp, page, 0},
+		// M8.1: pgup/pgdn (and their ctrl+b/ctrl+f alt keys) now land on the
+		// same offset as ctrl+u/ctrl+d in a Document Viewer, not a full page.
+		{"page down", keys.PageDown, 0, page / 2},
+		{"page up", keys.PageUp, page, page - page/2},
 		{"bottom", keys.Bottom, 0, bottom},
 		{"top", keys.Top, 5, 0},
 	} {
@@ -199,6 +201,22 @@ func TestScrollActionsMoveTheViewport(t *testing.T) {
 			}
 		})
 	}
+
+	// M8.1's own acceptance wording: pgdn and ctrl+d must land on the exact
+	// same offset from the same start, not merely the same formula.
+	t.Run("pgdn lands on the same offset as ctrl+d", func(t *testing.T) {
+		m := base
+		m.dv1 = m.dv1.withOffset(0)
+		afterPgdn := press(t, m, keys.PageDown.Keys()[0]).dv1.offset()
+
+		m = base
+		m.dv1 = m.dv1.withOffset(0)
+		afterCtrlD := press(t, m, keys.HalfPageDown.Keys()[0]).dv1.offset()
+
+		if afterPgdn != afterCtrlD {
+			t.Errorf("pgdn landed at offset %d, ctrl+d at %d, want equal", afterPgdn, afterCtrlD)
+		}
+	})
 
 	// The last screen is reachable and is not the first screen.
 	m := press(t, base, keys.Bottom.Keys()[0])

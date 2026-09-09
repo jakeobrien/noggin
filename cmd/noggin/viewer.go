@@ -501,9 +501,17 @@ func (v viewer) fill(style lipgloss.Style, text string) string {
 }
 
 // scrollActions pairs each scroll binding with the viewport move it performs.
-// The five moves S7 allows are line, half-page, page, top and bottom. Update
-// walks this list, and so can the help modal (S12), so a new scroll action is
-// one entry here plus its binding in keymap.go.
+// The four moves S7/S9 allow are line, half-page (bound twice — ctrl+u/
+// ctrl+d and, per M8.1, pgup/pgdn/ctrl+b/ctrl+f land on the same offset,
+// since a Document Viewer has no separate full-page distance any more), top
+// and bottom. Update walks this list, and so can the help modal (S12), so a
+// new scroll action is one entry here plus its binding in keymap.go.
+//
+// keys.PageUp/keys.PageDown still call vp.PageUp()/vp.PageDown() in the
+// Picker's own Preview scroll (picker.go's handlePickerInput) — that pane is
+// deliberately unchanged by M8.1 (its own doc comment says "other panes
+// unchanged"), and is a wholly separate call site from this table, so the two
+// panes can move by different distances on the identical key.
 var scrollActions = []struct {
 	binding key.Binding
 	move    func(*viewport.Model)
@@ -512,8 +520,8 @@ var scrollActions = []struct {
 	{keys.LineDown, func(vp *viewport.Model) { vp.ScrollDown(1) }},
 	{keys.HalfPageUp, func(vp *viewport.Model) { vp.HalfPageUp() }},
 	{keys.HalfPageDown, func(vp *viewport.Model) { vp.HalfPageDown() }},
-	{keys.PageUp, func(vp *viewport.Model) { vp.PageUp() }},
-	{keys.PageDown, func(vp *viewport.Model) { vp.PageDown() }},
+	{keys.PageUp, func(vp *viewport.Model) { vp.HalfPageUp() }},
+	{keys.PageDown, func(vp *viewport.Model) { vp.HalfPageDown() }},
 	{keys.Top, func(vp *viewport.Model) { vp.GotoTop() }},
 	{keys.Bottom, func(vp *viewport.Model) { vp.GotoBottom() }},
 }

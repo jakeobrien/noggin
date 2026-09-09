@@ -39,6 +39,11 @@ type keyMap struct {
 	Activate key.Binding
 
 	// Document Viewer scrolling (S7): line, half-page, page, top, bottom.
+	// PageUp/PageDown land on the same offset as HalfPageUp/HalfPageDown in
+	// a Document Viewer (M8.1, viewer.go's scrollActions) — kept as separate
+	// bindings (distinct chords) rather than merged because the Picker's own
+	// Preview reuses these same two bindings for a genuinely full page
+	// (picker.go's handlePickerInput), unchanged by M8.1.
 	LineUp       key.Binding
 	LineDown     key.Binding
 	HalfPageUp   key.Binding
