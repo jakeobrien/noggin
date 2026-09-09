@@ -48,18 +48,35 @@ the-wire + fragment absence). A second reviewer pass (stale-comment sweep across
 picker_view.go/picker_view_test.go/rootlabel_test.go/files_search.go, all fixed) found no
 further issues. `make check` and `make check-pty` (~255 checks) both green.
 
-Milestone M8 (M8.1/M8.2/M8.3) is now all `done` but none of the three rows carry a `Validated`
-date and only M8.3 (this task) has a `Reviewed` date — per cycle-state.md's state table, the
-next build session's own orient gate check will hit "current milestone complete, validation
-due" and should surface it rather than pushing further into M9 first (see Status below).
+Milestone M8 (M8.1/M8.2/M8.3) has now been validated fresh-context (charm-validate,
+2026-09-09, via a read-only validator subagent): `make check` and `make check-pty` (~255
+checks) both green; each task's acceptance criterion independently re-derived from code, not
+taken from this Handoff's own prose — M8.1's pgdn/ctrl+d same-offset claim traced to
+`TestScrollActionsMoveTheViewport`'s exact-offset subtest (not just same formula); M8.2's four
+location-line states, the S9a three-segment text (byte-for-byte) and the content-height-minus-
+one clause all independently confirmed in location.go/location_test.go; M8.3's dim-styling and
+D117 parent-fragment removal confirmed via the real ANSI-parsing `dimColumns` helper, not a
+substring check. All three: PASS. All three Status rows now carry today's `Validated` date.
+
+Validate also independently reproduced TRIAGE **T26** (high severity, open, filed against
+M8.2's location.go by the preceding code-review pass): at a pathologically short terminal
+(DV1 content height 0), the location line is still composed and `renderBox`'s `MaxHeight`
+silently clips the pane, dropping DV1's own bottom border — a real, reproducible frame-
+corruption bug, confirmed by direct trace + a scratch repro (not merely plausible). It does
+**not** block M8.2's own sign-off (its documented acceptance criterion is independently met at
+normal terminal sizes) but should be fixed before cycle close — it stays `open`/`high` in
+TRIAGE.md for the next charm-replan pass to promote into a PLAN task; T27/T28 (low, doc-comment
+staleness) confirmed accurate, no functional impact, left `open` for hygiene.
 
 Cursor is now M1.11 (the `make check-pty` string-drift fix, pulled forward ahead of M9.1 per
 the milestone-order note at the top of PLAN.md — M9.1's own acceptance criterion leans on that
 same check-pty gate). M2.10 and M5.3 remain independent replan-added hygiene tasks,
-pull-forward-anytime. Working tree: M8.3's code+test changes are committed as this task's own
-commit.
+pull-forward-anytime. Working tree: M8.3's code+test changes are committed as that task's own
+commit; PROGRESS.md/TRIAGE.md carry this session's own edits (Reviewed-date backfill for
+M8.1/M8.2 plus T26/T27/T28 from the preceding review pass, and this session's Validated-date
+stamps) — not yet committed.
 
-No blockers.
+No blockers. T26 (open, high, TRIAGE.md) is a real bug but not a blocker — see above.
 
 ## Status
 
@@ -104,8 +121,8 @@ No blockers.
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M8.1  | done   | -        | -         |      |
-| M8.2  | done   | -        | -         | scope widened by replan 2026-09-08: S9a attribution line |
-| M8.3  | done   | 2026-09-09 | -       |      |
+| M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
+| M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
+| M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
 | M9.1  | todo   | -        | -         | pre-agreed cut 3 |
 | M10.1 | todo   | -        | -         |      |
