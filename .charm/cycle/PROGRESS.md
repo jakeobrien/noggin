@@ -17,31 +17,24 @@
 
 ## Cursor
 
-Current task: M8.2b done (build complete this session) — the cycle's plan work is now
-fully built. All of M1-M10 plus M1.12/M9.3/M8.2b are `done`; validation is still
-outstanding for 10 tasks (see below).
+Current task: cycle-end validate complete (2026-09-10, fresh-context subagent). All of
+M1-M10 are `done` and now `Validated`. Next: `charm-security-review`, then `/charm-close`.
 
 ## Handoff
 
-**Build 2026-09-10 (M8.2b):** added
-`TestPeekLocationLineNeverClaimsARowAtAPathologicallyShortTerminal` (location_test.go),
-the Peek-path counterpart to M8.2a's own
-`TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal` — same shape (a
-`sized(t, m, 80, 4)` terminal, Navigator hidden, frame-height and bottom-border
-assertions), built on `peekFixture` (peek_test.go) instead of a bare `openDocument`,
-since Peek needs a second file to select. Asserts `peekLocationVisible()` is false,
-`peekContentHeight()` is 0, and `viewerLocationLine(dv1Pane)` is empty at `boxHeight`
-0, then confirms the frame still closes with no overflow or misaligned border.
-Sanity-checked the test actually catches the regression: temporarily reverting
-`peekLocationVisible`'s `boxHeight >= 1` guard (location.go) made the new test fail
-with the expected messages; restored, `make check` green (build, vet, fmt, test all
-pass). No code behavior changed — a pure test-gap fill matching M8.2a's own precedent.
-No new findings, no TRIAGE items, no DECISIONS entries.
+**Validate 2026-09-10 (fresh-context subagent, cycle-end scope):** verified the 10
+previously-unvalidated tasks (M1.11, M1.12, M2.11, M7.4, M8.2a, M8.2b, M8.4, M8.5, M9.2,
+M9.3) independently against their PLAN.md acceptance criteria by reading the current
+source/tests at each cited location and running the targeted tests — all 10 **PASS**, no
+discrepancies. Ran the full deterministic pass: `make check` (build/vet/fmt/test) green;
+`make check-pty` 268/268 PASS, 0 FAIL; `.charm/cycle/TRIAGE.md` confirmed genuinely empty
+(no live rows). Spot-checked a sample of already-validated tasks for regressions from
+later commits (M1.3/M1.6/M1.9/M1.2/M10.1 string-drift greps, Active Root/Source scope
+labels) — nothing suspicious. Stamped `Validated=2026-09-10` for all 10 tasks in the
+Status table below; no PROGRESS.md status flips needed (nothing overclaimed), no new
+TRIAGE items, no DECISIONS.md entries (no spec-level gaps surfaced).
 
-Next step: charm-validate (fresh context) covering all 10 previously-unvalidated tasks
-(M1.11, M2.11, M7.4, M8.2a, M8.4, M9.2, M8.5, M1.12, M9.3, M8.2b) and confirm the whole
-cycle (M1-M10) remains green, then `charm-security-review`, then `/charm-close`. No
-blockers.
+Next step: `charm-security-review` (fresh context), then `/charm-close`. No blockers.
 
 ## Status
 
@@ -77,26 +70,26 @@ blockers.
 | M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M2.10 | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.11 | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T31) |
+| M2.11 | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T31) |
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
-| M1.11 | done   | 2026-09-10 | -         | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
+| M1.11 | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
 | M5.3  | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M7.4  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
+| M7.4  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T24, T25) |
 | M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
-| M8.2a | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
-| M8.2b | done   | -          | -         | added by replan 2026-09-10 (TRIAGE T36) |
+| M8.2a | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T26, T28) |
+| M8.2b | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-10 (TRIAGE T36) |
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.4  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T27) |
+| M8.4  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
-| M9.2  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T29) |
+| M9.2  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.5  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T32) |
-| M1.12 | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T33) |
-| M9.3  | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T34) |
+| M8.5  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T32) |
+| M1.12 | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-10 (TRIAGE T33) |
+| M9.3  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-10 (TRIAGE T34) |
