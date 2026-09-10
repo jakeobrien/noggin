@@ -16,13 +16,11 @@ M9 are the spec's pre-agreed cuts in cut order (Recent → Root names → backgr
 sequenced late so overrun costs the least-valued work; M8's location line and Picker rows fall
 back to the folder base name if M7 is cut. M8.1 (half-page paging) and M3.1 (2-char threshold)
 are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.12,
-M2.9–M2.11, M3.6–M3.7, M4.4, M5.3, M7.4, M8.2a, M8.4, M8.5, M9.2 and M9.3 are replan-added
-hygiene/test-gap/bugfix tasks, independent of the milestone sequencing above; pull forward
-whenever a short slot is available. M1.9 and M1.11 (the `make check-pty` string-drift fixes)
-are worth doing before M9.1 specifically, since M9.1's own acceptance criterion leans on that
-gate. M1.11 is currently the true cursor (in-progress, not done — see PROGRESS.md): its
-second clause missed one occurrence (checks.py:164, replan 2026-09-09 pass, TRIAGE T30),
-reopening it ahead of M10.1.
+M2.9–M2.11, M3.6–M3.7, M4.4, M5.3, M7.4, M8.2a, M8.2b, M8.4, M8.5, M9.2 and M9.3 are
+replan-added hygiene/test-gap/bugfix tasks, independent of the milestone sequencing above;
+pull forward whenever a short slot is available. M1.9 and M1.11 (the `make check-pty`
+string-drift fixes) were done before M9.1 specifically, since M9.1's own acceptance criterion
+leaned on that gate.
 
 Cross-cutting: every network call is user-initiated (search, Activate, Peek, Refresh — D119)
 and every network-touching task must be testable without the network (fake/injected client,
@@ -315,6 +313,15 @@ Delivers: S9, S10, S12
   functions into one shared helper — done when: a `sized(t, m, 80, 4)`-then-`openDocument`
   regression test confirms no overflow and no misaligned border, and the two functions share
   one implementation — effort: 2 (replan: TRIAGE T26, T28)
+- **M8.2b** — M8.2a's own regression test
+  (`TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal`) covers only the
+  Active-Document path (`docLocationVisible`/`docContentHeight`); the Peek path
+  (`peekLocationVisible`/`peekContentHeight`) — covered by the same `v.boxHeight >= 1` gate
+  and the shared `contentHeight` helper M8.2a introduced, and named explicitly in M8.2a's own
+  task text above — has no boxHeight-0 regression test of its own — done when: a Peek-path
+  counterpart (Peek opened at a `sized(t, m, 80, 4)` terminal) confirms `peekLocationVisible`
+  is false and the frame still closes with no overflow or misaligned border, matching
+  M8.2a's own test shape — effort: 1 (replan: TRIAGE T36)
 - **M8.3** — De-emphasized secondary text: the Sources Nav path line and Picker File-row paths
   render dim with matched path characters emphasized against the dim, the Root label at normal
   weight; the Root's parent-path fragment is dropped from Picker File rows (D117) — done when:

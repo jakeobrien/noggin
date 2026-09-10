@@ -25,9 +25,19 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T36 | review | low | cmd/noggin/location_test.go:328 (TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal); cmd/noggin/location.go:73,101 (peekLocationVisible/peekContentHeight) | M8.2a's regression test for the boxHeight-0 overflow bug only exercises the Active-Document path (docLocationVisible/docContentHeight/m.dv1); the Peek path (peekLocationVisible/peekContentHeight), which the same fix and shared contentHeight helper cover and which M8.2a's own PLAN.md wording names explicitly, has no boxHeight-0 regression test — structurally low-risk since peekLocationVisible reads the same v.boxHeight field (viewer.go:88-99), but the same coverage-gap pattern this cycle already promoted elsewhere (T34 -> M9.3) | open |
 
-<!-- empty as of 2026-09-10 replan (seventh pass): T35 (M1.12/M9.3 build commit d1ced0f
+<!-- empty as of 2026-09-10 replan (eighth pass): T36 (review finding — M8.2a's own
+     regression test only exercises the Active-Document path, docLocationVisible/
+     docContentHeight; the Peek path, peekLocationVisible/peekContentHeight, covered by the
+     same boxHeight>=1 gate and shared contentHeight helper and named explicitly in M8.2a's
+     own task text, has no boxHeight-0 regression test of its own) -> PLAN M8.2b, same
+     test-gap convention this cycle already used for T31/T34. Accepted rather than deferred
+     (too small/mechanical to survive the next prune as its own ROADMAP line) or wontfixed
+     (not a declined idea, just coverage left out of M8.2a's own narrower AC); no
+     DECISIONS.md entry — low severity, not material, and risk is already low since
+     peekLocationVisible reads the same v.boxHeight field as the doc path (viewer.go:88-99).
+
+     earlier passes: seventh (2026-09-10): T35 (M1.12/M9.3 build commit d1ced0f
      falsely stamped Reviewed=2026-09-10 on 7 unrelated already-done tasks — M1.11, M2.11,
      M7.4, M8.2a, M8.4, M9.2, M8.5 — with no review of them ever performed) -> confirmed
      accurate against git history; fixed directly in PROGRESS.md (reset the 7 cells to `-`,
