@@ -1,4 +1,4 @@
-# Progress — C6 sources
+# Progress — C7 <cycle name>
 
 <!-- Per-cycle. Cursor and statuses ONLY — no work summaries (git history carries those).
      The Handoff section is the single exception: overwrite it each session, never append.
@@ -17,79 +17,19 @@
 
 ## Cursor
 
-Current task: cycle-end validate complete (2026-09-10, fresh-context subagent). All of
-M1-M10 are `done` and now `Validated`. Next: `charm-security-review`, then `/charm-close`.
+Current task: <key>
 
 ## Handoff
 
-**Validate 2026-09-10 (fresh-context subagent, cycle-end scope):** verified the 10
-previously-unvalidated tasks (M1.11, M1.12, M2.11, M7.4, M8.2a, M8.2b, M8.4, M8.5, M9.2,
-M9.3) independently against their PLAN.md acceptance criteria by reading the current
-source/tests at each cited location and running the targeted tests — all 10 **PASS**, no
-discrepancies. Ran the full deterministic pass: `make check` (build/vet/fmt/test) green;
-`make check-pty` 268/268 PASS, 0 FAIL; `.charm/cycle/TRIAGE.md` confirmed genuinely empty
-(no live rows). Spot-checked a sample of already-validated tasks for regressions from
-later commits (M1.3/M1.6/M1.9/M1.2/M10.1 string-drift greps, Active Root/Source scope
-labels) — nothing suspicious. Stamped `Validated=2026-09-10` for all 10 tasks in the
-Status table below; no PROGRESS.md status flips needed (nothing overclaimed), no new
-TRIAGE items, no DECISIONS.md entries (no spec-level gaps surfaced).
+<!-- Overwrite each session. 5–15 lines. Enough for a fresh agent to continue:
+     state of the current task, in-flight changes, surprises/gotchas, next step, blockers. -->
 
-Next step: `charm-security-review` (fresh context), then `/charm-close`. No blockers.
+<current-state snapshot>
 
 ## Status
 
-| Key   | Status | Reviewed | Validated | Note |
-|-------|--------|----------|-----------|------|
-| M1.1  | done   | 2026-09-08 | 2026-09-08 |      |
-| M1.2  | done   | 2026-09-08 | 2026-09-08 |      |
-| M1.3  | done   | 2026-09-08 | 2026-09-08 |      |
-| M1.4  | done   | 2026-09-08 | 2026-09-08 |      |
-| M1.5  | done   | 2026-09-08 | 2026-09-08 |      |
-| M2.1  | done   | 2026-09-08 | 2026-09-08 |      |
-| M2.2  | done   | 2026-09-08 | 2026-09-08 |      |
-| M2.3  | done   | 2026-09-08 | 2026-09-08 |      |
-| M1.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T2) |
-| M1.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T3) |
-| M2.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T4, T5) |
-| M2.5  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T6, T7, T8) |
-| M2.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T10) |
-| M2.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T11, T12) |
-| M1.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T17) |
-| M2.8  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T15) |
-| M3.1  | done   | 2026-09-08 | 2026-09-08 |      |
-| M3.2  | done   | 2026-09-08 | 2026-09-08 |      |
-| M3.3  | done   | 2026-09-08 | 2026-09-08 |      |
-| M3.4  | done   | 2026-09-08 | 2026-09-08 |      |
-| M3.5  | done   | 2026-09-08 | 2026-09-08 |      |
-| M4.1  | done   | 2026-09-08 | 2026-09-08 |      |
-| M4.2  | done   | 2026-09-08 | 2026-09-08 |      |
-| M4.3  | done   | 2026-09-08 | 2026-09-08 |      |
-| M5.1  | done   | 2026-09-08 | 2026-09-08 |      |
-| M5.2  | done   | 2026-09-08 | 2026-09-08 |      |
-| M1.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T18) |
-| M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22) |
-| M2.10 | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.11 | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T31) |
-| M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
-| M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
-| M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
-| M1.11 | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
-| M5.3  | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T4) |
-| M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
-| M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M7.4  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T24, T25) |
-| M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
-| M8.2a | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T26, T28) |
-| M8.2b | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-10 (TRIAGE T36) |
-| M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.4  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T27) |
-| M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
-| M9.2  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T29) |
-| M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.5  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-09 (TRIAGE T32) |
-| M1.12 | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-10 (TRIAGE T33) |
-| M9.3  | done   | 2026-09-10 | 2026-09-10 | added by replan 2026-09-10 (TRIAGE T34) |
+| Key  | Status      | Reviewed | Validated | Note                              |
+|------|-------------|----------|-----------|------------------------------------|
+| M1.1 | done        | -        | -         |                                    |
+| M1.2 | in-progress | -        | -         |                                    |
+| M1.3 | blocked     | -        | -         | <one-line reason, or D<n> ref>    |

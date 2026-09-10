@@ -55,3 +55,12 @@
   Wikipedia→markdown spike arrived at, what converts well/badly, and known limitations;
   cited by `cmd/wikispike/strip.go`. Reread before extending or rebuilding Wikipedia
   conversion. (as of C4a)
+- `wikimedia-api.md` — the title-search endpoint's response shape and how the page-HTML
+  endpoint's 307 redirect yields the canonical URL/title; cited by `internal/wikipedia`.
+  Reread before building a second REST-backed Query Source (e.g. a dictionary). (as of C6)
+- `lipgloss-reflow-sgr-continuity.md` — a third `lipgloss-v2-row-rendering-gotchas.md`-family
+  trap: an outer `Style.Render`'s own word-wrap re-asserts SGR state across a `"\n"` a
+  caller's content already contains, leaking a merely-active custom attribute (e.g. a
+  background tint) into whatever renders next unless explicitly cleared first. Reread before
+  any future per-line SGR injection that flows through a second `Style.Render` — most likely
+  the roadmap's style pass. (as of C6)

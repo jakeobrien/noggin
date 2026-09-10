@@ -116,8 +116,6 @@
   exact path; may not nest inside another Root. One of the two classes of Source (C6).
 - **Root name** — the editable label of a persisted Root, defaulting to its folder's base
   name; shown wherever the Root is labelled. Ad-hoc Roots have none until starred (C6).
-- **Roots Nav** — the upper Navigator pane; the list of the session's Roots. Renamed
-  **Sources Nav** in C6.
 - **Scope** — what a Picker searches: the Active Root, All Roots (C2), or Starred (C4). The
   Wikipedia Picker has none; with a Query Source active, File/Grep skip Active Root (C6).
 - **Scratch root** — a throwaway Root, outside the repo, holding converted articles purely so
