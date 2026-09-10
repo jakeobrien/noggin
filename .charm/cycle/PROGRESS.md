@@ -97,5 +97,5 @@ remains green, then `charm-security-review`, then `/charm-close`. No blockers.
 | M9.2  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.5  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T32) |
-| M1.12 | done   | -          | -         | added by replan 2026-09-10 (TRIAGE T33) |
-| M9.3  | done   | -          | -         | added by replan 2026-09-10 (TRIAGE T34) |
+| M1.12 | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T33) |
+| M9.3  | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T34) |
