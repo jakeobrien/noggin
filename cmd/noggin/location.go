@@ -49,15 +49,18 @@ func documentLocation(doc document, roots []root) string {
 }
 
 // docLocationVisible reports whether the Active Document currently has a
-// location line to show: exactly view()'s own "real content" case (err ==
-// nil and a document is open) — nothing to locate on a render error or with
-// nothing open, matching view()'s own placeholder branches for both. Also
-// what docContentHeight (viewer.go's setSize/render, S9/M8.2) reads to
-// decide whether vp reserves the line's one row — the same boolean drives
-// both, so the row is never reserved without a line drawn in it or vice
-// versa.
+// location line to show: view()'s own "real content" case (err == nil and a
+// document is open) — nothing to locate on a render error or with nothing
+// open, matching view()'s own placeholder branches for both — AND
+// v.boxHeight >= 1 (TRIAGE T26/PLAN M8.2a): a pathologically short terminal
+// can leave the pane no row to spare for one at all, and the location line
+// must never claim a row it cannot be given, the same "never overflow the
+// frame it's given" rule computeLayout's own staleRow already follows.
+// Also what contentHeight (below) reads to decide whether vp reserves the
+// line's one row — the same boolean drives both, so the row is never
+// reserved without a line drawn in it or vice versa.
 func (v viewer) docLocationVisible() bool {
-	return v.err == nil && v.doc.isOpen()
+	return v.boxHeight >= 1 && v.err == nil && v.doc.isOpen()
 }
 
 // peekLocationVisible is docLocationVisible's Peek counterpart (S9's "while
@@ -65,32 +68,40 @@ func (v viewer) docLocationVisible() bool {
 // Peek can be open (or erroring) while the Active Document underneath it is
 // in any state of its own — see boxHeight's own doc comment (viewer.go) for
 // why the two viewports must derive their height from this independently
-// rather than one copying the other's.
+// rather than one copying the other's. Carries the same boxHeight >= 1
+// floor as docLocationVisible, for the same reason.
 func (v viewer) peekLocationVisible() bool {
-	return v.peek.err == nil && v.peek.isOpen()
+	return v.boxHeight >= 1 && v.peek.err == nil && v.peek.isOpen()
 }
 
-// docContentHeight is vp's own operative height: boxHeight less the S9/S9a
-// location line's one row whenever docLocationVisible holds, boxHeight
-// unchanged otherwise (S9's "absent with no document", and the same
-// treatment for a render error, extends to the row it would have cost).
-// Read at the end of render() (once v.err has actually settled) and inside
-// setSize (a resize, which cannot itself change v.err/v.doc, so it always
-// agrees with whatever render last decided).
-func (v viewer) docContentHeight() int {
-	if v.docLocationVisible() {
+// contentHeight is docContentHeight's and peekContentHeight's shared
+// implementation (TRIAGE T28/PLAN M8.2a folded the two near-identical
+// functions into this one): boxHeight less the S9/S9a location line's one
+// row whenever locationVisible holds, boxHeight unchanged otherwise (S9's
+// "absent with no document", and the same treatment for a render error,
+// extends to the row it would have cost). The max floor guards the
+// arithmetic itself; locationVisible's own boxHeight >= 1 gate is what
+// actually keeps this from ever being asked to reserve a row that doesn't
+// exist in the first place.
+func (v viewer) contentHeight(locationVisible bool) int {
+	if locationVisible {
 		return max(v.boxHeight-1, 0)
 	}
 	return max(v.boxHeight, 0)
+}
+
+// docContentHeight is vp's own operative height (S9/M8.2). Read at the end
+// of render() (once v.err has actually settled) and inside setSize (a
+// resize, which cannot itself change v.err/v.doc, so it always agrees with
+// whatever render last decided).
+func (v viewer) docContentHeight() int {
+	return v.contentHeight(v.docLocationVisible())
 }
 
 // peekContentHeight is docContentHeight's Peek counterpart, driven by
 // peekLocationVisible instead.
 func (v viewer) peekContentHeight() int {
-	if v.peekLocationVisible() {
-		return max(v.boxHeight-1, 0)
-	}
-	return max(v.boxHeight, 0)
+	return v.contentHeight(v.peekLocationVisible())
 }
 
 // locationDoc is the document a Document Viewer pane's own S9/S9a location

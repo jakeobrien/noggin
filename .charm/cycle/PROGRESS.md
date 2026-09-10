@@ -17,23 +17,31 @@
 
 ## Cursor
 
-Current task: M8.2a
+Current task: M8.4
 
 ## Handoff
 
-**Build 2026-09-09 (M7.4):** two stale `cmd/noggin/store.go` doc comments fixed (TRIAGE
-T24/T25). `storedRoot` (store.go:82) said toggleStore was the only writer "besides a future
-rename (M7.2)" though M7.2 landed this same cycle — now names both toggleStore and
-renameStore plainly as its two writers, present tense throughout.
-`escapeStoreField`/`unescapeStoreField` (store.go:231) cited D61 (document-memory-is-global,
-unrelated) to justify the Roots/Document stores' separate escaping code — now cites D21/D67
-(the actual Roots-store and Document-store line-format decisions), naming which is which.
-`make check` (build/vet/fmt/test) green.
+**Build 2026-09-09 (M8.2a):** fixed TRIAGE T26's real bug — at a pathologically short terminal
+(`boxHeight` 0, e.g. 80x4 once `computeLayout`'s border/title math leaves nothing) DV1's
+`docContentHeight` already floored the viewport at 0, but `composeViewerContent`
+(location.go) still appended the S9 location line unconditionally whenever a document was
+open, handing `renderBox` one more line than its `MaxHeight` budget allowed — observed as the
+pane's *bottom border* silently disappearing (MaxHeight clips from the end, not the line that
+overflowed) rather than the frame growing. Fixed by gating `docLocationVisible`/
+`peekLocationVisible` on `v.boxHeight >= 1` (following `computeLayout`'s own `staleRow`
+"never claim a row you weren't budgeted" precedent) — both callers (`contentHeight`,
+`viewerLocationLine`) already keyed off these two booleans, so the one gate fixes both the
+reserved-height math and the drawn line together. Also folded `docContentHeight`/
+`peekContentHeight` into a shared `contentHeight(locationVisible bool)` helper (TRIAGE T28).
+Added `TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal`
+(`sized(t, m, 80, 4)`-then-`openDocument`, per the AC) — confirmed it fails on the pre-fix code
+(border row missing) and passes post-fix. `make check` and `make check-pty` (268 checks) both
+green.
 
-Next step: cursor moved to M8.2a (next todo task in key order; independent,
-pull-forward-anytime task per PLAN.md — TRIAGE T26 location-line overflow bug + T28 dedup
-nit). M8.4, M9.2 remain independent and can be pulled in any order; M10.1 (README, last task)
-should come after those since it documents the behaviour/citations they touch. No blockers.
+Next step: cursor moved to M8.4 (next todo task in key order; independent,
+pull-forward-anytime task per PLAN.md — `scrollActions`' stale S12 citation in viewer.go).
+M9.2 remains independent; M10.1 (README, last task) should come after those since it
+documents the behaviour/citations they touch. No blockers.
 
 ## Status
 
@@ -82,7 +90,7 @@ should come after those since it documents the behaviour/citations they touch. N
 | M7.4  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
 | M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
-| M8.2a | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
+| M8.2a | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.4  | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
