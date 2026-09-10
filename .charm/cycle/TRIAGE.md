@@ -25,9 +25,17 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
-| T35 | review | high | .charm/cycle/PROGRESS.md Status table (commit d1ced0f) | The M1.12/M9.3 build commit (2026-09-10, "M1.12/M9.3: fix stale Roots wording in checks.py; cover component-0 in tint SGR test") also stamped `Reviewed = 2026-09-10` on seven unrelated tasks (M1.11, M2.11, M7.4, M8.2a, M8.4, M9.2, M8.5) with no review of them recorded anywhere (commit message, DECISIONS.md, findings/) — violates PROGRESS.md's own column rule ("by the role that performed the check... for exactly the tasks that check actually covered") and the charm-build skill's explicit "leave Reviewed and Validated to independent processes"; also bundles unrelated status-table edits into a commit named for two other tasks, against the agentfile's per-task commit setting. Risk: those 7 tasks now falsely read as already code-reviewed and could be skipped by a future review/validate/close pass. Recommend: reset those 7 cells to `-` and have this and future reviews stamp only the task(s) actually covered. | open |
 
-<!-- empty as of 2026-09-10 replan (sixth pass): T33 (stale "...Roots differs from Files
+<!-- empty as of 2026-09-10 replan (seventh pass): T35 (M1.12/M9.3 build commit d1ced0f
+     falsely stamped Reviewed=2026-09-10 on 7 unrelated already-done tasks — M1.11, M2.11,
+     M7.4, M8.2a, M8.4, M9.2, M8.5 — with no review of them ever performed) -> confirmed
+     accurate against git history; fixed directly in PROGRESS.md (reset the 7 cells to `-`,
+     not a PLAN task since this is tracking-doc correctness, not code work) and logged in
+     DECISIONS.md D137 (medium — process integrity, not blocking). Not deferred (it is a
+     one-time correction, nothing ongoing to schedule) and not wontfixed (the finding was
+     right, not a declined idea).
+
+     earlier passes: sixth (2026-09-10): T33 (stale "...Roots differs from Files
      and Document" wording in a checks.py:784 description string, missed by both M1.9's and
      M1.11's rename sweeps since the assertion itself isn't vacuous) -> PLAN M1.12, same
      rename-sweep convention as M1.9/M1.11. T34 (M9.2's regression test doesn't cover the

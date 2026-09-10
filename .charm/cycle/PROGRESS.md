@@ -17,30 +17,27 @@
 
 ## Cursor
 
-Current task: none — M1.12 and M9.3 (added by replan 2026-09-10) are now `done`; all
-milestones M1-M10 plus these two are `done`. Validation is due (both are unreviewed/
-unvalidated, and no fresh-context pass has yet confirmed the whole cycle green with them
-included).
+Current task: none — all milestones M1-M10 plus M1.12 and M9.3 are `done`. Review and
+validation are due before close: a replan-triaged data-integrity finding (TRIAGE T35) reset
+7 tasks' Reviewed stamps back to `-` (see below), so review is now outstanding for those
+plus validation for 9 tasks total.
 
 ## Handoff
 
-**Build 2026-09-10 (M1.12, M9.3):** both trivial, independent tasks from the sixth replan
-pass, done together in one session. M1.12: `test/pty/checks.py:784`'s check() description
-string changed from "...Roots differs from Files and Document" to "...Sources differs from
-Files and Document" (its assertion already tested the post-M1.6 footer text; only the
-description string was stale) — `grep -n "Roots differs from Files and Document"
-test/pty/checks.py` is now empty (M1.12's own AC). M9.3: added a fifth subtest,
-"truecolor background component 0" (`\x1b[48;2;0;100;200mrow\x1b[m`), to
-`TestTintPaneBackgroundNotFooledByExtendedColorParams` (focus_background_test.go), covering
-the component-value-0/reset case style.go's own doc comment (lines 120-137) already claimed
-protection for but no test exercised; asserts the run is still tinted. Both `make check` (go
-build/vet/test, all packages) and `make check-pty` (268 checks) are green; `gofmt -l
-cmd/noggin test/pty` is clean.
+**Replan 2026-09-10 (seventh pass):** triaged TRIAGE's sole item, T35 (review finding, high
+severity as filed) — confirmed accurate against git history: the M1.12/M9.3 build commit
+(`d1ced0f`) stamped `Reviewed = 2026-09-10` on 7 unrelated already-`done` tasks (M1.11,
+M2.11, M7.4, M8.2a, M8.4, M9.2, M8.5) with no review of them ever performed or recorded
+(the follow-up `review` commit, `5607d65`, legitimately reviewed only M1.12/M9.3 and did
+not touch these 7). Fixed directly rather than opened as a PLAN task (this is PROGRESS.md's
+own state correctness, not code work): reset those 7 tasks' Reviewed cells back to `-` in
+the Status table below. Logged as DECISIONS.md D137 (medium — process-integrity, not
+blocking). TRIAGE.md is now empty again.
 
-Next step: this was the cycle's last open work — M1-M10 plus M1.12 and M9.3 are all `done`,
-and TRIAGE.md is empty. Neither task has a Reviewed/Validated stamp yet, so this is an
-all-milestones-done-and-validation-due state: the next session should run charm-validate
-(fresh context) covering M1.12 and M9.3 plus a confirmation that the whole cycle (M1-M10)
+Next step: before `/charm-close`, the next session should run code review (fresh context)
+covering the 7 tasks whose Reviewed stamp was just reset (M1.11, M2.11, M7.4, M8.2a, M8.4,
+M9.2, M8.5), then charm-validate (fresh context) covering those 7 plus M1.12 and M9.3 (9
+tasks total, all currently unvalidated) and a confirmation that the whole cycle (M1-M10)
 remains green, then `charm-security-review`, then `/charm-close`. No blockers.
 
 ## Status
@@ -77,25 +74,25 @@ remains green, then `charm-security-review`, then `/charm-close`. No blockers.
 | M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M2.10 | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.11 | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T31) |
+| M2.11 | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T31) |
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
-| M1.11 | done   | 2026-09-10 | -         | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
+| M1.11 | done   | -          | -         | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
 | M5.3  | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M7.4  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
+| M7.4  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
 | M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
-| M8.2a | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
+| M8.2a | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.4  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T27) |
+| M8.4  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
-| M9.2  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T29) |
+| M9.2  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.5  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T32) |
+| M8.5  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T32) |
 | M1.12 | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T33) |
 | M9.3  | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T34) |

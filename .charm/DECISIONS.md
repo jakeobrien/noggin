@@ -1802,3 +1802,28 @@
 - Why: Cheap to fix now while the code is fresh, and the failure mode (silent tint loss for a
   future glamour/style colour pick) would be hard to notice later without this note; deferring
   it would mean re-discovering the same root cause from scratch.
+
+## D137: A build commit falsely stamped Reviewed dates on 7 unrelated tasks; corrected in PROGRESS.md, not treated as a PLAN task
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-10
+- Context: TRIAGE T35 (review finding, filed high). The M1.12/M9.3 build commit (`d1ced0f`,
+  2026-09-10) condensed PROGRESS.md's Handoff history and, in the same edit, stamped
+  `Reviewed = 2026-09-10` on 7 unrelated already-`done` tasks (M1.11, M2.11, M7.4, M8.2a,
+  M8.4, M9.2, M8.5) that had previously read `-`. No review of any of the 7 is recorded
+  anywhere (commit message, this log, or `findings/`). The follow-up `review` commit
+  (`5607d65`) legitimately reviewed and stamped only M1.12 and M9.3 — it did not touch or
+  re-verify the other 7. Confirmed by reading both commits' diffs directly; the finding was
+  accurate, not a false positive.
+- Decision: Reset the 7 tasks' Reviewed cells in PROGRESS.md's Status table back to `-`
+  rather than opening a PLAN.md task — this is a correction to the tracking doc's own
+  accuracy, not code work with an acceptance criterion. All 7 (plus M1.12, M9.3, whose
+  Validated cells were already `-`) now correctly show as awaiting a real, independent
+  review/validate pass before `/charm-close`.
+- Why: Left uncorrected, a future review/validate/close pass could have skipped these 7
+  tasks on the strength of a stamp nobody actually earned — exactly the failure mode
+  PROGRESS.md's own column rule ("stamped... for exactly the tasks that check actually
+  covered, never assumed for a whole milestone") exists to prevent. The fix is mechanical
+  and carries no ambiguity, so correcting it directly (rather than parking it as a task) is
+  cheaper and clearer than the alternative.
