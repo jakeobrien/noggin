@@ -79,12 +79,12 @@ func storePath() (string, error) {
 
 // storedRoot is one entry in the S1/S2 Roots store: an absolute Path plus
 // an optional Name (S8). Every entry in this store is, by construction, a
-// starred Root — toggleStore is the only writer besides a future rename
-// (M7.2). An empty Name means the Root carries no name of its own yet, so
+// starred Root — toggleStore and renameStore (M7.2) are its only two
+// writers. An empty Name means the Root carries no name of its own yet, so
 // S8's default (the folder's base name) applies wherever a Root's label is
 // shown; that default is computed from Path by the caller that needs a
 // label, not stored here, since storing it would go stale the moment the
-// folder itself is renamed on disk. Only a rename (M7.2) ever writes a
+// folder itself is renamed on disk. Only renameStore ever writes a
 // non-empty Name.
 type storedRoot struct {
 	Path string
@@ -228,7 +228,8 @@ func renameStore(path, target, name string) ([]storedRoot, error) {
 // same hazard, and the same escaping scheme, as the Document store's
 // <title>/<key> fields (docstore.go's escapeDocField/unescapeDocField,
 // M1.7/M1.8). Kept as this store's own copy rather than a shared call,
-// since the two stores are deliberately separate formats (D61) that should
+// since the two stores are deliberately separate formats (D21/D67, the
+// Roots and Document store line formats respectively) that should
 // not need to import each other's parsing details to stay correct.
 func escapeStoreField(field string) string {
 	r := strings.NewReplacer(`\`, `\\`, "\t", `\t`, "\n", `\n`)

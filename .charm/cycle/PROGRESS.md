@@ -17,25 +17,23 @@
 
 ## Cursor
 
-Current task: M7.4
+Current task: M8.2a
 
 ## Handoff
 
-**Build 2026-09-09 (M2.11):** M2.10's not-parallel-safe mutation-contract doc comment was
-duplicated near-verbatim across `internal/wikipedia/fetch_test.go`
-(`TestClientFetchViaNewClientDelegatesToFetchAt`) and `search_test.go`
-(`TestClientSearchDelegatesToSearchTitles`), TRIAGE T31. Made fetch_test.go's copy canonical
-(kept the full contract statement, now says so explicitly and names search_test.go's test as
-pointing back to it); replaced search_test.go's copy with a short pointer to the canonical
-statement instead of restating it, so there's exactly one place that describes the rule in
-full — no wording drift possible since only one copy has the wording. `make check`
-(build/vet/fmt/test) green, `internal/wikipedia` package tests pass (0.059s, not cached, ran
-fresh).
+**Build 2026-09-09 (M7.4):** two stale `cmd/noggin/store.go` doc comments fixed (TRIAGE
+T24/T25). `storedRoot` (store.go:82) said toggleStore was the only writer "besides a future
+rename (M7.2)" though M7.2 landed this same cycle — now names both toggleStore and
+renameStore plainly as its two writers, present tense throughout.
+`escapeStoreField`/`unescapeStoreField` (store.go:231) cited D61 (document-memory-is-global,
+unrelated) to justify the Roots/Document stores' separate escaping code — now cites D21/D67
+(the actual Roots-store and Document-store line-format decisions), naming which is which.
+`make check` (build/vet/fmt/test) green.
 
-Next step: cursor moved to M7.4 (next todo task in key order; independent,
-pull-forward-anytime hygiene task per PLAN.md — stale/mis-cited store.go doc comments). M8.2a,
-M8.4, M9.2 remain independent and can be pulled in any order; M10.1 (README, last task) should
-come after those since it documents the behaviour/citations they touch. No blockers.
+Next step: cursor moved to M8.2a (next todo task in key order; independent,
+pull-forward-anytime task per PLAN.md — TRIAGE T26 location-line overflow bug + T28 dedup
+nit). M8.4, M9.2 remain independent and can be pulled in any order; M10.1 (README, last task)
+should come after those since it documents the behaviour/citations they touch. No blockers.
 
 ## Status
 
@@ -81,7 +79,7 @@ come after those since it documents the behaviour/citations they touch. No block
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M7.4  | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
+| M7.4  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
 | M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
 | M8.2a | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
