@@ -1765,3 +1765,40 @@
   entirely with a real palette; if it does, `tintPaneBackground`'s SGR-tracking shape (not just
   its colour constant) is the piece worth keeping or deliberately superseding, since the reflow
   interaction it works around is a lipgloss v2 property, not specific to this shade of grey.
+
+## D135: T26's location-line overflow bug is fixed by gating on boxHeight, not by making the line itself shrink further (C6/M8.2a)
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-09
+- Context: Code review (TRIAGE T26, high) found `docContentHeight`/`peekContentHeight`
+  (location.go:79-93) floor at `max(boxHeight-1, 0)` instead of suppressing the location line
+  outright, so at a pathologically short terminal (`boxHeight` 0) `composeViewerContent` still
+  appends the location row, overflowing the pane's height budget and corrupting the frame
+  (DV1's bottom border disappears, panes misalign) — reproduced live via `sized(t, m, 80, 4)`.
+- Decision: Follow `computeLayout`'s own `staleRow` precedent (`staleH := min(staleRowHeight,
+  remaining)`, never overflowing) — gate location-line visibility on `boxHeight >= 1` rather
+  than only flooring the reduced height at 0. Folded into the same task as T28 (dedup
+  `docContentHeight`/`peekContentHeight`, same lines) since both touch the identical code.
+- Why: The project already has an established, tested pattern for graceful degradation at
+  this exact failure class; inventing a second (e.g. truncating the location line's own text)
+  would add a new degradation shape for no benefit over reusing the existing one.
+
+## D136: T29's SGR-7 reverse-video misdetection is fixed by positional SGR parsing, accepted as a real gap even though nothing currently triggers it (C6/M9.2)
+
+- Status: decided
+- Cycle: C6
+- Date: 2026-09-09
+- Context: Code review (TRIAGE T29, medium) found `tintPaneBackground`'s SGR-7 detector
+  (style.go:120-137) matches raw `;`-split parameter tokens by bare string equality (`"7"`,
+  `"27"`), so a numeric parameter of exactly 7 or 27 belonging to an extended-color spec
+  (`48;5;7m`, `38;5;27m`, or any `38;2;`/`48;2;` truecolor component equal to 7 or 27) is
+  misread as reverse-video set/clear rather than a colour value, silently dropping the S11
+  tint for that run. Not hit by any current palette constant or test/pty check.
+- Decision: Accept as a real, worth-fixing gap rather than a wontfix — parse SGR params
+  positionally (skip the parameter(s) following a `38`/`48` token) instead of testing every
+  token independently. Promoted to its own task (M9.2) rather than folded into M9.1, since
+  M9.1 is already `done` and reviewed/validated.
+- Why: Cheap to fix now while the code is fresh, and the failure mode (silent tint loss for a
+  future glamour/style colour pick) would be hard to notice later without this note; deferring
+  it would mean re-discovering the same root cause from scratch.

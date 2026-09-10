@@ -16,10 +16,13 @@ M9 are the spec's pre-agreed cuts in cut order (Recent → Root names → backgr
 sequenced late so overrun costs the least-valued work; M8's location line and Picker rows fall
 back to the folder base name if M7 is cut. M8.1 (half-page paging) and M3.1 (2-char threshold)
 are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.11,
-M2.9–M2.10, M3.6–M3.7, M4.4 and M5.3 are replan-added hygiene/test-gap tasks, independent of
-the milestone sequencing above; pull forward whenever a short slot is available. M1.9 and
-M1.11 (the `make check-pty` string-drift fixes) are worth doing before M9.1 specifically,
-since M9.1's own acceptance criterion leans on that gate.
+M2.9–M2.11, M3.6–M3.7, M4.4, M5.3, M7.4, M8.2a, M8.4 and M9.2 are replan-added
+hygiene/test-gap/bugfix tasks, independent of the milestone sequencing above; pull forward
+whenever a short slot is available. M1.9 and M1.11 (the `make check-pty` string-drift fixes)
+are worth doing before M9.1 specifically, since M9.1's own acceptance criterion leans on that
+gate. M1.11 is currently the true cursor (in-progress, not done — see PROGRESS.md): its
+second clause missed one occurrence (checks.py:164, replan 2026-09-09 pass, TRIAGE T30),
+reopening it ahead of M10.1.
 
 Cross-cutting: every network call is user-initiated (search, Activate, Peek, Refresh — D119)
 and every network-touching task must be testable without the network (fake/injected client,
@@ -159,6 +162,11 @@ Delivers: the fetch/search/convert capability S2 and S3 build on (`internal/` pa
   convention the codebase already establishes for this exact hazard class
   (`cmd/noggin/files_search.go`'s `grepArgMaxBytes` note) — done when: both tests (or their var
   declarations) carry an equivalent doc comment — effort: 1 (replan: TRIAGE T2)
+- **M2.11** — M2.10's not-parallel-safe mutation-contract doc comment is duplicated
+  near-verbatim across `fetch_test.go` and `search_test.go` (each naming the other test by
+  name) instead of stated once and cross-referenced — done when: one copy is marked canonical
+  and the other points to it (or both point to a single shared note), with no wording drift
+  between them — effort: 1 (replan: TRIAGE T31)
 
 ## M3 — Wikipedia Picker
 
@@ -270,6 +278,13 @@ Delivers: S8 — *pre-agreed cut 2*
   Nav line 1, Picker result labels, cross-Source Files Nav rows — done when: tests assert a
   renamed Root's label in all three, and no `filepath.Base(<root path>)` label computation
   remains outside the helper — effort: 2 (needs: M7.1)
+- **M7.4** — Two stale doc comments in `store.go`: `storedRoot` (store.go:82) still frames
+  `renameStore` as a "future (M7.2)" writer though M7.2 has landed in this same cycle;
+  `escapeStoreField`/`unescapeStoreField` (store.go:231) cite D61 (document-memory-is-global,
+  unrelated) to justify the two stores' separate escaping code where D21/D67 (the actual
+  format decisions) are the relevant citations — done when: both comments state the
+  writers/citations plainly with no stale tense or wrong D-number — effort: 1 (replan: TRIAGE
+  T24, T25)
 
 ## M8 — Viewer and Picker polish
 
@@ -285,11 +300,28 @@ Delivers: S9, S10, S12
   document while the Peek lasts; absent with no document; content loses one row — done when:
   render tests cover the four states plus Peek, the article line's exact three-segment text,
   and the content height assertion drops by one — effort: 3 (needs: M4.1, M7.3)
+- **M8.2a** — `docContentHeight`/`peekContentHeight` (location.go:79-93) floor at
+  `max(boxHeight-1, 0)` instead of suppressing the location line, so at a pathologically short
+  terminal (`boxHeight` 0) `composeViewerContent` still appends the location row, overflowing
+  the pane's height budget and corrupting the frame (DV1's bottom border disappears, panes
+  misalign) — follow `computeLayout`'s own `staleRow` precedent (never overflow) by gating
+  location-line visibility on `boxHeight >= 1`; while in there, fold the two near-identical
+  functions into one shared helper — done when: a `sized(t, m, 80, 4)`-then-`openDocument`
+  regression test confirms no overflow and no misaligned border, and the two functions share
+  one implementation — effort: 2 (replan: TRIAGE T26, T28)
 - **M8.3** — De-emphasized secondary text: the Sources Nav path line and Picker File-row paths
   render dim with matched path characters emphasized against the dim, the Root label at normal
   weight; the Root's parent-path fragment is dropped from Picker File rows (D117) — done when:
   render tests assert the styles, the fragment's absence, and C1/D22's disambiguation tests are
   retired with a note — effort: 2 (needs: M7.3)
+- **M8.4** — `scrollActions`' doc comment (viewer.go:601, carried through M8.1's own edit)
+  cites "the help modal (S12)", but this cycle's SPEC.md now assigns S12 to M8.1's own
+  half-page-paging item — the same bare, undisambiguated "(S12)" recurs at footer.go:168,
+  keymap.go:15 and files_search.go:18/283 (pre-existing, all now equally ambiguous against the
+  current SPEC.md); `picker_view.go:192` already shows this project's disambiguation
+  convention ("S12/C2") — done when: each Help-Modal reference either adopts the same
+  "S12/C\<n\>" form or drops the stale S-number where it no longer resolves unambiguously —
+  effort: 1 (replan: TRIAGE T27)
 
 ## M9 — Focus by background
 
@@ -299,6 +331,16 @@ Delivers: S11 — *pre-agreed cut 3*
   keeps the terminal background; the border-colour cue stays — done when: frame tests assert
   the tint on every unfocused pane and its absence on the focused one across all four focus
   targets, and a `make check-pty` check confirms the tint reaches terminal cells — effort: 3
+- **M9.2** — `tintPaneBackground`'s SGR-7 (reverse-video) detector (style.go:120-137) matches
+  raw `;`-split parameter tokens by bare string equality (`"7"`, `"27"`), so a numeric
+  parameter of exactly 7 or 27 belonging to an extended-color spec (`48;5;7m`, `38;5;27m`, or
+  any `38;2;`/`48;2;` truecolor component equal to 7 or 27) is misread as reverse set/clear and
+  the run silently loses its S11 tint — not hit by any current palette constant, but a latent
+  correctness gap for any future style pick in that range (e.g. glamour-rendered markdown) —
+  parse SGR params positionally (skip the parameter(s) following a `38`/`48` token) instead of
+  testing every token independently — done when: `tintPaneBackground("\x1b[48;5;7mrow\x1b[m")`
+  (and the truecolor equivalent) render tinted, and the existing reverse-video tests still pass
+  — effort: 2 (replan: TRIAGE T29)
 
 ## M10 — Product documentation
 
