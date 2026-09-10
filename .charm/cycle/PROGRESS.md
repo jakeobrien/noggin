@@ -17,9 +17,29 @@
 
 ## Cursor
 
-Current task: M10.1
+Current task: M10.1 (cycle's last task — done, awaiting close)
 
 ## Handoff
+
+**Build 2026-09-09 (M10.1):** rewrote README.md end-to-end for S1-S13's user-visible
+surface: Sources Nav (Wikipedia row, Root renaming), Files Nav Browse Modes/Scopes with
+Wikipedia active, the three-mode Picker (File/Grep/Wikipedia, 2-char threshold, per-mode
+debounce, Scope skipping Active Root/Source while Wikipedia is active), opening/caching/
+refreshing/refusing-edit on a Wikipedia article, the S9/S9a Document Viewer location line
+and its CC BY-SA attribution text, background focus tint, half-page pgup/pgdn, starring and
+Recent for articles, and the roots/documents on-disk store formats (Name field, article
+record shape). Every key literal, status string, and footer/refusal message quoted in the
+README was cross-checked against source (keymap.go, picker.go, picker_view.go, rootsnav.go,
+browse.go, location.go, article_fetch.go, store.go, docstore.go) — `grep -n "Roots Nav\|No
+roots\|at least 3" README.md` is empty (M10.1's own AC). Independently re-verified by a
+validator subagent (fresh context): PASS on every spot-check, all internal anchor links
+resolve, `make check` green.
+
+Next step: M10.1 was the plan's last task — the cycle's milestones (M1-M10) are all `done`.
+One open TRIAGE item remains (T32, low severity, non-blocking, a citation-clarity sweep) —
+not a gate. This is a milestone-complete-with-validation-due state per cycle-state rules:
+the next session should run charm-validate (fresh context) before closing the cycle, then
+handle T32 via replan (fold into a final pass or defer to ROADMAP) as part of close-out.
 
 **Build 2026-09-09 (M9.2):** fixed TRIAGE T29's real bug — `tintPaneBackground`'s SGR-parsing
 scan (style.go) tested every `;`-split parameter token for bare equality against `"7"`/`"27"`,
@@ -93,4 +113,4 @@ bare-S12 sweep M8.4 didn't cover) for the next replan pass; not a gate for M10.1
 | M8.4  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
 | M9.2  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T29) |
-| M10.1 | todo   | -        | -         |      |
+| M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
