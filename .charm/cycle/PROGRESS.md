@@ -74,25 +74,25 @@ remains green, then `charm-security-review`, then `/charm-close`. No blockers.
 | M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M2.10 | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.11 | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T31) |
+| M2.11 | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T31) |
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
-| M1.11 | done   | -          | -         | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
+| M1.11 | done   | 2026-09-10 | -         | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
 | M5.3  | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.2  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
 | M7.3  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |
-| M7.4  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
+| M7.4  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T24, T25) |
 | M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
-| M8.2a | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
+| M8.2a | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.4  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T27) |
+| M8.4  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
-| M9.2  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T29) |
+| M9.2  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.5  | done   | -          | -         | added by replan 2026-09-09 (TRIAGE T32) |
+| M8.5  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T32) |
 | M1.12 | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T33) |
 | M9.3  | done   | 2026-09-10 | -         | added by replan 2026-09-10 (TRIAGE T34) |
