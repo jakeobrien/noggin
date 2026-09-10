@@ -17,29 +17,26 @@
 
 ## Cursor
 
-Current task: M1.11
+Current task: M2.11
 
 ## Handoff
 
-**Replan 2026-09-09 (post-M9.1, pre-M10.1):** reconciled a cursor/status mismatch — the prior
-validate pass had already flipped M1.11 back to `in-progress` (its checks.py:164 clause unmet,
-TRIAGE T30) but the handoff's cursor line still pointed at M10.1. Cursor corrected to M1.11.
-TRIAGE.md's 8 open items all routed and the inbox is now empty: T30 dropped (already covered
-by M1.11's own unmet clause, no new task needed); T26 (high, real location-line overflow bug
-at pathologically short terminals) merged with T28 (dup-code nit, same functions) into new
-task M8.2a; T29 (medium, real SGR-7/colour-param misdetection in `tintPaneBackground`)
-promoted to new task M9.2; T24+T25 (stale/mis-cited store.go doc comments) merged into new
-task M7.4; T27 (ambiguous bare "(S12)" citation, now collides with M8.1's own S12) promoted to
-new task M8.4; T31 (duplicated doc comment across two wikipedia test files) promoted to new
-task M2.11. All low/medium severity, same routine hygiene/bugfix shape as this cycle's earlier
-triage batches — no spec change. D135/D136 log the two medium+/high-severity fixes (T26/M8.2a,
-T29/M9.2); the low-severity doc-comment nits (T24, T25, T27, T28, T31) didn't warrant an entry.
-Full task text in PLAN.md.
+**Build 2026-09-09 (M1.11 closeout):** the one remaining gap from TRIAGE T30 — checks.py:164's
+`check()` description string still read "...jumps focus to Roots..." while its own assertion
+already checked `focused() == "Sources"` — is fixed (now "...jumps focus to Sources...").
+Swept the rest of checks.py for the same mismatch shape (every other `check(...)` mentioning
+"Roots", lines 377/383/391/434/472/536/567/784/1166/1387/1406, checked individually); all
+remaining "Roots" occurrences are legitimate (Grep's "Active Root"/"All Roots" labels,
+filesystem-roots terminology, the `FocusRoots` key name) and none assert "Sources". `make
+check` (build/vet/fmt/test) and `make check-pty` both green (268 checks, 0 failures, including
+the two now-updated `M1.2 FocusRoots jumps focus to Sources` checks). M1.11 is now fully
+done — both AC clauses closed (line 937's assertion + revert-confirmation from the prior
+session, line 164's description string from this one).
 
-Next step: finish M1.11 (fix the one missed "Roots"→"Sources" description string at
-checks.py:164, per its existing acceptance criterion). Then M2.11, M7.4, M8.2a, M8.4, M9.2
-are independent and can be pulled in any order. M10.1 (README, last task) should come after
-M8.2a/M8.4/M9.2 since those touch the behaviour/citations M10.1 will document. No blockers.
+Next step: cursor moved to M2.11 (next todo task in key order; independent,
+pull-forward-anytime hygiene task per PLAN.md). M7.4, M8.2a, M8.4, M9.2 remain independent and
+can be pulled in any order; M10.1 (README, last task) should come after those since it
+documents the behaviour/citations they touch. No blockers.
 
 ## Status
 
@@ -79,7 +76,7 @@ M8.2a/M8.4/M9.2 since those touch the behaviour/citations M10.1 will document. N
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
-| M1.11 | in-progress | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T1, T3); AC's 2nd clause unmet at checks.py:164 (= TRIAGE T30) |
+| M1.11 | done   | -        | -         | added by replan 2026-09-08 (TRIAGE T1, T3); checks.py:164 fix closes TRIAGE T30 |
 | M5.3  | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T4) |
 | M6.1  | done   | 2026-09-09 | 2026-09-08 | pre-agreed cut 1 |
 | M7.1  | done   | 2026-09-08 | 2026-09-08 | pre-agreed cut 2 |

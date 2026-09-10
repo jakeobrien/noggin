@@ -161,7 +161,7 @@ for cols, rows in [(80, 24), (100, 30)]:
     # C3/M1.1 (S5): Tab-cycling is removed in favor of direct focus-jump
     # keys — FocusRoots/FocusFiles reach their panes from anywhere non-modal.
     s.send(KEY["FocusRoots"], 0.5)
-    check(f"M1.2 FocusRoots jumps focus to Roots at {cols}x{rows}",
+    check(f"M1.2 FocusRoots jumps focus to Sources at {cols}x{rows}",
           focused() == "Sources", repr(focused()))
 
     s.send(KEY["FocusFiles"], 0.5)
