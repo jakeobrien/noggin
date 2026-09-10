@@ -463,7 +463,7 @@ func TestPickerGrepRowTruncatesLongLinesWithoutWrapping(t *testing.T) {
 }
 
 // TestPickerStatusStates is M2.5's own acceptance criterion: the rendered
-// text of each of the five states (S12's mode/Scope indicator, the
+// text of each of the five states (S12/C2's mode/Scope indicator, the
 // sub-threshold message, "no results" and the truncation notice; S14's
 // unavailability report). Each case builds the Picker state that state
 // describes and asserts against the real rendered frame, so the assertion

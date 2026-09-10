@@ -141,7 +141,7 @@ func (p picker) promptView(width int) string {
 	return p.input.View()
 }
 
-// pickerModeScope is the modal's mode-and-Scope indicator (S12's "the modal
+// pickerModeScope is the modal's mode-and-Scope indicator (S12/C2's "the modal
 // shows its mode and Scope", M2.5), rendered as the Prompt box's title. It
 // is the Picker's answer to "what would Enter search?", and the surface
 // M5.1/M5.2's in-place switching will be seen through — the reason it reads
@@ -183,7 +183,7 @@ func pickerModeScope(p picker, hideDotfiles bool) string {
 	return label
 }
 
-// Picker status lines (S12, S14). Exact strings, asserted by
+// Picker status lines (S12/C2, S14). Exact strings, asserted by
 // picker_view_test.go — they are the modal's only way of distinguishing
 // "nothing to show yet" from "nothing to show", so each is worded to say
 // which.
@@ -203,7 +203,7 @@ const (
 const pickerWikipediaPreviewPlaceholder = "No preview — Activate to open the article"
 
 // pickerStatus is the one line under the Prompt saying what state the search
-// is in (S12's empty states, S14's unavailability). Order is priority order,
+// is in (S12/C2's empty states, S14's unavailability). Order is priority order,
 // most fundamental first: with no ripgrep nothing can ever be searched, so
 // that is said before anything about the query; below the threshold no search
 // was issued, so "no results" would be a lie; and until results labelled with

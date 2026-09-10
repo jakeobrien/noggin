@@ -133,7 +133,7 @@ type model struct {
 	roots   rootsNav
 	message string
 
-	// helpOpen is the S12 Help Modal (M5.3): when set, it owns the keyboard
+	// helpOpen is the S12/C1 Help Modal (M5.3): when set, it owns the keyboard
 	// (handleHelpInput) and the frame gains its overlay (overlayHelp), the
 	// same shape focusedViewer().findEditing() gives an in-progress search — an
 	// exclusive input mode layered on top of the model's other state, not a
@@ -1458,7 +1458,7 @@ func (m model) handleFindInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// openHelp opens the S12 Help Modal for the focused pane's context. Unlike
+// openHelp opens the S12/C1 Help Modal for the focused pane's context. Unlike
 // toggleNavigator, this is one-directional — handleHelpInput is the only
 // path that closes it, so the main switch below only ever calls this when
 // m.helpOpen is already false (the helpOpen branch there returns early

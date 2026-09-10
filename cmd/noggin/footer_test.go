@@ -161,7 +161,7 @@ func TestPaneHintsNameRefreshFromEveryPane(t *testing.T) {
 // the "usually a no-op with DV2 absent" reason paneHints' doc comment
 // gives); this folds its own former check
 // (TestPaneHintsOmitFocusDV2Everywhere) in alongside the other three so one
-// test covers the whole Focus* family. S12's help modal remains every
+// test covers the whole Focus* family. S12/C1's help modal remains every
 // binding's discoverability backstop regardless
 // (TestHelpBindingsNameFocusDV1AndDV2FromEveryPane).
 func TestPaneHintsOmitEveryFocusBindingEverywhere(t *testing.T) {

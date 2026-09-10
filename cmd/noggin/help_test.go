@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// TestHelpOpensOverAnyPaneWithoutMovingFocus is S12's "opens over any pane":
+// TestHelpOpensOverAnyPaneWithoutMovingFocus is S12/C1's "opens over any pane":
 // pressing Help opens the modal from whichever pane has focus, and does not
 // move focus (the Help Modal is a layer over the frame, not a pane swap —
 // unlike activate()/activateRoot(), which do move focus).
@@ -128,7 +128,7 @@ func TestHelpModalListsPageAndHalfPageTogetherForTheViewer(t *testing.T) {
 }
 
 // TestHelpOverlayLeavesTheFrameVisibleAroundIt checks the "opens over" half
-// of S12 directly: the composited view still shows the pane underneath
+// of S12/C1 directly: the composited view still shows the pane underneath
 // outside the modal's own box (here, the top row's border and the footer,
 // which the centered modal at 80x24 does not reach), proving real cell
 // compositing rather than a full-screen replacement. Comparisons run on

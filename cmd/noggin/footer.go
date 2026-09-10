@@ -33,7 +33,7 @@ import (
 // pane's common case (DV2 is absent at launch, S1, and stays that way until
 // something creates it), so it gets the same "inapplicable binding"
 // treatment as the viewer case's FindNext/FindPrevious/Cancel below —
-// S12's help modal is its discoverability backstop instead. Peek (S7) and
+// S12/C1's help modal is its discoverability backstop instead. Peek (S7) and
 // C3/S3's two targeting modifiers, ActivateDV2/PeekDV2 (C3/M1.4), are
 // Files-Nav-only by design, so they appear only in filesPane's list, not the
 // other two — a hint for an inapplicable binding is worse than no hint, the
@@ -76,7 +76,7 @@ func paneHints(p pane) []key.Binding {
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is
-		// worse than no hint (S12's help modal, M5.3, lists the full keymap
+		// worse than no hint (S12/C1's help modal, M5.3, lists the full keymap
 		// regardless — that is the discoverability backstop for these).
 		return []key.Binding{keys.LineUp, keys.LineDown, keys.PageUp, keys.PageDown, keys.Top, keys.Bottom, keys.Find, keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh}
 	}

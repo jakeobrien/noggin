@@ -68,7 +68,7 @@ func pickerDebounceFor(mode pickerMode) time.Duration {
 // empty-Prompt refusal it replaces was: whichever path scheduled a timer,
 // no search may escape for a sub-threshold query.
 //
-// The number was originally S12's own ("at least 3 characters", cycle C2);
+// The number was originally S12/C2's own ("at least 3 characters", cycle C2);
 // C6/S13 revises it down to 2 (C2/D31), on the same one-character-queries-
 // are-too-broad reasoning, now weighed against 2 being the shortest useful
 // Wikipedia title prefix.
@@ -97,13 +97,13 @@ type pickerWikipediaClient interface {
 // mode and Scope it answers *for*. The labels are the point: results arrive
 // asynchronously, so the only way the modal can render honestly is for a
 // result set to carry what it was a search for rather than being implicitly
-// assumed to match whatever the Prompt now says (S12's status/empty states,
+// assumed to match whatever the Prompt now says (S12/C2's status/empty states,
 // M2.5, read these labels; M5.1/M5.2 make mode and Scope change under an
 // in-flight search).
 //
 // files, grep and wikipedia are the three modes' shapes; exactly one is
 // ever populated, selected by mode (C6/M3.3 adds wikipedia to M4.1's
-// original two). truncated is S12's cap flag, passed straight through from
+// original two). truncated is S12/C2's cap flag, passed straight through from
 // fuzzyFiles/grepPickerFiles; a Wikipedia search has no such flag of its
 // own (pickerWikipediaResultLimit's cap is silent, the way Wikipedia's own
 // search box is).
@@ -148,7 +148,7 @@ type picker struct {
 	// searching is whether a dispatched search has yet to report back: set
 	// when a debounce timer matures into a real search, cleared when that
 	// search's results land. It is the difference between "searched, found
-	// nothing" and "still looking", which S12's empty states (M2.5) must
+	// nothing" and "still looking", which S12/C2's empty states (M2.5) must
 	// tell apart.
 	searching bool
 

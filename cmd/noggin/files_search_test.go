@@ -274,7 +274,7 @@ func TestFuzzyFilesIgnoresPathComponents(t *testing.T) {
 // TestFuzzyFilesCapsAndReportsTruncation: a result set larger than
 // pickerResultCap comes back capped at that length with the truncation
 // flag set; a set at or under the cap comes back untouched and unflagged
-// (S12).
+// (S12/C2).
 func TestFuzzyFilesCapsAndReportsTruncation(t *testing.T) {
 	var many []pickerFile
 	for i := 0; i < pickerResultCap+50; i++ {
@@ -444,7 +444,7 @@ func TestGrepPickerFilesOnlySearchesReadableFiles(t *testing.T) {
 
 // TestGrepPickerFilesCapsAndReportsTruncation: a match count larger than
 // pickerResultCap comes back capped at that length with the truncation
-// flag set (S12), the same shape fuzzyFiles gives the File Picker; a match
+// flag set (S12/C2), the same shape fuzzyFiles gives the File Picker; a match
 // count exactly at the cap comes back untouched and unflagged (TRIAGE T3 /
 // D45, matching TestFuzzyFilesCapsAndReportsTruncation's existing coverage
 // of that boundary).

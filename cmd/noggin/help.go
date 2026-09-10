@@ -6,7 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// helpBindings lists every binding relevant to a pane's context for the S12
+// helpBindings lists every binding relevant to a pane's context for the S12/C1
 // Help Modal (M5.3) — the modal's own promise ("lists the bindings that
 // pane's keymap actually defines") is a wider contract than paneHints'
 // footer subset: for the viewer, Cancel/FindNext/FindPrevious are

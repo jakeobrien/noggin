@@ -17,9 +17,33 @@
 
 ## Cursor
 
-Current task: M8.5 (cycle's new last task — todo)
+Current task: M8.5 done — cycle's milestones (M1-M10) are all `done`
 
 ## Handoff
+
+**Build 2026-09-09 (M8.5):** disambiguated every remaining bare `S12` citation across
+`cmd/noggin` (picker.go, keymap.go, model.go, help.go, footer.go, files_search.go and their
+test files — 21 sites) to `S12/C1` (this cycle's C1-era "Help modal" S12, e.g. helpOpen,
+openHelp, helpBindings, the footer's discoverability-backstop comments, the Help tests) or
+`S12/C2` (C2-era "Query threshold, result cap, empty states" S12, e.g.
+pickerQueryMinLength's comment, the truncation-flag comments in picker.go/files_search.go/
+files_search_test.go, pickerModeScope, the Picker status-line constants and their test).
+Classification cross-checked against the archived `C1-2026-08-read-across-roots/SPEC.md`
+(S12 = Help) and `C2-2026-08-find/SPEC.md` (S12 = Query threshold/result cap/empty states,
+delivered by that cycle's M2.5, whose done-condition explicitly bundles the mode/Scope
+indicator in with the five status states — resolving the one non-obvious case,
+picker_view.go's `pickerModeScope`). `grep -rn "S12" cmd/noggin | grep -v "S12/C"` and the
+`rg` equivalent (grep misreports model.go and the `noggin` binary as binary files; `rg`
+confirms both are false positives) are empty — M8.5's own AC. `make check` green, `gofmt -l
+cmd/noggin` clean.
+
+Next step: M8.5 was the cycle's last open task — all milestones M1-M10 are `done`. TRIAGE.md
+is empty (fifth replan pass drained it). This is an all-milestones-done-and-validated-pending
+state: M8.5 itself has no Reviewed/Validated stamp yet, so the next session should run
+charm-validate (fresh context) — and code-review, since M8.5 is a doc-comment-only change a
+reviewer can assess quickly — covering M8.5 (and confirming M8.4/M8.5 together fully resolve
+the bare-S12 ambiguity), then `charm-security-review` and `/charm-close` per the all-done
+cycle-state path. No blockers.
 
 **Replan 2026-09-09 (fifth pass):** triaged TRIAGE's sole remaining item, T32 (low severity,
 non-blocking — M8.4 fixed only the 5 bare `(S12)` citation sites its own AC named; a fuller
@@ -127,4 +151,4 @@ bare-S12 sweep M8.4 didn't cover) for the next replan pass; not a gate for M10.1
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
 | M9.2  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.5  | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T32) |
+| M8.5  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T32) |

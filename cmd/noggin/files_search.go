@@ -506,7 +506,7 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 //
 // The file list is run through rg in batches (batchFilePaths, grepBatch)
 // rather than one invocation (D43/M1.4a) — see grepArgMaxBytes. Batches are
-// merged in order and pickerResultCap/truncation (S12, matching fuzzyFiles)
+// merged in order and pickerResultCap/truncation (S12/C2, matching fuzzyFiles)
 // is applied across that merged total, not per batch, so a match count that
 // only exceeds the cap once batches are combined is still reported
 // correctly as truncated. An empty file set or an empty query short-circuits
