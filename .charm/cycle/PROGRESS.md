@@ -17,30 +17,31 @@
 
 ## Cursor
 
-Current task: M8.2b (replan-added test-gap task, todo) — the cycle's one remaining build
-item. All of M1-M10 plus M1.12/M9.3 are otherwise `done`; validation is still outstanding
-for 9 of those (see below) and now waits behind M8.2b's own build+review.
+Current task: M8.2b done (build complete this session) — the cycle's plan work is now
+fully built. All of M1-M10 plus M1.12/M9.3/M8.2b are `done`; validation is still
+outstanding for 10 tasks (see below).
 
 ## Handoff
 
-**Replan 2026-09-10 (eighth pass):** a fresh-context code review (this session's
-predecessor) covered the 7 tasks TRIAGE T35 had reset (M1.11, M2.11, M7.4, M8.2a, M8.4,
-M9.2, M8.5): all 7 confirmed faithful to their PLAN.md acceptance criteria, no scope creep,
-`make check` green — Reviewed stamps set to 2026-09-10 in the Status table below (Validated
-left `-`, unchanged). The review's one finding, T36 (low — M8.2a's own regression test
-covers only the Active-Document path; the Peek path, gated by the same `boxHeight >= 1`
-check and named explicitly in M8.2a's own task text, has no boxHeight-0 test of its own) —
-triaged now: accepted as PLAN task **M8.2b** (same test-gap convention already used for
-T31/T34), not deferred or wontfixed (too small/mechanical for ROADMAP, not a declined idea).
-No DECISIONS.md entry (low severity, not material). TRIAGE.md is empty again. Also trimmed
-PLAN.md's stale ordering-note sentence that still named M1.11 as the in-progress cursor
-(it has been `done` since replan's seventh pass).
+**Build 2026-09-10 (M8.2b):** added
+`TestPeekLocationLineNeverClaimsARowAtAPathologicallyShortTerminal` (location_test.go),
+the Peek-path counterpart to M8.2a's own
+`TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal` — same shape (a
+`sized(t, m, 80, 4)` terminal, Navigator hidden, frame-height and bottom-border
+assertions), built on `peekFixture` (peek_test.go) instead of a bare `openDocument`,
+since Peek needs a second file to select. Asserts `peekLocationVisible()` is false,
+`peekContentHeight()` is 0, and `viewerLocationLine(dv1Pane)` is empty at `boxHeight`
+0, then confirms the frame still closes with no overflow or misaligned border.
+Sanity-checked the test actually catches the regression: temporarily reverting
+`peekLocationVisible`'s `boxHeight >= 1` guard (location.go) made the new test fail
+with the expected messages; restored, `make check` green (build, vet, fmt, test all
+pass). No code behavior changed — a pure test-gap fill matching M8.2a's own precedent.
+No new findings, no TRIAGE items, no DECISIONS entries.
 
-Next step: build M8.2b (small, single-session — a Peek-path counterpart to M8.2a's own
-regression test), then review+validate it. Once M8.2b is done, the next session should run
-charm-validate (fresh context) covering all 9 previously-unvalidated tasks (M1.11, M2.11,
-M7.4, M8.2a, M8.4, M9.2, M8.5, M1.12, M9.3) plus M8.2b itself, and confirm the whole cycle
-(M1-M10) remains green, then `charm-security-review`, then `/charm-close`. No blockers.
+Next step: charm-validate (fresh context) covering all 10 previously-unvalidated tasks
+(M1.11, M2.11, M7.4, M8.2a, M8.4, M9.2, M8.5, M1.12, M9.3, M8.2b) and confirm the whole
+cycle (M1-M10) remains green, then `charm-security-review`, then `/charm-close`. No
+blockers.
 
 ## Status
 
@@ -90,7 +91,7 @@ M7.4, M8.2a, M8.4, M9.2, M8.5, M1.12, M9.3) plus M8.2b itself, and confirm the w
 | M8.1  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
 | M8.2a | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
-| M8.2b | todo   | -          | -         | added by replan 2026-09-10 (TRIAGE T36) |
+| M8.2b | done   | -          | -         | added by replan 2026-09-10 (TRIAGE T36) |
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.4  | done   | 2026-09-10 | -         | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |

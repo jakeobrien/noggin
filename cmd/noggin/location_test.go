@@ -358,3 +358,55 @@ func TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal(t *testing.T)
 		t.Errorf("DV1's own bottom border row is missing (line 2 = %q) — the pane never closes", lines[2])
 	}
 }
+
+// TestPeekLocationLineNeverClaimsARowAtAPathologicallyShortTerminal is
+// M8.2b's own test (TRIAGE T36): the sibling regression test above
+// (M8.2a) only ever exercises the Active-Document path
+// (docLocationVisible/docContentHeight); the Peek path
+// (peekLocationVisible/peekContentHeight) is gated by the very same
+// v.boxHeight >= 1 check and the very same shared contentHeight helper,
+// but M8.2a's own PLAN task named it explicitly and had no test of its
+// own covering it. Mirrors the sibling test's shape exactly, substituting
+// a Peek (peekFixture's own real-Root setup, since Peek needs a second
+// file to select) for the Active Document open.
+func TestPeekLocationLineNeverClaimsARowAtAPathologicallyShortTerminal(t *testing.T) {
+	m, _, _ := peekFixture(t)
+	m = sized(t, m, 80, 4)
+
+	if got := m.dv1.boxHeight; got != 0 {
+		t.Fatalf("setup: dv1.boxHeight = %d, want 0 (the pathological case this test targets)", got)
+	}
+
+	m = press(t, m, keys.Peek.Keys()[0])
+	if !m.dv1.peeking() {
+		t.Fatal("setup: viewer not Peeking after p")
+	}
+
+	if m.dv1.peekLocationVisible() {
+		t.Error("peekLocationVisible = true at boxHeight 0, want false — nothing to reserve the row from")
+	}
+	if got := m.dv1.peekContentHeight(); got != 0 {
+		t.Errorf("peekContentHeight = %d, want 0 (no row subtracted for a line that cannot show)", got)
+	}
+	if got := m.viewerLocationLine(dv1Pane); got != "" {
+		t.Errorf("viewerLocationLine = %q, want empty — nothing to draw with no row to spare", got)
+	}
+
+	// End-to-end: with the Navigator hidden (isolating DV1's own pane from
+	// the Sources/Files Nav column's unrelated squeeze at this size), DV1's
+	// box must still close with its own bottom border and the frame must
+	// stay at exactly the requested height, matching the Active-Document
+	// sibling test's own end-to-end assertion.
+	m = press(t, m, keys.Navigator.Keys()[0])
+	view := m.View().Content
+	if got := lipgloss.Height(view); got != 4 {
+		t.Fatalf("frame height = %d, want 4", got)
+	}
+	lines := strings.Split(view, "\n")
+	if len(lines) != 4 {
+		t.Fatalf("frame has %d lines, want 4", len(lines))
+	}
+	if !strings.Contains(lines[2], "╰") {
+		t.Errorf("DV1's own bottom border row is missing (line 2 = %q) — the pane never closes", lines[2])
+	}
+}
