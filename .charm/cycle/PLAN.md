@@ -15,8 +15,8 @@ M2 is independent of M1 and can be built in either order or interleaved. Milesto
 M9 are the spec's pre-agreed cuts in cut order (Recent → Root names → background tint) and are
 sequenced late so overrun costs the least-valued work; M8's location line and Picker rows fall
 back to the folder base name if M7 is cut. M8.1 (half-page paging) and M3.1 (2-char threshold)
-are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.11,
-M2.9–M2.11, M3.6–M3.7, M4.4, M5.3, M7.4, M8.2a, M8.4, M8.5 and M9.2 are replan-added
+are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.12,
+M2.9–M2.11, M3.6–M3.7, M4.4, M5.3, M7.4, M8.2a, M8.4, M8.5, M9.2 and M9.3 are replan-added
 hygiene/test-gap/bugfix tasks, independent of the milestone sequencing above; pull forward
 whenever a short slot is available. M1.9 and M1.11 (the `make check-pty` string-drift fixes)
 are worth doing before M9.1 specifically, since M9.1's own acceptance criterion leans on that
@@ -103,6 +103,12 @@ Delivers: S1, S5 (the mode/scope structure — lists fill in M5/M6), store groun
   in hidden_lines` and is confirmed to actually fail on a temporary Navigator-hide-toggle
   revert (then restored), and no description string in checks.py says "Roots" while its own
   assertion checks "Sources" — effort: 1 (replan: TRIAGE T1, T3)
+- **M1.12** — `test/pty/checks.py:784`'s check() description string still reads "...Roots
+  differs from Files and Document" though M1.6 renamed Roots Nav to Sources Nav and the
+  check's own assertion already tests the post-rename footer text; M1.9's and M1.11's rename
+  sweeps didn't touch this line (the assertion isn't vacuous, unlike the cases M1.11 fixed, so
+  it survived both passes) — done when: the description reads "...Sources differs from Files
+  and Document" and `make check-pty` still passes — effort: 1 (replan: TRIAGE T33)
 
 ## M2 — Wikipedia client
 
@@ -349,6 +355,13 @@ Delivers: S11 — *pre-agreed cut 3*
   testing every token independently — done when: `tintPaneBackground("\x1b[48;5;7mrow\x1b[m")`
   (and the truecolor equivalent) render tinted, and the existing reverse-video tests still pass
   — effort: 2 (replan: TRIAGE T29)
+- **M9.3** — M9.2's own doc comment (style.go:120-137) claims a colour-index/truecolor
+  component of 7, 27 **or 0** must never be misread as reverse set/clear or a reset, but its
+  regression test (`TestTintPaneBackgroundNotFooledByExtendedColorParams`) only covers
+  components 7 and 27 across its four subtests — none exercises 0, so the comment's reset
+  ('0') claim is untested — done when: a subtest covering a 256-colour or truecolor component
+  value of 0 (e.g. `\x1b[48;2;0;100;200m`) is added and asserts the run still gets tinted —
+  effort: 1 (replan: TRIAGE T34)
 
 ## M10 — Product documentation
 

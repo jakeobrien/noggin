@@ -26,7 +26,17 @@
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
 
-<!-- empty as of 2026-09-09 replan (fifth pass): T32 (M8.4 fixed only the 5 bare `(S12)`
+<!-- empty as of 2026-09-10 replan (sixth pass): T33 (stale "...Roots differs from Files
+     and Document" wording in a checks.py:784 description string, missed by both M1.9's and
+     M1.11's rename sweeps since the assertion itself isn't vacuous) -> PLAN M1.12, same
+     rename-sweep convention as M1.9/M1.11. T34 (M9.2's regression test doesn't cover the
+     component-value-0 case its own doc comment claims protection for) -> PLAN M9.3, same
+     test-gap convention as M2.9-M2.11. Both accepted rather than deferred (too small/
+     mechanical to survive the next prune as their own ROADMAP line) or wontfixed (not
+     declined ideas, just coverage/wording gaps left by the tasks that introduced them); no
+     DECISIONS.md entry for either — low severity, not material.
+
+     earlier passes: fifth (2026-09-09): T32 (M8.4 fixed only the 5 bare `(S12)`
      sites its own AC named; the same now-ambiguous bare `S12` recurs at ~20 more sites, a
      mix of C1's help-modal sense and C2's query-threshold/result-cap sense) -> PLAN M8.5,
      same disambiguation convention as M8.4. Accepted rather than deferred to ROADMAP (too
