@@ -17,26 +17,25 @@
 
 ## Cursor
 
-Current task: M2.11
+Current task: M7.4
 
 ## Handoff
 
-**Build 2026-09-09 (M1.11 closeout):** the one remaining gap from TRIAGE T30 — checks.py:164's
-`check()` description string still read "...jumps focus to Roots..." while its own assertion
-already checked `focused() == "Sources"` — is fixed (now "...jumps focus to Sources...").
-Swept the rest of checks.py for the same mismatch shape (every other `check(...)` mentioning
-"Roots", lines 377/383/391/434/472/536/567/784/1166/1387/1406, checked individually); all
-remaining "Roots" occurrences are legitimate (Grep's "Active Root"/"All Roots" labels,
-filesystem-roots terminology, the `FocusRoots` key name) and none assert "Sources". `make
-check` (build/vet/fmt/test) and `make check-pty` both green (268 checks, 0 failures, including
-the two now-updated `M1.2 FocusRoots jumps focus to Sources` checks). M1.11 is now fully
-done — both AC clauses closed (line 937's assertion + revert-confirmation from the prior
-session, line 164's description string from this one).
+**Build 2026-09-09 (M2.11):** M2.10's not-parallel-safe mutation-contract doc comment was
+duplicated near-verbatim across `internal/wikipedia/fetch_test.go`
+(`TestClientFetchViaNewClientDelegatesToFetchAt`) and `search_test.go`
+(`TestClientSearchDelegatesToSearchTitles`), TRIAGE T31. Made fetch_test.go's copy canonical
+(kept the full contract statement, now says so explicitly and names search_test.go's test as
+pointing back to it); replaced search_test.go's copy with a short pointer to the canonical
+statement instead of restating it, so there's exactly one place that describes the rule in
+full — no wording drift possible since only one copy has the wording. `make check`
+(build/vet/fmt/test) green, `internal/wikipedia` package tests pass (0.059s, not cached, ran
+fresh).
 
-Next step: cursor moved to M2.11 (next todo task in key order; independent,
-pull-forward-anytime hygiene task per PLAN.md). M7.4, M8.2a, M8.4, M9.2 remain independent and
-can be pulled in any order; M10.1 (README, last task) should come after those since it
-documents the behaviour/citations they touch. No blockers.
+Next step: cursor moved to M7.4 (next todo task in key order; independent,
+pull-forward-anytime hygiene task per PLAN.md — stale/mis-cited store.go doc comments). M8.2a,
+M8.4, M9.2 remain independent and can be pulled in any order; M10.1 (README, last task) should
+come after those since it documents the behaviour/citations they touch. No blockers.
 
 ## Status
 
@@ -72,7 +71,7 @@ documents the behaviour/citations they touch. No blockers.
 | M1.10 | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T2) |
 | M2.9  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T1, T22) |
 | M2.10 | done   | 2026-09-09 | 2026-09-09 | added by replan 2026-09-08 (TRIAGE T2) |
-| M2.11 | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T31) |
+| M2.11 | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T31) |
 | M3.6  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T20) |
 | M3.7  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T21) |
 | M4.4  | done   | 2026-09-08 | 2026-09-08 | added by replan 2026-09-08 (TRIAGE T23) |
