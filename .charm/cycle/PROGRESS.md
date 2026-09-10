@@ -17,9 +17,22 @@
 
 ## Cursor
 
-Current task: M10.1 (cycle's last task — done, awaiting close)
+Current task: M8.5 (cycle's new last task — todo)
 
 ## Handoff
+
+**Replan 2026-09-09 (fifth pass):** triaged TRIAGE's sole remaining item, T32 (low severity,
+non-blocking — M8.4 fixed only the 5 bare `(S12)` citation sites its own AC named; a fuller
+sweep found the same now-ambiguous bare `S12` recurring at ~20 more sites across footer.go,
+keymap.go, files_search.go, picker.go, picker_view.go and their test files). Accepted rather
+than deferred to ROADMAP (a one-line "more citation cleanup" entry wouldn't survive the next
+prune) or wontfixed (no real judgment call — it's leftover scope from M8.4's own deliberately
+narrowed AC, not a declined idea): added **M8.5**, same disambiguation convention as M8.4
+(`S12/C1` / `S12/C2`), effort 2. TRIAGE.md is now empty. No DECISIONS.md entry — severity is
+low and the change isn't material.
+
+Next step: build M8.5, then re-run charm-validate (fresh context) covering M8.5 and the whole
+cycle before close-out — TRIAGE is empty, so nothing else gates it.
 
 **Build 2026-09-09 (M10.1):** rewrote README.md end-to-end for S1-S13's user-visible
 surface: Sources Nav (Wikipedia row, Root renaming), Files Nav Browse Modes/Scopes with
@@ -114,3 +127,4 @@ bare-S12 sweep M8.4 didn't cover) for the next replan pass; not a gate for M10.1
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
 | M9.2  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | done   | 2026-09-09 | 2026-09-09 |      |
+| M8.5  | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T32) |

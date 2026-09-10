@@ -16,7 +16,7 @@ M9 are the spec's pre-agreed cuts in cut order (Recent → Root names → backgr
 sequenced late so overrun costs the least-valued work; M8's location line and Picker rows fall
 back to the folder base name if M7 is cut. M8.1 (half-page paging) and M3.1 (2-char threshold)
 are trivial and independent — pull them forward whenever a short slice is wanted. M1.9–M1.11,
-M2.9–M2.11, M3.6–M3.7, M4.4, M5.3, M7.4, M8.2a, M8.4 and M9.2 are replan-added
+M2.9–M2.11, M3.6–M3.7, M4.4, M5.3, M7.4, M8.2a, M8.4, M8.5 and M9.2 are replan-added
 hygiene/test-gap/bugfix tasks, independent of the milestone sequencing above; pull forward
 whenever a short slot is available. M1.9 and M1.11 (the `make check-pty` string-drift fixes)
 are worth doing before M9.1 specifically, since M9.1's own acceptance criterion leans on that
@@ -322,6 +322,14 @@ Delivers: S9, S10, S12
   convention ("S12/C2") — done when: each Help-Modal reference either adopts the same
   "S12/C\<n\>" form or drops the stale S-number where it no longer resolves unambiguously —
   effort: 1 (replan: TRIAGE T27)
+- **M8.5** — M8.4 fixed only the 5 bare `(S12)` sites its own AC named; the same now-ambiguous
+  bare `S12` recurs at ~20 more sites across footer.go, keymap.go, files_search.go, picker.go,
+  picker_view.go, picker_view_test.go, help.go, help_test.go, footer_test.go and
+  files_search_test.go (a mix of C1's help-modal sense and C2's query-threshold/result-cap
+  sense) — done when: every remaining bare `S12` citation in `cmd/noggin` is disambiguated to
+  `S12/C1` or `S12/C2` per M8.4's own convention (matching whichever sense the citation's
+  context actually means), and `grep -rn "S12" cmd/noggin | grep -v "S12/C"` is empty — effort:
+  2 (replan: TRIAGE T32)
 
 ## M9 — Focus by background
 
