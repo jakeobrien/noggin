@@ -165,7 +165,7 @@ func truncatedHintText(title string, hints []key.Binding, width int) string {
 }
 
 // joinHints renders title and hints (plus alwaysHints) as one " · "-joined
-// line, the shape every footer and the future help modal (S12) can share. An
+// line, the shape every footer and the help modal (S12/C1, M5.3) share. An
 // empty title is omitted rather than leaving a stray leading separator.
 func joinHints(title string, hints []key.Binding) string {
 	parts := make([]string, 0, len(hints)+len(alwaysHints)+1)

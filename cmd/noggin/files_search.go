@@ -15,7 +15,7 @@ import (
 
 // pickerResultCap bounds how many results a Picker search hands back,
 // shared by the File Picker's fuzzy match (M1.3) and the Grep Picker's
-// search (M1.4) so both report truncation the same way (S12). No SPEC/D
+// search (M1.4) so both report truncation the same way (S12/C2). No SPEC/D
 // number fixes this value; 200 is a build-time judgment call, generous
 // enough that a real note collection rarely hits it while still bounding
 // worst case (an All Roots search over a large tree).
@@ -280,7 +280,7 @@ func (s fileNameSource) Len() int { return len(s) }
 
 // fuzzyFiles ranks listFiles' candidate set against query by file name only
 // (D31) and caps the result at pickerResultCap, reporting whether the cap
-// truncated it (S12). fuzzy.FindFrom already returns matches best-first (its
+// truncated it (S12/C2). fuzzy.FindFrom already returns matches best-first (its
 // own bonus/penalty scoring), so ranking here is just capping that order —
 // listFiles is deliberately the unranked, uncapped half of this split.
 func fuzzyFiles(files []pickerFile, query string) (results []pickerFile, truncated bool) {

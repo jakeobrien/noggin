@@ -17,31 +17,28 @@
 
 ## Cursor
 
-Current task: M8.4
+Current task: M9.2
 
 ## Handoff
 
-**Build 2026-09-09 (M8.2a):** fixed TRIAGE T26's real bug — at a pathologically short terminal
-(`boxHeight` 0, e.g. 80x4 once `computeLayout`'s border/title math leaves nothing) DV1's
-`docContentHeight` already floored the viewport at 0, but `composeViewerContent`
-(location.go) still appended the S9 location line unconditionally whenever a document was
-open, handing `renderBox` one more line than its `MaxHeight` budget allowed — observed as the
-pane's *bottom border* silently disappearing (MaxHeight clips from the end, not the line that
-overflowed) rather than the frame growing. Fixed by gating `docLocationVisible`/
-`peekLocationVisible` on `v.boxHeight >= 1` (following `computeLayout`'s own `staleRow`
-"never claim a row you weren't budgeted" precedent) — both callers (`contentHeight`,
-`viewerLocationLine`) already keyed off these two booleans, so the one gate fixes both the
-reserved-height math and the drawn line together. Also folded `docContentHeight`/
-`peekContentHeight` into a shared `contentHeight(locationVisible bool)` helper (TRIAGE T28).
-Added `TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal`
-(`sized(t, m, 80, 4)`-then-`openDocument`, per the AC) — confirmed it fails on the pre-fix code
-(border row missing) and passes post-fix. `make check` and `make check-pty` (268 checks) both
-green.
+**Build 2026-09-09 (M8.4):** fixed the 5 bare `(S12)` citations the AC named (TRIAGE T27) —
+`viewer.go:601`, `footer.go:168`, `keymap.go:15` (C1's help-modal sense) and
+`files_search.go:18`/`283` (C2's query-threshold/result-cap sense) — each now qualified
+`S12/C1` or `S12/C2` per `picker_view.go:192`'s existing disambiguation convention, since bare
+`S12` now also resolves to this cycle's own half-page-paging item. Also dropped
+`footer.go:168`'s stale "future help modal" wording (the modal has existed since M5.3) while
+editing that exact line — same line, same phrase, not a separate scope expansion. `make
+check` green.
 
-Next step: cursor moved to M8.4 (next todo task in key order; independent,
-pull-forward-anytime task per PLAN.md — `scrollActions`' stale S12 citation in viewer.go).
-M9.2 remains independent; M10.1 (README, last task) should come after those since it
-documents the behaviour/citations they touch. No blockers.
+Discovered mid-task: the same bare-`S12` ambiguity recurs at ~20 more sites beyond the AC's 5
+(footer.go, keymap.go, help.go, picker.go, picker_view.go and their tests) — out of this
+task's scope (its AC named exactly 5 sites), so logged as TRIAGE T32 for a future sweep rather
+than expanded into here.
+
+Next step: cursor moved to M9.2 (last independent todo task in key order —
+`tintPaneBackground`'s SGR-7/colour-param misdetection bug per PLAN.md). M10.1 (README, last
+task) should come after it since it documents the behaviour M9.2 touches. TRIAGE has one open
+item (T32, low severity, non-blocking) for the next replan pass. No blockers.
 
 ## Status
 
@@ -92,7 +89,7 @@ documents the behaviour/citations they touch. No blockers.
 | M8.2  | done   | 2026-09-09 | 2026-09-09 | scope widened by replan 2026-09-08: S9a attribution line |
 | M8.2a | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T26, T28) |
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
-| M8.4  | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T27) |
+| M8.4  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
 | M9.2  | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | todo   | -        | -         |      |

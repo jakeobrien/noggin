@@ -12,8 +12,8 @@ import (
 // the production tree stays free of key strings.
 
 // keyMap holds every binding the program understands. Help text lives with the
-// binding so the footer (S11) and help modal (S12) can be generated from it
-// rather than duplicating the list.
+// binding so the footer (S11) and help modal (S12/C1) can be generated from
+// it rather than duplicating the list.
 type keyMap struct {
 	Quit key.Binding
 

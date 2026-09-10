@@ -598,8 +598,8 @@ func (v viewer) fill(style lipgloss.Style, width, height int, text string) strin
 // The four moves S7/S9 allow are line, half-page (bound twice — ctrl+u/
 // ctrl+d and, per M8.1, pgup/pgdn/ctrl+b/ctrl+f land on the same offset,
 // since a Document Viewer has no separate full-page distance any more), top
-// and bottom. Update walks this list, and so can the help modal (S12), so a
-// new scroll action is one entry here plus its binding in keymap.go.
+// and bottom. Update walks this list, and so can the help modal (S12/C1),
+// so a new scroll action is one entry here plus its binding in keymap.go.
 //
 // keys.PageUp/keys.PageDown still call vp.PageUp()/vp.PageDown() in the
 // Picker's own Preview scroll (picker.go's handlePickerInput) — that pane is

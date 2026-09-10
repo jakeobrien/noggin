@@ -25,6 +25,7 @@
 
 | Id | Source | Severity | Citation | Item | Status |
 |----|--------|----------|----------|------|--------|
+| T32 | build | low | footer.go:36,79; keymap.go:139,144; files_search.go:509; picker.go:71,100,106,151; picker_view.go:144,186,206; picker_view_test.go:466; help.go:9; help_test.go:13,131; footer_test.go:164; files_search_test.go:277,447 | M8.4 fixed only the 5 bare `(S12)` sites its own AC named (viewer.go:601, footer.go:168, keymap.go:15, files_search.go:18/283); the same now-ambiguous bare `S12` recurs at ~20 more sites (a mix of C1's help-modal sense and C2's query-threshold/result-cap sense) that a fuller sweep would disambiguate the same way (`S12/C1` or `S12/C2`) — none is a functional bug, pure citation clarity, no urgency | open |
 
 <!-- empty as of 2026-09-09 replan (fourth pass): T24+T25 -> PLAN M7.4 (stale/mis-cited
      store.go doc comments — "future (M7.2)" writer wording, wrong D-number citation). T26
