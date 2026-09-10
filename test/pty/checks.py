@@ -781,7 +781,7 @@ check("M4.2 hints change with focus (Document differs from Files)",
 
 s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer_roots = screen_of(s.out, 80, 24).lines()[-1]
-check("M4.2 hints change with focus (Roots differs from Files and Document)",
+check("M4.2 hints change with focus (Sources differs from Files and Document)",
       footer_roots not in (footer_files, footer_doc) and "star" in footer_roots,
       repr(footer_roots))
 check("M4.2 quit is always in the footer",

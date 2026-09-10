@@ -84,12 +84,13 @@ func TestTintPaneBackgroundDoesNotLeakAcrossANewlineIntoAReverseVideoRow(t *test
 }
 
 // TestTintPaneBackgroundNotFooledByExtendedColorParams is TRIAGE T29's
-// regression test (PLAN M9.2): the SGR token scan is positional, not
+// regression test (PLAN M9.2), extended by TRIAGE T34/PLAN M9.3 to also
+// cover component value 0: the SGR token scan is positional, not
 // per-token string equality, so a 256-colour index or truecolor component
-// equal to 7 or 27 that happens to follow a 38/48 (extended foreground/
-// background) token must never be misread as a reverse-video set/clear —
-// the run must still get the tint, exactly as any other non-reverse run
-// does.
+// equal to 7, 27 or 0 that happens to follow a 38/48 (extended foreground/
+// background) token must never be misread as a reverse-video set/clear or
+// a reset — the run must still get the tint, exactly as any other
+// non-reverse run does.
 func TestTintPaneBackgroundNotFooledByExtendedColorParams(t *testing.T) {
 	cases := []struct {
 		name string
@@ -99,6 +100,7 @@ func TestTintPaneBackgroundNotFooledByExtendedColorParams(t *testing.T) {
 		{"256-colour foreground index 27", "\x1b[38;5;27mrow\x1b[m"},
 		{"truecolor background component 7", "\x1b[48;2;7;100;200mrow\x1b[m"},
 		{"truecolor foreground component 27", "\x1b[38;2;100;27;200mrow\x1b[m"},
+		{"truecolor background component 0", "\x1b[48;2;0;100;200mrow\x1b[m"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
