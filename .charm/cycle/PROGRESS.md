@@ -17,28 +17,29 @@
 
 ## Cursor
 
-Current task: M9.2
+Current task: M10.1
 
 ## Handoff
 
-**Build 2026-09-09 (M8.4):** fixed the 5 bare `(S12)` citations the AC named (TRIAGE T27) —
-`viewer.go:601`, `footer.go:168`, `keymap.go:15` (C1's help-modal sense) and
-`files_search.go:18`/`283` (C2's query-threshold/result-cap sense) — each now qualified
-`S12/C1` or `S12/C2` per `picker_view.go:192`'s existing disambiguation convention, since bare
-`S12` now also resolves to this cycle's own half-page-paging item. Also dropped
-`footer.go:168`'s stale "future help modal" wording (the modal has existed since M5.3) while
-editing that exact line — same line, same phrase, not a separate scope expansion. `make
-check` green.
+**Build 2026-09-09 (M9.2):** fixed TRIAGE T29's real bug — `tintPaneBackground`'s SGR-parsing
+scan (style.go) tested every `;`-split parameter token for bare equality against `"7"`/`"27"`,
+so a 256-colour index or truecolor component equal to 7 or 27 following a `38`/`48`
+(extended foreground/background) token was misread as reverse-video set/clear, silently
+skipping S11's tint. Fixed by scanning positionally: on a `38`/`48` token, skip the
+parameter(s) that belong to it (one for `;5;n`, three for `;2;r;g;b`) before resuming the
+scan, so a colour value is never tested against the plain SGR codes at all — confirmed the
+existing `38;5;245;7` reverse-video fixture (focus_background_test.go) still correctly treats
+its trailing bare `7` as real reverse video (it comes after the color spec's own tokens are
+skipped, not inside them).
 
-Discovered mid-task: the same bare-`S12` ambiguity recurs at ~20 more sites beyond the AC's 5
-(footer.go, keymap.go, help.go, picker.go, picker_view.go and their tests) — out of this
-task's scope (its AC named exactly 5 sites), so logged as TRIAGE T32 for a future sweep rather
-than expanded into here.
+Added `TestTintPaneBackgroundNotFooledByExtendedColorParams` (4 subtests: 256-colour and
+truecolor, foreground and background, index/component 7 and 27) — confirmed 2 of the 4 fail
+on pre-fix code (48;5;7 and 48;2;7;100;200 wrongly read as reverse, so untinted) and all 4
+pass post-fix. `make check` and `make check-pty` (268 checks) both green.
 
-Next step: cursor moved to M9.2 (last independent todo task in key order —
-`tintPaneBackground`'s SGR-7/colour-param misdetection bug per PLAN.md). M10.1 (README, last
-task) should come after it since it documents the behaviour M9.2 touches. TRIAGE has one open
-item (T32, low severity, non-blocking) for the next replan pass. No blockers.
+Next step: cursor moved to M10.1, the cycle's last task (README update covering S1–S13's
+user-visible changes). TRIAGE has one open item (T32, low severity, non-blocking — the wider
+bare-S12 sweep M8.4 didn't cover) for the next replan pass; not a gate for M10.1. No blockers.
 
 ## Status
 
@@ -91,5 +92,5 @@ item (T32, low severity, non-blocking) for the next replan pass. No blockers.
 | M8.3  | done   | 2026-09-09 | 2026-09-09 |      |
 | M8.4  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T27) |
 | M9.1  | done   | 2026-09-09 | 2026-09-09 | pre-agreed cut 3 |
-| M9.2  | todo   | -        | -         | added by replan 2026-09-09 (TRIAGE T29) |
+| M9.2  | done   | -        | -         | added by replan 2026-09-09 (TRIAGE T29) |
 | M10.1 | todo   | -        | -         |      |

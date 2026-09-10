@@ -125,8 +125,29 @@ func tintPaneBackground(s string) string {
 			return b.String()
 		}
 		setsReverse, clearsReverse, isReset := false, false, false
-		for _, tok := range strings.Split(string(runes[i+2:j]), ";") {
-			switch tok {
+		tokens := strings.Split(string(runes[i+2:j]), ";")
+		// Positional, not per-token equality (TRIAGE T29/PLAN M9.2): a bare
+		// "7"/"27" token means Reverse only when it is itself an SGR code, not
+		// when it is the colour-index or truecolor component of a preceding
+		// 38/48 (extended foreground/background) token — "48;5;7m" (256-colour
+		// index 7) or "38;2;7;27;0m" (a truecolor component equal to 7, 27 or
+		// 0) must never be misread as reverse set/clear or a reset. 38/48
+		// consume their own following parameter(s) (one for ";5;n", three for
+		// ";2;r;g;b") before the scan resumes, so those values are never
+		// tested against "7"/"27"/"0" at all.
+		for k := 0; k < len(tokens); k++ {
+			switch tokens[k] {
+			case "38", "48":
+				if k+1 < len(tokens) {
+					switch tokens[k+1] {
+					case "5":
+						k += 2 // mode + one 256-colour index
+					case "2":
+						k += 4 // mode + three truecolor components
+					default:
+						k++ // unrecognized mode token; skip just it
+					}
+				}
 			case "7":
 				setsReverse = true
 			case "27":
