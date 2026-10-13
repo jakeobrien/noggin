@@ -1982,23 +1982,24 @@ func (m model) resolveFocus(want pane) pane {
 var (
 	borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("240"))
+			BorderForeground(theme.Border)
 	focusedBorderStyle = borderStyle.
-				BorderForeground(lipgloss.Color("205"))
+				BorderForeground(theme.Accent)
 	// focusedPaneBorderStyle is the focused pane's border (S11): thick, in
 	// the same accent colour as focusedBorderStyle (which the Picker's own
 	// prompt box keeps using, unchanged). Every border shape is one cell
 	// wide, so thick vs rounded never moves layout.
 	focusedPaneBorderStyle = focusedBorderStyle.Border(lipgloss.ThickBorder())
-	// focusedTitleStyle is the focused pane's title bar (S11): bold dark
-	// text on the border's own accent colour, so the two read as one cue.
+	// focusedTitleStyle is the focused pane's title bar (S11): bold canvas-
+	// coloured text on the border's own accent colour, so the two read as one
+	// cue.
 	focusedTitleStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("0")).
-				Background(lipgloss.Color("205"))
+				Foreground(theme.Bg).
+				Background(theme.Accent)
 	titleStyle  = lipgloss.NewStyle().Bold(true)
 	footerStyle = lipgloss.NewStyle().
-			Foreground(dimColor)
+			Foreground(theme.Subtle)
 	// peekTitleStyle is S7/M7.1's inverted Peek header: the same title row
 	// every pane already draws, in reverse video instead of bold, so a
 	// Peeked document's heading cannot be mistaken for the Active
@@ -2016,8 +2017,19 @@ var (
 // field (cursor, window title, ...) stays at its zero value, unchanged from
 // before.
 func (m model) View() tea.View {
-	v := tea.NewView(m.render())
+	v := tea.NewView(paintCanvas(m.render(), m.width, m.height, theme))
 	v.AltScreen = true
+	// Also set the terminal's own default colours (OSC 10/11; Bubble Tea
+	// restores them on exit). paintCanvas has already coloured every cell, so
+	// this only matters where the terminal paints without our cells: the margin
+	// around the cell grid, and the instant after a resize. Terminals that
+	// ignore the request lose nothing. Skipped under NO_COLOR: Bubble Tea
+	// already strips every cell colour then, and recolouring the terminal's
+	// defaults behind plain text would defeat the request.
+	if os.Getenv("NO_COLOR") == "" {
+		v.BackgroundColor = theme.Bg
+		v.ForegroundColor = theme.Fg
+	}
 	// MouseModeCellMotion is enough for click/release/wheel events (which is
 	// all handleMouseWheel below uses) without also reporting motion when no
 	// button is pressed the way MouseModeAllMotion would.

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 
 	"charm.land/glamour/v2"
 	"charm.land/glamour/v2/styles"
-	"charm.land/lipgloss/v2"
 	"golang.org/x/term"
 
 	"noggin/internal/wikipedia"
@@ -113,47 +111,17 @@ func stripFrontmatter(src []byte) []byte {
 	return src[fences[1][1]:]
 }
 
-// markdownStyle is the Glamour style to render with, decided once.
+// markdownColoured reports whether markdown is rendered in the Theme's colours.
+// It is false only when stdout is not a terminal, where Glamour's own colourless
+// NoTTYStyle is used instead: noggin is a TUI and never runs that way, but
+// `go test`'s output is not a terminal, and viewer_test.go's fixtureStructure
+// assertions rely on it being plain.
 //
-// Glamour v2 has no WithAutoStyle and never queries the terminal itself, so the
-// v1 deadlock this indirection was built around (D13) is gone. Deciding light
-// from dark still means an OSC 11 query, though — lipgloss.HasDarkBackground
-// now takes the file handles to do it on explicitly — and D13's rule stands: no
-// terminal query once Bubble Tea owns stdin. So the choice is still made once,
-// before Run(), rather than per render. main does that.
-//
-// The in-program alternative, tea.RequestBackgroundColor, is unreliable under
-// tmux and WSL2, which is the other reason to keep resolving it up front.
-var markdownStyle = sync.OnceValue(func() string {
-	if !term.IsTerminal(int(os.Stdout.Fd())) {
-		return styles.NoTTYStyle
-	}
-	if lipgloss.HasDarkBackground(os.Stdin, os.Stdout) {
-		return styles.DarkStyle
-	}
-	return styles.LightStyle
+// Decided once. Colour no longer depends on the terminal's background, so
+// there is no terminal query to run before Bubble Tea takes stdin.
+var markdownColoured = sync.OnceValue(func() bool {
+	return term.IsTerminal(int(os.Stdout.Fd()))
 })
-
-// customStyleFiles embeds noggin's own Glamour stylesheets — copies of
-// Glamour's dark and light JSON styles (charm.land/glamour/v2/styles) that
-// live in the repo so they can be hand-edited without touching the
-// dependency. They are seed content, not a fork: diverge them from upstream by
-// editing the ansi.StyleConfig fields (see charm.land/glamour/v2/ansi) to taste.
-//
-// There is deliberately no notty.json: the no-TTY case (below) keeps using
-// Glamour's own NoTTYStyle so `go test`'s colourless output is untouched
-// (viewer_test.go's fixtureStructure assertions rely on that).
-//
-//go:embed styles/dark.json styles/light.json
-var customStyleFiles embed.FS
-
-// customStylePaths maps a markdownStyle() result to its embedded stylesheet.
-// Only dark and light have a custom file; notty falls through to
-// glamour.WithStandardStyle in renderMarkdown.
-var customStylePaths = map[string]string{
-	styles.DarkStyle:  "styles/dark.json",
-	styles.LightStyle: "styles/light.json",
-}
 
 // tabStop is the column interval tabs are expanded to. Four is CommonMark's
 // own figure for how far a tab advances when it determines block structure, and
@@ -211,22 +179,20 @@ func renderMarkdown(src []byte, width int) (string, error) {
 // (unfocused_style.go): muted renders from the derived muted stylesheet, and falls
 // back to the normal render where there is none (the no-TTY style).
 func renderMarkdownStyled(src []byte, width int, muted bool) (string, error) {
-	style := markdownStyle()
-	var styleOption glamour.TermRendererOption
-	if mutedJSON, err := mutedStyleJSON(); muted && err == nil && mutedJSON != nil {
-		styleOption = glamour.WithStylesFromJSONBytes(mutedJSON)
-	} else if path, ok := customStylePaths[style]; ok {
-		jsonBytes, err := customStyleFiles.ReadFile(path)
-		if err != nil {
-			// Only reachable if an embed path above is a typo — the file is
-			// compiled in, not read at runtime.
-			return "", fmt.Errorf("markdown renderer: embedded style %s: %w", path, err)
+	styleOption := glamour.WithStandardStyle(styles.NoTTYStyle)
+	if markdownColoured() {
+		cfg := markdownStyleConfig(theme)
+		if muted {
+			var err error
+			if cfg, err = mutedMarkdownStyleConfig(theme); err != nil {
+				return "", fmt.Errorf("markdown renderer: %w", err)
+			}
 		}
-		styleOption = glamour.WithStylesFromJSONBytes(jsonBytes)
-	} else {
-		styleOption = glamour.WithStandardStyle(style)
+		styleOption = glamour.WithStyles(cfg)
 	}
-	options := []glamour.TermRendererOption{styleOption}
+	// terminal16m: Glamour defaults to terminal256, which would quantize the
+	// Theme's truecolor code colours to the 256 palette before Bubble Tea sees them.
+	options := []glamour.TermRendererOption{styleOption, glamour.WithChromaFormatter("terminal16m")}
 	if width > 0 {
 		options = append(options, glamour.WithWordWrap(width))
 	}

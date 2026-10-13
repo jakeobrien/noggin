@@ -121,12 +121,12 @@ func helpBindings(p pane) []key.Binding {
 	}
 }
 
-// modalStyle borders the Help Modal in a color no pane border uses
-// (borderStyle's 240, focusedBorderStyle's 205), so it reads as a layer above
+// modalStyle borders the Help Modal in a colour no pane border uses
+// (Theme.Border, Theme.Accent), so it reads as a layer above
 // the frame rather than another (possibly focused-looking) pane within it.
 var modalStyle = lipgloss.NewStyle().
 	Border(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("214")).
+	BorderForeground(theme.Highlight).
 	Padding(0, 1)
 
 // helpBox renders the Help Modal's content for a pane's context: the pane's

@@ -135,6 +135,15 @@ both. See [Focus](#focus) below. The focused pane is drawn with a thick border
 and an accent-coloured title bar, so focus is visible at a glance — see
 [Focus](#focus).
 
+### Appearance
+
+noggin has its own colour scheme and does not inherit your terminal's theme: it
+paints every cell — background included — from one built-in palette, so it looks
+the same in any terminal and its text is always legible against its own
+background. It uses 24-bit colour; a terminal that only does 256 colours gets
+the nearest match. There is no light/dark detection and no setting for it. (A
+terminal that honours `NO_COLOR` still gets no colour.)
+
 ## Keybindings
 
 Bindings are provisional (cheap to retune) but consistent across panes: movement

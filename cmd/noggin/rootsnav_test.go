@@ -91,7 +91,7 @@ func TestRootsNavMarksMissingPathBroken(t *testing.T) {
 // literal "\x1b[7m" substring: a row that exactly fills its width leaves no
 // separately-styled padding run to carry that code in isolation, and
 // combining reverse with another attribute or S10/M8.3's dim foreground
-// serializes as one multi-param SGR ("\x1b[1;7m", "\x1b[7;38;5;245m") that
+// serializes as one multi-param SGR ("\x1b[1;7m", "\x1b[7;38;2;138;147;189m") that
 // does not contain the bare substring either, even though the whole line is
 // genuinely reversed throughout.
 func lineFullyReversed(s string) bool {
@@ -174,7 +174,7 @@ func TestRootsNavRendersTwoLinesPerEntry(t *testing.T) {
 
 // TestRootsNavPathLineIsDeEmphasized is S10/M8.3's own acceptance criterion
 // for the Sources Nav: the path line (line 2) renders de-emphasized
-// (dimColor, the same styling the Wikipedia row's own domain line and the
+// (Theme.Subtle, the same styling the Wikipedia row's own domain line and the
 // S9/S9a Document Viewer location line already use), while the name line
 // (line 1) stays at normal weight — the Sources Nav has no search/filter of
 // its own, so unlike a Picker File row there is no matched-character

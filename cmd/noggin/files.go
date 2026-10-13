@@ -694,12 +694,12 @@ func (f filesNav) withExpanded(path string, open bool) filesNav {
 
 var (
 	filesSelectedStyle = lipgloss.NewStyle().Reverse(true)
-	emptyFilesStyle    = lipgloss.NewStyle().Foreground(dimColor)
+	emptyFilesStyle    = lipgloss.NewStyle().Foreground(theme.Subtle)
 	// modeScopeRowStyle is S5's mode/scope row (below): dim, like every
-	// other pane's resting/empty text (dimColor's own doc comment), so it
+	// other pane's resting/empty text (Theme.Subtle's own doc comment), so it
 	// reads as a status line rather than competing with the selected-row
 	// reverse video or a git-status/star marker.
-	modeScopeRowStyle = lipgloss.NewStyle().Foreground(dimColor)
+	modeScopeRowStyle = lipgloss.NewStyle().Foreground(theme.Subtle)
 )
 
 // view renders the pane's content box at exactly its width x height, the same

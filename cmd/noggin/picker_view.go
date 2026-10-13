@@ -321,7 +321,7 @@ func pickerLocationLabel(f pickerFile, width int, rest string) string {
 // exactly the unhighlighted row M3.1 shipped (still de-emphasized per S10
 // below — dimming is unconditional, unlike match highlighting).
 // S10/M8.3: everything from suffix onward (the gap plus rel/title) is
-// de-emphasized (dimColor, the same muted foreground the Sources Nav's own
+// de-emphasized (theme.Subtle, the same muted foreground the Sources Nav's own
 // path line and the S9/S9a location line use) — the location label ahead of
 // it (pickerLocationLabel: a Root's name, an orphan's parent directory, or
 // "Wikipedia") stays normal weight to anchor the row. A matched character
@@ -464,7 +464,7 @@ const noDim = -1
 // derived from the row's own base style (base.Bold(true)) rather than being
 // a standalone style that would drop the selection's reverse.
 //
-// The dim run does use a foreground colour (dimColor, the same one
+// The dim run does use a foreground colour (theme.Subtle, the same one
 // locationLineStyle/rootsPathStyle use) despite that same reverse-video
 // caveat — S10 says nothing about selected-row behaviour, and every column
 // of a selected row still stays reversed regardless (dim/highlight/base all
@@ -495,7 +495,7 @@ func highlightMatches(line string, columns []int, dimFrom int, selected bool) st
 		base = pickerSelectedStyle
 	}
 	highlight := base.Bold(true)
-	dim := base.Foreground(dimColor)
+	dim := base.Foreground(theme.Subtle)
 
 	// class classifies rune i for run-merging: 2 (matched, never dim) beats
 	// 1 (dim) beats 0 (base) -- matched wins regardless of dimFrom, per this

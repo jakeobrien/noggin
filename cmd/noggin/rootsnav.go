@@ -319,13 +319,13 @@ var (
 	rootsBrokenStyle = lipgloss.NewStyle().Faint(true)
 	rootsNameStyle   = lipgloss.NewStyle().Bold(true)
 	// rootsPathStyle is S10/M8.3's de-emphasized path line (line 2): the same
-	// dimColor every pane's empty-state/footer text and the S9/S9a location
+	// theme.Subtle colour every pane's empty-state/footer text and the S9/S9a location
 	// line (locationLineStyle, style.go) already use, so a Root's path reads
 	// as secondary the same way those do. There is nothing to match-highlight
 	// against it (unlike a Picker File row's path, S10's other half) — the
 	// Sources Nav has no search/filter of its own — so this is the row's
 	// entire path-line treatment, not a base a highlighter layers onto.
-	rootsPathStyle = lipgloss.NewStyle().Foreground(dimColor)
+	rootsPathStyle = lipgloss.NewStyle().Foreground(theme.Subtle)
 )
 
 // view renders the pane's content box at exactly its width x height, the same

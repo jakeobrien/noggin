@@ -553,7 +553,7 @@ func (v viewer) height() int { return v.vp.Height() }
 // label names the open document for the pane title, or is empty when none is.
 func (v viewer) label() string { return v.doc.label() }
 
-var emptyViewerStyle = lipgloss.NewStyle().Foreground(dimColor)
+var emptyViewerStyle = lipgloss.NewStyle().Foreground(theme.Subtle)
 
 // view renders the viewer's content box at exactly its width x height.
 func (v viewer) view() string {

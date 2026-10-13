@@ -14,6 +14,18 @@ BINARY = "./bin/noggin"
 FIXTURE = "cmd/noggin/testdata/fixture.md"
 TREE = "cmd/noggin/testdata/tree"
 
+# The Theme's colours (cmd/noggin/theme.go, nightTheme) as truecolor SGR
+# operands, "2;r;g;b" — what follows "38;" (foreground) or "48;" (background) on
+# the wire. As with KEY below, the Go side owns the colours and this is the
+# terminal's encoding of them. noggin paints every cell, so a foreground
+# usually arrives fused with the canvas background ("38;2;…;48;2;…m"); the
+# patterns below therefore match a colour followed by optional further params.
+THEME_ACCENT        = "2;187;154;247"  # Theme.Accent  #bb9af7: focused border, title bar
+THEME_BORDER        = "2;106;115;153"  # Theme.Border  #6a7399: unfocused border
+THEME_SUBTLE        = "2;138;147;189"  # Theme.Subtle  #8a93bd: de-emphasized text
+THEME_UNFOCUSED_BAR = "2;47;51;77"     # Theme.UnfocusedBar #2f334d
+REVERSE_SGR = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")  # reverse video, alone or fused
+
 # D2 keeps key literals inside cmd/noggin/keymap.go, but a pty harness has to
 # put real bytes on the wire, and it is on the far side of a language boundary
 # from the keymap. This table is that carve-out, kept in one place and named
@@ -145,8 +157,8 @@ for cols, rows in [(80, 24), (100, 30)]:
           0 < nav_edge < cols - 1 and lines[0][nav_edge + 1] in "╭┏", f"edge at {nav_edge}")
 
     # Real styling: focused and unfocused border colours both on the wire.
-    check(f"M1.2 focused border colour drawn at {cols}x{rows}", b"38;5;205" in out)
-    check(f"M1.2 unfocused border colour drawn at {cols}x{rows}", b"38;5;240" in out)
+    check(f"M1.2 focused border colour drawn at {cols}x{rows}", f"38;{THEME_ACCENT}".encode() in out)
+    check(f"M1.2 unfocused border colour drawn at {cols}x{rows}", f"38;{THEME_BORDER}".encode() in out)
 
     # Focus moves, and the footer names where it is. Reading focus off the
     # footer is what makes this a real check rather than "something redrew":
@@ -307,7 +319,7 @@ s.send(KEY["Down"], 0.4)
 body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("M2.2 selection moves across the expanded set (guide.md still shown)",
       "guide.md" in body)
-check("M2.2 reverse-video selection bar on the wire", b"\x1b[7m" in s.out)
+check("M2.2 reverse-video selection bar on the wire", REVERSE_SGR.search(s.out) is not None)
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M2.2 exits 0 while browsing a folder", code == 0, f"exit {code}")
@@ -1399,7 +1411,7 @@ check("C2a/M8.1 pty: a bold name line reaches the wire on the Roots pane's first
       bold_sgr.search(initial) is not None, repr(initial[:200]))
 # Files Nav holds focus at launch, so the Sources Nav's selected row is
 # unfocused: a dim grey bar (S11/D136), not reverse video.
-dim_bar_sgr = re.compile(rb"\x1b\[(?:\d+;)*48;5;(?:238|252)(?:;\d+)*m")
+dim_bar_sgr = re.compile(rb"\x1b\[(?:\d+;)*48;" + THEME_UNFOCUSED_BAR.encode() + rb"(?:;\d+)*m")
 check("C2a/M8.1 pty: an unfocused selected row reaches the wire as a dim bar",
       dim_bar_sgr.search(initial) is not None, repr(initial[:200]))
 
@@ -1424,14 +1436,14 @@ check("C2a/M8.1 pty: exits 0 after browsing two-line Roots Nav rows", code == 0,
 # covers m.focus's internal state from every pane; ctrl+n (Navigator) has
 # both a go test and a pty check, but r/f only ever had the former. This
 # checks what actually reaches the wire: the focused/unfocused border colour
-# (M1.2's own b"38;5;205"/b"38;5;240") is redrawn in the bytes produced by
+# (M1.2's own accent/border foregrounds) is redrawn in the bytes produced by
 # this specific keypress, not just present somewhere in the cumulative
 # stream since startup — mirroring the mark = len(s.out) delta idiom the
 # Peek reverse-video check above already uses, not M1.2's whole-stream check.
 s = Session([BINARY, TREE], 80, 24)
 s.pump(1.2)
-focused_sgr = re.compile(rb"38;5;205")
-unfocused_sgr = re.compile(rb"38;5;240")
+focused_sgr = re.compile(b"38;" + THEME_ACCENT.encode())
+unfocused_sgr = re.compile(b"38;" + THEME_BORDER.encode())
 
 footer = screen_of(s.out, 80, 24).raw_lines()[-1]
 check("C2a/M2.1 pty: focus starts on Files", footer.startswith("Files"), repr(footer))
@@ -1622,8 +1634,8 @@ check("M8.2 pty: the location line names the Root and the file's relative path",
 check("M8.2 pty: the location line sits on the viewer box's own last content row, above its border",
       want_line in lines[21] and lines[22][-1] in "\u256f\u251b",
       f"row21={lines[21]!r} row22={lines[22]!r}")
-check("M8.2 pty: the location line reaches the wire de-emphasized (dimColor 245)",
-      re.search(r"38;5;245m[^\x1b]*" + re.escape(want_line), s.out.decode("utf-8", "replace")) is not None,
+check("M8.2 pty: the location line reaches the wire de-emphasized (Theme.Subtle)",
+      re.search(r"38;" + THEME_SUBTLE + r"(?:;\d+)*m[^\x1b]*" + re.escape(want_line), s.out.decode("utf-8", "replace")) is not None,
       repr(s.out[-2000:]))
 
 s.send(KEY["FocusFiles"], 0.4)
@@ -1648,11 +1660,11 @@ s = Session([BINARY, TREE], 80, 24)
 s.pump(1.2)
 s.send(KEY["FocusRoots"], 0.4)
 out = s.out.decode("utf-8", "replace")
-check("M8.3 pty: the Sources Nav path line reaches the wire de-emphasized (dimColor 245)",
-      re.search(r"38;5;245;?\d*m[^\x1b]*testdata/tree", out) is not None,
+check("M8.3 pty: the Sources Nav path line reaches the wire de-emphasized (Theme.Subtle)",
+      re.search(r"38;" + THEME_SUBTLE + r"(?:;\d+)*m[^\x1b]*testdata/tree", out) is not None,
       repr(s.out[-1200:]))
-check("M8.3 pty: the Wikipedia row's domain line reaches the wire de-emphasized (dimColor 245)",
-      re.search(r"38;5;245;?\d*men\.wikipedia\.org", out) is not None,
+check("M8.3 pty: the Wikipedia row's domain line reaches the wire de-emphasized (Theme.Subtle)",
+      re.search(r"38;" + THEME_SUBTLE + r"(?:;\d+)*men\.wikipedia\.org", out) is not None,
       repr(s.out[-1200:]))
 
 s.send(KEY["Picker"], 0.5)
@@ -1663,8 +1675,8 @@ check("M8.3 pty: the File Picker row is the Root's own label plus the path relat
       "tree  docs/guide.md" in result_line and "testdata" not in result_line and "\u2026" not in result_line,
       repr(result_line))
 out = s.out.decode("utf-8", "replace")
-check("M8.3 pty: the File Picker row's path segment reaches the wire de-emphasized (dimColor 245)",
-      re.search(r"38;5;245;?\d*m[^\x1b]*docs/", out) is not None,
+check("M8.3 pty: the File Picker row's path segment reaches the wire de-emphasized (Theme.Subtle)",
+      re.search(r"38;" + THEME_SUBTLE + r"(?:;\d+)*m[^\x1b]*docs/", out) is not None,
       repr(s.out[-1200:]))
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
@@ -1673,7 +1685,7 @@ check("M8.3 pty: exits 0 after the de-emphasis/no-fragment check", code == 0, f"
 # --- S11: the focused pane has a thick border and an accent title bar ------
 # focus_indicator_test.go pins the rendering per pane; this proves the real
 # terminal gets it: thick corners and the title bar's background escape
-# (48;5;205) reach the wire for the focused pane, and move with focus.
+# (Theme.Accent background) reach the wire for the focused pane, and move with focus.
 
 s = Session([BINARY, TREE], 80, 24)
 s.pump(1.2)
@@ -1683,8 +1695,8 @@ check("S11 pty: focus starts on Files",
       footer.startswith("Files"), repr(footer))
 check("S11 pty: the focused pane's thick border reaches the wire",
       "\u250f" in out, repr(s.out[-1500:]))
-check("S11 pty: the focused pane's title bar (48;5;205) reaches the wire",
-      "48;5;205" in out, repr(s.out[-1500:]))
+check("S11 pty: the focused pane's title bar (Theme.Accent background) reaches the wire",
+      f"48;{THEME_ACCENT}" in out, repr(s.out[-1500:]))
 check("S11 pty: unfocused panes keep the rounded border",
       "\u256d" in out, repr(s.out[-1500:]))
 
@@ -1692,7 +1704,7 @@ mark = len(s.out)
 s.send(KEY["FocusRoots"], 0.5)  # "r" -> Sources Nav gains Focus, Files Nav loses it
 delta = s.out[mark:].decode("utf-8", "replace")
 check("S11 pty: moving Focus to the Sources Nav redraws it with the title bar",
-      "48;5;205" in delta, repr(delta[:600]))
+      f"48;{THEME_ACCENT}" in delta, repr(delta[:600]))
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("S11 pty: exits 0 after the focus-indicator check", code == 0, f"exit {code}")

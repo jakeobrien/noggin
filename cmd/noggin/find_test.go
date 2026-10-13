@@ -30,9 +30,9 @@ func TestFindLocatesAPhraseNearTheEndOfTheDocument(t *testing.T) {
 		t.Errorf("view does not show the matched tail phrase %q after searching", fixtureStructure["tail"])
 	}
 	// The matched line is indicated by reverse video (find.go's
-	// applyCurrentMatch); lipgloss emits "\x1b[7m" for Reverse(true)
-	// regardless of TTY (verified directly against this lipgloss build).
-	if !strings.Contains(view, "\x1b[7m") {
+	// applyCurrentMatch). hasReverse reads the cells, not a literal escape:
+	// the frame's canvas pass (paintCanvas) folds reverse into a longer SGR.
+	if !hasReverse(view) {
 		t.Error("matched line is not indicated (no reverse-video escape in the view)")
 	}
 

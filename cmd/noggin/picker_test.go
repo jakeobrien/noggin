@@ -489,10 +489,9 @@ func TestPickerActivateGrepResultOpensDocumentScrolledToMatchedLine(t *testing.T
 	if !strings.Contains(view, "target report line") {
 		t.Errorf("view does not show the matched line's text after activating the Grep Result\n%s", view)
 	}
-	// lipgloss emits "\x1b[7m" for Reverse(true) regardless of TTY (verified
-	// directly against this lipgloss build — see the same assertion in
-	// TestFindLocatesAPhraseNearTheEndOfTheDocument).
-	if !strings.Contains(view, "\x1b[7m") {
+	// hasReverse reads cell styles, not a literal "\x1b[7m" (see the same
+	// assertion in TestFindLocatesAPhraseNearTheEndOfTheDocument).
+	if !hasReverse(view) {
 		t.Error("matched line is not indicated (no reverse-video escape in the view)")
 	}
 }
@@ -662,7 +661,7 @@ func TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst(t *
 	if !strings.Contains(view, "second report line") {
 		t.Errorf("view does not show the second occurrence's text after activating it\n%s", view)
 	}
-	if !strings.Contains(view, "\x1b[7m") {
+	if !hasReverse(view) {
 		t.Error("matched line is not indicated (no reverse-video escape in the view)")
 	}
 }
@@ -715,7 +714,7 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 	// common single-root case, unrelated to whether the viewer has a find
 	// match to indicate).
 	view := got.dv1.view()
-	if strings.Contains(view, "\x1b[7m") {
+	if hasReverse(view) {
 		t.Error("no line should be indicated when the query has no rendered matches at all")
 	}
 }
@@ -764,7 +763,7 @@ func TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch(t *te
 		t.Fatal("degrade path lost the body's own match entirely, want the body occurrence still found")
 	}
 	view := got.View().Content
-	if !strings.Contains(view, "\x1b[7m") {
+	if !hasReverse(view) {
 		t.Error("degrade path left no line indicated, want the body's match highlighted")
 	}
 	if strings.Contains(view, "title: report") {

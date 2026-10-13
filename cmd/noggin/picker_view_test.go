@@ -244,7 +244,7 @@ func TestPickerRootLabelTruncatesALongName(t *testing.T) {
 // parent directory instead of a Root's own name label, and the trailing
 // path segment is just the file's own base name (no meaningful
 // "relative to a Root" path exists for it). Checks run against
-// ansi.Strip'd text: S10/M8.3 dims the trailing suffix (dimColor), so the
+// ansi.Strip'd text: S10/M8.3 dims the trailing suffix (Theme.Subtle), so the
 // raw string carries SGR codes around it that a literal HasSuffix/Contains
 // would otherwise trip on without changing what the row actually shows.
 func TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory(t *testing.T) {
@@ -610,10 +610,10 @@ type cellStyle struct {
 // a string comparison against a hand-built expected string could only check
 // by pinning lipgloss's exact escape serialization. Handles the subset
 // lipgloss emits here: bold on/off (1/21/22), reverse on/off (7/27), the
-// ANSI256 foreground sequence (38;5;<n>) S10/M8.3's dim styling
-// (dimColor/rootsPathStyle/locationLineStyle, all lipgloss.Color("245"))
-// serializes as — tracked as dim only when n is exactly dimColorCode, not
-// any other foreground colour — and a full reset (0, or the empty
+// truecolor foreground sequence (38;2;r;g;b) S10/M8.3's dim styling
+// (Theme.Subtle via rootsPathStyle/locationLineStyle) serializes as —
+// tracked as dim only when r;g;b is exactly dimColorCode, not any other
+// foreground colour — and a full reset (0, or the empty
 // parameter list lipgloss writes as `ESC[m`).
 func cellStyles(s string) []cellStyle {
 	var (
@@ -646,11 +646,20 @@ func cellStyles(s string) []cellStyle {
 					case "27":
 						current.reverse = false
 					case "38":
-						// ANSI256 foreground is "38;5;<n>"; anything else
-						// (e.g. truecolor's "38;2;r;g;b") is a foreground this
+						// Truecolor foreground is "38;2;r;g;b"; anything else
+						// (e.g. an indexed "38;5;n") is a foreground this
 						// codebase never emits and is left un-classified as dim.
-						if k+2 < len(tokens) && tokens[k+1] == "5" {
-							current.dim = tokens[k+2] == dimColorCode
+						if k+4 < len(tokens) && tokens[k+1] == "2" {
+							current.dim = strings.Join(tokens[k+1:k+5], ";") == dimColorCode
+							k += 4
+						}
+					case "48", "58":
+						// A background / underline colour: skip its operands, so
+						// a component like the "7" in "48;2;7;0;0" is not read as
+						// reverse video.
+						if k+1 < len(tokens) && tokens[k+1] == "2" {
+							k += 4
+						} else {
 							k += 2
 						}
 					case "39":
@@ -666,10 +675,10 @@ func cellStyles(s string) []cellStyle {
 	return cells
 }
 
-// dimColorCode is dimColor's (style.go) own ANSI256 code, as a string —
-// what cellStyles matches "38;5;<n>" against to tell S10/M8.3's
+// dimColorCode is Theme.Subtle's own truecolor parameters ("2;r;g;b") —
+// what cellStyles matches "38;2;r;g;b" against to tell S10/M8.3's
 // de-emphasis apart from some other foreground colour.
-const dimColorCode = "245"
+var dimColorCode = sgrColor(theme.Subtle)
 
 // boldColumns is which cells of a rendered row carry the match emphasis.
 func boldColumns(s string) []int {
@@ -683,7 +692,7 @@ func boldColumns(s string) []int {
 }
 
 // dimColumns is boldColumns' own S10/M8.3 counterpart: which cells of a
-// rendered row carry the de-emphasized (dimColor) styling.
+// rendered row carry the de-emphasized (Theme.Subtle) styling.
 func dimColumns(s string) []int {
 	var cols []int
 	for i, c := range cellStyles(s) {

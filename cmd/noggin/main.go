@@ -10,10 +10,6 @@ import (
 )
 
 func main() {
-	// Decide the markdown style while stdin is still ours to query; see
-	// markdownStyle for why it cannot wait until the first render.
-	markdownStyle()
-
 	// Resolve the session's roots from the launch argument (S1). A bad path is a
 	// rejection message and a session that still starts, not a process exit (T7);
 	// walking the active root and opening any active document happen inside

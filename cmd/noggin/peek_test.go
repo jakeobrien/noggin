@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"noggin/internal/tree"
 )
 
@@ -86,19 +88,27 @@ func TestPeekHeaderIsInvertedFromTheActiveDocuments(t *testing.T) {
 	dv1Rect, _ := l.splitViewer(m.dv2 != nil)
 	width := dv1Rect.content().width
 
-	plainViewerTitle := titleStyle.Render(titleRow(m.paneTitle(dv1Pane), dv1Pane.focusBadge(), width)) // "Document: active.md ... [o]", not inverted
-	if !strings.Contains(m.View().Content, plainViewerTitle) {
-		t.Fatalf("setup: Active Document's own (non-inverted) title not found before Peeking")
+	// The title rows are compared by their cells' styles, not by re-rendering
+	// the expected row: the frame's canvas pass (paintCanvas) re-serializes
+	// every SGR, so a hand-rendered row never matches byte for byte.
+	plainViewerTitle := ansi.Strip(titleRow(m.paneTitle(dv1Pane), dv1Pane.focusBadge(), width)) // "Document: active.md ... [o]", not inverted
+	line, ok := styledLineWith(m.View().Content, strings.TrimSpace(plainViewerTitle))
+	if !ok {
+		t.Fatalf("setup: Active Document's own title not found before Peeking")
+	}
+	if hasReverse(line) {
+		t.Fatalf("setup: Active Document's own title is inverted before Peeking: %q", line)
 	}
 
 	m = press(t, m, keys.Peek.Keys()[0])
 	after := m.View().Content
 
-	peekTitle := peekTitleStyle.Render(titleRow(m.paneTitle(dv1Pane), dv1Pane.focusBadge(), width)) // "Peek: peeked.md ... [o]", inverted
-	if !strings.Contains(after, peekTitle) {
-		t.Errorf("Peek header not rendered in peekTitleStyle; view = %q", after)
+	peekTitle := ansi.Strip(titleRow(m.paneTitle(dv1Pane), dv1Pane.focusBadge(), width)) // "Peek: peeked.md ... [o]", inverted
+	peekLine, ok := styledLineWith(after, strings.TrimSpace(peekTitle))
+	if !ok || !hasReverse(peekLine) {
+		t.Errorf("Peek header not rendered inverted (peekTitleStyle); view = %q", after)
 	}
-	if strings.Contains(after, plainViewerTitle) {
+	if _, still := styledLineWith(after, strings.TrimSpace(plainViewerTitle)); still {
 		t.Errorf("view after Peek still shows the Active Document's own plain title; view = %q", after)
 	}
 }

@@ -10,8 +10,10 @@ import (
 const (
 	thickCorner   = "┏"
 	roundedCorner = "╭"
-	titleBarSGR   = "48;5;205"
 )
+
+// titleBarSGR is the focused pane's title-bar background (Theme.Accent).
+var titleBarSGR = "48;" + sgrColor(theme.Accent)
 
 // TestFocusedPaneHasThickBorderAndTitleBar is S11's acceptance criterion:
 // at every focus target, the focused pane — and only it — carries the thick

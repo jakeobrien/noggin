@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"charm.land/lipgloss/v2"
 )
 
 // TestUnfocusedSelectedRowIsADimBar: a focused nav pane's selected row is a
@@ -19,7 +21,7 @@ func TestUnfocusedSelectedRowIsADimBar(t *testing.T) {
 	f := m.files
 	f.unfocused = true
 	dim := selLine(f)
-	if !strings.Contains(dim, "48;5;238") || strings.Contains(dim, ";7") || strings.Contains(dim, "[7") {
+	if !strings.Contains(dim, "48;"+sgrColor(theme.UnfocusedBar)) || hasReverse(dim) {
 		t.Errorf("unfocused selected row is not a plain dim bar: %q", dim)
 	}
 }
@@ -30,7 +32,7 @@ func TestMuteColorsRewritesColorsOnly(t *testing.T) {
 	if err := json.Unmarshal([]byte(src), &doc); err != nil {
 		t.Fatal(err)
 	}
-	muteColors(doc, true)
+	muteColors(doc, theme.Bg)
 	out, _ := json.Marshal(doc)
 	got := string(out)
 	for _, orig := range []string{`"223"`, `#00AAFF`, `#373737`} {
@@ -43,9 +45,9 @@ func TestMuteColorsRewritesColorsOnly(t *testing.T) {
 	}
 }
 
-func TestMutedColorDarkensOnDarkAndLightensOnLight(t *testing.T) {
-	dark := mutedColor("#ffffff", true)
-	light := mutedColor("#000000", false)
+func TestMutedColorMovesTowardTheBackground(t *testing.T) {
+	dark := mutedColor("#ffffff", lipgloss.Color("#000000"))
+	light := mutedColor("#000000", lipgloss.Color("#ffffff"))
 	if dark >= "#ffffff" || dark == "#000000" {
 		t.Errorf("dark-theme white muted to %s, want a mid grey", dark)
 	}
@@ -96,10 +98,10 @@ func TestUnfocusedNavPanesMuteUnselectedRowsOnly(t *testing.T) {
 	if m.files.view() == muted {
 		t.Fatalf("unfocusing the Files Nav changed nothing: %q", muted)
 	}
-	if !strings.Contains(muted, "38;5;246") && !strings.Contains(muted, "38;5;241") {
+	if !strings.Contains(muted, "38;"+sgrColor(theme.UnfocusedText)) && !strings.Contains(muted, "38;"+sgrColor(theme.UnfocusedSubtle)) {
 		t.Errorf("unfocused Files Nav has no muted foreground: %q", muted)
 	}
-	if sel := strings.Split(muted, "\n")[1]; strings.Contains(sel, "38;5;246") {
+	if sel := strings.Split(muted, "\n")[1]; strings.Contains(sel, "38;"+sgrColor(theme.UnfocusedText)) {
 		t.Errorf("selected row was muted as well: %q", sel)
 	}
 
