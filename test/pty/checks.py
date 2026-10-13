@@ -142,7 +142,7 @@ for cols, rows in [(80, 24), (100, 30)]:
     # Navigator column ends where the viewer begins: two box edges on row 0.
     nav_edge = lines[0].index("╮")
     check(f"M1.2 navigator column is a distinct region at {cols}x{rows}",
-          0 < nav_edge < cols - 1 and lines[0][nav_edge + 1] == "╭", f"edge at {nav_edge}")
+          0 < nav_edge < cols - 1 and lines[0][nav_edge + 1] in "╭┏", f"edge at {nav_edge}")
 
     # Real styling: focused and unfocused border colours both on the wire.
     check(f"M1.2 focused border colour drawn at {cols}x{rows}", b"38;5;205" in out)
@@ -232,8 +232,9 @@ for cols, rows in [(80, 24), (100, 30)]:
             break
         # A frame taller than the terminal scrolls the screen, taking the top
         # border with it — the visible symptom of content that measures short.
-        if not (lines[0].startswith("╭") and lines[0].endswith("╮")
-                and lines[-2].startswith("╰") and lines[-2].endswith("╯")):
+        # S11: the focused pane's border is thick (┏┓┗┛), so any corner may be either.
+        if not (lines[0][0] in "╭┏" and lines[0][-1] in "╮┓"
+                and lines[-2][0] in "╰┗" and lines[-2][-1] in "╯┛"):
             check(f"M1.3 frame border intact while scrolling at {cols}x{rows}",
                   False, f"top {lines[0][:3]!r} bottom {lines[-2][:3]!r}{lines[-2][-3:]!r}")
             break
@@ -406,6 +407,15 @@ def row_with(text, lines):
     return ""
 
 
+# S11: the focused pane's border is thick; compare rows across a focus move
+# by mapping thick glyphs back to their rounded/light twins.
+_THICK_TO_LIGHT = str.maketrans("\u2503\u2501\u250f\u2513\u2517\u251b", "\u2502\u2500\u256d\u256e\u2570\u256f")
+
+
+def norm_border(line):
+    return line.translate(_THICK_TO_LIGHT)
+
+
 def row_pair_with(text, lines):
     # S5's Roots Nav entries are two physical lines each (name, path); a
     # parent-path substring used to distinguish same-named roots (e.g.
@@ -420,7 +430,7 @@ def row_pair_with(text, lines):
     for i, line in enumerate(lines):
         if text not in line:
             continue
-        content = line.strip("\u2502").strip()
+        content = line.strip("\u2502\u2503").strip()
         looks_like_path = content.startswith("\u2026") or content.startswith("/")
         if looks_like_path and i > 0:
             return lines[i - 1] + "\n" + line
@@ -544,7 +554,7 @@ check("M3.4 pty: README.md opens in the viewer before switching roots",
 # happened to land in its trailing padding regardless of focus; that is no
 # longer a safe assumption, hence dropping the footer row outright).
 nav_edge = lines_before[0].index("\u256e")  # box edge ╮ closing the nav column
-viewer_before = [line[nav_edge + 1:] for line in lines_before[:-1]]
+viewer_before = [norm_border(line[nav_edge + 1:]) for line in lines_before[:-1]]
 
 s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
@@ -554,7 +564,7 @@ check("M3.4 pty: FocusRoots from the Document pane reaches Sources",
 s.send(KEY["Down"], 0.4)   # selection off the ad-hoc TREE root, onto root-b
 s.send(KEY["Activate"], 0.6)
 lines_after = screen_of(s.out, 80, 24).raw_lines()
-viewer_after = [line[nav_edge + 1:] for line in lines_after[:-1]]
+viewer_after = [norm_border(line[nav_edge + 1:]) for line in lines_after[:-1]]
 
 check("M3.4 pty: viewer pane is byte-identical after activating a different root",
       viewer_before == viewer_after,
@@ -737,7 +747,7 @@ lines = sc.raw_lines()
 body = "\n".join(lines)
 check("M4.1 noggin resumes with an intact frame after the editor exits",
       len(lines) == 24 and all(len(l) == 80 for l in lines) and
-      lines[0].startswith("╭") and lines[-2].startswith("╰"),
+      lines[0][0] in "╭┏" and lines[-2][0] in "╰┗",
       f"{len(lines)} rows")
 check("M4.1 the appended line is visible on return, re-rendered from disk",
       "Appended by fake editor" in body, repr(body[-200:]))
@@ -928,7 +938,7 @@ before_body = "\n".join(before_lines)
 check("M5.2 the sidebar is present before toggling",
       "Sources" in before_body and "Files" in before_body,
       repr(before_lines[1]))
-nav_edge_before = before_lines[0].index("╮")
+nav_edge_before = before_lines[0].index("╮")  # Sources is unfocused: rounded
 
 out = s.send(KEY["Navigator"], 0.6)
 hidden = screen_of(s.out, 80, 24)
@@ -937,10 +947,11 @@ check("M5.2 toggling hides the whole sidebar",
       "Sources" not in "\n".join(hidden_lines) and "Files" not in "\n".join(hidden_lines),
       repr(hidden_lines[0]))
 check("M5.2 the document viewer's border now spans the full width",
-      hidden_lines[0][0] == "╭" and hidden_lines[0][-1] == "╮",
+      hidden_lines[0][0] in "╭┏" and hidden_lines[0][-1] in "╮┓",
       repr(hidden_lines[0]))
 check("M5.2 hiding the sidebar re-wraps the document to the width it gained",
-      hidden_lines[0].index("╮") > nav_edge_before, f"{hidden_lines[0].index('╮')} vs {nav_edge_before}")
+      max(hidden_lines[0].rfind("╮"), hidden_lines[0].rfind("┓")) > nav_edge_before,
+      f"{hidden_lines[0]!r} vs {nav_edge_before}")
 
 s.send(KEY["Navigator"], 0.6)
 restored = "\n".join(screen_of(s.out, 80, 24).raw_lines())
@@ -1386,8 +1397,11 @@ bold_sgr = re.compile(rb"\x1b\[(?:\d+;)*1(?:;\d+)*m")
 reverse_sgr = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")
 check("C2a/M8.1 pty: a bold name line reaches the wire on the Roots pane's first paint",
       bold_sgr.search(initial) is not None, repr(initial[:200]))
-check("C2a/M8.1 pty: a reverse-video selected row reaches the wire too",
-      reverse_sgr.search(initial) is not None, repr(initial[:200]))
+# Files Nav holds focus at launch, so the Sources Nav's selected row is
+# unfocused: a dim grey bar (S11/D136), not reverse video.
+dim_bar_sgr = re.compile(rb"\x1b\[(?:\d+;)*48;5;(?:238|252)(?:;\d+)*m")
+check("C2a/M8.1 pty: an unfocused selected row reaches the wire as a dim bar",
+      dim_bar_sgr.search(initial) is not None, repr(initial[:200]))
 
 # One Down steps a whole entry (two lines): activating afterwards must make
 # root_b (other/project) active, not root_a — the functional proof that
@@ -1606,7 +1620,7 @@ want_line = f"{m82_root_name} \u00b7 notes.md"
 check("M8.2 pty: the location line names the Root and the file's relative path",
       any(want_line in line for line in lines), repr(lines))
 check("M8.2 pty: the location line sits on the viewer box's own last content row, above its border",
-      want_line in lines[21] and lines[22].endswith("\u256f"),
+      want_line in lines[21] and lines[22][-1] in "\u256f\u251b",
       f"row21={lines[21]!r} row22={lines[22]!r}")
 check("M8.2 pty: the location line reaches the wire de-emphasized (dimColor 245)",
       re.search(r"38;5;245m[^\x1b]*" + re.escape(want_line), s.out.decode("utf-8", "replace")) is not None,
@@ -1656,44 +1670,31 @@ check("M8.3 pty: the File Picker row's path segment reaches the wire de-emphasiz
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("M8.3 pty: exits 0 after the de-emphasis/no-fragment check", code == 0, f"exit {code}")
 
-# --- M9.1 (S11): unfocused panes carry a background tint ------------------
-# focus_background_test.go already pins tintPaneBackground's own SGR
-# tracking (reset-recovery across rows, reverse-video runs — a selected
-# row's bar, Peek's inverted title — always left alone) directly; this is
-# the one thing only a real terminal proves: the tint's own ANSI256
-# background escape (48;5;236, style.go's unfocusedTintCode) actually
-# reaches the wire for an unfocused pane, is absent from the focused one,
-# and never gets mixed into a selected row's own reverse-video escape
-# (confirmed live during this task's own development: lipgloss's word-wrap
-# step, invoked by renderBox's outer Style.Render, re-asserts whatever SGR
-# was active right before a "\n" at the start of the next line — an early
-# version of tintPaneBackground left the tint "active" but unwritten across
-# a row boundary and that re-assertion alone leaked it into the very next
-# row's own reverse escape, with no fix visible at the tintPaneBackground-
-# output level, only on the wire).
+# --- S11: the focused pane has a thick border and an accent title bar ------
+# focus_indicator_test.go pins the rendering per pane; this proves the real
+# terminal gets it: thick corners and the title bar's background escape
+# (48;5;205) reach the wire for the focused pane, and move with focus.
 
 s = Session([BINARY, TREE], 80, 24)
 s.pump(1.2)
 out = s.out.decode("utf-8", "replace")
 footer = screen_of(s.out, 80, 24).raw_lines()[-1]
-check("M9.1 pty: focus starts on Files, leaving Sources and DV1 unfocused",
+check("S11 pty: focus starts on Files",
       footer.startswith("Files"), repr(footer))
-check("M9.1 pty: the unfocused Sources Nav's Wikipedia row reaches the wire tinted (48;5;236)",
-      re.search(r"48;5;236m[\s\S]{0,60}Wikipedia", out) is not None, repr(s.out[-1500:]))
-check("M9.1 pty: the unfocused DV1's empty-state text reaches the wire tinted (48;5;236)",
-      re.search(r"48;5;236[^\x1b]*(?:\x1b\[[0-9;]*m)*No document open", out) is not None, repr(s.out[-1500:]))
+check("S11 pty: the focused pane's thick border reaches the wire",
+      "\u250f" in out, repr(s.out[-1500:]))
+check("S11 pty: the focused pane's title bar (48;5;205) reaches the wire",
+      "48;5;205" in out, repr(s.out[-1500:]))
+check("S11 pty: unfocused panes keep the rounded border",
+      "\u256d" in out, repr(s.out[-1500:]))
 
 mark = len(s.out)
 s.send(KEY["FocusRoots"], 0.5)  # "r" -> Sources Nav gains Focus, Files Nav loses it
 delta = s.out[mark:].decode("utf-8", "replace")
-check("M9.1 pty: moving Focus to Sources Nav redraws it untinted",
-      re.search(r"48;5;236m[\s\S]{0,60}Wikipedia", delta) is None, repr(delta[:600]))
-check("M9.1 pty: the now-unfocused Files Nav's own unselected row redraws tinted",
-      re.search(r"48;5;236m[\s\S]{0,60}empty", delta) is not None, repr(delta[:900]))
-check("M9.1 pty: the now-unfocused Files Nav's selected row keeps its own reverse-video bar untinted",
-      re.search(r"48;5;236[^m]*;7m|;7;[^m]*48;5;236m", delta) is None, repr(delta[:900]))
+check("S11 pty: moving Focus to the Sources Nav redraws it with the title bar",
+      "48;5;205" in delta, repr(delta[:600]))
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
-check("M9.1 pty: exits 0 after the background-tint check", code == 0, f"exit {code}")
+check("S11 pty: exits 0 after the focus-indicator check", code == 0, f"exit {code}")
 
 done()

@@ -29,6 +29,15 @@ type viewer struct {
 
 	findState find
 
+	// mutedContent/mutedPeekContent are the same rendered document and Peek
+	// in the muted Glamour style (unfocused_style.go; identical line
+	// structure, so the viewport's scroll offset and find highlight carry
+	// over). muted is set on a per-frame copy by model.frame for an
+	// unfocused viewer, and makes view() show them.
+	mutedContent     string
+	mutedPeekContent string
+	muted            bool
+
 	// peek is S7/M7.1's minimal preview state: a document shown in the pane
 	// instead of doc, without becoming the Active Document. The zero value
 	// (peekState{}, doc.isOpen() == false) means not Peeking, the same
@@ -475,6 +484,10 @@ func (v viewer) renderPeek() viewer {
 	v.peek.vp.SetHeight(v.peekContentHeight())
 	v.peek.vp.SetContent(strings.TrimRight(out, "\n"))
 	v.peek.vp.GotoTop()
+	v.mutedPeekContent = ""
+	if m, err := renderMarkdownStyled(v.peek.doc.src, v.peek.vp.Width(), true); err == nil {
+		v.mutedPeekContent = strings.TrimRight(m, "\n")
+	}
 	return v
 }
 
@@ -489,6 +502,7 @@ func (v viewer) render() viewer {
 	v.err = nil
 	v.findState = newFind()
 	v.vp.StyleLineFunc = nil
+	v.mutedContent = ""
 	if !v.doc.isOpen() {
 		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
@@ -506,6 +520,9 @@ func (v viewer) render() viewer {
 		// Glamour pads the document with trailing blank lines; they would
 		// be scrollable emptiness past the end.
 		v.vp.SetContent(strings.TrimRight(out, "\n"))
+		if m, err := renderMarkdownStyled(v.doc.src, v.vp.Width(), true); err == nil {
+			v.mutedContent = strings.TrimRight(m, "\n")
+		}
 	}
 	// A width change reflows Peek (S7, M7.1) exactly like the Active
 	// Document above — render() is the one path both go through on a
@@ -570,6 +587,11 @@ func (v viewer) view() string {
 			// filling to the wrong one would over- or under-fill Peek's box.
 			return v.fill(emptyViewerStyle, v.peek.vp.Width(), v.peek.vp.Height(), v.peek.err.Error())
 		}
+		if v.muted && v.mutedPeekContent != "" {
+			vp := v.peek.vp
+			vp.SetContent(v.mutedPeekContent)
+			return vp.View()
+		}
 		return v.peek.vp.View()
 	}
 	switch {
@@ -578,6 +600,11 @@ func (v viewer) view() string {
 	case !v.doc.isOpen():
 		return v.fill(emptyViewerStyle, v.vp.Width(), v.vp.Height(), emptyViewerText)
 	default:
+		if v.muted && v.mutedContent != "" {
+			vp := v.vp
+			vp.SetContent(v.mutedContent)
+			return vp.View()
+		}
 		return v.vp.View()
 	}
 }

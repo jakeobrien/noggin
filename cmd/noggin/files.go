@@ -34,6 +34,11 @@ const emptyTreeText = "This folder has nothing to show (empty, or everything in 
 type filesNav struct {
 	root *tree.Node
 
+	// unfocused is set on a per-frame copy by model.frame while the pane
+	// lacks focus: its selected row draws as a dim bar and its other text
+	// is muted (unfocused_style.go).
+	unfocused bool
+
 	// wikipedia reports whether the pane is currently showing the Wikipedia
 	// Query Source (C6/M1.4) rather than a Root — root is nil whenever this
 	// is true, mirroring rootsNav's own wikipedia flag (rootsnav.go), but
@@ -723,7 +728,7 @@ func (f filesNav) view() string {
 // (footer.go's joinHints) so the two status lines read consistently.
 func (f filesNav) modeScopeRow() string {
 	text := f.mode.label() + " \u00b7 " + f.scopeLabel()
-	return modeScopeRowStyle.Width(f.width).MaxWidth(f.width).Render(text)
+	return mutedText(modeScopeRowStyle, f.unfocused, true).Width(f.width).MaxWidth(f.width).Render(text)
 }
 
 // rowsView renders the file-list portion of the box at exactly height rows
@@ -754,7 +759,7 @@ func (f filesNav) rowsView(height int) string {
 		if f.root != nil {
 			text = emptyTreeText
 		}
-		return emptyFilesStyle.
+		return mutedText(emptyFilesStyle, f.unfocused, true).
 			Width(f.width).Height(height).
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
@@ -772,7 +777,7 @@ func (f filesNav) flatRowsView(height int) string {
 	rows := f.flatRows()
 	if len(rows) == 0 {
 		text := flatEmptyText(f.mode, f.scope)
-		return emptyFilesStyle.
+		return mutedText(emptyFilesStyle, f.unfocused, true).
 			Width(f.width).Height(height).
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
@@ -842,7 +847,9 @@ func (f filesNav) renderFlatRow(r browseRow, selected bool) string {
 		style = style.Faint(true)
 	}
 	if selected {
-		style = style.Reverse(true)
+		style = selectedRowStyle(style, f.unfocused)
+	} else {
+		style = mutedText(style, f.unfocused, broken)
 	}
 	return style.Width(f.width).MaxWidth(f.width).Render(line)
 }
@@ -889,7 +896,9 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 
 	style := lipgloss.NewStyle()
 	if selected {
-		style = filesSelectedStyle
+		style = selectedRowStyle(style, f.unfocused)
+	} else {
+		style = mutedText(style, f.unfocused, false)
 	}
 	return style.Width(f.width).MaxWidth(f.width).Render(line)
 }

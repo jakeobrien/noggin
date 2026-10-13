@@ -131,8 +131,8 @@ below:
 Only one pane has focus at a time; most keys route to it. Every pane shows
 the key that jumps focus to it, right-aligned on its title row (e.g.
 `Files` ... `[f]`, DV2's `[^o]`) — dropped if the pane is too narrow to fit
-both. See [Focus](#focus) below. An unfocused pane also renders on a subtly
-lighter background, so focus is visible even at a glance — see
+both. See [Focus](#focus) below. The focused pane is drawn with a thick border
+and an accent-coloured title bar, so focus is visible at a glance — see
 [Focus](#focus).
 
 ## Keybindings
@@ -249,10 +249,15 @@ There's no Tab-cycling. Each pane's own focus key is shown right-aligned on
 its title row (`Files` ... `[f]`, DV2's `[^o]`), dropped if the pane is too
 narrow for both title and badge.
 
-Every unfocused pane (Sources Nav, Files Nav, DV1, DV2) also renders on a
-subtly lighter background than the terminal's own; the focused pane keeps
-the terminal's plain background. It's a second, glanceable cue alongside
-each pane's border colour, not a replacement for it.
+The focused pane is drawn with a thick border and its title row becomes a
+full-width accent-coloured bar; unfocused panes keep the thin rounded border
+and a plain bold title. (A Document Viewer that is Peeking keeps its inverted
+Peek header even while focused.)
+
+Unfocused panes also recede: a Sources or Files Nav's selected row becomes a dim
+grey bar (instead of a bright reverse-video one) and its other text is muted,
+and an unfocused Document Viewer shows its document in a desaturated, darker
+version of the colour scheme. Focusing a pane restores full colour.
 
 Once a Document Viewer holds focus, its local commands — Find, Edit, star,
 scrolling, history — act on that viewer's own document only.

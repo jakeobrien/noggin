@@ -204,9 +204,18 @@ func expandTabs(src []byte) []byte {
 // Frontmatter is stripped first (D5). Width is the number of cells the result
 // may occupy; a non-positive width renders unwrapped.
 func renderMarkdown(src []byte, width int) (string, error) {
+	return renderMarkdownStyled(src, width, false)
+}
+
+// renderMarkdownStyled is renderMarkdown with a muted option
+// (unfocused_style.go): muted renders from the derived muted stylesheet, and falls
+// back to the normal render where there is none (the no-TTY style).
+func renderMarkdownStyled(src []byte, width int, muted bool) (string, error) {
 	style := markdownStyle()
 	var styleOption glamour.TermRendererOption
-	if path, ok := customStylePaths[style]; ok {
+	if mutedJSON, err := mutedStyleJSON(); muted && err == nil && mutedJSON != nil {
+		styleOption = glamour.WithStylesFromJSONBytes(mutedJSON)
+	} else if path, ok := customStylePaths[style]; ok {
 		jsonBytes, err := customStyleFiles.ReadFile(path)
 		if err != nil {
 			// Only reachable if an embed path above is a typo — the file is

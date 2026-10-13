@@ -354,7 +354,7 @@ func TestLocationLineNeverClaimsARowAtAPathologicallyShortTerminal(t *testing.T)
 	if len(lines) != 4 {
 		t.Fatalf("frame has %d lines, want 4", len(lines))
 	}
-	if !strings.Contains(lines[2], "╰") {
+	if !strings.ContainsAny(lines[2], "╰┗") {
 		t.Errorf("DV1's own bottom border row is missing (line 2 = %q) — the pane never closes", lines[2])
 	}
 }
@@ -406,7 +406,7 @@ func TestPeekLocationLineNeverClaimsARowAtAPathologicallyShortTerminal(t *testin
 	if len(lines) != 4 {
 		t.Fatalf("frame has %d lines, want 4", len(lines))
 	}
-	if !strings.Contains(lines[2], "╰") {
+	if !strings.ContainsAny(lines[2], "╰┗") {
 		t.Errorf("DV1's own bottom border row is missing (line 2 = %q) — the pane never closes", lines[2])
 	}
 }

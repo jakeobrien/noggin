@@ -1245,7 +1245,7 @@
 
 ## D118: Focus indicated by background — inactive panes lighter, as an evaluation
 
-- Status: decided
+- Status: superseded by D135
 - Cycle: C6
 - Date: 2026-09-07
 - Context: Focus is currently border colour only (205 vs 240, 256-colour palette, no
@@ -1558,7 +1558,7 @@
 
 ## D134: M9.1's S11 background tint is a post-render SGR-tracking pass over already-rendered content, not per-style `Background()` calls threaded through every row renderer; tint colour is ANSI256 236
 
-- Status: decided
+- Status: superseded by D135 (`tintPaneBackground` removed)
 - Cycle: C6
 - Date: 2026-09-09
 - Context: S11 asks every unfocused pane (rootsPane, filesPane, dv1Pane, dv2Pane) to render on
@@ -1598,3 +1598,49 @@
   its colour constant) is the piece worth keeping or deliberately superseding, since the reflow
   interaction it works around is a lipgloss v2 property, not specific to this shade of grey.
 
+## D135: Focus is shown by a thick border and an accent title bar; the background tint (D118/D134) is retired
+
+- Status: decided
+- Date: 2026-09-10
+- Supersedes: D118, D134
+- Context: D134's tint needed a hand-rolled SGR state machine (`tintPaneBackground`) that had
+  to dodge three lipgloss/Glamour hazards (nested resets, reverse video, reflow re-asserting SGR
+  across `"\n"` — `lipgloss-reflow-sgr-continuity.md`), and still left "holes" in Glamour
+  output. Candidate treatments were prototyped side by side behind a cycling key and compared
+  live.
+- Decision: the focused pane gets `lipgloss.ThickBorder()` in the existing accent colour (205)
+  and a full-width title bar (bold dark text on 205, badge kept). Unfocused panes are unchanged
+  (rounded 240 border, bold title). A Peeking/fetching viewer keeps its inverted header (S7)
+  even when focused. The Picker's prompt box keeps its rounded accent border. No post-render
+  ANSI rewriting is involved: both cues are plain lipgloss styles chosen in `renderPane`, and
+  every border shape is one cell wide so layout is unaffected.
+- Why: robust (no escape parsing), works without colour, and reads clearly at a glance.
+- Unfocused-pane dimming is a separate decision: D136.
+
+## D136: Unfocused panes recede: dim selection bar, muted nav text, muted Glamour render
+
+- Status: decided
+- Date: 2026-09-10
+- Context: with D135's border and title bar marking focus, the remaining question was how much
+  to dim everything else. Six combinations were prototyped behind a cycling key and compared
+  live; "dim bar + muted documents" won.
+- Decision (`cmd/noggin/unfocused_style.go`):
+  - A nav pane's selected row while unfocused is a plain grey background (ANSI 238, 252 on a
+    light theme) instead of reverse video. Not `Reverse`+`Faint`: Faint on a reverse-video row
+    dims the text on some terminals and the bar on others; a grey background dims the bar
+    reliably and leaves the text at full intensity.
+  - An unfocused nav pane's other text takes a muted foreground (246; 241 for text that is
+    already de-emphasised: paths, mode/scope line, empty states). Selected rows are not muted,
+    so selection styling stays independent.
+  - An unfocused Document Viewer (including its Peek) shows a second Glamour render from a
+    stylesheet derived at runtime from the embedded dark/light JSON: every `color` and
+    `background_color`, Chroma's palette included, desaturated 60% and pushed toward the
+    background. Same line structure as the normal render, so scroll offset and find highlight
+    carry over. The no-TTY style has no colours and renders normally.
+  - The unfocused state is applied to per-frame copies in `model.frame`, never stored on the
+    model.
+- Why: every choice is made where a style is built, or by re-rendering from a derived
+  stylesheet; no ANSI post-processing, so none of D134's lipgloss reset/reflow hazards apply.
+- Cost / revisit: each viewer renders its document (and Peek) twice on every render. Fine for
+  typical documents; if large ones feel slow, render the muted copy lazily or cache it. Muted
+  colours are truecolor hex and rely on Bubble Tea downsampling for 256-colour terminals.

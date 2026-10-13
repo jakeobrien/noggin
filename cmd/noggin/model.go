@@ -1985,6 +1985,17 @@ var (
 			BorderForeground(lipgloss.Color("240"))
 	focusedBorderStyle = borderStyle.
 				BorderForeground(lipgloss.Color("205"))
+	// focusedPaneBorderStyle is the focused pane's border (S11): thick, in
+	// the same accent colour as focusedBorderStyle (which the Picker's own
+	// prompt box keeps using, unchanged). Every border shape is one cell
+	// wide, so thick vs rounded never moves layout.
+	focusedPaneBorderStyle = focusedBorderStyle.Border(lipgloss.ThickBorder())
+	// focusedTitleStyle is the focused pane's title bar (S11): bold dark
+	// text on the border's own accent colour, so the two read as one cue.
+	focusedTitleStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("0")).
+				Background(lipgloss.Color("205"))
 	titleStyle  = lipgloss.NewStyle().Bold(true)
 	footerStyle = lipgloss.NewStyle().
 			Foreground(dimColor)
@@ -2041,17 +2052,26 @@ func (m model) frame() string {
 	}
 	l := m.layout()
 
+	// Per-frame copies carry the unfocused styling (unfocused_style.go)
+	// into the view methods without touching model state.
+	roots, files, dv1 := m.roots, m.files, m.dv1
+	roots.unfocused = m.focus != rootsPane
+	files.unfocused = m.focus != filesPane
+	dv1.muted = m.focus != dv1Pane
+
 	dv1Rect, dv2Rect := l.splitViewer(m.dv2 != nil)
-	dv1Content := m.composeViewerContent(dv1Pane, dv1Rect.content().width, m.dv1.view())
+	dv1Content := m.composeViewerContent(dv1Pane, dv1Rect.content().width, dv1.view())
 	body := m.renderPane(dv1Pane, dv1Rect, dv1Content)
 	if m.dv2 != nil {
-		dv2Content := m.composeViewerContent(dv2Pane, dv2Rect.content().width, m.dv2.view())
+		dv2 := *m.dv2
+		dv2.muted = m.focus != dv2Pane
+		dv2Content := m.composeViewerContent(dv2Pane, dv2Rect.content().width, dv2.view())
 		body = lipgloss.JoinHorizontal(lipgloss.Top, body, m.renderPane(dv2Pane, dv2Rect, dv2Content))
 	}
 	if l.navigatorWidth() > 0 {
 		navigator := lipgloss.JoinVertical(lipgloss.Left,
-			m.renderPane(rootsPane, l.roots, m.roots.view()),
-			m.renderPane(filesPane, l.files, m.files.view()),
+			m.renderPane(rootsPane, l.roots, roots.view()),
+			m.renderPane(filesPane, l.files, files.view()),
 		)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, navigator, body)
 	}
@@ -2077,7 +2097,7 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	style := borderStyle
 	focused := m.focus == p
 	if focused {
-		style = focusedBorderStyle
+		style = focusedPaneBorderStyle
 	}
 	// S7/M7.1: a Peeked document gets the inverted header instead of the
 	// title row every other pane (and the Active Document) draws with
@@ -2087,19 +2107,21 @@ func (m model) renderPane(p pane, r rect, content string) string {
 	// C6/M4.2: an in-flight fetch gets the same inverted header Peek does
 	// (below) — neither is the Active Document's own title, so neither
 	// should read like one.
-	if (p == dv1Pane || p == dv2Pane) && (m.viewerFor(p).peeking() || m.viewerFor(p).fetching()) {
+	inverted := (p == dv1Pane || p == dv2Pane) && (m.viewerFor(p).peeking() || m.viewerFor(p).fetching())
+	if inverted {
 		titleRenderStyle = peekTitleStyle
 	}
-	title := titleRenderStyle.Render(titleRow(m.paneTitle(p), p.focusBadge(), r.content().width))
-	// S11/M9.1: the tint applies to the title row and content alike — the
-	// whole pane except its border, whose own colour cue (borderStyle vs
-	// focusedBorderStyle above) stays exactly as it was. Applied here, not
-	// inside renderBox, so the Picker's own unrelated renderBox call sites
-	// (no per-pane Focus of their own) are untouched.
-	if !focused {
-		title = tintPaneBackground(title)
-		content = tintPaneBackground(content)
+	row := titleRow(m.paneTitle(p), p.focusBadge(), r.content().width)
+	// S11: the focused pane's title is a full-width accent bar, alongside
+	// its thick border. An inverted (Peek/fetch) header keeps its own look
+	// so it stays distinguishable from the Active Document's title.
+	if focused && !inverted {
+		if pad := r.content().width - lipgloss.Width(row); pad > 0 {
+			row += strings.Repeat(" ", pad)
+		}
+		titleRenderStyle = focusedTitleStyle
 	}
+	title := titleRenderStyle.Render(row)
 	return renderBox(style, r, title, content)
 }
 

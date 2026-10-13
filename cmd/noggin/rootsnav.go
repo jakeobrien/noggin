@@ -57,6 +57,11 @@ type rootsNav struct {
 	wikipedia bool
 	selected  int // index into rows the cursor sits on
 
+	// unfocused is set on a per-frame copy by model.frame while the pane
+	// lacks focus: its selected row draws as a dim bar and its other text
+	// is muted (unfocused_style.go).
+	unfocused bool
+
 	storePath string
 
 	// renaming is true while the Sources Nav's rename input (S8/M7.2) has
@@ -400,10 +405,13 @@ func (r rootsNav) renderRow(idx int) []string {
 	line2 := leftTruncate(row.root.path, r.width)
 
 	if idx == r.selected {
-		style2 = style2.Reverse(true)
+		style2 = selectedRowStyle(style2, r.unfocused)
 		if !editingThisRow {
-			style1 = style1.Reverse(true)
+			style1 = selectedRowStyle(style1, r.unfocused)
 		}
+	} else {
+		style1 = mutedText(style1, r.unfocused, false)
+		style2 = mutedText(style2, r.unfocused, true)
 	}
 	return []string{
 		style1.Width(r.width).MaxWidth(r.width).Render(line1),
@@ -431,8 +439,11 @@ func (r rootsNav) renderWikipediaRow() []string {
 
 	style1, style2 := rootsNameStyle, rootsPathStyle
 	if r.selectedIsWikipedia() {
-		style1 = style1.Reverse(true)
-		style2 = style2.Reverse(true)
+		style1 = selectedRowStyle(style1, r.unfocused)
+		style2 = selectedRowStyle(style2, r.unfocused)
+	} else {
+		style1 = mutedText(style1, r.unfocused, false)
+		style2 = mutedText(style2, r.unfocused, true)
 	}
 	return []string{
 		style1.Width(r.width).MaxWidth(r.width).Render(line1),
