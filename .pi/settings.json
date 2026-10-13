@@ -2,8 +2,5 @@
   "enableInstallTelemetry": false,
   "enabledModels": [
     "claude-*"
-  ],
-  "packages": [
-    "git:git@git.sr.ht:~jakeo/charm@v2.0"
   ]
 }
