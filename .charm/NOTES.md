@@ -354,3 +354,18 @@ Considerations:
 - agent chat pane
 - scrap notes
 
+
+
+## Issues
+
+### Wikipedia
+- Description in preview
+- Search seems to exclude mid-title text: "cognitive bias" does not find "List of cognitive biases"
+
+### Files
+- focus in Files Nav
+
+### Polish
+- in Sources Nav:
+    - star causes misalignment of start of names of sources
+- highlighting in Files and Sources: disconnect between what's focused and active
