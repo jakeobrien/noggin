@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -461,6 +462,8 @@ func (m model) togglePickerFilter() (model, tea.Cmd) {
 	next := m.files.fileFilter().Toggled()
 	if m.files.root == nil {
 		m.files = m.files.withLastFilter(next)
+		// The title shows no filter in Wikipedia mode, so say what it is now.
+		m.message = fmt.Sprintf("File Filter: %s", next)
 	} else {
 		var ok bool
 		if m, ok = m.setActiveRootFilter(next); !ok {

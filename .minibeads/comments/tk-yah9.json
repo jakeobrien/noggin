@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-yah9-c6462567192",
+    "issue_id": "tk-yah9",
+    "author": "noggin",
+    "body": "alt+a in Wikipedia mode now sets Footer 'File Filter: <value>'; a Text-file launch switches a starred cwd Root to All and reveals/selects the file (filesNav.withRevealed). README updated; Help lists bindings only, so unchanged.",
+    "created_at": "2026-10-14T21:03:55.469667430Z",
+    "updated_at": "2026-10-14T21:03:55.469667430Z"
+  }
+]

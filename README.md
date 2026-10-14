@@ -243,7 +243,7 @@ leave. Everything else is on a non-printable key:
 | `tab` | switch mode: File → Grep → Wikipedia → File … (the typed query carries over) |
 | `shift+tab` | switch Scope (no-op in Wikipedia mode, which has none — see below) |
 | `alt+h` | toggle hiding dotfiles from the Results, for the rest of this session (File/Grep only) |
-| `alt+a` | toggle the File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown); it changes nothing visible in Wikipedia mode) |
+| `alt+a` | toggle the File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown); in Wikipedia mode the Footer names the new value) |
 | `alt+s` | star / unstar the selected Result (file or article) |
 | `enter` | activate the selected Result into DV1 (fetches an article, then renders it) |
 | `ctrl+enter` (fallback `ctrl+l`) | activate the selected Result into DV2 instead, creating it if needed |
@@ -396,8 +396,9 @@ What the Tree lists is set by the **File Filter**, `Markdown` or `All`:
 
 Press `a` in the Files Nav to toggle the Active Root's filter. Each Root keeps
 its own, for the rest of the session; a Root you have not toggled is on
-`Markdown`, except that launching `noggin <file>` on a Text file starts its
-ad-hoc Root on `All`, so the file you opened is in the Tree. The Tree's status
+`Markdown`, except that launching `noggin <file>` on a Text file starts the
+cwd Root (ad-hoc, or already starred) on `All`, so the file you opened is in
+the Tree, selected. Launching on a Markdown file leaves it on `Markdown`. The Tree's status
 row names the filter, e.g. `Tree · - · All`. With Wikipedia active there is no
 Root and so no filter: `a` does nothing but say so in the Footer.
 
@@ -699,7 +700,8 @@ applied to every Root searched, so `All Roots` never mixes two filters. `All`
 means Markdown plus non-binary files: ripgrep's file list is run through the
 same binary check as the Tree, and Grep already skips binaries. The `Starred`
 scope ignores the filter, and so does Wikipedia mode (`alt+a` there still
-flips the stored value, for when you switch back to File or Grep). With Wikipedia as the
+flips the stored value, for when you switch back to File or Grep, and the
+Footer says what it is now, e.g. `File Filter: All`). With Wikipedia as the
 Active Source there is no Active Root, so the Picker uses the most recently set
 filter value (or `Markdown`), and `alt+a` toggles that value. The filter is
 named in the title, e.g. `Grep · All Roots · All` (left off in `Starred` scope

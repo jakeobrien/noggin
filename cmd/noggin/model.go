@@ -455,6 +455,10 @@ func (m model) applyResolution(res resolution) model {
 		} else {
 			m = m.openDocument(doc)
 		}
+		if res.startsOnAll() {
+			// A Text file launched on `All` shows in the Files Nav, selected.
+			m.files = m.files.withRevealed(res.docPath)
+		}
 	}
 	return m
 }

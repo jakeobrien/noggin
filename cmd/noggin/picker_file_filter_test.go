@@ -287,4 +287,15 @@ func TestPickerFileFilterIsNamedInNoWikipediaModeTitle(t *testing.T) {
 	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "Wikipedia · -" {
 		t.Errorf("title after alt+a = %q", got)
 	}
+	if m.message != "File Filter: All" {
+		t.Errorf("message after alt+a = %q, want it to name the new File Filter", m.message)
+	}
+	m, _ = pressPickerFilter(t, m)
+	if m.message != "File Filter: Markdown" {
+		t.Errorf("message after the second alt+a = %q", m.message)
+	}
+	m, _ = pressPickerFilter(t, m)
+	if got := m.files.fileFilter(); got != tree.FilterAll {
+		t.Errorf("filter the next Picker opened from Wikipedia uses = %v, want All", got)
+	}
 }

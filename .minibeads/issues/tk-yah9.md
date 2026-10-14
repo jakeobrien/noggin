@@ -1,6 +1,6 @@
 ---
 title: 'File Filter edge cases: alt+a feedback in Wikipedia mode, launched Text file in a starred Root'
-status: open
+status: closed
 priority: 2
 issue_type: bug
 labels:
@@ -9,7 +9,8 @@ depends_on:
   tk-0ta: parent-child
   tk-ybh: blocks
 created_at: 2026-10-14T20:44:32.138138251+00:00
-updated_at: 2026-10-14T20:44:32.140374959+00:00
+updated_at: 2026-10-14T21:03:55.476824222+00:00
+closed_at: 2026-10-14T21:03:55.476824097+00:00
 ---
 
 # Description

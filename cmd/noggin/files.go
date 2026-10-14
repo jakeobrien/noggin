@@ -386,6 +386,22 @@ func (f filesNav) nearestSurvivingIndex(path string) int {
 	return 0
 }
 
+// withRevealed expands every folder above path inside the Root and selects
+// path's row, so a file the pane did not start on is visible and selected. A
+// path outside the Root, or not in its tree, changes nothing.
+func (f filesNav) withRevealed(path string) filesNav {
+	if f.root == nil || f.mode != treeBrowse {
+		return f
+	}
+	for dir := filepath.Dir(path); dir != f.root.Path && dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+		f = f.withExpanded(dir, true)
+	}
+	if i := f.rowIndexOf(path); i >= 0 {
+		f.selected = i
+	}
+	return f
+}
+
 // filterFor is the File Filter of the Root at path (tree.FilterMarkdown for
 // one never set).
 func (f filesNav) filterFor(path string) tree.Filter {

@@ -54,11 +54,11 @@ type resolution struct {
 
 // startsOnAll reports whether the active Root starts on the File Filter `All`
 // (D140): launching `noggin <file>` on a Text file puts the file in the Tree
-// beside it. Only the ad-hoc Root qualifies — a starred cwd Root keeps the
-// default — and a file noggin would refuse to open (binary, oversize) does not
-// count, since it is never shown.
+// beside it, whether the launch directory is an ad-hoc or an already starred
+// Root. A file noggin would refuse to open (binary, oversize) does not count,
+// since it is never shown.
 func (r resolution) startsOnAll() bool {
-	if r.docPath == "" || r.active < 0 || r.active >= len(r.roots) || r.roots[r.active].starred {
+	if r.docPath == "" || r.active < 0 || r.active >= len(r.roots) {
 		return false
 	}
 	return !tree.IsMarkdown(filepath.Base(r.docPath)) && tree.CheckOpenable(r.docPath) == nil

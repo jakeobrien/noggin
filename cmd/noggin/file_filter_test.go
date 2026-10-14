@@ -231,11 +231,40 @@ func TestLaunchOnAMarkdownFileOrADirectoryStaysOnMarkdown(t *testing.T) {
 	}
 }
 
-func TestLaunchOnATextFileLeavesAStarredCwdRootOnMarkdown(t *testing.T) {
+func TestLaunchOnATextFileSwitchesAStarredCwdRootToAll(t *testing.T) {
 	dir := filterRoot(t)
-	m := newModel().applyResolution(resolveFile(filepath.Join(dir, "main.go"), dir, []root{{path: dir, starred: true}}))
+	starred := []root{{path: dir, starred: true}}
+	m := sized(t, newModel().applyResolution(resolveFile(filepath.Join(dir, "main.go"), dir, starred)), 80, 24)
+	if got := m.files.filterFor(dir); got != tree.FilterAll {
+		t.Errorf("starred Root filter = %v, want All", got)
+	}
+	if got := m.files.fileFilter(); got != tree.FilterAll || m.files.lastFilter != tree.FilterAll {
+		t.Errorf("most recently set filter = %v, want All", m.files.lastFilter)
+	}
+	if !containsRow(m.files, "main.go") {
+		t.Fatalf("rows = %v, want the launched file in the Tree", rowNames(m.files))
+	}
+	if got := m.files.selectedNode(); got == nil || got.Name != "main.go" {
+		t.Errorf("selection = %v, want the launched file", got)
+	}
+}
+
+func TestLaunchOnANestedTextFileRevealsItInTheFilesNav(t *testing.T) {
+	dir := filterRoot(t)
+	for _, starred := range []bool{false, true} {
+		roots := []root{{path: dir, starred: starred}}
+		m := newModel().applyResolution(resolveFile(filepath.Join(dir, "docs", "notes.txt"), dir, roots[:boolToInt(starred)]))
+		if got := m.files.selectedNode(); got == nil || got.Name != "notes.txt" {
+			t.Errorf("starred=%v: selection = %v, want the launched nested file", starred, got)
+		}
+	}
+}
+
+func TestLaunchOnAMarkdownFileLeavesAStarredCwdRootOnMarkdown(t *testing.T) {
+	dir := filterRoot(t)
+	m := newModel().applyResolution(resolveFile(filepath.Join(dir, "README.md"), dir, []root{{path: dir, starred: true}}))
 	if got := m.files.filterFor(dir); got != tree.FilterMarkdown {
-		t.Errorf("starred Root filter = %v, want Markdown (only the ad-hoc Root starts on All)", got)
+		t.Errorf("starred Root filter = %v, want Markdown", got)
 	}
 }
 
@@ -311,4 +340,11 @@ func TestRefreshKeepsTheRootsFileFilter(t *testing.T) {
 	if !containsRow(m.files, "main.go") {
 		t.Errorf("rows after refresh = %v, want the All filter still applied", rowNames(m.files))
 	}
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
