@@ -381,6 +381,12 @@ func TestRenderModeToggleDuringPeekCarriesActiveDocumentUnderneath(t *testing.T)
 		before := m.viewerFor(p)
 		m = press(t, m, keys.RenderMode.Keys()[0])
 		after := m.viewerFor(p)
+		if after.findState.matches[after.findState.current].line < 0 {
+			t.Fatalf("pane %v: no current match line", p)
+		}
+		if got, want := after.vp.YOffset(), after.findState.matches[after.findState.current].line; got > want || want >= got+after.vp.Height() {
+			t.Errorf("pane %v: Active Document offset %d does not show the current match (row %d)", p, got, want)
+		}
 		if got := after.findState.input.Value(); got != "item 5" {
 			t.Errorf("pane %v: Active Document find query = %q, want kept", p, got)
 		}

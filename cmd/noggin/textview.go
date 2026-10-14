@@ -75,14 +75,15 @@ func (v viewer) shownDoc() document {
 // query, is re-run in the new mode, and keeps the current match by occurrence
 // ordinal, as D34 maps one; a Grep landing that fell back to the first match in
 // Markdown lands on ripgrep's exact location in Text instead. With no find
-// active the scroll position is kept as a proportion of the document.
+// active the scroll position is kept as a proportion of the document. A Peek
+// is re-rendered too, keeping its own proportional scroll position; the Active
+// Document under it is carried as above.
 func (v viewer) toggleMode() viewer {
 	prev, was, frac := v.findState, v.docMode, v.scrollFraction()
 	peekFrac := scrollFractionOf(v.peek.vp)
 	v.mode = v.mode.toggled()
 	v = v.render()
-	// The Peek re-renders from the top; it is the Peek's own place that is
-	// carried, the Active Document's being carried below.
+	// renderPeek lands on the top; restore the Peek's own proportional place.
 	if v.peeking() {
 		scrollToFraction(&v.peek.vp, peekFrac)
 	}
