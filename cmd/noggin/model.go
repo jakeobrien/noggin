@@ -1523,7 +1523,7 @@ func (m model) Init() tea.Cmd {
 	return m.scheduleStaleCheck()
 }
 
-// Update applies msg (update) and then re-syncs the sidebar panes' scroll
+// Update runs update and then re-syncs the sidebar panes' scroll
 // offsets (tk-ew1) to whatever selection, row set and size the message left
 // behind, so every path that moves a cursor or reshapes a list — keys, wheel,
 // store writes, resize — keeps the persisted window offset current in one

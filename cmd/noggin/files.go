@@ -790,7 +790,7 @@ func (f filesNav) rowsView(height int) string {
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
 	}
-	return windowedViewRows(f.width, height, f.scrollOffsetFor(), len(rows), 1, func(idx int) []string {
+	return windowedViewRows(f.width, height, scrollOffset(f.offset, f.selected, len(rows), height), len(rows), 1, func(idx int) []string {
 		return []string{f.renderRow(rows[idx], idx == f.selected)}
 	})
 }
@@ -808,7 +808,7 @@ func (f filesNav) flatRowsView(height int) string {
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
 	}
-	return windowedViewRows(f.width, height, f.scrollOffsetFor(), len(rows), 1, func(idx int) []string {
+	return windowedViewRows(f.width, height, scrollOffset(f.offset, f.selected, len(rows), height), len(rows), 1, func(idx int) []string {
 		return []string{f.renderFlatRow(rows[idx], idx == f.selected)}
 	})
 }

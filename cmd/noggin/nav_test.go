@@ -169,7 +169,7 @@ func TestRootsNavScrollsWithMarginInTwoLineRows(t *testing.T) {
 	if r.offset != 15 {
 		t.Fatalf("offset at last row = %d, want 15", r.offset)
 	}
-	r = r.move(-1).move(-1).syncScroll() // cursor 17: above top margin line (16)? no: 17 > 16
+	r = r.move(-1).move(-1).syncScroll() // cursor 17: still below the top margin line (16)
 	if r.offset != 15 {
 		t.Fatalf("offset after 2 ups = %d, want 15", r.offset)
 	}
@@ -203,5 +203,20 @@ func TestModelUpdatePersistsFilesNavOffset(t *testing.T) {
 	m = press(t, m, keys.LineUp.Keys()[0])
 	if m.files.offset != bottom {
 		t.Errorf("offset after one Up = %d, want unchanged %d", m.files.offset, bottom)
+	}
+}
+
+// TestPickerListsKeepEdgePinnedScrolling pins the decision that only the
+// sidebar panes margin-scroll: the Picker's lists scroll the selection just
+// onto the last row.
+func TestPickerListsKeepEdgePinnedScrolling(t *testing.T) {
+	render := func(selected int) string {
+		return windowedView(10, 4, selected, 20, func(idx int) string { return fmt.Sprintf("row%02d", idx) })
+	}
+	if got := strings.SplitN(render(3), "\n", 2)[0]; got != "row00" {
+		t.Errorf("selection on last visible row: first row = %q, want row00", got)
+	}
+	if got := strings.SplitN(render(4), "\n", 2)[0]; got != "row01" {
+		t.Errorf("selection one past the window: first row = %q, want row01", got)
 	}
 }
