@@ -1,6 +1,6 @@
 ---
 title: Classify Markdown, Text and binary files; refuse binary and oversize opens
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -8,7 +8,8 @@ labels:
 depends_on:
   tk-0ta: parent-child
 created_at: 2026-10-14T18:19:25.169292474+00:00
-updated_at: 2026-10-14T18:19:25.169292474+00:00
+updated_at: 2026-10-14T18:30:27.927157790+00:00
+closed_at: 2026-10-14T18:30:27.927157748+00:00
 ---
 
 # Description

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-qei-ce55eaa641e",
+    "issue_id": "tk-qei",
+    "author": "noggin",
+    "body": "Implemented: tree.IsMarkdown, tree.CheckOpenable (NUL sniff cached by path/mtime/size, 10MB cap), refusal on all open routes via loadDocument/cannotOpen, README updated.",
+    "created_at": "2026-10-14T18:30:27.921774831Z",
+    "updated_at": "2026-10-14T18:30:27.921774831Z"
+  }
+]
