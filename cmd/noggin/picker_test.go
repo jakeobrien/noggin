@@ -837,9 +837,9 @@ func TestPickerActivateGrepResultCommitsFindWithNextPreviousTraversal(t *testing
 }
 
 // TestPickerPreviewShowsSelectedFileRawFromTop is M3.2's own acceptance
-// criterion: the Preview pane's content is the selected Result's raw file
-// bytes, byte for byte — no Glamour styling — and starts scrolled to the
-// top.
+// criterion, as D140 amends it: the Preview pane's content is the selected
+// Result's raw file bytes — no Glamour styling — laid out by the Text
+// renderer, and starts scrolled to the top.
 func TestPickerPreviewShowsSelectedFileRawFromTop(t *testing.T) {
 	requireRipgrep(t)
 	m, _ := pickerRoot(t)
@@ -856,8 +856,9 @@ func TestPickerPreviewShowsSelectedFileRawFromTop(t *testing.T) {
 		t.Fatalf("reading %s: %v", selected.path, err)
 	}
 
-	if got := m.picker.preview.GetContent(); got != string(want) {
-		t.Errorf("preview content = %q, want the raw bytes of %s: %q", got, filepath.Base(selected.path), want)
+	wantContent := renderText(want, m.picker.preview.Width(), false)
+	if got := m.picker.preview.GetContent(); got != wantContent {
+		t.Errorf("preview content = %q, want the Text render of %s: %q", got, filepath.Base(selected.path), wantContent)
 	}
 	if !m.picker.preview.AtTop() {
 		t.Error("preview did not start at the top")
@@ -890,8 +891,9 @@ func TestPickerPreviewRetargetsOnSelectionChange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading %s: %v", secondPath, err)
 	}
-	if got := m.picker.preview.GetContent(); got != string(want) {
-		t.Errorf("preview content after selection moved = %q, want %s's raw bytes %q", got, filepath.Base(secondPath), want)
+	wantContent := renderText(want, m.picker.preview.Width(), false)
+	if got := m.picker.preview.GetContent(); got != wantContent {
+		t.Errorf("preview content after selection moved = %q, want %s's Text render %q", got, filepath.Base(secondPath), wantContent)
 	}
 	if got := m.picker.preview.GetContent(); got == firstContent {
 		t.Error("preview content unchanged after selection moved to a different file")
@@ -992,11 +994,7 @@ func numberedLinesFixture(t *testing.T, dir, name string, n, matchLine int, text
 // TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight is M4.2's
 // own acceptance criterion (S9): activating a Grep search whose match sits
 // deep in a long file leaves the Preview scrolled so that line is within
-// the visible window, and carries the highlight style (StyleLineFunc,
-// reused from find.go's own whole-line-reverse-video convention —
-// .charm/knowledge/viewport-search-ansi-offsets.md is why a line-level
-// style is used here rather than viewport.Model's own column-level
-// SetHighlights).
+// the visible window, and carries the highlight style (D140: the exact span, not the whole line).
 func TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -1017,20 +1015,20 @@ func TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight(t *testing.T) 
 		t.Fatalf("setup is broken: matched line = %d, want %d", got, matchLine)
 	}
 
-	idx := matchLine - 1 // viewport lines are 0-based; grep's are rg's 1-based
+	idx := matchLine - 1 // short lines: one row each, so rows are 0-based line numbers
 	yOff, height := m.picker.preview.YOffset(), m.picker.preview.Height()
 	if idx < yOff || idx >= yOff+height {
 		t.Fatalf("matched line %d (0-based) not within the visible window [%d, %d)", idx, yOff, yOff+height)
 	}
 
-	if m.picker.preview.StyleLineFunc == nil {
-		t.Fatal("preview.StyleLineFunc is nil, want the matched line highlighted")
+	// D140: only the matched span is reversed, not the whole line.
+	rows := strings.Split(m.picker.preview.GetContent(), "\n")
+	want := gutterStyle.Render(fmt.Sprintf("%3d ", matchLine)) + "the target " + matchSpanStyle.Render("report") + " line"
+	if rows[idx] != want {
+		t.Errorf("matched row = %q, want %q", rows[idx], want)
 	}
-	if !m.picker.preview.StyleLineFunc(idx).GetReverse() {
-		t.Errorf("StyleLineFunc(%d) is not reverse-styled, want the matched line highlighted", idx)
-	}
-	if m.picker.preview.StyleLineFunc(idx - 1).GetReverse() {
-		t.Errorf("StyleLineFunc(%d) is reverse-styled, want only the matched line highlighted", idx-1)
+	if rows[idx-1] != gutterStyle.Render(fmt.Sprintf("%3d ", matchLine-1))+fmt.Sprintf("filler line %d", matchLine-1) {
+		t.Errorf("row before the match = %q, want it plain", rows[idx-1])
 	}
 }
 
@@ -1082,11 +1080,12 @@ func TestPickerGrepPreviewRetargetsWithinTheSameFile(t *testing.T) {
 	if got := m.picker.preview.YOffset(); got != secondIdx {
 		t.Errorf("YOffset = %d after moving to the second match, want %d (re-targeted despite same file)", got, secondIdx)
 	}
-	if !m.picker.preview.StyleLineFunc(secondIdx).GetReverse() {
-		t.Errorf("StyleLineFunc(%d) is not reverse-styled after re-targeting", secondIdx)
+	rows := strings.Split(m.picker.preview.GetContent(), "\n")
+	if !strings.Contains(rows[secondIdx], matchSpanStyle.Render("report")) {
+		t.Errorf("row %d = %q, want the match span highlighted after re-targeting", secondIdx, rows[secondIdx])
 	}
-	if m.picker.preview.StyleLineFunc(firstIdx).GetReverse() {
-		t.Errorf("StyleLineFunc(%d) (the previous match's line) is still reverse-styled", firstIdx)
+	if strings.Contains(rows[firstIdx], matchSpanStyle.Render("report")) {
+		t.Errorf("row %d = %q (the previous match's line) is still highlighted", firstIdx, rows[firstIdx])
 	}
 }
 
@@ -1853,5 +1852,74 @@ func TestPickerGrepModeWiresToGrepPickerFilesAndRendersRows(t *testing.T) {
 	}
 	if !strings.Contains(joined, "reporting.md:1") {
 		t.Errorf("rendered modal is missing a reporting.md:1 row\n%s", joined)
+	}
+}
+
+// TestPickerGrepPreviewMatchesTextViewerAfterActivation is tk-uld's
+// acceptance criterion (D140): the Preview of a Grep Result is what a
+// Text-mode viewer shows once the Result is activated — soft wrap, expanded
+// tabs, the gutter and the exact match span — here on a line that wraps and
+// carries a tab before the match.
+func TestPickerGrepPreviewMatchesTextViewerAfterActivation(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	long := "\tintro " + strings.Repeat("word ", 30) + "needle tail " + strings.Repeat("more ", 10)
+	writeFileContent(t, filepath.Join(dir, "wrap.md"), "first line\n"+long+"\nlast line\n")
+
+	m := openedFixture(t, 80, 24).withRipgrep(detectRipgrep())
+	m.dv1.mode = modeText
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+	m, seqs := typePickerQuery(t, m, "needle")
+	m, _ = deliverPickerTicks(t, m, seqs)
+	if len(m.picker.results.grep) != 1 {
+		t.Fatalf("setup is broken: %d grep results", len(m.picker.results.grep))
+	}
+
+	preview := m.picker.preview
+	if rows := strings.Count(preview.GetContent(), "\n") + 1; rows < 5 {
+		t.Fatalf("setup is broken: only %d rows, the line did not wrap", rows)
+	}
+	if !strings.Contains(preview.GetContent(), matchSpanStyle.Render("needle")) {
+		t.Errorf("preview does not highlight the exact span: %q", preview.GetContent())
+	}
+	if strings.Contains(preview.GetContent(), "\t") {
+		t.Errorf("preview still has a tab: %q", preview.GetContent())
+	}
+
+	// Give the Preview the viewer's width so the two are comparable.
+	picker := m.picker.setPreviewSize(m.dv1.vp.Width(), m.picker.preview.Height())
+	m = m.activateGrepPicker()
+	if m.dv1.text == nil {
+		t.Fatal("setup is broken: viewer is not in Text mode")
+	}
+	if got, want := picker.preview.GetContent(), m.dv1.vp.GetContent(); got != want {
+		t.Errorf("preview differs from the Text viewer after activation:\n preview: %q\n viewer:  %q", got, want)
+	}
+}
+
+// TestPickerPreviewRelayoutsOnResize pins that the Preview's soft wrap tracks
+// its width: narrowing the pane wraps the loaded file again, and the Grep
+// match stays highlighted and scrolled to.
+func TestPickerPreviewRelayoutsOnResize(t *testing.T) {
+	requireRipgrep(t)
+	dir := t.TempDir()
+	writeFileContent(t, filepath.Join(dir, "a.md"), "short\n"+strings.Repeat("abcdefghij ", 12)+"needle\n")
+
+	m := openedFixture(t, 120, 24).withRipgrep(detectRipgrep())
+	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
+	m, _ = m.openPicker()
+	m.picker.mode = grepMode
+	m, seqs := typePickerQuery(t, m, "needle")
+	m, _ = deliverPickerTicks(t, m, seqs)
+
+	wide := strings.Count(m.picker.preview.GetContent(), "\n")
+	p := m.picker.setPreviewSize(20, m.picker.preview.Height())
+	if narrow := strings.Count(p.preview.GetContent(), "\n"); narrow <= wide {
+		t.Errorf("rows after narrowing = %d, want more than %d", narrow+1, wide+1)
+	}
+	if !strings.Contains(p.preview.GetContent(), matchSpanStyle.Render("needle")) {
+		t.Errorf("match span lost after resize: %q", p.preview.GetContent())
 	}
 }

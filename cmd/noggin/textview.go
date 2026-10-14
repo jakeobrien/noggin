@@ -366,21 +366,25 @@ func (v viewer) withTextMatch(span *textSpan) viewer {
 	}
 	old := v.textMatch
 	v.textMatch = span
-	patch := func(content string, muted bool) string {
-		if content == "" {
-			return content
-		}
-		rows := strings.Split(content, "\n")
-		for _, s := range []*textSpan{old, span} {
-			if s != nil {
-				copy(rows[v.text.rowStart[s.line]:], v.text.lineRows(s.line, muted, span))
-			}
-		}
-		return strings.Join(rows, "\n")
-	}
-	v.vp.SetContent(patch(v.vp.GetContent(), false))
-	v.mutedContent = patch(v.mutedContent, true)
+	v.vp.SetContent(v.text.patch(v.vp.GetContent(), false, old, span))
+	v.mutedContent = v.text.patch(v.mutedContent, true, old, span)
 	return v
+}
+
+// patch is content (this layout rendered with old as its span, muted or not)
+// re-rendered with span instead: only the lines old and span sit on are
+// re-styled and spliced in.
+func (l *textLayout) patch(content string, muted bool, old, span *textSpan) string {
+	if content == "" || (old == nil && span == nil) {
+		return content
+	}
+	rows := strings.Split(content, "\n")
+	for _, s := range []*textSpan{old, span} {
+		if s != nil {
+			copy(rows[l.rowStart[s.line]:], l.lineRows(s.line, muted, span))
+		}
+	}
+	return strings.Join(rows, "\n")
 }
 
 // sanitizeControl replaces control characters (ESC and friends) with U+FFFD so

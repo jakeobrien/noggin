@@ -9,7 +9,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"noggin/internal/tree"
 	"noggin/internal/wikipedia"
@@ -166,9 +166,10 @@ type picker struct {
 	// selection surviving its own list unchanged.
 	selected int
 
-	// preview is the Preview pane's own viewport (M3.2): raw, unrendered
-	// file bytes — no Glamour, unlike the Document Viewer's own vp
-	// (viewer.go) — scrolled independently of the Prompt/Results. Sized
+	// preview is the Preview pane's own viewport (M3.2): the file's raw
+	// source laid out by the Text renderer (D140: soft wrap, line-number
+	// gutter) — no Glamour, unlike the Document Viewer's own vp
+	// (viewer.go), whatever the file — scrolled independently of the Prompt/Results. Sized
 	// from model.resize the same way m.viewer/m.files/m.roots already are
 	// (computePickerLayout's preview rect), so PageUp/PageDown/HalfPageUp/
 	// HalfPageDown (reserved non-typing by M2.3) have a real height to
@@ -195,6 +196,24 @@ type picker struct {
 	// criterion) means concretely: a different path, a fresh load, GotoTop
 	// (File mode) or a scroll/highlight to previewLine (Grep mode, M4.2).
 	previewPath string
+
+	// previewCol and previewQuery are the rest of syncPreview's re-targeting
+	// key for a Grep Result (previewLine's siblings): the byte column ripgrep
+	// reported and the query that found it, which together pick the exact
+	// span highlighted. Both are zero for a File Result.
+	previewCol   int
+	previewQuery string
+
+	// previewSrc is the loaded file's bytes (or, with previewPlain, a short
+	// explanatory message) and previewLayout their Text layout at the
+	// Preview's current width, nil until built or after a resize
+	// invalidates it (D140: the Preview uses the Text renderer). previewSpan
+	// is the match span currently drawn reversed in it, so a move to another
+	// match in the same file re-styles only two lines.
+	previewSrc    []byte
+	previewPlain  bool
+	previewLayout *textLayout
+	previewSpan   *textSpan
 
 	// wikipediaErr is Wikipedia mode's own failure state (S2, C6/M3.3): the
 	// most recent search's error text ("offline"/"service error"), or ""
@@ -564,8 +583,14 @@ func (p picker) move(delta int) picker {
 // (SetWidth/SetHeight take *Model): p is addressable here because it is a
 // named parameter, the same reason promptView's SetWidth call works.
 func (p picker) setPreviewSize(width, height int) picker {
+	widthChanged := p.preview.Width() != max(width, 0)
 	p.preview.SetWidth(max(width, 0))
 	p.preview.SetHeight(max(height, 0))
+	if widthChanged && p.previewPath != "" {
+		// Soft wrap depends on the width: lay the loaded file out again.
+		p.previewLayout = nil
+		return p.showPreview(p.preview.YOffset())
+	}
 	return p
 }
 
@@ -600,26 +625,27 @@ func (p picker) pickerPreviewCandidate(hideDotfiles bool) (pickerFile, bool) {
 // 1-based line syncPreview should scroll to and highlight (S9's "the Grep
 // Picker opens scrolled to the matched line with that line highlighted").
 // line is 0 for a File Result (previews from the top instead, M3.2's own
-// contract, unchanged) and for "nothing selected". Unlike
+// contract, unchanged) and for "nothing selected"; col is ripgrep's byte
+// column of the match on that line (D140's exact span). Unlike
 // pickerPreviewCandidate, this covers both modes — the Preview pane itself
 // has no reason to wait for M4.3's Activate hand-off the way Activate
 // does, since showing the matched file's raw bytes never changes the
 // Active Document (S9's own "never changes the Active Document").
-func (p picker) pickerPreviewTarget(hideDotfiles bool) (f pickerFile, line int, ok bool) {
+func (p picker) pickerPreviewTarget(hideDotfiles bool) (f pickerFile, line, col int, ok bool) {
 	if !p.resultsCurrent(hideDotfiles) {
-		return pickerFile{}, 0, false
+		return pickerFile{}, 0, 0, false
 	}
 	if p.mode == grepMode {
 		if p.selected < 0 || p.selected >= len(p.results.grep) {
-			return pickerFile{}, 0, false
+			return pickerFile{}, 0, 0, false
 		}
 		g := p.results.grep[p.selected]
-		return g.file, g.line, true
+		return g.file, g.line, g.col, true
 	}
 	if p.selected < 0 || p.selected >= len(p.results.files) {
-		return pickerFile{}, 0, false
+		return pickerFile{}, 0, 0, false
 	}
-	return p.results.files[p.selected], 0, true
+	return p.results.files[p.selected], 0, 0, true
 }
 
 // syncPreview loads the Preview pane's content for whichever Result
@@ -639,23 +665,30 @@ func (p picker) pickerPreviewTarget(hideDotfiles bool) (f pickerFile, line int, 
 //
 // The read is raw bytes, straight from disk — no loadDocument, no
 // renderMarkdown: M3.2 is explicit that the Preview shows "raw, unrendered
-// text", unlike the Document Viewer's own Glamour-rendered vp.
+// text", unlike the Document Viewer's own Glamour-rendered vp. D140 only
+// changes how that text is drawn (showPreview), not what it is.
 func (p picker) syncPreview(hideDotfiles bool) picker {
-	f, line, ok := p.pickerPreviewTarget(hideDotfiles)
+	f, line, col, ok := p.pickerPreviewTarget(hideDotfiles)
 	if !ok {
 		if p.previewPath != "" {
 			p.previewPath = ""
-			p.previewLine = 0
+			p.previewLine, p.previewCol, p.previewQuery = 0, 0, ""
+			p.previewSrc, p.previewLayout, p.previewSpan = nil, nil, nil
 			p.preview.SetContent("")
 			p.preview.StyleLineFunc = nil
 		}
 		return p
 	}
-	if f.path == p.previewPath && line == p.previewLine {
+	query := ""
+	if line > 0 {
+		query = p.input.Value()
+	}
+	if f.path == p.previewPath && line == p.previewLine && col == p.previewCol && query == p.previewQuery {
 		return p
 	}
 	if f.path != p.previewPath {
 		var src []byte
+		p.previewPlain = false
 		if f.article {
 			// C6/M3.5: an article pseudo-candidate's path is a URL, not a
 			// file — reading it would only ever produce a raw OS "no such
@@ -670,6 +703,7 @@ func (p picker) syncPreview(hideDotfiles bool) picker {
 			// specifically missing: a live preview of a not-yet-fetched
 			// article, not the ability to open one at all.
 			src = []byte("no preview — Wikipedia articles are not previewed from here")
+			p.previewPlain = true
 		} else {
 			// D140: the Preview never reads a binary or oversize file
 			// either; it says why instead.
@@ -679,28 +713,60 @@ func (p picker) syncPreview(hideDotfiles bool) picker {
 			}
 			if err != nil {
 				src = []byte("preview unavailable: " + err.Error())
+				p.previewPlain = true
 			}
 		}
 		p.previewPath = f.path
-		p.preview.SetContent(string(src))
+		p.previewSrc = src
+		p.previewLayout, p.previewSpan = nil, nil
 	}
-	p.previewLine = line
-	if line <= 0 {
-		p.preview.StyleLineFunc = nil
+	p.previewLine, p.previewCol, p.previewQuery = line, col, query
+	return p.showPreview(0)
+}
+
+// showPreview draws the loaded file into the Preview viewport (D140): the
+// Text renderer's soft wrap, expanded tabs and line-number gutter, so the
+// Preview of a Grep Result matches what a Text-mode viewer shows once it is
+// activated. A Grep Result's match is highlighted as the exact span ripgrep
+// found, not its whole line, and scrolled to the top of the pane; any other
+// target keeps yOffset (0 for a freshly loaded file). A message standing in
+// for an unreadable file is wrapped but has no gutter.
+func (p picker) showPreview(yOffset int) picker {
+	p.preview.StyleLineFunc = nil
+	width := p.preview.Width()
+	if p.previewPlain {
+		msg := string(p.previewSrc)
+		if width > 0 {
+			msg = ansi.Wrap(msg, width, "")
+		}
+		p.preview.SetContent(msg)
 		p.preview.GotoTop()
 		return p
 	}
-	// rg's line numbers are 1-based (S4/grepResult); the viewport's own line
-	// indices, like every other line-addressing surface in this codebase
-	// (find.go's findMatch), are 0-based.
-	idx := line - 1
-	p.preview.SetYOffset(idx)
-	p.preview.StyleLineFunc = func(i int) lipgloss.Style {
-		if i == idx {
-			return lipgloss.NewStyle().Reverse(true)
-		}
-		return lipgloss.NewStyle()
+	l := p.previewLayout
+	content := ""
+	old := p.previewSpan
+	if l == nil {
+		l = layoutText(p.previewSrc, width)
+		p.previewLayout, old = l, nil
+		content = l.render(false)
+	} else {
+		content = p.preview.GetContent()
 	}
+	row, span := yOffset, (*textSpan)(nil)
+	if p.previewLine > 0 && len(l.rows) > 0 {
+		// rg's line numbers are 1-based (S4/grepResult); the layout's
+		// display lines are 0-based.
+		row = l.rowStart[min(p.previewLine, len(l.rows))-1]
+		matches := l.find(p.previewQuery)
+		if i, ok := textGrepLanding(p.previewSrc, matches, p.previewLine, p.previewCol); ok {
+			m := matches[i]
+			row, span = m.line, &textSpan{line: m.src, start: m.colStart, end: m.colEnd}
+		}
+	}
+	p.previewSpan = span
+	p.preview.SetContent(l.patch(content, false, old, span))
+	p.preview.SetYOffset(row)
 	return p
 }
 
