@@ -275,7 +275,7 @@ func TestPickerFilterFollowsTheMostRecentlySetValueIntoWikipedia(t *testing.T) {
 	}
 }
 
-func TestPickerFileFilterIsNamedInNoWikipediaModeTitle(t *testing.T) {
+func TestPickerFileFilterInWikipediaModeIsSaidInTheFooterNotTheTitle(t *testing.T) {
 	m := pickerWithWikipediaActive(t)
 	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "Wikipedia · -" {
 		t.Errorf("title = %q", got)

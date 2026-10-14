@@ -251,12 +251,27 @@ func TestLaunchOnATextFileSwitchesAStarredCwdRootToAll(t *testing.T) {
 
 func TestLaunchOnANestedTextFileRevealsItInTheFilesNav(t *testing.T) {
 	dir := filterRoot(t)
-	for _, starred := range []bool{false, true} {
-		roots := []root{{path: dir, starred: starred}}
-		m := newModel().applyResolution(resolveFile(filepath.Join(dir, "docs", "notes.txt"), dir, roots[:boolToInt(starred)]))
+	file := filepath.Join(dir, "docs", "notes.txt")
+	for name, res := range map[string]resolution{
+		"ad-hoc":  resolveFile(file, dir, nil),
+		"starred": resolveFile(file, dir, []root{{path: dir, starred: true}}),
+	} {
+		m := newModel().applyResolution(res)
 		if got := m.files.selectedNode(); got == nil || got.Name != "notes.txt" {
-			t.Errorf("starred=%v: selection = %v, want the launched nested file", starred, got)
+			t.Errorf("%s: selection = %v, want the launched nested file", name, got)
 		}
+		if !m.files.expanded[filepath.Join(dir, "docs")] {
+			t.Errorf("%s: docs is not expanded", name)
+		}
+	}
+}
+
+func TestRevealingAFileOutsideTheRootChangesNothing(t *testing.T) {
+	dir := filterRoot(t)
+	m := newModel().applyResolution(prependAdhoc(dir, nil))
+	got := m.files.withRevealed(filepath.Join(filepath.Dir(dir), "elsewhere", "x.txt"))
+	if len(got.expanded) != 0 || got.selected != m.files.selected {
+		t.Errorf("expanded = %v selected = %d, want no change", got.expanded, got.selected)
 	}
 }
 
@@ -340,11 +355,4 @@ func TestRefreshKeepsTheRootsFileFilter(t *testing.T) {
 	if !containsRow(m.files, "main.go") {
 		t.Errorf("rows after refresh = %v, want the All filter still applied", rowNames(m.files))
 	}
-}
-
-func boolToInt(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
 }

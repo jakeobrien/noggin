@@ -1746,7 +1746,7 @@
     Binary files, and any file over ~10MB, are refused with a Footer message on every open
     route: `noggin <file>`, a stale Starred entry, Recent.
   - **File Filter.** Remembered per Root for the session and defaults to `Markdown`. The one
-    exception: launching `noggin <file>` on a Text file starts that ad-hoc Root on `All`.
+    exception: launching `noggin <file>` on a Text file starts the cwd Root (ad-hoc or starred) on `All`.
     Toggled by `a` in the Files Nav and `alt+a` in the Picker. It bounds the `Tree` and the
     File/Grep Pickers' Active Root and All Roots scopes. All Roots applies the Active Root's
     filter to every Root searched. With Wikipedia active, the Picker uses the most recently

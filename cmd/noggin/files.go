@@ -393,7 +393,11 @@ func (f filesNav) withRevealed(path string) filesNav {
 	if f.root == nil || f.mode != treeBrowse {
 		return f
 	}
-	for dir := filepath.Dir(path); dir != f.root.Path && dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+	rel, err := filepath.Rel(f.root.Path, path)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return f
+	}
+	for dir := filepath.Dir(path); dir != f.root.Path; dir = filepath.Dir(dir) {
 		f = f.withExpanded(dir, true)
 	}
 	if i := f.rowIndexOf(path); i >= 0 {
