@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-uld-c6d8090b656",
+    "issue_id": "tk-uld",
+    "author": "noggin",
+    "body": "Implemented: Picker Preview lays the raw file out with the Text renderer (picker.showPreview, textLayout.patch shared with the viewer): soft wrap, tab expansion, gutter, exact ripgrep-column span highlight (spans soft-wrapped rows), re-layout on resize. Messages (binary/unreadable/article) are wrapped without a gutter. Test pins Preview == Text-mode viewer content after activation at equal width. Notes: Preview scrolls the match to the top of the pane (not EnsureVisible, so more context shows below); per-selection-move l.find scans the file (not cached).",
+    "created_at": "2026-10-14T19:23:25.107025846Z",
+    "updated_at": "2026-10-14T19:23:25.107025846Z"
+  }
+]

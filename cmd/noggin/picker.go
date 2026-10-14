@@ -168,8 +168,8 @@ type picker struct {
 
 	// preview is the Preview pane's own viewport (M3.2): the file's raw
 	// source laid out by the Text renderer (D140: soft wrap, line-number
-	// gutter) — no Glamour, unlike the Document Viewer's own vp
-	// (viewer.go), whatever the file — scrolled independently of the Prompt/Results. Sized
+	// gutter), whatever the file is — no Glamour, unlike the Document
+	// Viewer's own vp (viewer.go) — scrolled independently of the Prompt/Results. Sized
 	// from model.resize the same way m.viewer/m.files/m.roots already are
 	// (computePickerLayout's preview rect), so PageUp/PageDown/HalfPageUp/
 	// HalfPageDown (reserved non-typing by M2.3) have a real height to
@@ -656,10 +656,10 @@ func (p picker) pickerPreviewTarget(hideDotfiles bool) (f pickerFile, line, col 
 // without re-reading a file or re-scrolling on every keystroke or render
 // that leaves the selection alone.
 //
-// previewPath and previewLine together are that "did it actually change"
-// key: comparing path alone would miss a Grep selection moving to a
-// *different match in the same file* (previewLine is what catches that;
-// see previewLine's own doc comment), and a fresh load only happens when
+// previewPath, previewLine, previewCol and previewQuery together are that
+// "did it actually change" key: comparing path alone would miss a Grep
+// selection moving to a *different match in the same file* (previewLine and
+// previewCol are what catch that; see previewLine's own doc comment), and a fresh load only happens when
 // the path itself changed — a same-file, different-line Grep move re-uses
 // the bytes already loaded and only re-scrolls/re-highlights.
 //
@@ -735,7 +735,9 @@ func (p picker) showPreview(yOffset int) picker {
 	p.preview.StyleLineFunc = nil
 	width := p.preview.Width()
 	if p.previewPlain {
-		msg := string(p.previewSrc)
+		// The text can carry a file name, so it gets the same control-character
+		// treatment as file content.
+		msg := sanitizeControl(string(p.previewSrc))
 		if width > 0 {
 			msg = ansi.Wrap(msg, width, "")
 		}
