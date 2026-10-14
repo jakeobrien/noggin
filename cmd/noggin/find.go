@@ -62,7 +62,7 @@ type grepLanding struct{ line, col int }
 // line is still the viewport row the match starts on (a match can span several
 // soft-wrapped rows; endLine is the one it ends on), src is the source line
 // and colStart/colEnd the byte range within that line. Which of the two a
-// match is, is the viewer's shownMode, not something the match carries.
+// match is, is the viewer's docMode, not something the match carries.
 type findMatch struct {
 	line, colStart, colEnd int
 	src, endLine           int
@@ -131,7 +131,7 @@ func (v viewer) commitQuery(query string) viewer {
 // leaves the view where it is" — whatever EnsureVisible last did to it stands.
 func (v viewer) cancelFind() viewer {
 	v.findState = newFind()
-	return v.shownMode.behaviour().clearIndication(v)
+	return v.docMode.behaviour().clearIndication(v)
 }
 
 // findEditing reports whether the query currently has the keyboard.
@@ -169,15 +169,15 @@ func (v viewer) findPrevious() viewer {
 // drift it would reintroduce (see the find type's doc comment).
 func (v viewer) applyCurrentMatch() viewer {
 	if v.findState.current < 0 || v.findState.current >= len(v.findState.matches) {
-		return v.shownMode.behaviour().clearIndication(v)
+		return v.docMode.behaviour().clearIndication(v)
 	}
-	return v.shownMode.behaviour().indicate(v, v.findState.matches[v.findState.current])
+	return v.docMode.behaviour().indicate(v, v.findState.matches[v.findState.current])
 }
 
 // findIn locates every occurrence of query in the open document: in the source
 // lines when it is shown as Text, in the rendered content otherwise.
 func (v viewer) findIn(query string) []findMatch {
-	return v.shownMode.behaviour().find(v, query)
+	return v.docMode.behaviour().find(v, query)
 }
 
 // findView renders the query prompt at width, for the footer to show in

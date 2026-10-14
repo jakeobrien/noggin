@@ -5,7 +5,7 @@ import "charm.land/lipgloss/v2"
 // modeBehaviour is what differs between the two Render Modes (D140) once a
 // document is shown: how Find locates matches, how the current one is
 // indicated, and how a Grep Result's location maps onto a match. render
-// resolves the mode a document is shown in once (viewer.shownMode) and
+// resolves the mode a document is shown in once (viewer.docMode) and
 // renderMode.behaviour is the only place that turns it into behaviour, so
 // callers never branch on the mode themselves.
 type modeBehaviour interface {

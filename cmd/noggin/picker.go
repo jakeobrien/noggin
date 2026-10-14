@@ -1193,7 +1193,7 @@ func (m model) activateGrepPickerInto(target pane) model {
 	// activatePickerInto above.
 	m = m.navigate(target, d)
 	v := m.viewerFor(target).commitQuery(query)
-	v = v.shownMode.behaviour().landGrep(v, g.line, g.col)
+	v = v.docMode.behaviour().landGrep(v, g.line, g.col)
 	m = m.withViewerFor(target, v)
 	return m.dismissPicker()
 }

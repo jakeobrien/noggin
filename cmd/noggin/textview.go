@@ -51,7 +51,7 @@ func isNotMarkdownFile(d document) bool {
 
 // modeFor is the mode d is actually shown in by this viewer: its own mode,
 // except that a Text file is always shown as Text. render resolves it once for
-// the Active Document (viewer.shownMode); every mode-specific behaviour of Find
+// the Active Document (viewer.docMode); every mode-specific behaviour of Find
 // hangs off that (modeBehaviour), not off a fresh check.
 func (v viewer) modeFor(d document) renderMode {
 	if isNotMarkdownFile(d) {
@@ -76,7 +76,7 @@ func (v viewer) shownDoc() document {
 // Markdown lands on ripgrep's exact location in Text instead. With no find
 // active the scroll position is kept as a proportion of the document.
 func (v viewer) toggleMode() viewer {
-	prev, was, frac := v.findState, v.shownMode, v.scrollFraction()
+	prev, was, frac := v.findState, v.docMode, v.scrollFraction()
 	v.mode = v.mode.toggled()
 	v = v.render()
 	if !v.doc.isOpen() {
@@ -103,7 +103,7 @@ func (v viewer) carriedMatch(prev find, was renderMode) int {
 	if len(matches) == 0 {
 		return -1
 	}
-	now := v.shownMode
+	now := v.docMode
 	if was == now {
 		return min(max(prev.current, 0), len(matches)-1)
 	}
