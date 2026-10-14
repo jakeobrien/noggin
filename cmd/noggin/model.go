@@ -124,13 +124,6 @@ type model struct {
 	// model (relaunch) resets it, matching S4's "reset on relaunch".
 	hideDotfiles bool
 
-	// lastFilter is the most recently set File Filter value (D140): by `a`,
-	// by the Picker's alt+a, or by a launch that starts a Root on `All`.
-	// With no Active Root (Wikipedia active) the Picker has no Root's filter
-	// to use, so it uses this one, and alt+a toggles it. The zero value is
-	// tree.FilterMarkdown.
-	lastFilter tree.Filter
-
 	// lastPicker is the query/mode/Scope of the most recent Picker session
 	// dismissed with a non-empty Prompt, for keys.PickerRestore. Session-only
 	// and on model rather than picker for the same reason hideDotfiles is:
@@ -449,7 +442,6 @@ func (m model) applyResolution(res resolution) model {
 	if path := res.activeRootPath(); path != "" {
 		if res.startsOnAll() {
 			m.files = m.files.withFilter(path, tree.FilterAll)
-			m.lastFilter = tree.FilterAll
 		}
 		if node, err := tree.Walk(path, m.files.filterFor(path)); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", path, err)
@@ -808,9 +800,9 @@ func (m model) toggleFileFilter() model {
 	if m.files.root == nil {
 		return m
 	}
-	m, ok := m.setActiveRootFilter(m.activeFilter().Toggled())
+	m, ok := m.setActiveRootFilter(m.files.fileFilter().Toggled())
 	if ok && m.files.flatMode() {
-		m.message = fmt.Sprintf("File Filter: %s (Recent and Starred ignore it)", m.activeFilter())
+		m.message = fmt.Sprintf("File Filter: %s (Recent and Starred ignore it)", m.files.fileFilter())
 	}
 	return m
 }
@@ -832,19 +824,8 @@ func (m model) setActiveRootFilter(next tree.Filter) (model, bool) {
 	// A selection change is one of Peek's clearing triggers (S7).
 	m = m.clearPeek()
 	m.files = m.files.withFilter(path, next).withFilteredRoot(node)
-	m.lastFilter = next
 	m.message = ""
 	return m.rebaseTreeStaleness(), true
-}
-
-// pickerFilter is the File Filter a Picker opened now searches under (D140):
-// the Active Root's, applied to every Root searched; with no Active Root
-// (Wikipedia active) the most recently set value, or Markdown.
-func (m model) pickerFilter() tree.Filter {
-	if m.files.root == nil {
-		return m.lastFilter
-	}
-	return m.activeFilter()
 }
 
 // activateWikipediaSource makes the Wikipedia Query Source the model's
@@ -2158,7 +2139,7 @@ func (m model) render() string {
 	case m.helpOpen:
 		return overlayHelp(frame, m.width, m.height, m.focus)
 	case m.picker.open:
-		return overlayPicker(frame, m.width, m.height, m.picker, m.ripgrep, m.hideDotfiles, m.docs)
+		return overlayPicker(frame, m.width, m.height, m.picker, m.ripgrep, m.pickerBounds(), m.docs)
 	default:
 		return frame
 	}

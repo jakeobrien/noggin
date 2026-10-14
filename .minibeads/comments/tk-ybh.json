@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-ybh-c94691b01e2",
+    "issue_id": "tk-ybh",
+    "author": "noggin",
+    "body": "Done: filesNav.fileFilter() is the single read path (per-Root map + lastFilter fallback, both owned by filesNav). Picker keeps no copy; it takes pickerBounds{hideDotfiles, filter} from the model like hideDotfiles. Tests needed signature-only edits (m.picker.filter -> m.files.fileFilter(), bounds params).",
+    "created_at": "2026-10-14T20:46:44.790549647Z",
+    "updated_at": "2026-10-14T20:46:44.790549647Z"
+  }
+]

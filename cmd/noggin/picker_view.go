@@ -146,7 +146,7 @@ func (p picker) promptView(width int) string {
 // is the Picker's answer to "what would Enter search?", and the surface
 // M5.1/M5.2's in-place switching will be seen through — the reason it reads
 // off p.mode/p.scope rather than being passed in as text.
-func pickerModeScope(p picker, hideDotfiles bool) string {
+func pickerModeScope(p picker, bounds pickerBounds) string {
 	mode := "File"
 	// Grep's own Scope keeps reading "Active Root" (C6/M1.3): Grep never
 	// reaches Wikipedia (S6), so its activeRootScope value always names a
@@ -176,9 +176,9 @@ func pickerModeScope(p picker, hideDotfiles bool) string {
 	// The File Filter (D140) bounds File and Grep except in the Starred
 	// scope, which ignores it; Wikipedia mode has no files at all.
 	if p.mode != wikipediaMode && p.scope != starredScope {
-		label += " · " + p.filter.String()
+		label += " · " + bounds.filter.String()
 	}
-	if hideDotfiles {
+	if bounds.hideDotfiles {
 		// S4/M6.2's alt+h toggle has no other visible confirmation — the
 		// title is the one place mode/Scope already surface "what would
 		// Enter search", and a dotfile-hiding candidate set is exactly that
@@ -219,7 +219,7 @@ const pickerWikipediaPreviewPlaceholder = "No preview — Activate to open the a
 // (pickerResults), "do these results describe what the Prompt now says" is a
 // comparison rather than an assumption — the only honest way to caption an
 // asynchronously-filled list (M2.4).
-func pickerStatus(p picker, avail ripgrepAvailability, hideDotfiles bool) string {
+func pickerStatus(p picker, avail ripgrepAvailability, bounds pickerBounds) string {
 	// C6/M3.3: Wikipedia mode needs no ripgrep (searchable's own doc
 	// comment) — S14's unavailability message is a File/Grep-only concern.
 	if !avail.available && p.mode != wikipediaMode {
@@ -237,7 +237,7 @@ func pickerStatus(p picker, avail ripgrepAvailability, hideDotfiles bool) string
 	if p.mode == wikipediaMode && p.wikipediaErr != "" {
 		return p.wikipediaErr
 	}
-	if !p.resultsCurrent(hideDotfiles) {
+	if !p.resultsCurrent(bounds) {
 		return pickerSearchingStatus
 	}
 	if p.searching {
@@ -677,8 +677,8 @@ func pickerWikipediaRow(r wikipedia.SearchResult, width int, selected bool, star
 // for either mode — pickerStatus is already saying "searching" for that
 // same mismatch, and showing the previous mode's stale rows underneath that
 // caption would contradict it.
-func pickerResultsContent(p picker, width, height int, hideDotfiles bool, docs map[string]docRecord) string {
-	if width <= 0 || height <= 0 || !p.resultsCurrent(hideDotfiles) {
+func pickerResultsContent(p picker, width, height int, bounds pickerBounds, docs map[string]docRecord) string {
+	if width <= 0 || height <= 0 || !p.resultsCurrent(bounds) {
 		return ""
 	}
 	if p.mode == grepMode {
@@ -737,13 +737,13 @@ func pickerPreviewContent(p picker) string {
 // whichever frame pane currently has focus — Results/Preview use the plain
 // borderStyle, same as an unfocused frame pane. Results now carries the File
 // Picker's rows (M3.1); Preview still carries none (M3.2 fills it).
-func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfiles bool, docs map[string]docRecord) string {
+func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, bounds pickerBounds, docs map[string]docRecord) string {
 	promptContent := p.promptView(l.prompt.content().width)
-	if status := pickerStatus(p, avail, hideDotfiles); status != "" {
+	if status := pickerStatus(p, avail, bounds); status != "" {
 		promptContent += "\n" + status
 	}
-	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerModeScope(p, hideDotfiles)), promptContent)
-	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, hideDotfiles, docs)
+	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerModeScope(p, bounds)), promptContent)
+	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, bounds, docs)
 	results := renderBox(borderStyle, l.results, titleStyle.Render("Results"), resultsContent)
 	preview := renderBox(borderStyle, l.preview, titleStyle.Render("Preview"), pickerPreviewContent(p))
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
@@ -759,9 +759,9 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, hideDotfi
 // here is the suspenders to computePickerLayout's belt (layout-correct
 // sizing does not by itself guarantee lipgloss never pads a row wider, the
 // same reasoning overlayHelp's comment already spells out).
-func overlayPicker(frame string, width, height int, p picker, avail ripgrepAvailability, hideDotfiles bool, docs map[string]docRecord) string {
+func overlayPicker(frame string, width, height int, p picker, avail ripgrepAvailability, bounds pickerBounds, docs map[string]docRecord) string {
 	l := computePickerLayout(width, height)
-	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l, avail, hideDotfiles, docs))
+	box := lipgloss.NewStyle().MaxWidth(width).MaxHeight(height).Render(renderPicker(p, l, avail, bounds, docs))
 	bw, bh := lipgloss.Width(box), lipgloss.Height(box)
 	x := max((width-bw)/2, 0)
 	y := max((height-bh)/2, 0)

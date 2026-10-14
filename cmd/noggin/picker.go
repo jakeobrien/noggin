@@ -133,12 +133,7 @@ type picker struct {
 	open  bool
 	mode  pickerMode
 	scope pickerScope
-	// filter is the File Filter (D140) this Picker searches under, taken from
-	// the model when it opens (model.pickerFilter) and changed only by alt+a
-	// (togglePickerFilter), so the Picker can label and compare its Results
-	// without being handed the model.
-	filter tree.Filter
-	input  textinput.Model
+	input textinput.Model
 
 	// seq identifies the current query generation: every change to what
 	// would be searched (a keystroke, and later a mode/Scope switch)
@@ -293,7 +288,6 @@ func (m model) openPicker() (model, tea.Cmd) {
 	if m.roots.activeIsWikipedia() {
 		m.picker.mode = wikipediaMode
 	}
-	m.picker.filter = m.pickerFilter()
 	m.picker.open = true
 	cmd := m.picker.input.Focus()
 	return m, cmd
@@ -458,13 +452,15 @@ func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 // togglePickerFilter is alt+a: it flips the File Filter (D140) and re-searches.
 // With an Active Root it is that Root's filter (the Files Nav's `a` state, so
 // the Tree is re-walked too); with Wikipedia active there is no Root and it
-// flips the most recently set value instead. Wikipedia mode and the Starred
-// scope ignore the filter, so like toggleHiddenFiles they relabel the rows on
-// screen rather than fire a search whose results could not differ.
+// flips the most recently set value instead. Either way the Picker reads the
+// result back from filesNav.fileFilter, never a copy of its own. Wikipedia
+// mode and the Starred scope ignore the filter, so like toggleHiddenFiles they
+// relabel the rows on screen rather than fire a search whose results could not
+// differ.
 func (m model) togglePickerFilter() (model, tea.Cmd) {
-	next := m.picker.filter.Toggled()
+	next := m.files.fileFilter().Toggled()
 	if m.files.root == nil {
-		m.lastFilter = next
+		m.files = m.files.withLastFilter(next)
 	} else {
 		var ok bool
 		if m, ok = m.setActiveRootFilter(next); !ok {
@@ -474,9 +470,9 @@ func (m model) togglePickerFilter() (model, tea.Cmd) {
 	return m.applyPickerFilter(next)
 }
 
-// applyPickerFilter puts next on the open Picker and refreshes its Results.
+// applyPickerFilter refreshes the open Picker's Results after the File Filter
+// moved to next.
 func (m model) applyPickerFilter(next tree.Filter) (model, tea.Cmd) {
-	m.picker.filter = next
 	if m.picker.mode == wikipediaMode || m.picker.scope == starredScope {
 		m.picker.results.filter = next
 		return m, nil
@@ -584,7 +580,7 @@ func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
 	}
 	m.picker.searching = true
 	return m, pickerSearchCmd(m.picker.seq, m.picker.mode, m.picker.scope,
-		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles, m.picker.filter, m.docs, m.wikipediaClient)
+		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles, m.files.fileFilter(), m.docs, m.wikipediaClient)
 }
 
 // resultCount is how many Result rows the current mode has to show right
@@ -646,8 +642,8 @@ func (p picker) setPreviewSize(width, height int) picker {
 // (pickerGrepCandidate) instead of sharing this one; this function's own
 // contract ("what fileMode's Activate would open") is why it must not
 // start returning a grepMode candidate.
-func (p picker) pickerPreviewCandidate(hideDotfiles bool) (pickerFile, bool) {
-	if p.mode != fileMode || !p.resultsCurrent(hideDotfiles) {
+func (p picker) pickerPreviewCandidate(bounds pickerBounds) (pickerFile, bool) {
+	if p.mode != fileMode || !p.resultsCurrent(bounds) {
 		return pickerFile{}, false
 	}
 	if p.selected < 0 || p.selected >= len(p.results.files) {
@@ -667,8 +663,8 @@ func (p picker) pickerPreviewCandidate(hideDotfiles bool) (pickerFile, bool) {
 // has no reason to wait for M4.3's Activate hand-off the way Activate
 // does, since showing the matched file's raw bytes never changes the
 // Active Document (S9's own "never changes the Active Document").
-func (p picker) pickerPreviewTarget(hideDotfiles bool) (f pickerFile, line, col int, ok bool) {
-	if !p.resultsCurrent(hideDotfiles) {
+func (p picker) pickerPreviewTarget(bounds pickerBounds) (f pickerFile, line, col int, ok bool) {
+	if !p.resultsCurrent(bounds) {
 		return pickerFile{}, 0, 0, false
 	}
 	if p.mode == grepMode {
@@ -703,8 +699,8 @@ func (p picker) pickerPreviewTarget(hideDotfiles bool) (f pickerFile, line, col 
 // renderMarkdown: M3.2 is explicit that the Preview shows "raw, unrendered
 // text", unlike the Document Viewer's own Glamour-rendered vp. D140 only
 // changes how that text is drawn (showPreview), not what it is.
-func (p picker) syncPreview(hideDotfiles bool) picker {
-	f, line, col, ok := p.pickerPreviewTarget(hideDotfiles)
+func (p picker) syncPreview(bounds pickerBounds) picker {
+	f, line, col, ok := p.pickerPreviewTarget(bounds)
 	if !ok {
 		if p.previewPath != "" {
 			p.previewPath = ""
@@ -808,6 +804,20 @@ func (p picker) showPreview(yOffset int) picker {
 	return p
 }
 
+// pickerBounds is what the model says bounds a Picker search right now: the
+// hidden-files toggle and the File Filter. The Picker keeps no copy of either
+// (the File Filter has one home, filesNav.fileFilter); it labels its Results
+// with the bounds they were searched under and compares them to these.
+type pickerBounds struct {
+	hideDotfiles bool
+	filter       tree.Filter
+}
+
+// pickerBounds is the model's current pickerBounds.
+func (m model) pickerBounds() pickerBounds {
+	return pickerBounds{hideDotfiles: m.hideDotfiles, filter: m.files.fileFilter()}
+}
+
 // resultsCurrent reports whether p.results still answers what the Prompt,
 // mode and Scope now say — the same three-way label comparison pickerStatus
 // makes to tell "searching" apart from a real empty result, pulled out here
@@ -815,9 +825,9 @@ func (p picker) showPreview(yOffset int) picker {
 // same call: while a fresh search is in flight for a changed query/mode/
 // Scope, the previous mode's stale rows must not flash on screen just
 // because they are still sitting in p.results.
-func (p picker) resultsCurrent(hideDotfiles bool) bool {
+func (p picker) resultsCurrent(bounds pickerBounds) bool {
 	return p.results.query == p.input.Value() && p.results.mode == p.mode && p.results.scope == p.scope &&
-		p.results.hideDotfiles == hideDotfiles && p.results.filter == p.filter
+		p.results.hideDotfiles == bounds.hideDotfiles && p.results.filter == bounds.filter
 }
 
 // searchable is whether the current Prompt may be searched at all: the
@@ -930,7 +940,7 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 	m.picker.wikipediaErr = ""
 	m.picker.results = msg.results
 	m.picker.selected = 0
-	m.picker = m.picker.syncPreview(m.hideDotfiles)
+	m.picker = m.picker.syncPreview(m.pickerBounds())
 	return m
 }
 
@@ -979,7 +989,7 @@ func (m model) activatePickerInto(target pane) (model, tea.Cmd) {
 	// silent no-op every other mode's own "not ok" gives (see
 	// pickerWikipediaCandidate's own doc comment).
 	if m.picker.mode == wikipediaMode {
-		r, ok := m.picker.pickerWikipediaCandidate(m.hideDotfiles)
+		r, ok := m.picker.pickerWikipediaCandidate(m.pickerBounds())
 		if !ok {
 			return m, nil
 		}
@@ -996,7 +1006,7 @@ func (m model) activatePickerInto(target pane) (model, tea.Cmd) {
 	// close the modal — activate()'s own "silence is not an error" shape
 	// (T15) — the Picker is dismissed either way since there is nothing
 	// further for it to do once a Result has been chosen.
-	f, ok := m.picker.pickerPreviewCandidate(m.hideDotfiles)
+	f, ok := m.picker.pickerPreviewCandidate(m.pickerBounds())
 	if !ok {
 		return m, nil
 	}
@@ -1061,7 +1071,7 @@ func (m model) activatePickerInto(target pane) (model, tea.Cmd) {
 // canonical).
 func (m model) togglePickerStar() model {
 	if m.picker.mode == wikipediaMode {
-		r, ok := m.picker.pickerWikipediaCandidate(m.hideDotfiles)
+		r, ok := m.picker.pickerWikipediaCandidate(m.pickerBounds())
 		if !ok {
 			return m
 		}
@@ -1089,13 +1099,13 @@ func (m model) togglePickerStar() model {
 // ordinal-resolution data pickerGrepCandidate's grepResult also carries.
 func (m model) pickerSelectedPath() (string, bool) {
 	if m.picker.mode == grepMode {
-		g, ok := m.picker.pickerGrepCandidate(m.hideDotfiles)
+		g, ok := m.picker.pickerGrepCandidate(m.pickerBounds())
 		if !ok {
 			return "", false
 		}
 		return g.file.path, true
 	}
-	f, ok := m.picker.pickerPreviewCandidate(m.hideDotfiles)
+	f, ok := m.picker.pickerPreviewCandidate(m.pickerBounds())
 	if !ok {
 		return "", false
 	}
@@ -1108,8 +1118,8 @@ func (m model) pickerSelectedPath() (string, bool) {
 // resultsCurrent and the live result count, so a stale generation or a
 // fresh, shorter result set landing between a selection move and the next
 // render can no more be starred than it may be previewed or activated.
-func (p picker) pickerWikipediaCandidate(hideDotfiles bool) (wikipedia.SearchResult, bool) {
-	if p.mode != wikipediaMode || !p.resultsCurrent(hideDotfiles) {
+func (p picker) pickerWikipediaCandidate(bounds pickerBounds) (wikipedia.SearchResult, bool) {
+	if p.mode != wikipediaMode || !p.resultsCurrent(bounds) {
 		return wikipedia.SearchResult{}, false
 	}
 	if p.selected < 0 || p.selected >= len(p.results.wikipedia) {
@@ -1124,8 +1134,8 @@ func (p picker) pickerWikipediaCandidate(hideDotfiles bool) (wikipedia.SearchRes
 // any more than they may preview or render) and the live result count (a
 // fresh, shorter result set can land between a selection move and the next
 // render).
-func (p picker) pickerGrepCandidate(hideDotfiles bool) (grepResult, bool) {
-	if p.mode != grepMode || !p.resultsCurrent(hideDotfiles) {
+func (p picker) pickerGrepCandidate(bounds pickerBounds) (grepResult, bool) {
+	if p.mode != grepMode || !p.resultsCurrent(bounds) {
 		return grepResult{}, false
 	}
 	if p.selected < 0 || p.selected >= len(p.results.grep) {
@@ -1166,7 +1176,7 @@ func (m model) activateGrepPicker() model {
 // accessor (which answers that different question) still does not apply
 // either way.
 func (m model) activateGrepPickerInto(target pane) model {
-	g, ok := m.picker.pickerGrepCandidate(m.hideDotfiles)
+	g, ok := m.picker.pickerGrepCandidate(m.pickerBounds())
 	if !ok {
 		return m
 	}
@@ -1319,10 +1329,10 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// Already open: nothing to restore, and never query text.
 		return m, nil
 	case key.Matches(msg, keys.PickerUp):
-		m.picker = m.picker.move(-1).syncPreview(m.hideDotfiles)
+		m.picker = m.picker.move(-1).syncPreview(m.pickerBounds())
 		return m, nil
 	case key.Matches(msg, keys.PickerDown):
-		m.picker = m.picker.move(1).syncPreview(m.hideDotfiles)
+		m.picker = m.picker.move(1).syncPreview(m.pickerBounds())
 		return m, nil
 	case key.Matches(msg, keys.PageUp):
 		m.picker.preview.PageUp()

@@ -297,7 +297,7 @@ func (m model) resetStaleBaseline() model {
 	if m.dv1.doc.isOpen() {
 		dv1Path = m.dv1.doc.path
 	}
-	filter := m.activeFilter()
+	filter := m.files.fileFilter()
 	if m.dv2 == nil {
 		m.staleBaseline = snapshotStaleness(m.files.root, filter, dv1Path)
 	} else {
@@ -312,15 +312,6 @@ func (m model) resetStaleBaseline() model {
 	return m
 }
 
-// activeFilter is the File Filter of the Active Root (tree.FilterMarkdown
-// with none open).
-func (m model) activeFilter() tree.Filter {
-	if m.files.root == nil {
-		return tree.FilterMarkdown
-	}
-	return m.files.filterFor(m.files.root.Path)
-}
-
 // rebaseTreeStaleness re-snapshots the Root's tree after a File Filter toggle
 // re-walked it, so staleness compares listings under the new filter (D139).
 // Unlike resetStaleBaseline it keeps the tracked documents and any raised
@@ -328,7 +319,7 @@ func (m model) activeFilter() tree.Filter {
 // generation moves on so a check still running against the old filter is
 // discarded.
 func (m model) rebaseTreeStaleness() model {
-	b := snapshotStaleness(m.files.root, m.activeFilter())
+	b := snapshotStaleness(m.files.root, m.files.fileFilter())
 	b.docs = m.staleBaseline.docs
 	m.staleBaseline = b
 	m.staleGen++

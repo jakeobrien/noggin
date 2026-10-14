@@ -265,7 +265,7 @@ func TestPickerPreviewOnArticleRowInFileModeShowsAPlaceholder(t *testing.T) {
 		files: []pickerFile{{path: "https://en.wikipedia.org/wiki/Leonhard_Euler", article: true, title: "Leonhard Euler"}},
 	}
 	m.picker.selected = 0
-	m.picker = m.picker.syncPreview(m.hideDotfiles)
+	m.picker = m.picker.syncPreview(m.pickerBounds())
 
 	content := pickerPreviewContent(m.picker)
 	if strings.Contains(content, "no such file or directory") {

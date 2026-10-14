@@ -963,7 +963,7 @@ func TestPickerPreviewShowsUnavailableMessageOnReadError(t *testing.T) {
 		files: []pickerFile{{path: missing}},
 	}
 
-	p = p.syncPreview(false)
+	p = p.syncPreview(pickerBounds{})
 
 	_, readErr := os.ReadFile(missing)
 	want := "preview unavailable: " + readErr.Error()

@@ -87,6 +87,12 @@ type filesNav struct {
 	// convention expanded follows.
 	filters map[string]tree.Filter
 
+	// lastFilter is the most recently set File Filter value, by any path
+	// (`a`, the Picker's alt+a, or a launch that starts a Root on `All`). With
+	// no Active Root (Wikipedia active) there is no Root's filter to use, so
+	// fileFilter falls back to this one. The zero value is tree.FilterMarkdown.
+	lastFilter tree.Filter
+
 	// status holds S8's per-file git markers for the current root, keyed by
 	// absolute Path (gitStatus's return shape, ready to match tree.Node.Path
 	// directly). Unlike memory, it is never restored from a prior visit — the
@@ -386,7 +392,26 @@ func (f filesNav) filterFor(path string) tree.Filter {
 	return f.filters[path]
 }
 
-// withFilter records filter as the File Filter of the Root at path.
+// fileFilter is the File Filter in effect, the one source every reader (the
+// Files Nav status row, the Picker's title and search bounds, staleness) goes
+// through: the Active Root's, or with no Active Root (Wikipedia active) the
+// most recently set value.
+func (f filesNav) fileFilter() tree.Filter {
+	if f.root == nil {
+		return f.lastFilter
+	}
+	return f.filterFor(f.root.Path)
+}
+
+// withLastFilter records filter as the most recently set File Filter without
+// touching any Root's: the Wikipedia toggle, where there is no Root.
+func (f filesNav) withLastFilter(filter tree.Filter) filesNav {
+	f.lastFilter = filter
+	return f
+}
+
+// withFilter records filter as the File Filter of the Root at path, and as
+// the most recently set value.
 func (f filesNav) withFilter(path string, filter tree.Filter) filesNav {
 	next := make(map[string]tree.Filter, len(f.filters)+1)
 	for k, v := range f.filters {
@@ -394,6 +419,7 @@ func (f filesNav) withFilter(path string, filter tree.Filter) filesNav {
 	}
 	next[path] = filter
 	f.filters = next
+	f.lastFilter = filter
 	return f
 }
 
@@ -795,7 +821,7 @@ func (f filesNav) modeScopeRow() string {
 	// The File Filter bounds only the Tree (D140): Recent and Starred ignore
 	// it, so only the Tree's row names it.
 	if f.mode == treeBrowse && f.root != nil {
-		text += " \u00b7 " + f.filterFor(f.root.Path).String()
+		text += " \u00b7 " + f.fileFilter().String()
 	}
 	return mutedText(modeScopeRowStyle, f.unfocused, true).Width(f.width).MaxWidth(f.width).Render(text)
 }
