@@ -46,7 +46,7 @@ func Read(path string) ([]byte, error) {
 ### Tasks
 
 - [x] Render styled markdown
-- [x] Hide frontmatter
+- [x] Show frontmatter
 - [ ] Find in document
 - [ ] Help modal
 

@@ -28,10 +28,13 @@ what does it cost to hide it? (Asked while specifying C1/S7.)
 
 ## Consequence
 
-Pre-strip before rendering, mirroring Glow (see `.charm/DECISIONS.md` D5). Zero new
-dependencies.
+Originally: pre-strip before rendering, mirroring Glow (D5). **Superseded by D138:**
+YAML frontmatter is drawn as a Frontmatter Card above the Glamour render
+(`cmd/noggin/frontmatter_card.go`). Where the card cannot show it, the fence lines are rewritten
+as a code fence so it is shown verbatim (`fenceFrontmatter`, `cmd/noggin/document.go`). The findings above still explain why it
+must be rewritten one way or another. Options survey: `.charm/findings/frontmatter-rendering-options.md`.
 
 Relevant later: when tags arrive (C5), tag parsing reads the frontmatter block separately from
 rendering — stripping for display does not preclude parsing for metadata. If frontmatter
 *values* are ever needed at render time (e.g. a title), revisit
-`github.com/abhinav/goldmark-frontmatter` + `ansi.NewRenderer`.
+`go.abhg.dev/goldmark/frontmatter` (formerly `github.com/abhinav/goldmark-frontmatter`) + `ansi.NewRenderer`.

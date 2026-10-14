@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -88,27 +88,131 @@ func articleDocument(a wikipedia.Article) document {
 	return document{path: a.URL, title: a.Title, src: []byte(a.Markdown)}
 }
 
-// frontmatterFence matches a line that is exactly a `---` fence. Both ends of a
-// YAML frontmatter block are such a line.
-var frontmatterFence = regexp.MustCompile(`(?m)^---[ \t]*\r?\n`)
+// utf8BOM is the byte order mark some editors write at the start of a file.
+// A frontmatter fence after one is still the document's first line.
+var utf8BOM = []byte("\ufeff")
 
-// stripFrontmatter removes a leading YAML frontmatter block, fences included.
+// frontmatterClosers maps an opening frontmatter fence to the code block
+// language its contents are highlighted as and the fences that close it:
+// `---` YAML (closed by `---`, or YAML's own `...` document-end marker) and
+// `+++` TOML (Hugo).
+var frontmatterClosers = map[string]struct {
+	lang    string
+	closers []string
+}{
+	"---": {"yaml", []string{"---", "..."}},
+	"+++": {"toml", []string{"+++"}},
+}
+
+// frontmatter is a leading frontmatter block, split out of a document's source.
+type frontmatter struct {
+	lang    string // "yaml" or "toml": what the block is written in
+	opener  []byte // the opening fence line, line ending included
+	content []byte // the lines between the fences
+	closer  []byte // the closing fence line; no line ending at end of file
+	rest    []byte // the document after the closing fence
+}
+
+// lines is the number of source lines the block spans, fences included.
+func (f frontmatter) lines() int {
+	return bytes.Count(f.opener, []byte("\n")) + bytes.Count(f.content, []byte("\n")) + 1
+}
+
+// splitFrontmatter finds a leading frontmatter block in src.
 //
-// Glamour has no frontmatter support and CommonMark reads the closing `---` as
-// a setext heading underline, so an unstripped block renders as a spurious H2
-// above the document's real title (D5, .charm/knowledge/frontmatter-rendering.md). Glow
-// solves this by slicing the bytes off before rendering and so do we — no YAML
-// parsing, no extra dependency.
+// The opening fence must be the first line (after an optional byte order mark)
+// and both fences exactly three characters at column 0, trailing whitespace
+// allowed. Glow instead takes the first two `---` lines found anywhere, which
+// eats the head of a document whose first two thematic breaks are `---`; and
+// `----` is a thematic break, not a fence. Without a closing fence there is no
+// block.
+func splitFrontmatter(src []byte) (frontmatter, bool) {
+	opener, rest := cutLine(bytes.TrimPrefix(src, utf8BOM))
+	fence, ok := frontmatterClosers[fenceText(opener)]
+	if !ok || !bytes.HasSuffix(opener, []byte("\n")) {
+		return frontmatter{}, false
+	}
+	for block := rest; len(block) > 0; {
+		line, after := cutLine(block)
+		if slices.Contains(fence.closers, fenceText(line)) {
+			return frontmatter{
+				lang:    fence.lang,
+				opener:  opener,
+				content: rest[:len(rest)-len(block)],
+				closer:  line,
+				rest:    after,
+			}, true
+		}
+		block = after
+	}
+	return frontmatter{}, false
+}
+
+// fenceFrontmatter rewrites a leading frontmatter block as a fenced code block,
+// so Glamour shows it verbatim and Chroma-highlighted ahead of the document
+// (D138). It is the fallback for frontmatter the Frontmatter Card cannot
+// show. Left as-is, CommonMark reads the opening `---` as a thematic break
+// and the closing one as a setext heading underline, rendering the block as a
+// spurious H2 (.charm/knowledge/frontmatter-rendering.md).
 //
-// Unlike Glow, we require the opening fence at offset 0. Glow takes the first
-// two fences found anywhere, which silently eats the head of a document whose
-// first two thematic breaks are `---`.
-func stripFrontmatter(src []byte) []byte {
-	fences := frontmatterFence.FindAllIndex(src, 2)
-	if len(fences) < 2 || fences[0][0] != 0 {
+// Only the two fence lines are replaced, each by one line, so the result has
+// exactly the source's lines: resolveGrepLanding relies on ripgrep's raw-file
+// line numbers addressing it unchanged. An empty block becomes blank lines
+// rather than an empty code box. Source without frontmatter is returned
+// untouched.
+func fenceFrontmatter(src []byte) []byte {
+	fm, ok := splitFrontmatter(src)
+	if !ok {
 		return src
 	}
-	return src[fences[1][1]:]
+	var out bytes.Buffer
+	if len(bytes.TrimSpace(fm.content)) == 0 {
+		out.Write(lineEnding(fm.opener))
+		out.Write(fm.content)
+		out.Write(lineEnding(fm.closer))
+	} else {
+		ticks := strings.Repeat("`", max(3, longestBacktickRun(fm.content)+1))
+		out.WriteString(ticks + fm.lang)
+		out.Write(lineEnding(fm.opener))
+		out.Write(fm.content)
+		out.WriteString(ticks)
+		out.Write(lineEnding(fm.closer))
+	}
+	out.Write(fm.rest)
+	return out.Bytes()
+}
+
+// cutLine splits b after its first line ending; the last line may have none.
+func cutLine(b []byte) (line, rest []byte) {
+	if i := bytes.IndexByte(b, '\n'); i >= 0 {
+		return b[:i+1], b[i+1:]
+	}
+	return b, nil
+}
+
+// lineEnding is line's line ending: "\n", "\r\n", or none at end of file.
+func lineEnding(line []byte) []byte {
+	return line[len(bytes.TrimRight(line, "\r\n")):]
+}
+
+// fenceText is line without its line ending and trailing whitespace.
+func fenceText(line []byte) string {
+	return string(bytes.TrimRight(line, " \t\r\n"))
+}
+
+// longestBacktickRun is the length of the longest run of backticks in b, so a
+// code fence one longer cannot be closed early by anything inside it.
+func longestBacktickRun(b []byte) int {
+	longest, run := 0, 0
+	for _, c := range b {
+		if c == '`' {
+			run++
+			longest = max(longest, run)
+		} else {
+			run = 0
+		}
+	}
+	return longest
 }
 
 // markdownColoured reports whether markdown is rendered in the Theme's colours.
@@ -169,8 +273,9 @@ func expandTabs(src []byte) []byte {
 }
 
 // renderMarkdown renders markdown to styled, width-wrapped terminal output.
-// Frontmatter is stripped first (D5). Width is the number of cells the result
-// may occupy; a non-positive width renders unwrapped.
+// Frontmatter is shown as a Frontmatter Card above the document, or as a code
+// block where the card cannot show it (D138). Width is the number of cells the
+// result may occupy; a non-positive width renders unwrapped.
 func renderMarkdown(src []byte, width int) (string, error) {
 	return renderMarkdownStyled(src, width, false)
 }
@@ -200,9 +305,10 @@ func renderMarkdownStyled(src []byte, width int, muted bool) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("markdown renderer: %w", err)
 	}
-	out, err := renderer.RenderBytes(expandTabs(stripFrontmatter(src)))
+	header, body := frontmatterHeader(src, width, muted)
+	out, err := renderer.RenderBytes(expandTabs(body))
 	if err != nil {
 		return "", fmt.Errorf("render markdown: %w", err)
 	}
-	return string(out), nil
+	return header + string(out), nil
 }

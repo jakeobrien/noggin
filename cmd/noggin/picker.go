@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -983,9 +982,8 @@ func (p picker) pickerGrepCandidate(hideDotfiles bool) (grepResult, bool) {
 // S11): the matched file becomes the Active Document, and the Document
 // Viewer lands on the matched line — re-derived in the rendered content's
 // own line space rather than trusted from rg's raw-file line number, per
-// D34: Glamour's rendering (re-flow, frontmatter stripping (D5), tab
-// expansion, markdown syntax removed) does not preserve rg's line numbers
-// across that boundary.
+// D34: Glamour's rendering (re-flow, tab expansion, markdown syntax
+// removed) does not preserve rg's line numbers across that boundary.
 //
 // The hand-off reuses find.go's own machinery (commitQuery, applyCurrentMatch)
 // rather than a bespoke scroll — D34's own reasoning, and what lets M4.4's
@@ -1029,7 +1027,7 @@ func (m model) activateGrepPickerInto(target pane) model {
 	// activatePickerInto above.
 	m = m.navigate(target, d)
 	v := m.viewerFor(target).commitQuery(query)
-	if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line); ok {
+	if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line, v.vp.Width()); ok {
 		v.findState.current = ordinal
 		v = v.applyCurrentMatch()
 	}
@@ -1041,47 +1039,61 @@ func (m model) activateGrepPickerInto(target pane) model {
 // Result's raw-file line number to a match index into
 // findMatches(rendered, query): "the Nth literal occurrence of the query"
 // is a property of the text itself, invariant to how it later gets wrapped
-// onto lines, so the Nth occurrence in the raw source (after the same
-// frontmatter-stripping renderMarkdown itself applies, D5 — line numbers
-// past a stripped frontmatter block do not otherwise line up between the
-// two spaces at all) is assumed to be the Nth occurrence in the rendered
-// content too. ok is false — D34's explicit degrade trigger — when the
-// target line sits inside the stripped frontmatter block itself (no
-// corresponding occurrence in the rendered content can exist), or when the
-// resolved ordinal has no counterpart at all in the rendered matches
-// (Glamour having removed or reordered occurrences before it, e.g. inside
-// stripped markdown syntax).
+// onto lines, so the Nth occurrence in the raw source is assumed to be the
+// Nth occurrence in the rendered content too. rendered is src as rendered
+// at width.
+//
+// The Frontmatter Card (D138) reshapes its text ("title: x" is drawn as
+// "title  x"), so frontmatter and body are counted as separate segments
+// (frontmatterSpan): a raw frontmatter occurrence the card does not
+// reproduce cannot shift every body match after it. ok is false — D34's
+// explicit degrade trigger — when the resolved ordinal has no counterpart in
+// its segment of the rendered matches (the card dropped it, or Glamour
+// removed or reordered occurrences before it, e.g. inside stripped markdown
+// syntax).
 //
 // "This match" resolves to the *first* occurrence of query on line: rg
 // reports one Result per matching line, not per occurrence within it
 // (grepBatch's own comment), so a line with several occurrences of query
 // picks its first as the line's representative match — the same
 // approximation D34 accepts for markdown-syntax-adjacent matches.
-func resolveGrepLanding(src []byte, rendered, query string, line int) (ordinal int, ok bool) {
-	stripped := stripFrontmatter(src)
-	if len(stripped) != len(src) {
-		removedLines := strings.Count(string(src[:len(src)-len(stripped)]), "\n")
-		if line <= removedLines {
-			return 0, false
-		}
-		line -= removedLines
-	}
-	raw := findMatches(string(stripped), query)
-	ordinal = -1
+func resolveGrepLanding(src []byte, rendered, query string, line, width int) (ordinal int, ok bool) {
+	raw := findMatches(string(src), query)
+	target := -1
 	for i, m := range raw {
 		if m.line+1 == line { // findMatch.line is 0-based; rg's line is 1-based
-			ordinal = i
+			target = i
 			break
 		}
 	}
-	if ordinal < 0 {
+	if target < 0 {
 		return 0, false
 	}
 	rend := findMatches(rendered, query)
+	sourceLines, renderedLines := frontmatterSpan(src, width)
+	rawHead, rendHead := matchesBefore(raw, sourceLines), matchesBefore(rend, renderedLines)
+	switch {
+	case target >= rawHead:
+		ordinal = rendHead + target - rawHead
+	case target < rendHead:
+		ordinal = target
+	default:
+		return 0, false
+	}
 	if ordinal >= len(rend) {
 		return 0, false
 	}
 	return ordinal, true
+}
+
+// matchesBefore counts the matches on lines before line; matches are in
+// on-screen order, so they are a prefix.
+func matchesBefore(matches []findMatch, line int) int {
+	n := 0
+	for n < len(matches) && matches[n].line < line {
+		n++
+	}
+	return n
 }
 
 // handlePickerInput is where a keypress goes while the Picker is open

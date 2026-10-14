@@ -208,7 +208,7 @@ s.close()
 
 # --- M1.3: the document renders ------------------------------------------
 
-FRONTMATTER = ["title: Fixture Document", "tags: [noggin, fixture]", "draft: true"]
+FRONTMATTER = ["Fixture Document", "noggin, fixture"]  # D138 Frontmatter Card values
 
 for cols, rows in [(80, 24), (100, 30)]:
     s = Session([BINARY, FIXTURE], cols, rows)
@@ -224,8 +224,10 @@ for cols, rows in [(80, 24), (100, 30)]:
     check(f"M1.3 document heading on screen at {cols}x{rows}",
           "Reading Notes" in "\n".join(lines))
     for fm in FRONTMATTER:
-        check(f"M1.3 frontmatter {fm!r} absent at {cols}x{rows}",
-              fm not in "\n".join(lines))
+        check(f"D138 frontmatter card {fm!r} shown at {cols}x{rows}",
+              fm in "\n".join(lines))
+    check(f"D138 frontmatter is a card, not raw YAML, at {cols}x{rows}",
+          "title: Fixture Document" not in "\n".join(lines))
     check(f"M1.3 no literal tab reaches the screen at {cols}x{rows}",
           "\t" not in "".join(lines))
     check(f"M1.3 markdown is styled (SGR colour on the wire) at {cols}x{rows}",

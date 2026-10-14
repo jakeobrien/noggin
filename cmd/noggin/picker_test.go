@@ -719,15 +719,12 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 	}
 }
 
-// TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch is
-// D34's own explicit degrade trigger: a Grep Result whose line sits inside
-// the document's stripped YAML frontmatter (D5) has no counterpart in the
-// rendered content at all, so the ordinal re-derivation cannot resolve it
-// — the Document Viewer must still open, landing on whatever other
-// occurrence of the query exists in the body (commitQuery's own
-// nearestMatch(matches, 0) default) rather than failing or crashing the
-// activation.
-func TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch(t *testing.T) {
+// TestPickerActivateGrepResultInsideFrontmatterLandsOnIt: frontmatter is
+// shown (D138), so a Grep Result on a frontmatter line has a rendered
+// counterpart in the Frontmatter Card and lands on it, not on the body's
+// later occurrence of the same query. (Under D5's stripping this was a
+// degrade case.)
+func TestPickerActivateGrepResultInsideFrontmatterLandsOnIt(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	src := "---\ntitle: report\n---\n# doc\n\nfiller\n\nthe body has a report too\n"
@@ -759,15 +756,18 @@ func TestPickerActivateGrepResultInsideFrontmatterDegradesToFirstBodyMatch(t *te
 	if got.dv1.doc.path != path {
 		t.Errorf("Active Document = %q, want %q", got.dv1.doc.path, path)
 	}
-	if !got.dv1.hasFindMatches() {
-		t.Fatal("degrade path lost the body's own match entirely, want the body occurrence still found")
+	if n := len(got.dv1.findState.matches); n != 2 {
+		t.Fatalf("find matches = %d, want 2 (frontmatter + body)", n)
 	}
-	view := got.View().Content
+	if got.dv1.findState.current != 0 {
+		t.Errorf("current match = %d, want 0 (the frontmatter occurrence)", got.dv1.findState.current)
+	}
+	view := got.dv1.view()
+	if !strings.Contains(view, "report") || !strings.Contains(view, "╭") {
+		t.Error("frontmatter card is not shown in the rendered view (D138)")
+	}
 	if !hasReverse(view) {
-		t.Error("degrade path left no line indicated, want the body's match highlighted")
-	}
-	if strings.Contains(view, "title: report") {
-		t.Error("frontmatter leaked into the rendered view (D5); test fixture assumption is broken")
+		t.Error("no line indicated, want the frontmatter match highlighted")
 	}
 }
 

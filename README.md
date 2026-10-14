@@ -489,8 +489,15 @@ it; whatever had focus keeps it.
 
 ## Frontmatter
 
-YAML frontmatter at the top of a document is stripped before rendering — it's
-never shown as a table or raw block.
+YAML frontmatter at the top of a document is shown as a card above it: one row
+per key, in file order, values wrapped beside their keys and lists
+comma-joined. The frontmatter goes between `---` fences (closed by `---` or `...`)
+and the opening fence must be the file's first line.
+
+Where the card can't show the frontmatter faithfully, it is shown verbatim as a
+syntax-highlighted code block instead. That happens with nested values (a map, or
+a list of maps or lists), anchors and aliases, invalid YAML, TOML frontmatter
+(`+++` fences), or a pane too narrow for a card. An empty block shows as nothing.
 
 ## Keeping things in sync
 

@@ -15,6 +15,8 @@ require (
 	golang.org/x/term v0.43.0
 )
 
+require go.yaml.in/yaml/v3 v3.0.5
+
 require (
 	github.com/JohannesKaufmann/dom v0.3.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.20.0 // indirect

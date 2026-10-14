@@ -10,12 +10,12 @@ import (
 
 const fixturePath = "testdata/fixture.md"
 
-// frontmatterLines are the fixture's frontmatter, none of which may reach the
-// screen (S7, D5).
+// frontmatterLines are the fixture's frontmatter as its Frontmatter Card shows
+// it (D138): each key, then its value, in source order.
 var frontmatterLines = []string{
-	"title: Fixture Document",
-	"tags: [noggin, fixture]",
-	"draft: true",
+	"title", "Fixture Document",
+	"tags", "noggin, fixture",
+	"draft", "true",
 }
 
 // fixtureStructure is what the fixture's markdown constructs look like once
@@ -48,26 +48,44 @@ func openedFixture(t *testing.T, width, height int) model {
 	return sized(t, newModel().openDocument(fixtureDoc(t)), width, height)
 }
 
-func TestStripFrontmatter(t *testing.T) {
+func TestFenceFrontmatter(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		in   string
 		want string
 	}{
-		{"leading block", "---\ntitle: x\n---\n# H\n", "# H\n"},
-		{"crlf", "---\r\ntitle: x\r\n---\r\n# H\r\n", "# H\r\n"},
-		{"empty block", "---\n---\n# H\n", "# H\n"},
-		{"trailing spaces on fences", "--- \ntitle: x\n---\t\n# H\n", "# H\n"},
+		{"leading block", "---\ntitle: x\n---\n# H\n", "```yaml\ntitle: x\n```\n# H\n"},
+		{"crlf", "---\r\ntitle: x\r\n---\r\n# H\r\n", "```yaml\r\ntitle: x\r\n```\r\n# H\r\n"},
+		{"yaml document-end closer", "---\ntitle: x\n...\n# H\n", "```yaml\ntitle: x\n```\n# H\n"},
+		{"toml", "+++\ntitle = 'x'\n+++\n# H\n", "```toml\ntitle = 'x'\n```\n# H\n"},
+		{"toml block does not close on ---", "+++\na = 1\n---\n+++\n# H\n", "```toml\na = 1\n---\n```\n# H\n"},
+		{"byte order mark", "\ufeff---\ntitle: x\n---\n# H\n", "```yaml\ntitle: x\n```\n# H\n"},
+		{"trailing spaces on fences", "--- \ntitle: x\n---\t\n# H\n", "```yaml\ntitle: x\n```\n# H\n"},
+		{"closer at end of file", "---\ntitle: x\n---", "```yaml\ntitle: x\n```"},
+		// An empty block becomes blank lines, not an empty code box.
+		{"empty block", "---\n---\n# H\n", "\n\n# H\n"},
+		{"blank-only block", "---\n\n---\n# H\n", "\n\n\n# H\n"},
+		// A backtick fence in a value must not close the code block early.
+		{"backticks in the block", "---\nx: |\n  ```\n---\n", "````yaml\nx: |\n  ```\n````\n"},
 		{"no frontmatter", "# H\n\ntext\n", "# H\n\ntext\n"},
+		{"no frontmatter keeps its byte order mark", "\ufeff# H\n", "\ufeff# H\n"},
 		{"unclosed block", "---\ntitle: x\n", "---\ntitle: x\n"},
+		{"four dashes is a thematic break", "----\ntitle: x\n----\n", "----\ntitle: x\n----\n"},
+		{"blank line before opener", "\n---\ntitle: x\n---\n", "\n---\ntitle: x\n---\n"},
 		// Glow slices between the first two fences found anywhere, which eats
 		// the head of a document whose thematic breaks are `---`.
 		{"thematic breaks mid-document", "# H\n\n---\n\ntext\n\n---\n\nmore\n", "# H\n\n---\n\ntext\n\n---\n\nmore\n"},
 		{"fence-like text indented", "text\n\n    ---\n    ---\n", "text\n\n    ---\n    ---\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := string(stripFrontmatter([]byte(tc.in))); got != tc.want {
-				t.Errorf("stripFrontmatter(%q) = %q, want %q", tc.in, got, tc.want)
+			got := string(fenceFrontmatter([]byte(tc.in)))
+			if got != tc.want {
+				t.Errorf("fenceFrontmatter(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+			// Line numbers must survive the rewrite: resolveGrepLanding maps
+			// ripgrep's raw-file lines straight onto this text (D34).
+			if in, out := strings.Count(tc.in, "\n"), strings.Count(got, "\n"); in != out {
+				t.Errorf("fenceFrontmatter changed the line count from %d to %d", in, out)
 			}
 		})
 	}
@@ -94,17 +112,29 @@ func TestExpandTabs(t *testing.T) {
 	}
 }
 
-func TestRenderedFixtureHidesFrontmatterAndKeepsStructure(t *testing.T) {
+func TestRenderedFixtureShowsFrontmatterAndKeepsStructure(t *testing.T) {
 	const width = 54
 	out, err := renderMarkdown(fixtureDoc(t).src, width)
 	if err != nil {
 		t.Fatalf("renderMarkdown: %v", err)
 	}
 
-	for _, line := range frontmatterLines {
-		if strings.Contains(out, line) {
-			t.Errorf("rendered document contains frontmatter %q", line)
+	// In order, ahead of the document's own title: as a card, not
+	// CommonMark's thematic break + paragraph + setext H2, nor the raw YAML.
+	if strings.Contains(out, "title: Fixture Document") {
+		t.Error("rendered document shows raw YAML, want the Frontmatter Card")
+	}
+	prev := -1
+	for _, line := range append(frontmatterLines, fixtureStructure["heading"]) {
+		i := strings.Index(out, line)
+		if i < 0 {
+			t.Errorf("rendered document is missing %q", line)
+			continue
 		}
+		if i < prev {
+			t.Errorf("%q is rendered out of order", line)
+		}
+		prev = i
 	}
 	for name, want := range fixtureStructure {
 		if !strings.Contains(out, want) {
@@ -145,8 +175,8 @@ func TestViewerShowsTheOpenDocument(t *testing.T) {
 		t.Error("view does not name the open document")
 	}
 	for _, line := range frontmatterLines {
-		if strings.Contains(view, line) {
-			t.Errorf("view contains frontmatter %q", line)
+		if !strings.Contains(view, line) {
+			t.Errorf("view does not show frontmatter %q", line)
 		}
 	}
 	if strings.Contains(view, emptyViewerText) {

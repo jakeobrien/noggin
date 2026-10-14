@@ -51,7 +51,7 @@
 
 ## D5: YAML frontmatter is hidden by pre-stripping
 
-- Status: decided
+- Status: superseded by D138
 - Cycle: C1
 - Date: 2026-07-30
 - Context: Glamour has no frontmatter support and CommonMark renders the closing `---` as a
@@ -1644,3 +1644,44 @@
 - Cost / revisit: each viewer renders its document (and Peek) twice on every render. Fine for
   typical documents; if large ones feel slow, render the muted copy lazily or cache it. Muted
   colours are truecolor hex and rely on Bubble Tea downsampling for 256-colour terminals.
+
+## D138: YAML frontmatter is drawn as a Frontmatter Card, with a verbatim code block as fallback; supersedes D5
+
+- Status: decided
+- Date: 2026-10-14
+- Context: D5 hid frontmatter. Display options were researched in
+  `.charm/findings/frontmatter-rendering-options.md`. Ruled out: a toggle, using values in
+  chrome, a goldmark extension. Tried and chosen: (d), the lipgloss card. A Chroma-highlighted
+  code block (b) was tried first and kept only as the card's fallback.
+- Decision:
+  - **Splitting** (`splitFrontmatter`, `cmd/noggin/document.go`): `---` … `---`/`...` (YAML)
+    or `+++` … `+++` (TOML). The opener must be line 1 (a UTF-8 BOM is allowed) and fences
+    exactly three characters at column 0, with trailing whitespace allowed. Without a closer,
+    the source has no frontmatter. This also fixes D5's gaps: BOM-prefixed and TOML
+    frontmatter used to leak into the render as a spurious H2.
+  - **Card** (`cmd/noggin/frontmatter_card.go`): `renderMarkdownStyled` draws it above
+    Glamour's output; Glamour renders only the text after the closing fence. YAML is parsed
+    with `go.yaml.in/yaml/v3` (the maintained fork of the archived `gopkg.in/yaml.v3`) into
+    `yaml.Node`, so source key order is kept. A field is a scalar (null shows blank; a block
+    scalar keeps its lines) or a list of scalars, comma-joined.
+  - **Card layout:** rounded `Theme.Border` box with one cell of padding, aligned to Glamour's
+    2-cell document margin and shrunk to its content. Keys are in `Theme.Subtle`, in a column
+    as wide as the longest key (at most half the card); values are in `Theme.Fg` and wrap with
+    a hanging indent. The muted (D136) card recedes the same three colours through
+    `mutedColor`; the no-TTY style draws it uncoloured.
+  - **Fallback** (`fenceFrontmatter`): anything the card cannot show faithfully is shown
+    verbatim as a ```` ```yaml ````/```` ```toml ```` code block, so nothing is hidden. That
+    covers nested maps, lists of non-scalars, aliases, a non-mapping document, invalid YAML,
+    TOML, or a card narrower than 16 cells. Only the two fence lines are rewritten, one line
+    each, so source line numbers are unchanged. The code fence is longer than any backtick run
+    inside. An empty block becomes blank lines.
+- Grep landing: the card reshapes the text (`title: x` becomes `title  x`), so
+  `resolveGrepLanding` takes the render width and counts frontmatter and body occurrences as
+  separate segments (`frontmatterSpan`). A Grep Result inside frontmatter lands on its card
+  occurrence. A raw match the card drops (e.g. a query `title:`) degrades on its own and does
+  not shift body matches. Under the fallback, both spans are zero and ordinals map directly.
+- Cost / revisit: one new dependency. `frontmatterSpan` re-renders the card to measure it,
+  costing one extra card render per Grep activation. TOML would need a TOML parser to get a
+  card. The fallback block is subject to a pre-existing Glamour quirk: the Chroma style is
+  registered once per process, so muted renders keep focused code colours, as every code block
+  does. If tags (D10) settle on frontmatter, `frontmatterFields` is the parse to share.

@@ -17,7 +17,8 @@
      this tier small; nothing archives it automatically. -->
 
 - `frontmatter-rendering.md` — Glamour ignores YAML frontmatter and CommonMark mis-renders it
-  as an H2; cited by `document.go` at the frontmatter-stripping code. (as of C1)
+  as an H2; cited by `document.go` at `fenceFrontmatter` (D138 superseded D5's stripping).
+  (as of C1)
 - `gitignore-matching.md` — why the tree walk hand-rolls `.gitignore` instead of a dependency
   or shell-out, the subset covered, and what's deliberately left out; cited by
   `internal/tree/gitignore.go`. (as of C1)

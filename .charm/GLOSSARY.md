@@ -66,6 +66,9 @@
 - **Focus Badge** — the key that focuses a pane, shown right-aligned on that pane's title row
   (`[f]`, `[^o]`). Dropped when the pane is too narrow (C4).
 - **Footer** — the persistent bottom bar: contextual key hints plus transient messages.
+- **Frontmatter Card** — a document's YAML frontmatter drawn as a bordered key/value box
+  above its rendered body. Frontmatter it cannot show faithfully is shown verbatim as a code
+  block instead (D138).
 - **Grep Picker** — the Picker whose Results are matching lines across files (C2). Never
   includes Query Sources (C6).
 - **Help Modal** — the modal listing the focused pane's key bindings, reachable from the
