@@ -134,7 +134,9 @@
 - **Staleness indicator** — a passive UI signal that an open Document Viewer's Active Document
   or the Active Root's tree changed on disk. Reports only that *something* changed across
   those sources, and never refreshes on its own (C2a). Its own dedicated, highlighted row
-  above the Footer, shown only while stale (C3) — not a Footer suffix.
+  above the Footer, shown only while stale (C3) — not a Footer suffix. Checked every few
+  seconds and whenever the terminal regains focus; changes to entries the tree doesn't show
+  never raise it (D139).
 - **Starred** — bookmarked and persisted across sessions. Applies to Roots (C1) and to
   documents (C4). Document stars are a single global collection of paths, independent of the
   Root lifecycle: un-starring a Root never touches them.

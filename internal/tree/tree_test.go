@@ -143,3 +143,88 @@ func TestWalkPathsAbsolute(t *testing.T) {
 		t.Errorf("child path not loadable: %v", err)
 	}
 }
+
+// entriesOf is n's Children as the Entries ListDir reports, in order.
+func entriesOf(n *Node) []Entry {
+	out := []Entry{}
+	for _, c := range n.Children {
+		out = append(out, Entry{Name: c.Name, IsDir: c.IsDir})
+	}
+	return out
+}
+
+// findDir returns the directory node at slash path rel under root.
+func findDir(t *testing.T, root *Node, rel string) *Node {
+	t.Helper()
+	n := root
+	for _, part := range strings.Split(rel, "/") {
+		var next *Node
+		for _, c := range n.Children {
+			if c.IsDir && c.Name == part {
+				next = c
+			}
+		}
+		if next == nil {
+			t.Fatalf("no directory %q in walked tree", rel)
+		}
+		n = next
+	}
+	return n
+}
+
+// TestListDirMatchesWalk pins ListDir's one contract: for any directory Walk
+// lists, ListDir reports exactly that directory's Children, in the same order
+// — the same readable-file policy, `.git` exclusion and `.gitignore` files
+// from the root down to (and including) the directory itself.
+func TestListDirMatchesWalk(t *testing.T) {
+	root := writeTree(t, map[string]string{
+		".gitignore":               "*.log\nbuild/\n",
+		".git/HEAD":                "ref",
+		"README":                   "",
+		"top.md":                   "",
+		"image.png":                "",
+		"debug.log":                "",
+		"build/out.md":             "",
+		"empty/":                   "",
+		"notes/.gitignore":         "secret.md\n",
+		"notes/a.md":               "",
+		"notes/secret.md":          "",
+		"notes/trace.log":          "",
+		"notes/deep/b.md":          "",
+		"notes/deep/secret.md":     "",
+		"notes/deep/.DS_Store":     "",
+		"notes/deep/c.txt":         "",
+		"notes/deep/nested/":       "",
+		"notes/deep/build/hide.md": "",
+	})
+	walked, err := Walk(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, rel := range []string{"", "notes", "notes/deep", "empty"} {
+		dir := walked
+		if rel != "" {
+			dir = findDir(t, walked, rel)
+		}
+		got, err := ListDir(walked.Path, dir.Path)
+		if err != nil {
+			t.Fatalf("ListDir(%q): %v", rel, err)
+		}
+		if got == nil {
+			got = []Entry{}
+		}
+		if want := entriesOf(dir); !reflect.DeepEqual(got, want) {
+			t.Errorf("ListDir(%q) = %v, want Walk's children %v", rel, got, want)
+		}
+	}
+}
+
+// TestListDirMissingDirectoryErrors: a directory that no longer exists is an
+// error, not an empty listing, so a caller can tell "gone" from "emptied".
+func TestListDirMissingDirectoryErrors(t *testing.T) {
+	root := t.TempDir()
+	if _, err := ListDir(root, filepath.Join(root, "gone")); err == nil {
+		t.Error("ListDir on a missing directory returned nil error, want one")
+	}
+}

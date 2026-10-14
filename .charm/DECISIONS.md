@@ -578,7 +578,7 @@
 
 ## D49: S10's staleness check is a directory-mtime heuristic, and its indicator is a Footer suffix
 
-- Status: decided
+- Status: decided (detection amended by D139; surface superseded by D60)
 - Cycle: C2a
 - Date: 2026-08-08
 - Context: PLAN.md M10.1/SPEC.md S10 require a periodic (~5-10s) check that reports "the
@@ -1685,3 +1685,38 @@
   card. The fallback block is subject to a pre-existing Glamour quirk: the Chroma style is
   registered once per process, so muted renders keep focused code colours, as every code block
   does. If tags (D10) settle on frontmatter, `frontmatterFields` is the parse to share.
+
+## D139: The staleness check re-lists changed directories and also runs on terminal focus; amends D49's detection
+
+- Status: decided
+- Date: 2026-10-15
+- Context: D49's check flagged any directory whose mtime moved. A directory's mtime also moves
+  for entries the tree never shows: vim's `.swp` and `4913` probe files, `.DS_Store`,
+  non-Readable or gitignored files, the temp file of an atomic save. So opening a note in an
+  external vim raised the indicator and `R` then showed nothing new. An in-place `.gitignore`
+  edit was missed, since it changes no directory's mtime. The check was also periodic only:
+  up to 6s late after switching back from an editor. Alternatives weighed: a recursive
+  fsnotify watcher (macOS kqueue holds one fd per watched file, inotify watch limits, no
+  events on network/VM mounts, reverses "noggin never watches the filesystem"), native
+  FSEvents (cgo), and a periodic full re-walk (breaks S10's "never re-walk").
+- Decision:
+  - **Filter** (`staleness.go`): the baseline keeps, per known directory, its mtime, the
+    entries the tree shows there, and its `.gitignore`'s stamp. A directory whose mtime is
+    unchanged costs one Stat, as before. One whose mtime moved is re-listed with
+    `tree.ListDir`, which applies Walk's policy for that one directory, and is stale only if
+    the entries differ. A `.gitignore` that changed, appeared or vanished is stale outright,
+    since it can change what the tree shows anywhere beneath it. Open documents are still
+    statted directly.
+  - **Focus trigger:** `View` sets `ReportFocus`; `tea.FocusMsg` dispatches an immediate
+    check. Its result does not reschedule (`staleResultMsg.periodic`), so Init's one timer
+    chain stays the only one. The 6s periodic check is unchanged, covering terminals without
+    focus events (and tmux without `focus-events on`) and changes made while noggin stays
+    focused.
+  - Unchanged: the indicator only indicates (no auto-refresh), and noggin still never watches
+    the filesystem.
+- Cost / revisit: a directory with churn the tree hides is re-listed on every check until
+  the next reset (one ReadDir, plus a `.gitignore` read per ancestor), rather than folding
+  confirmed mtimes back into the baseline. Still not detected: in-place edits to files that
+  aren't open, and git marker changes. If live reloading of open documents is wanted later,
+  watching only their parent directories (at most two) is the next step, not a recursive
+  watcher.

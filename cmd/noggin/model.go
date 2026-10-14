@@ -1571,6 +1571,10 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.runStaleCheck(msg)
 	case staleResultMsg:
 		return m.applyStaleResult(msg)
+	// D139: regaining terminal focus checks staleness immediately (View sets
+	// ReportFocus). Not a keypress, so it never clears m.message.
+	case tea.FocusMsg:
+		return m.checkStaleOnFocus()
 	case tea.WindowSizeMsg:
 		return m.resize(msg.Width, msg.Height, resizeCauseWindow), nil
 	// tea.MouseWheelMsg (bug fix, paired with MouseModeCellMotion in View):
@@ -2043,9 +2047,9 @@ var (
 // leave both at their zero value, which meant it never took over the
 // terminal — nothing was left in the alt screen buffer to restore on exit,
 // and mouse wheel events were never captured, so they fell through to the
-// terminal's own native scrollback instead of scrolling a pane). Every other
-// field (cursor, window title, ...) stays at its zero value, unchanged from
-// before.
+// terminal's own native scrollback instead of scrolling a pane), as is
+// ReportFocus (D139). Every other field (cursor, window title, ...) stays at
+// its zero value.
 func (m model) View() tea.View {
 	v := tea.NewView(paintCanvas(m.render(), m.width, m.height, theme))
 	v.AltScreen = true
@@ -2064,6 +2068,10 @@ func (m model) View() tea.View {
 	// all handleMouseWheel below uses) without also reporting motion when no
 	// button is pressed the way MouseModeAllMotion would.
 	v.MouseMode = tea.MouseModeCellMotion
+	// Terminal focus events drive an immediate staleness check on refocus
+	// (D139, checkStaleOnFocus). Terminals that don't support them ignore
+	// the request; the periodic check covers those.
+	v.ReportFocus = true
 	return v
 }
 

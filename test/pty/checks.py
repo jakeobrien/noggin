@@ -683,6 +683,42 @@ check("C2a/M5.1 pty: doomed.md is gone after R", "doomed.md" not in body, repr(b
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M5.1 pty: exits 0 after a refresh", code == 0, f"exit {code}")
 
+# --- D139: focus-triggered staleness check, hidden-entry filter -------------
+# Everything here finishes well inside the first 6s periodic tick, so a stale
+# row can only have come from the focus-in event. A focus-in (CSI I) after an
+# entry the tree never shows (a vim swap file) must not raise the row; one
+# after a visible addition must.
+
+STALE_TEXT = "something changed on disk"  # cmd/noggin/staleness.go staleMessage
+FOCUS_IN = b"\x1b[I"
+
+focus_root = tempfile.mkdtemp()
+with open(os.path.join(focus_root, "keep.md"), "w") as f:
+    f.write("kept\n")
+
+s = Session([BINARY, focus_root], 80, 24)
+out = s.pump(1.2)
+check("D139 pty: focus reporting enabled on start", b"\x1b[?1004h" in out)
+
+with open(os.path.join(focus_root, ".keep.md.swp"), "w") as f:
+    f.write("swap\n")
+s.send(FOCUS_IN, 0.6)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("D139 pty: a swap file the tree hides does not raise the stale row on focus",
+      STALE_TEXT not in body, repr(body[-300:]))
+
+with open(os.path.join(focus_root, "new.md"), "w") as f:
+    f.write("new\n")
+s.send(FOCUS_IN, 0.6)
+body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
+check("D139 pty: focus-in after a visible change raises the stale row before the periodic tick",
+      STALE_TEXT in body, repr(body[-300:]))
+
+out = s.send(KEY["Quit"], 0.6)
+code = s.close()
+check("D139 pty: focus reporting disabled on quit", b"\x1b[?1004l" in out)
+check("D139 pty: exits 0 after the focus check", code == 0, f"exit {code}")
+
 # A document open at a mid-scroll position keeps that position across a
 # refresh that only grows the file underneath it (S2's scroll-preserving
 # half) — appending never shrinks past the current offset, so this checks

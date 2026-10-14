@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+	"path/filepath"
+	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -26,19 +28,25 @@ const staleMessage = "something changed on disk; press R to refresh"
 // visible, rather than waiting for the next full reset — otherwise never
 // touched in between.
 //
-// dirModTimes is one os.Stat per directory the already-loaded tree knows
-// about (root plus every directory node under it) — a lookup by path, never
-// a directory listing, which is what keeps a periodic check from ever
-// calling tree.Walk (S10's "without re-walking anything") no matter how many
-// *files* a large Root holds: a notes vault's directory count is a small
-// fraction of its file count, so this stays cheap exactly where the spec
-// requires it. It is deliberately a heuristic, not exhaustive change
-// detection: an in-place edit of a *non-Active* file that touches neither
-// its own directory's entry list nor either viewer's Active Document goes
-// unnoticed until the next refresh — catching that would mean statting
-// every file, precisely the cost S10 forbids. A viewer's Active Document
+// dirs holds one dirSnapshot per directory the already-loaded tree knows
+// about (root plus every directory node under it). A check is one os.Stat
+// per directory (plus one per existing `.gitignore`), and only a directory
+// whose mtime moved is re-listed (tree.ListDir) and compared against what
+// the tree shows there (D139). A directory's mtime moves for entries the
+// tree never shows — editor swap/probe files, .DS_Store, a non-Readable or
+// gitignored file, the temp file of an atomic save — so the re-list is what
+// keeps those from raising the indicator, while still never calling
+// tree.Walk (S10's "without re-walking anything"). It is deliberately a
+// heuristic, not exhaustive change detection: an in-place edit of a
+// *non-Active* file goes unnoticed (the tree would show nothing new for it
+// anyway), and so do git status marker changes. A viewer's Active Document
 // itself has no such gap: docs' own modTime/size are statted directly on
 // every check, so any edit to it (in place or not) is always caught.
+//
+// A directory whose mtime moved but whose entries still match is re-listed
+// again on every check until the next reset — a ReadDir per such directory,
+// accepted over folding confirmed mtimes back into the baseline (which
+// would make the baseline mutable across goroutines).
 //
 // docs holds at most two entries (DV1's, then DV2's if it exists) — a slice
 // rather than a fixed DV1/DV2 pair so stale() can loop over "whichever
@@ -46,8 +54,42 @@ const staleMessage = "something changed on disk; press R to refresh"
 // later increase in the number of viewers (out of scope this cycle, but not
 // this type's problem) would not need a new field.
 type staleBaseline struct {
-	dirModTimes map[string]time.Time
-	docs        []docSnapshot
+	root string
+	dirs map[string]dirSnapshot
+	docs []docSnapshot
+}
+
+// dirSnapshot is one known directory's state at snapshot time: its own
+// mtime, the entries the tree shows in it (its Children, in Walk order —
+// what tree.ListDir returns for an unchanged directory), and its
+// `.gitignore`'s stamp (exists=false if it had none). A `.gitignore` is
+// tracked on its own because it is never a tree entry, yet editing,
+// creating or removing one can change what the tree shows anywhere beneath
+// it — so any change to one counts as stale outright (D139).
+type dirSnapshot struct {
+	modTime   time.Time
+	entries   []tree.Entry
+	gitignore fileStamp
+}
+
+// fileStamp is a file's existence, mtime and size; the zero value means
+// "does not exist".
+type fileStamp struct {
+	exists  bool
+	modTime time.Time
+	size    int64
+}
+
+func stampOf(path string) fileStamp {
+	info, err := os.Stat(path)
+	if err != nil {
+		return fileStamp{}
+	}
+	return fileStamp{exists: true, modTime: info.ModTime(), size: info.Size()}
+}
+
+func (a fileStamp) equal(b fileStamp) bool {
+	return a.exists == b.exists && a.modTime.Equal(b.modTime) && a.size == b.size
 }
 
 // docSnapshot is one tracked document's on-disk identity at snapshot time:
@@ -67,8 +109,11 @@ type docSnapshot struct {
 // the caller already knows about — nothing here discovers a new path via
 // os.ReadDir.
 func snapshotStaleness(root *tree.Node, docPaths ...string) staleBaseline {
-	b := staleBaseline{dirModTimes: map[string]time.Time{}}
-	collectDirModTimes(root, b.dirModTimes)
+	b := staleBaseline{dirs: map[string]dirSnapshot{}}
+	if root != nil {
+		b.root = root.Path
+	}
+	collectDirSnapshots(root, b.dirs)
 	for _, docPath := range docPaths {
 		if docPath == "" {
 			continue
@@ -78,7 +123,7 @@ func snapshotStaleness(root *tree.Node, docPaths ...string) staleBaseline {
 		// than tracked with a zero-value modTime/size, which would otherwise
 		// compare unequal to the real file on every future check and pin
 		// stale() permanently true until the next reset — the same "omit,
-		// don't half-track" rule collectDirModTimes already applies to a
+		// don't half-track" rule collectDirSnapshots already applies to a
 		// directory whose own Stat fails.
 		//
 		// C6/M4.1 note for M4.3 ("the staleness indicator never fires for
@@ -95,25 +140,33 @@ func snapshotStaleness(root *tree.Node, docPaths ...string) staleBaseline {
 	return b
 }
 
-// collectDirModTimes records n's own mtime (if n is a directory) and
+// collectDirSnapshots records n's own dirSnapshot (if n is a directory) and
 // recurses into its Children — an in-memory traversal of the tree the
 // caller already built, not a filesystem walk: no os.ReadDir call is made
 // here at all, only os.Stat against paths the tree already names.
-func collectDirModTimes(n *tree.Node, out map[string]time.Time) {
+func collectDirSnapshots(n *tree.Node, out map[string]dirSnapshot) {
 	if n == nil || !n.IsDir {
 		return
 	}
 	if info, err := os.Stat(n.Path); err == nil {
-		out[n.Path] = info.ModTime()
+		entries := make([]tree.Entry, 0, len(n.Children))
+		for _, c := range n.Children {
+			entries = append(entries, tree.Entry{Name: c.Name, IsDir: c.IsDir})
+		}
+		out[n.Path] = dirSnapshot{
+			modTime:   info.ModTime(),
+			entries:   entries,
+			gitignore: stampOf(filepath.Join(n.Path, ".gitignore")),
+		}
 	}
 	for _, c := range n.Children {
-		collectDirModTimes(c, out)
+		collectDirSnapshots(c, out)
 	}
 }
 
 // withoutDoc returns a copy of b with path's tracked docSnapshot removed (a
 // no-op, returning b unchanged, if path is empty or not tracked) — every
-// other tracked doc and dirModTimes are left exactly as they were. Used by
+// other tracked doc and dirs are left exactly as they were. Used by
 // closeDV2 (C3/M2.1b, TRIAGE T12) to prune a viewer's former document from
 // the baseline the instant it stops being visible, rather than waiting for
 // the next resetStaleBaseline (openFolder/openDocumentInto/refresh) to
@@ -144,17 +197,17 @@ func (b staleBaseline) trackedDocPaths() []string {
 	return paths
 }
 
-// stale reports whether the disk still matches b: every known directory's
-// own mtime unchanged, and every tracked document's (S7: whichever of DV1's/
-// DV2's Active Documents were open at snapshot time) mtime and size both
-// unchanged. A path that no longer stats at all (removed) counts as
-// changed, matching S10's "something changed"; the indicator never says
-// which case, or which document, applies — S9's "one combined, deliberately
-// unspecific signal" — so this collapses all of it to one bool.
+// stale reports whether the disk no longer matches b: a known directory
+// whose mtime moved *and* whose re-listed entries differ from the tree's, a
+// `.gitignore` that changed, appeared or vanished, or a tracked document
+// (S7: whichever of DV1's/DV2's Active Documents were open at snapshot time)
+// whose mtime or size changed. A path that no longer stats at all (removed)
+// counts as changed, matching S10's "something changed"; the indicator never
+// says which case, or which document, applies — S9's "one combined,
+// deliberately unspecific signal" — so this collapses all of it to one bool.
 func (b staleBaseline) stale() bool {
-	for path, want := range b.dirModTimes {
-		info, err := os.Stat(path)
-		if err != nil || !info.ModTime().Equal(want) {
+	for path, want := range b.dirs {
+		if b.dirChanged(path, want) {
 			return true
 		}
 	}
@@ -165,6 +218,30 @@ func (b staleBaseline) stale() bool {
 		}
 	}
 	return false
+}
+
+// dirChanged is stale()'s per-directory step. The `.gitignore` is statted
+// only when one existed or the directory's mtime moved (a create or remove
+// always moves it), so an untouched directory without one costs one Stat.
+func (b staleBaseline) dirChanged(path string, want dirSnapshot) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return true
+	}
+	moved := !info.ModTime().Equal(want.modTime)
+	if want.gitignore.exists || moved {
+		if !stampOf(filepath.Join(path, ".gitignore")).equal(want.gitignore) {
+			return true
+		}
+	}
+	if !moved {
+		return false
+	}
+	entries, err := tree.ListDir(b.root, path)
+	if err != nil {
+		return true
+	}
+	return !slices.Equal(entries, want.entries)
 }
 
 // staleCheckMsg is a matured periodic timer — a pure "time to check again"
@@ -178,15 +255,19 @@ type staleCheckMsg struct{}
 
 // staleResultMsg is a completed disk check reporting back, carrying the
 // generation it was dispatched for so a result computed against a baseline
-// that has since been superseded is discarded rather than applied.
+// that has since been superseded is discarded rather than applied. periodic
+// marks a check dispatched by the periodic timer, which applying the result
+// re-arms; a focus-triggered check (checkStaleOnFocus) leaves it false so it
+// never starts a second timer chain alongside the one already running.
 type staleResultMsg struct {
-	gen   int
-	stale bool
+	gen      int
+	stale    bool
+	periodic bool
 }
 
 // scheduleStaleCheck arms the next periodic tick against the model's current
 // generation. Called from Init (to start the cycle) and after every
-// staleCheckMsg/staleResultMsg (to keep it going) — S10 runs for the life of
+// periodic staleResultMsg (to keep it going) — S10 runs for the life of
 // the session, not once.
 func (m model) scheduleStaleCheck() tea.Cmd {
 	return tea.Tick(staleCheckInterval, func(time.Time) tea.Msg {
@@ -245,21 +326,42 @@ func (m model) resetStaleBaseline() model {
 // before the Cmd returns; applyStaleResult's own generation compare is what
 // catches that later case.
 func (m model) runStaleCheck(staleCheckMsg) (model, tea.Cmd) {
+	return m, m.staleCheckCmd(true)
+}
+
+// checkStaleOnFocus runs a check the moment the terminal regains focus
+// (tea.FocusMsg, D139) — the common "edited it in another window, came
+// back" case — instead of waiting up to a full staleCheckInterval. It is
+// in addition to the periodic timer, not a replacement: terminals that
+// never report focus (or tmux without focus-events) still get the timer,
+// and the result does not reschedule (staleResultMsg.periodic is false),
+// so the one timer chain Init started stays the only one.
+func (m model) checkStaleOnFocus() (model, tea.Cmd) {
+	return m, m.staleCheckCmd(false)
+}
+
+// staleCheckCmd is the off-Update disk check both triggers dispatch,
+// against the baseline and generation current right now (see
+// runStaleCheck's doc comment for why the copy is safe).
+func (m model) staleCheckCmd(periodic bool) tea.Cmd {
 	baseline, gen := m.staleBaseline, m.staleGen
-	return m, func() tea.Msg {
-		return staleResultMsg{gen: gen, stale: baseline.stale()}
+	return func() tea.Msg {
+		return staleResultMsg{gen: gen, stale: baseline.stale(), periodic: periodic}
 	}
 }
 
 // applyStaleResult installs a completed check's verdict (only if its
 // generation still matches — a superseded result is silently dropped, the
 // baseline it was computed against no longer describes what "known good"
-// means) and reschedules the next tick. Once set, m.stale stays set until
+// means) and, for a periodic check only, reschedules the next tick. Once set, m.stale stays set until
 // resetStaleBaseline clears it (a refresh) — a periodic check that finds
 // nothing new never un-sets an indicator a previous check already raised.
 func (m model) applyStaleResult(msg staleResultMsg) (model, tea.Cmd) {
 	if msg.gen == m.staleGen && msg.stale {
 		m.stale = true
+	}
+	if !msg.periodic {
+		return m, nil
 	}
 	return m, m.scheduleStaleCheck()
 }

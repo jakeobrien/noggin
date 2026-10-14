@@ -41,7 +41,8 @@ func TestStaleBaselineNotStaleWhenNothingChanged(t *testing.T) {
 // TestStaleBaselineDetectsFileAddedInsideKnownNestedDirectory pins S10's
 // core claim without a re-walk: adding a file inside an already-known
 // subdirectory bumps that directory's own mtime, which a Stat against the
-// path already recorded in dirModTimes picks up — no os.ReadDir involved.
+// path already recorded in the baseline picks up; only that one directory
+// is then re-listed (tree.ListDir), never the whole tree.
 func TestStaleBaselineDetectsFileAddedInsideKnownNestedDirectory(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	sub := mkdir(t, filepath.Join(root, "sub"))
