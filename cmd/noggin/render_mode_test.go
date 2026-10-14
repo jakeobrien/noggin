@@ -299,21 +299,6 @@ func TestLocationLineEndsWithTheRenderMode(t *testing.T) {
 	}
 }
 
-func TestRenderModeToggleResetsFind(t *testing.T) {
-	m, _, _, _ := renderModeFixture(t)
-	m = m.setFocus(dv1Pane)
-	m = press(t, m, keys.Find.Keys()[0])
-	m = typeText(t, m, "text")
-	m = press(t, m, keys.Activate.Keys()[0])
-	if !m.dv1.hasFindMatches() {
-		t.Fatal("setup: no find matches")
-	}
-	m = press(t, m, keys.RenderMode.Keys()[0])
-	if m.dv1.hasFindMatches() || m.dv1.findState.input.Value() != "" {
-		t.Error("find state survived a render mode toggle")
-	}
-}
-
 func TestMutedViewerShowsMutedText(t *testing.T) {
 	m, _, _, _ := renderModeFixture(t)
 	m = press(t, m, keys.RenderMode.Keys()[0])

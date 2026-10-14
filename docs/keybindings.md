@@ -73,7 +73,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 
 [^edit]: Hands the focused viewer's document to `$EDITOR` (fallback `vi`) and re-reads it on return. Acts on DV2 only when DV2 has focus; otherwise DV1. Footer message if no document is open, or for a Wikipedia article ("cannot edit a Wikipedia article"). Silent no-op while Peeking.
 
-[^mode]: Flips the targeted viewer's Render Mode between Markdown and Text (sticky for that viewer, session-only). Acts on DV2 only when DV2 has focus; otherwise DV1. Resets any find in progress. Footer message on a Text file, which is always shown as text (also while one is Peeked).
+[^mode]: Flips the targeted viewer's Render Mode between Markdown and Text (sticky for that viewer, session-only). Acts on DV2 only when DV2 has focus; otherwise DV1. Keeps a find (query and current match, re-run in the new mode) or, with no find, the proportional scroll position. Footer message on a Text file, which is always shown as text (also while one is Peeked).
 
 [^find]: `/` starts an incremental search over the focused viewer's document (Footer message if none is open; silent no-op while Peeking). Once committed with `enter`, `n`/`N` step through matches (wrapping) from any pane, but only act when matches exist and the viewer isn't Peeking.
 

@@ -42,7 +42,17 @@ type find struct {
 	// or a query with no hits).
 	matches []findMatch
 	current int
+
+	// landing is ripgrep's own (line, column) for a Grep landing that fell
+	// back to the first match in Markdown (D34's degrade path); nil
+	// otherwise. It is kept with the find so a switch to Text can land
+	// exactly (D140), and dropped as soon as the current match moves.
+	landing *grepLanding
 }
+
+// grepLanding is a Grep Result's 1-based line and byte column in the raw file,
+// as ripgrep reported them.
+type grepLanding struct{ line, col int }
 
 // findMatch is one occurrence of a query, located in the rendered content's
 // own line space — the viewport's SoftWrap is off (viewer.go's render already
@@ -85,6 +95,7 @@ func (v viewer) updateFindQuery(msg tea.KeyPressMsg) (viewer, tea.Cmd) {
 	v.findState.input = next
 	v.findState.matches = v.findIn(v.findState.input.Value())
 	v.findState.current = nearestMatch(v.findState.matches, v.vp.YOffset())
+	v.findState.landing = nil
 	return v.applyCurrentMatch(), cmd
 }
 
@@ -138,6 +149,7 @@ func (v viewer) findNext() viewer {
 		return v
 	}
 	v.findState.current = (v.findState.current + 1) % len(v.findState.matches)
+	v.findState.landing = nil
 	return v.applyCurrentMatch()
 }
 
@@ -146,6 +158,7 @@ func (v viewer) findPrevious() viewer {
 		return v
 	}
 	v.findState.current = (v.findState.current - 1 + len(v.findState.matches)) % len(v.findState.matches)
+	v.findState.landing = nil
 	return v.applyCurrentMatch()
 }
 

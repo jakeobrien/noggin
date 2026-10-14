@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -64,12 +65,93 @@ func (v viewer) shownDoc() document {
 	return v.doc
 }
 
-// toggleMode flips the viewer's render mode and re-renders. The find state is
-// reset by the re-render (the match positions live in the other mode's line
-// space); keeping it is a separate piece of work.
+// toggleMode flips the viewer's render mode and re-renders, carrying over what
+// the reader was looking at (D140). A find (in progress or committed) keeps its
+// query, is re-run in the new mode, and keeps the current match by occurrence
+// ordinal, as D34 maps one; a Grep landing that fell back to the first match in
+// Markdown lands on ripgrep's exact location in Text instead. With no find
+// active the scroll position is kept as a proportion of the document.
 func (v viewer) toggleMode() viewer {
+	prev, wasText, frac := v.findState, v.text != nil, v.scrollFraction()
 	v.mode = v.mode.toggled()
-	return v.render()
+	v = v.render()
+	if !v.doc.isOpen() {
+		return v
+	}
+	if prev.input.Value() == "" && !prev.editing {
+		return v.withScrollFraction(frac)
+	}
+	v.findState = prev
+	v.findState.matches = v.findIn(prev.input.Value())
+	v.findState.current = v.carriedMatch(prev, wasText)
+	if v.findState.current < 0 {
+		return v.withScrollFraction(frac)
+	}
+	return v.withScrollFraction(frac).applyCurrentMatch()
+}
+
+// carriedMatch is the index, in the matches just found in this viewer's new
+// mode, of the match prev (the find state in the old mode, wasText saying which
+// it was) had current; -1 when there are no matches. A match with no
+// counterpart degrades to the first one, as D34 does.
+func (v viewer) carriedMatch(prev find, wasText bool) int {
+	matches := v.findState.matches
+	if len(matches) == 0 {
+		return -1
+	}
+	isText := v.text != nil
+	if wasText == isText {
+		return min(max(prev.current, 0), len(matches)-1)
+	}
+	if isText && prev.landing != nil {
+		if i, ok := textGrepLanding(v.doc.src, matches, prev.landing.line, prev.landing.col); ok {
+			return i
+		}
+	}
+	if prev.current < 0 || prev.current >= len(prev.matches) {
+		return 0
+	}
+	// Frontmatter is counted apart from the body (D138): the Frontmatter Card
+	// reshapes its text, so an occurrence the card drops must not shift every
+	// body match after it.
+	srcLines, renderedLines := frontmatterSpan(v.doc.src, v.vp.Width())
+	headIn := func(ms []findMatch, text bool) int {
+		n := 0
+		for _, m := range ms {
+			line, limit := m.line, renderedLines
+			if text {
+				line, limit = m.src, srcLines
+			}
+			if line < limit {
+				n++
+			}
+		}
+		return n
+	}
+	fromHead, toHead := headIn(prev.matches, wasText), headIn(matches, isText)
+	switch cur := prev.current; {
+	case cur >= fromHead && toHead+cur-fromHead < len(matches):
+		return toHead + cur - fromHead
+	case cur < fromHead && cur < toHead:
+		return cur
+	}
+	return 0
+}
+
+// scrollFraction is how far down the document the viewport is, from 0 (top) to
+// 1 (bottom); 0 when everything fits.
+func (v viewer) scrollFraction() float64 {
+	if span := v.vp.TotalLineCount() - v.vp.Height(); span > 0 {
+		return float64(v.vp.YOffset()) / float64(span)
+	}
+	return 0
+}
+
+// withScrollFraction scrolls to the given fraction of the document.
+func (v viewer) withScrollFraction(f float64) viewer {
+	span := max(v.vp.TotalLineCount()-v.vp.Height(), 0)
+	v.vp.SetYOffset(int(math.Round(f * float64(span))))
+	return v
 }
 
 // renderDoc renders d for width in the mode this viewer shows it in. muted
