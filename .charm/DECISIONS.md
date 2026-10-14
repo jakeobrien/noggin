@@ -1720,3 +1720,68 @@
   aren't open, and git marker changes. If live reloading of open documents is wanted later,
   watching only their parent directories (at most two) is the next step, not a recursive
   watcher.
+
+## D140: Exact find comes from a Text Render Mode, not from fixing find in rendered markdown; File Filter widens noggin to any text file; amends D34, retires Readable file
+
+- Status: decided
+- Date: 2026-10-14
+- Amends: D34 (Grep landing), the C1/C2 Readable file policy (`internal/tree/policy.go`)
+- Context: Find matches Glamour's rendered output with ANSI stripped, and indicates a match by
+  reverse-videoing the whole line, because `viewport.SetHighlights` drifts under ANSI
+  (`knowledge/viewport-search-ansi-offsets.md`). It misses text Glamour drops (link URLs,
+  `**`), matches that wrap across rows, and text the Frontmatter Card reshapes. Grep landing
+  guesses the line by occurrence ordinal (D34). Separately, noggin could only show the
+  Readable set, so code and config files next to the notes were unreachable. Alternatives
+  weighed: fix find in the rendered output (a raw↔rendered position map, D1 rejected building
+  one), or make highlighting and positioning work only in a raw view. That last option was
+  rejected because finding while seeing the formatting still matters.
+- Decision:
+  - **Two independent toggles.** The **File Filter** (`Markdown` | `All`) decides which files
+    you can find. The **Render Mode** (`Markdown` | `Text`) decides how a viewer shows a
+    Markdown file. They are not coupled.
+  - **Classification.** A Markdown file is `.md`/`.markdown`/`.mdown`/`.mkd` or an
+    extensionless `README`/`CHANGELOG` (case-insensitive). A Text file is any other file that
+    is not binary. Binary means a NUL byte in the first ~8KB, ripgrep's and git's test,
+    cached by (path, mtime, size). `.txt` and `LICENSE` move from rendered markdown to Text.
+    Binary files, and any file over ~10MB, are refused with a Footer message on every open
+    route: `noggin <file>`, a stale Starred entry, Recent.
+  - **File Filter.** Remembered per Root for the session and defaults to `Markdown`. The one
+    exception: launching `noggin <file>` on a Text file starts that ad-hoc Root on `All`.
+    Toggled by `a` in the Files Nav and `alt+a` in the Picker. It bounds the `Tree` and the
+    File/Grep Pickers' Active Root and All Roots scopes. All Roots applies the Active Root's
+    filter to every Root searched. With Wikipedia active, the Picker uses the most recently
+    set value (or `Markdown`) and `alt+a` toggles that value. Recent, Starred (Files Nav) and
+    the Picker's Starred scope ignore the filter: starred and recent things stay reachable.
+    Shown in the Files Nav status row and the Picker title. When a toggle hides the selected
+    row, the selection moves to the nearest surviving ancestor, as Refresh does. Open
+    documents stay open. Staleness compares the filtered listing.
+  - **Render Mode.** One per viewer, sticky across every document opened, Peeked or walked
+    to by history in that viewer, session-only. Each viewer, a new DV2 included, starts on
+    `Markdown`. `m` toggles it from any non-modal pane and targets the same viewer as `/` and
+    `e`. A Text file always shows as text without changing the viewer's mode, and `m` on it
+    is refused with a Footer message. The Location line ends `· Markdown` / `· Text`. A
+    Wikipedia article can be shown as Text, which shows its converted markdown. The Picker
+    has no mode control: activation uses the target viewer's mode.
+  - **Text rendering.** The source exactly as on disk: frontmatter raw with its fences, no
+    syntax colour, tabs expanded, soft-wrapped to the pane, a dim line-number gutter that is
+    blank on continuation rows. The Picker Preview uses the same renderer.
+  - **Find in Text.** Matches run against source lines, so a match can span a soft wrap.
+    Only the matched span is highlighted, which works because there is no ANSI. Grep landing
+    uses ripgrep's exact line and column; D34's ordinal guess remains for Markdown mode only.
+  - **Find in Markdown** is unchanged and deliberately stays imperfect. `/` never switches
+    mode or hints at Text.
+  - **Toggling mid-document.** With a find active, the query is kept and the current match
+    is kept by occurrence ordinal (D34's mapping, in either direction). If a Grep landing in
+    Markdown had fallen back to the first match (D34's degrade path), switching to Text uses
+    ripgrep's exact location instead. With no find active, the scroll position is kept as a
+    proportion.
+- Why: precision and formatting are both wanted, and no single view can give both. A raw view
+  gets exact positions for free, without a position map or ANSI-aware highlighting. A
+  per-viewer mode is predictable at a glance and keeps the Picker free of a mode control.
+  Per-Root filters fit sessions that mix a notes Root with a code Root.
+- Cost / revisit: the File Filter's `All` setting reads a few KB of every listed file once,
+  until it changes. Proportional scroll on a toggle is approximate. If precision there
+  matters, the next step is a source-line↔rendered-row map, which D1 has so far declined.
+  Syntax colouring in Text (chroma by file type) is a natural follow-up, but brings ANSI back
+  into the find/highlight path. Persisting per-Root filters (a `roots` column) is the
+  follow-up if re-toggling every launch grates.

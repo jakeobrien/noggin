@@ -46,19 +46,26 @@
 - **Document Store** — the persisted, path-keyed record of every document noggin knows about:
   whether it is Starred and when it was last viewed. Not attached to Roots; per-Root Starred and
   Recent lists are derived by path (C4).
-- **Document Viewer** — the pane that renders the Active Document as styled markdown. Read-only;
+- **Document Viewer** — the pane that shows the Active Document in that viewer's Render Mode
+  (styled markdown or raw text, D140). Read-only;
   scrolls, has no cursor. A session has one always-present Document Viewer (DV1) and may have
   a second, optional one (DV2) beside it; the two are fully independent — separate Active
   Document, Peek, Find and scroll position each (C3). See Targeting modifier for how a Files
   Nav or Picker action chooses which one to load into.
 - **Edit** — the handoff: release the terminal to `$EDITOR` on the Active Document, then resume
   and re-render. Not in-app editing.
+- **File Filter** — which files a Root offers for discovery: `Markdown` (Markdown files only)
+  or `All` (every Text file too). Remembered per Root for the session, default `Markdown`.
+  Bounds the Files Nav `Tree` and the File/Grep Pickers' Active Root and All Roots scopes;
+  never Recent or Starred (D140). _Avoid_: file mode, show-all.
 - **File Picker** — the Picker whose Results are files, matched fuzzily (C2).
 - **Files Nav** — the lower Navigator pane; the file tree of the Active Root — or, when a
   Query Source is active, its Starred / Recent lists only (C6).
 - **Find** — the `/`-style incremental search over the Active Document: next/previous
   traversal wraps, case-insensitive unless the query has uppercase. See Committed Find.
-  *Find is always within one document*; searching across files is a Picker.
+  *Find is always within one document*; searching across files is a Picker. Exact (matched
+  span, source positions) only in Text Render Mode; in Markdown it matches the rendered
+  output and indicates the whole line (D140).
 - **Focus** — which pane currently receives keyboard input. Exactly one pane at a time; most
   keys route to the focused pane. DV1 and DV2 are separately focusable panes (C3): once a
   Document Viewer holds Focus, its local commands (Find, Edit, scrolling) act on that
@@ -76,8 +83,11 @@
 - **Location line** — the de-emphasized bottom row of a Document Viewer naming where its
   document lives: Root name + relative path, full path for an orphan; for a Wikipedia
   article, `CC BY-SA 4.0 · <canonical URL> · Reformatted to markdown` (C6, amended S9a/D98).
+  Ends with how the document is shown, `· Markdown` or `· Text` (D140).
 - **Nav Keys** — the movement keys shared by every pane (`h`/`j`/`k`/`l` and arrows, `g`/`G`),
   vim-oriented. Provisional, like all bindings.
+- **Markdown file** — a file noggin can render as markdown: extension `.md`, `.markdown`,
+  `.mdown` or `.mkd`, or an extensionless `README` or `CHANGELOG` (case-insensitive) (D140).
 - **Navigator** — the left sidebar: Sources Nav above, Files Nav below. Hideable.
 - **Orphan** (orphaned star) — a Starred document that lies under no Root in the current
   session. Reachable from the Picker's `Starred` scope and the Files Nav's `Orphans` scope (C4).
@@ -96,8 +106,9 @@
   kind, always present, never created, removed or starred. Has no Tree and no grep; its
   documents are found by search, then kept via Starred or Recent. Wikipedia is the first
   (C6). "Finder" is deliberately avoided; it means the OS file manager.
-- **Readable file** — a file noggin will show and render. Markdown-ish only in C1: `.md`,
-  `.markdown`, `.txt`, `README`, `LICENSE`, `CHANGELOG`. Bounds every Picker too (C2).
+- **Readable file** — retired by D140; split into Markdown file and Text file, with the
+  File Filter choosing which are offered. (Was: `.md`, `.markdown`, `.txt`, `README`,
+  `LICENSE`, `CHANGELOG`, C1/C2.)
 - **Recent** — documents ordered by when they were last viewed. Viewing means Activate or the
   `$EDITOR` handoff; Peek does not count. Recency only, never frecency (C4).
 - **Refresh** — the on-demand re-read of the Active Root's file tree and, as of C3, every open
@@ -106,6 +117,10 @@
   disk to re-read: Refresh re-fetches it instead, bypassing the session cache — the one case
   where Refresh reaches the network. Otherwise manual only; noggin never watches the
   filesystem (C2a).
+- **Render Mode** — how a Document Viewer shows a Markdown file: `Markdown` (rendered) or
+  `Text` (raw source, line-numbered). One per viewer, sticky across the documents opened
+  into it, session-only, default `Markdown`. A Text file is always shown as text without
+  changing it (D140). _Avoid_: view mode, raw mode.
 - **Result** — one row in a Picker: a file (File Picker), a file-and-line (Grep Picker) (C2),
   or an article title-and-description (Wikipedia Picker) — a Wikipedia Result can also carry
   a star, the same as a file's (C6).
@@ -145,6 +160,8 @@
   already exist. Unmodified keys always target DV1. The same `ctrl+` prefix is also used by
   S5's focus-jump keys (`ctrl+o` jumps Focus to DV2) for consistency, though that is a
   distinct mechanism with no load/peek routing involved (C3; `shift+` before D55).
+- **Text file** — any file that is neither a Markdown file nor binary (a NUL byte early in
+  the file). Shown only as raw text. Binary files are never shown or opened (D140).
 - **Wikipedia Picker** — the Picker mode that searches Wikipedia article titles; no Scope, no
   Preview; reachable from any Active Source (C6).
 - **Wikipedia Source** — the first Query Source: English Wikipedia, listed last in the
