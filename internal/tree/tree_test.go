@@ -55,12 +55,12 @@ func collect(root *Node, base string) (files, dirs []string) {
 	return files, dirs
 }
 
-// TestWalkReadableSet is the M2.1 acceptance criterion: over a fixture tree the
-// walk returns exactly the expected readable file set — a gitignored `.md`
+// TestWalkMarkdownSet is the M2.1 acceptance criterion: over a fixture tree the
+// walk returns exactly the expected Markdown file set (LICENSE and notes.txt are Text, not listed until the File Filter lands) — a gitignored `.md`
 // excluded, `.git/` absent, `.charm/notes.md` present, `main.go` absent, a
 // `README` present — plus the surrounding policy (dotdirs descended, a
 // gitignored directory pruned, empty folders still listed).
-func TestWalkReadableSet(t *testing.T) {
+func TestWalkMarkdownSet(t *testing.T) {
 	root := writeTree(t, map[string]string{
 		".gitignore":       "ignored.md\nbuild/\n",
 		"README":           "# readme",
@@ -84,15 +84,13 @@ func TestWalkReadableSet(t *testing.T) {
 	gotFiles, gotDirs := collect(node, "")
 
 	wantFiles := []string{
-		"LICENSE",
 		"README",
 		".charm/notes.md",
 		"docs/guide.md",
-		"notes.txt",
 	}
 	sort.Strings(wantFiles)
 	if !reflect.DeepEqual(gotFiles, wantFiles) {
-		t.Errorf("readable files:\n got %v\nwant %v", gotFiles, wantFiles)
+		t.Errorf("markdown files:\n got %v\nwant %v", gotFiles, wantFiles)
 	}
 
 	wantDirs := []string{".charm", "docs", "empty"}

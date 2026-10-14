@@ -46,15 +46,18 @@ func filePaths(files []pickerFile) []string {
 	return paths
 }
 
-// TestListFilesAppliesReadableAllowlist: only allowlist extensions/names
-// come back; everything else rg finds is dropped (S13).
-func TestListFilesAppliesReadableAllowlist(t *testing.T) {
+// TestListFilesAppliesMarkdownClassification: only Markdown files come back;
+// everything else rg finds — Text files (.txt, LICENSE) included, until the
+// File Filter lands — is dropped (S13, D140).
+func TestListFilesAppliesMarkdownClassification(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	notesMd := writeFile(t, filepath.Join(dir, "notes.md"))
 	readme := writeFile(t, filepath.Join(dir, "README"))
 	writeFile(t, filepath.Join(dir, "main.go"))
 	writeFile(t, filepath.Join(dir, "image.png"))
+	writeFile(t, filepath.Join(dir, "notes.txt"))
+	writeFile(t, filepath.Join(dir, "LICENSE"))
 	roots := []root{{path: dir}}
 
 	got := filePaths(listFiles(roots, 0, activeRootScope, false))
@@ -176,7 +179,7 @@ func TestListFilesAllRootsCoversLiveRootsAndSkipsBroken(t *testing.T) {
 	a := mkdir(t, filepath.Join(t.TempDir(), "a"))
 	aFile := writeFile(t, filepath.Join(a, "one.md"))
 	b := mkdir(t, filepath.Join(t.TempDir(), "b"))
-	bFile := writeFile(t, filepath.Join(b, "two.txt"))
+	bFile := writeFile(t, filepath.Join(b, "two.md"))
 	missing := filepath.Join(t.TempDir(), "gone")
 	roots := []root{{path: a}, {path: missing}, {path: b}}
 
@@ -834,7 +837,7 @@ func TestStarredPickerFilesExcludesUnstarredDocuments(t *testing.T) {
 // Starred scope includes starred articles"): a starred article record
 // (docRecord.Article) surfaces as a pickerFile{article: true} pseudo-
 // candidate carrying its title and its docs-map key as path, bypassing
-// every file-specific filter above it (pathMissing, tree.IsReadable,
+// every file-specific filter above it (pathMissing, tree.IsMarkdown,
 // hideDotfiles) since none of them describe a URL, alongside an ordinary
 // starred file from the same store — mirroring
 // TestStarredPickerFilesIncludesOrphansAndRootCoveredFiles's own

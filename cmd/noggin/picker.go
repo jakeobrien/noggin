@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"time"
 
@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"noggin/internal/tree"
 	"noggin/internal/wikipedia"
 )
 
@@ -670,8 +671,12 @@ func (p picker) syncPreview(hideDotfiles bool) picker {
 			// article, not the ability to open one at all.
 			src = []byte("no preview — Wikipedia articles are not previewed from here")
 		} else {
-			var err error
-			src, err = os.ReadFile(f.path)
+			// D140: the Preview never reads a binary or oversize file
+			// either; it says why instead.
+			err := tree.CheckOpenable(f.path)
+			if err == nil || !(errors.Is(err, tree.ErrBinary) || errors.Is(err, tree.ErrTooLarge)) {
+				src, err = os.ReadFile(f.path) // I/O errors keep ReadFile's own wording
+			}
 			if err != nil {
 				src = []byte("preview unavailable: " + err.Error())
 			}
@@ -905,7 +910,7 @@ func (m model) activatePickerInto(target pane) (model, tea.Cmd) {
 	}
 	d, err := loadDocument(f.path)
 	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", f.path, err)
+		m.message = cannotOpen(f.path, err)
 		return m.dismissPicker(), nil
 	}
 	// S4/M3.3: Picker Activate records recency the same as the Files Nav's
@@ -1063,7 +1068,7 @@ func (m model) activateGrepPickerInto(target pane) model {
 	query := m.picker.input.Value()
 	d, err := loadDocument(g.file.path)
 	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", g.file.path, err)
+		m.message = cannotOpen(g.file.path, err)
 		return m.dismissPicker()
 	}
 	// S4/M3.3: same recordViewed fix as activatePickerInto's fileMode half,

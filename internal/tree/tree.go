@@ -94,7 +94,7 @@ func ListDir(root, dir string) ([]Entry, error) {
 
 // readVisible lists dir (at slash path rel from the walk root) and keeps what
 // Walk shows: `.git` and anything a `.gitignore` in stack or in dir itself
-// ignores are dropped, directories are always kept, files only if Readable.
+// ignores are dropped, directories are always kept, files only if Markdown.
 // It returns the entries unsorted, plus stack extended with dir's own
 // `.gitignore` for the caller to pass down to dir's children.
 func readVisible(dir, rel string, stack []ignoreFile) ([]Entry, []ignoreFile, error) {
@@ -119,7 +119,7 @@ func readVisible(dir, rel string, stack []ignoreFile) ([]Entry, []ignoreFile, er
 		if ignored(stack, childRel(rel, name), isDir) {
 			continue
 		}
-		if isDir || IsReadable(name) {
+		if isDir || IsMarkdown(name) {
 			out = append(out, Entry{Name: name, IsDir: isDir})
 		}
 	}

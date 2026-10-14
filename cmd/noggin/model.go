@@ -448,7 +448,7 @@ func (m model) applyResolution(res resolution) model {
 	}
 	if res.docPath != "" {
 		if doc, err := loadDocument(res.docPath); err != nil {
-			m.message = fmt.Sprintf("cannot open %s: %v", res.docPath, err)
+			m.message = cannotOpen(res.docPath, err)
 		} else {
 			m = m.openDocument(doc)
 		}
@@ -571,7 +571,7 @@ func (m model) walkViewerHistory(dir func(viewer) (viewer, string, bool)) model 
 		var err error
 		d, err = loadDocument(path)
 		if err != nil {
-			m.message = fmt.Sprintf("cannot open %s: %v", path, err)
+			m.message = cannotOpen(path, err)
 			return m
 		}
 	}
@@ -713,7 +713,7 @@ func (m model) activateInto(target pane) (model, tea.Cmd) {
 	}
 	d, err := loadDocument(n.Path)
 	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
+		m.message = cannotOpen(n.Path, err)
 		return m, nil
 	}
 	// S4/M3.1: Activate records recency regardless of which viewer it
@@ -751,7 +751,7 @@ func (m model) activateFlatRowInto(row browseRow, target pane) (model, tea.Cmd) 
 	}
 	d, err := loadDocument(row.path)
 	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", row.path, err)
+		m.message = cannotOpen(row.path, err)
 		return m, nil
 	}
 	m = m.recordViewed(row.path)
@@ -1184,7 +1184,7 @@ func (m model) togglePeekInto(target pane) (model, tea.Cmd) {
 	}
 	d, err := loadDocument(n.Path)
 	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", n.Path, err)
+		m.message = cannotOpen(n.Path, err)
 		return m, nil
 	}
 	if target == dv2Pane {
@@ -1222,7 +1222,7 @@ func (m model) togglePeekFlatRowInto(row browseRow, target pane, exists bool) (m
 	}
 	d, err := loadDocument(row.path)
 	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", row.path, err)
+		m.message = cannotOpen(row.path, err)
 		return m, nil
 	}
 	if target == dv2Pane {
@@ -1373,7 +1373,7 @@ func (m model) refreshViewer(p pane) (model, string, tea.Cmd) {
 	findHadMatches := v.hasFindMatches()
 	if d, err := loadDocument(path); err != nil {
 		if m.message == "" {
-			m.message = fmt.Sprintf("cannot open %s: %v", path, err)
+			m.message = cannotOpen(path, err)
 		}
 		v = v.close()
 	} else {
@@ -1506,7 +1506,7 @@ func (m model) finishEdit(msg editFinishedMsg) model {
 	}
 	d, err := loadDocument(msg.path)
 	if err != nil {
-		m.message = fmt.Sprintf("cannot open %s: %v", msg.path, err)
+		m.message = cannotOpen(msg.path, err)
 		return m
 	}
 	m.message = ""

@@ -44,7 +44,7 @@ type pickerFile struct {
 	// "only File search that spans both classes" S6 asks Starred scope for.
 	// path holds the article's canonical/derived URL here (its docs-map key,
 	// M1.5) rather than a filesystem path — never passed to os.Stat,
-	// tree.IsReadable, filepath.Rel or rg (grepPickerFiles' own filesOnly
+	// tree.IsMarkdown, filepath.Rel or rg (grepPickerFiles' own filesOnly
 	// filter keeps it out of Grep entirely, per S6's "Grep never includes
 	// Wikipedia, in any scope"). title is the article's own display title:
 	// S6's "matched on title" means fuzzy ranking (fileNameSource) and match
@@ -59,9 +59,9 @@ type pickerFile struct {
 	title   string
 }
 
-// listFiles is the File Picker's candidate set (S3, S13): every Readable
+// listFiles is the File Picker's candidate set (S3, S13): every Markdown
 // file under scope, found via `rg --files` (S14) with the Readable
-// allowlist (tree.IsReadable) applied on top — rg itself has no notion of
+// allowlist (tree.IsMarkdown) applied on top — rg itself has no notion of
 // it. A Broken Root is skipped, never an error (S6, liveRootsInScope); a
 // live Root that rg still cannot read (e.g. permission denied, or a TOCTOU
 // race with liveRootsInScope's own stat) is likewise absorbed by rgFiles
@@ -86,7 +86,7 @@ func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool) [
 	var files []pickerFile
 	for _, r := range liveRootsInScope(roots, active, scope) {
 		for _, rel := range rgFiles(r.path) {
-			if !tree.IsReadable(filepath.Base(rel)) {
+			if !tree.IsMarkdown(filepath.Base(rel)) {
 				continue
 			}
 			if hideDotfiles && isDotfilePath(rel) {
@@ -111,7 +111,7 @@ func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool) [
 //     — the Picker's job is finding something to open or grep, and a
 //     missing file can do neither (loadDocument would just fail on
 //     Activate, and rg has nothing to read for it either);
-//   - the Readable allowlist (tree.IsReadable) still applies, matching
+//   - the Markdown classification (tree.IsMarkdown) still applies, matching
 //     every other candidate set this Picker ever offers;
 //   - hideDotfiles still applies, for the same "session-scoped toggle,
 //     applies to every candidate set" reason listFiles honours it — checked
@@ -153,7 +153,7 @@ func starredPickerFiles(docs map[string]docRecord, roots []root, hideDotfiles bo
 		if pathMissing(path) {
 			continue
 		}
-		if !tree.IsReadable(filepath.Base(path)) {
+		if !tree.IsMarkdown(filepath.Base(path)) {
 			continue
 		}
 		if hideDotfiles && isDotfilePath(path) {
@@ -222,8 +222,8 @@ func isDotfilePath(rel string) bool {
 // hold for one regardless.
 //
 // --hidden is S4/M6.1: without it, rg's own default silently drops every
-// dotfile and dot-directory before the Readable allowlist (listFiles' own
-// filepath.Base + tree.IsReadable) ever sees them — the mismatch the Picker
+// dotfile and dot-directory before the Markdown classification (listFiles' own
+// filepath.Base + tree.IsMarkdown) ever sees them — the mismatch the Picker
 // used to have with the Files Nav tree, which never applied a hidden-file
 // rule of its own (tree.Walk's doc comment: "dotfiles and hidden
 // directories are otherwise kept"). Adding it is what makes the two panes
@@ -499,7 +499,7 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 // (15.1.0), rg does not apply `.gitignore`/hidden-file rules to files named
 // explicitly on its command line — only to directories it walks. listFiles
 // (and starredPickerFiles) have already applied every one of those rules
-// (plus the Readable allowlist and Broken-Root skipping, M1.2) to produce
+// (plus the Markdown classification and Broken-Root skipping, M1.2) to produce
 // their own list, so searching exactly those files is what makes grep
 // agree with the File Picker's own view of Scope, rather than re-deriving
 // (and risking disagreeing with) it.

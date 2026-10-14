@@ -35,9 +35,9 @@ func runGit(t *testing.T, dir string, args ...string) {
 	}
 }
 
-// newGitRepo initializes a repository at t.TempDir() with tracked.txt and
-// sub/nested.txt committed, then modifies tracked.txt, adds an untracked
-// sub/untracked.txt, and stages a wholly new sub/staged.txt — one fixture
+// newGitRepo initializes a repository at t.TempDir() with tracked.md and
+// sub/nested.md committed, then modifies tracked.md, adds an untracked
+// sub/untracked.md, and stages a wholly new sub/staged.md — one fixture
 // covering both of S8's marked states plus a couple of shapes it must NOT
 // mark (clean files, and — since AM below double-checks "new" wins over
 // "modified" for the same path — a staged-then-further-edited file).
@@ -53,17 +53,17 @@ func newGitRepo(t *testing.T) string {
 			t.Fatalf("write %s: %v", rel, err)
 		}
 	}
-	write("tracked.txt", "one\n")
-	write("clean.txt", "stays clean\n")
-	write("sub/nested.txt", "two\n")
+	write("tracked.md", "one\n")
+	write("clean.md", "stays clean\n")
+	write("sub/nested.md", "two\n")
 	runGit(t, dir, "add", "-A")
 	runGit(t, dir, "commit", "-q", "-m", "init")
 
-	write("tracked.txt", "one\nmodified\n")    // unstaged modification -> M
-	write("sub/untracked.txt", "new\n")        // untracked -> A
-	write("sub/addedmodified.txt", "staged\n") // staged add, then edited below
-	runGit(t, dir, "add", "sub/addedmodified.txt")
-	write("sub/addedmodified.txt", "staged\nplus more\n") // AM -> still A, not M
+	write("tracked.md", "one\nmodified\n")    // unstaged modification -> M
+	write("sub/untracked.md", "new\n")        // untracked -> A
+	write("sub/addedmodified.md", "staged\n") // staged add, then edited below
+	runGit(t, dir, "add", "sub/addedmodified.md")
+	write("sub/addedmodified.md", "staged\nplus more\n") // AM -> still A, not M
 
 	return dir
 }
@@ -75,20 +75,20 @@ func TestGitStatusMarksModifiedAndAddedFiles(t *testing.T) {
 	got := gitStatus(dir)
 
 	want := map[string]gitFileStatus{
-		filepath.Join(dir, "tracked.txt"):              gitStatusModified,
-		filepath.Join(dir, "sub", "untracked.txt"):     gitStatusAdded,
-		filepath.Join(dir, "sub", "addedmodified.txt"): gitStatusAdded,
+		filepath.Join(dir, "tracked.md"):              gitStatusModified,
+		filepath.Join(dir, "sub", "untracked.md"):     gitStatusAdded,
+		filepath.Join(dir, "sub", "addedmodified.md"): gitStatusAdded,
 	}
 	for path, status := range want {
 		if got[path] != status {
 			t.Errorf("gitStatus[%s] = %q, want %q", path, got[path], status)
 		}
 	}
-	if s, marked := got[filepath.Join(dir, "clean.txt")]; marked && s != gitStatusNone {
-		t.Errorf("clean.txt marked %q, want unmarked", s)
+	if s, marked := got[filepath.Join(dir, "clean.md")]; marked && s != gitStatusNone {
+		t.Errorf("clean.md marked %q, want unmarked", s)
 	}
-	if s, marked := got[filepath.Join(dir, "sub", "nested.txt")]; marked && s != gitStatusNone {
-		t.Errorf("sub/nested.txt marked %q, want unmarked", s)
+	if s, marked := got[filepath.Join(dir, "sub", "nested.md")]; marked && s != gitStatusNone {
+		t.Errorf("sub/nested.md marked %q, want unmarked", s)
 	}
 }
 
@@ -238,7 +238,7 @@ func lineContaining(lines []string, substr string) string {
 // repository shows none, silently — no footer message, session still runs.
 func TestActivateRootShowsGitStatusMarkersAtLaunchAndOnSwitch(t *testing.T) {
 	requireGit(t)
-	repo := newGitRepo(t)                                  // has tracked.txt (M) and sub/untracked.txt (A)
+	repo := newGitRepo(t)                                  // has tracked.md (M) and sub/untracked.md (A)
 	plain := mkdir(t, filepath.Join(t.TempDir(), "plain")) // no .git at all
 	writeFile(t, filepath.Join(plain, "note.md"))
 
@@ -247,8 +247,8 @@ func TestActivateRootShowsGitStatusMarkersAtLaunchAndOnSwitch(t *testing.T) {
 
 	m = m.activateRoot() // selection starts on row 0 (repo)
 	view := m.files.view()
-	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "tracked.txt"), "M   tracked.txt") {
-		t.Errorf("repo Files Nav view = %q, want an M marker on tracked.txt", view)
+	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "tracked.md"), "M   tracked.md") {
+		t.Errorf("repo Files Nav view = %q, want an M marker on tracked.md", view)
 	}
 
 	m.roots.selected = 1

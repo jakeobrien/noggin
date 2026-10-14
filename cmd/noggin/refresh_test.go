@@ -306,26 +306,26 @@ func TestRefreshEmptiesTheViewerWhenTheActiveDocumentIsDeleted(t *testing.T) {
 // its marker only once R is pressed.
 func TestRefreshRecomputesGitStatusMarkers(t *testing.T) {
 	requireGit(t)
-	dir := newGitRepo(t) // tracked.txt (M), sub/untracked.txt (A), clean.txt unmarked
+	dir := newGitRepo(t) // tracked.md (M), sub/untracked.md (A), clean.md unmarked
 
 	node, err := tree.Walk(dir)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
 	m := sized(t, newModel().openFolder(node), 80, 24)
-	if strings.Contains(lineContaining(strings.Split(m.files.view(), "\n"), "clean.txt"), "M   clean.txt") {
-		t.Fatalf("setup: clean.txt already marked before it was dirtied")
+	if strings.Contains(lineContaining(strings.Split(m.files.view(), "\n"), "clean.md"), "M   clean.md") {
+		t.Fatalf("setup: clean.md already marked before it was dirtied")
 	}
 
-	writeFileContent(t, filepath.Join(dir, "clean.txt"), "now dirty\n")
+	writeFileContent(t, filepath.Join(dir, "clean.md"), "now dirty\n")
 	m = press(t, m, keys.Refresh.Keys()[0])
 
 	view := m.files.view()
 	// Three spaces, not one, between M and the name: the status column's
 	// own trailing space plus C4/M2.3's star marker column between it and
 	// the name.
-	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "clean.txt"), "M   clean.txt") {
-		t.Errorf("Files Nav view after refresh = %q, want clean.txt marked M", view)
+	if !strings.Contains(lineContaining(strings.Split(view, "\n"), "clean.md"), "M   clean.md") {
+		t.Errorf("Files Nav view after refresh = %q, want clean.md marked M", view)
 	}
 }
 

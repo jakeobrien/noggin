@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"charm.land/glamour/v2/styles"
 	"golang.org/x/term"
 
+	"noggin/internal/tree"
 	"noggin/internal/wikipedia"
 )
 
@@ -66,13 +68,29 @@ func (d document) label() string {
 	return filepath.Base(d.path)
 }
 
-// loadDocument reads path into a document.
+// loadDocument reads path into a document. A binary file or one over
+// tree.MaxOpenSize is refused with tree.ErrBinary / tree.ErrTooLarge before
+// any of it is read (D140); every open route goes through here, so the
+// refusal lives in one place.
 func loadDocument(path string) (document, error) {
+	if err := tree.CheckOpenable(path); err != nil {
+		return document{}, err
+	}
 	src, err := os.ReadFile(path)
 	if err != nil {
 		return document{}, err
 	}
 	return document{path: path, src: src}, nil
+}
+
+// cannotOpen is the Footer message for a failed open of path. A refusal
+// (binary, too large) names the file by base name, `cannot open notes.bin:
+// binary file`; any other failure keeps the full path the OS error is about.
+func cannotOpen(path string, err error) string {
+	if errors.Is(err, tree.ErrBinary) || errors.Is(err, tree.ErrTooLarge) {
+		return fmt.Sprintf("cannot open %s: %v", filepath.Base(path), err)
+	}
+	return fmt.Sprintf("cannot open %s: %v", path, err)
 }
 
 // articleDocument builds a document for a fetched Wikipedia article (S3):

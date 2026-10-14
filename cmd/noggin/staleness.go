@@ -33,7 +33,7 @@ const staleMessage = "something changed on disk; press R to refresh"
 // per directory (plus one per existing `.gitignore`), and only a directory
 // whose mtime moved is re-listed (tree.ListDir) and compared against what
 // the tree shows there (D139). A directory's mtime moves for entries the
-// tree never shows — editor swap/probe files, .DS_Store, a non-Readable or
+// tree never shows — editor swap/probe files, .DS_Store, a non-Markdown or
 // gitignored file, the temp file of an atomic save — so the re-list is what
 // keeps those from raising the indicator, while still never calling
 // tree.Walk (S10's "without re-walking anything"). It is deliberately a

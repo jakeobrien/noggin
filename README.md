@@ -377,13 +377,22 @@ older noggin is not read or migrated.
 
 ## What gets shown
 
-A file is only shown/opened if it looks like markdown-ish prose:
+noggin classifies every file it meets:
 
-- extensions `.md`, `.markdown`, `.txt` (case-insensitive)
-- extensionless conventional names `README`, `LICENSE`, `CHANGELOG`
-  (case-insensitive)
+- **Markdown file**: extensions `.md`, `.markdown`, `.mdown`, `.mkd`, or the
+  extensionless names `README` and `CHANGELOG` (all case-insensitive).
+  `.txt` and `LICENSE` are *not* Markdown.
+- **Text file**: any other file that is not binary.
+- **Binary file**: a NUL byte in the first ~8KB (the test ripgrep and git use).
 
-Folders are always shown, even empty ones or ones containing nothing readable
+For now the Tree and the Pickers list **Markdown files only**; a later
+File Filter will widen them to Text files. Whatever is listed, noggin refuses
+to open a binary file or one over ~10MB, on every route — the Files Nav, the
+Picker, `noggin <file>`, Recent/Starred, history walks and Refresh — with a
+Footer message such as `cannot open app.bin: binary file` or `cannot open
+dump.md: too large`.
+
+Folders are always shown, even empty ones or ones containing no Markdown
 (unless the folder itself is ignored — see below).
 
 `.gitignore` is respected while browsing, with no toggle to turn it off. It
@@ -599,7 +608,7 @@ search), without changing the Active Root or touching the Files Nav tree's
 expansion or selection. `esc` dismisses the Picker with no side effects at
 all — same Active Document, same Active Root, same scroll positions.
 
-Only [Readable files](#what-gets-shown) are ever searched or shown by File
+Only [Markdown files](#what-gets-shown) are ever searched or shown by File
 and Grep.
 
 ### Requires `ripgrep`
