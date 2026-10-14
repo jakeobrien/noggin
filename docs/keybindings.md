@@ -38,6 +38,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 | `space` | open Picker | open Picker | open Picker | - | - | — | - |
 | `ctrl+space` | reopen Picker to last query | reopen Picker to last query | reopen Picker to last query | - | - | — | - |
 | `e` | edit [^edit] | edit [^edit] | edit [^edit] | - | - | — | - |
+| `m` | toggle Markdown/Text [^mode] | toggle Markdown/Text [^mode] | toggle Markdown/Text [^mode] | - | - | — | - |
 | `/` | find [^find] | find [^find] | find [^find] | - | - | — | - |
 | `n` / `N` | next / prev match [^find] | next / prev match [^find] | next / prev match [^find] | - | - | — | - |
 | **Selection & movement** | | | | | | | |
@@ -71,6 +72,8 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 [^refresh]: Re-reads the Active Root's tree and both viewers' documents (whichever exist) from disk, and recomputes git markers. A viewer showing a Wikipedia article re-fetches it instead, bypassing the session cache. Clears any Peek. A committed find may be lost. Doesn't add a history entry. Failures appear in the Footer.
 
 [^edit]: Hands the focused viewer's document to `$EDITOR` (fallback `vi`) and re-reads it on return. Acts on DV2 only when DV2 has focus; otherwise DV1. Footer message if no document is open, or for a Wikipedia article ("cannot edit a Wikipedia article"). Silent no-op while Peeking.
+
+[^mode]: Flips the targeted viewer's Render Mode between Markdown and Text (sticky for that viewer, session-only). Acts on DV2 only when DV2 has focus; otherwise DV1. Resets any find in progress. Footer message on a Text file, which is always shown as text (also while one is Peeked).
 
 [^find]: `/` starts an incremental search over the focused viewer's document (Footer message if none is open; silent no-op while Peeking). Once committed with `enter`, `n`/`N` step through matches (wrapping) from any pane, but only act when matches exist and the viewer isn't Peeking.
 

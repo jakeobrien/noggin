@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-eru-c3ab3465bf7",
+    "issue_id": "tk-eru",
+    "author": "noggin",
+    "body": "Implemented: viewer.mode (renderMode), textview.go renderText/toggleRenderMode, keys.RenderMode (m), Location line suffix, README/keybindings/Help updated. Find still matches the gutter digits in Text mode until tk-2g3 (exact find).",
+    "created_at": "2026-10-14T18:40:39.986974915Z",
+    "updated_at": "2026-10-14T18:40:39.986974915Z"
+  }
+]

@@ -1,6 +1,6 @@
 ---
 title: Text Render Mode in the Document Viewer (m toggle)
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -9,7 +9,8 @@ depends_on:
   tk-0ta: parent-child
   tk-qei: blocks
 created_at: 2026-10-14T18:19:25.173146599+00:00
-updated_at: 2026-10-14T18:19:25.190042515+00:00
+updated_at: 2026-10-14T18:40:39.991597165+00:00
+closed_at: 2026-10-14T18:40:39.991597082+00:00
 ---
 
 # Description

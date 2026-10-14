@@ -34,17 +34,9 @@ const (
 // this path" computation — S9's location line is a fourth reader of
 // rootForPath/displayName, not a reason to cache a copy anywhere new.
 //
-// The line ends with the render mode the document is shown in (D140):
-// `· Markdown` or `· Text`.
-func documentLocation(doc document, roots []root, mode renderMode) string {
-	return documentPlace(doc, roots) + modeSuffix(mode)
-}
-
-// modeSuffix is the Location line's closing render mode segment (D140).
-func modeSuffix(mode renderMode) string { return " · " + mode.String() }
-
-// documentPlace is documentLocation without the trailing render mode.
-func documentPlace(doc document, roots []root) string {
+// The render mode the line ends with (D140) is not part of this: see
+// viewerLocation.
+func documentLocation(doc document, roots []root) string {
 	if doc.isArticle() {
 		return wikipediaAttributionPrefix + doc.path + wikipediaAttributionSuffix
 	}
@@ -153,12 +145,21 @@ func (v viewer) locationDoc() (document, bool) {
 // viewer itself (documentLocation's own doc comment gives the same
 // reasoning).
 func (m model) viewerLocationLine(p pane) string {
+	place, suffix, _ := m.viewerLocation(p)
+	return place + suffix
+}
+
+// viewerLocation is viewerLocationLine in its two parts: the document's place
+// (documentLocation) and the closing render mode segment, `· Markdown` or
+// `· Text` (D140), shown in the mode the document is actually displayed in.
+// ok is false when there is no line to draw.
+func (m model) viewerLocation(p pane) (place, suffix string, ok bool) {
 	v := m.viewerFor(p)
 	doc, ok := v.locationDoc()
 	if !ok {
-		return ""
+		return "", "", false
 	}
-	return documentLocation(doc, m.roots.rootList(), v.modeFor(doc))
+	return documentLocation(doc, m.roots.rootList()), " · " + v.modeFor(doc).String(), true
 }
 
 // composeViewerContent appends pane p's own S9/S9a location line beneath
@@ -173,15 +174,12 @@ func (m model) viewerLocationLine(p pane) string {
 // the same docLocationVisible/peekLocationVisible booleans, so they can
 // never disagree.
 func (m model) composeViewerContent(p pane, width int, content string) string {
-	v := m.viewerFor(p)
-	doc, ok := v.locationDoc()
+	place, suffix, ok := m.viewerLocation(p)
 	if !ok {
 		return content
 	}
-	// Truncate the place, not the render mode: the mode is what the line is
-	// there to say on a narrow pane, and the place's tail is what it already
-	// keeps.
-	place, suffix := documentPlace(doc, m.roots.rootList()), modeSuffix(v.modeFor(doc))
+	// Truncate the place, not the render mode, which the line always ends
+	// with (D140).
 	text := rightTruncate(place+suffix, width)
 	if room := width - lipgloss.Width(suffix); room >= 2 {
 		text = rightTruncate(place, room) + suffix

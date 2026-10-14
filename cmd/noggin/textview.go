@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -70,10 +71,10 @@ func (v viewer) toggleMode() viewer {
 	return v.render()
 }
 
-// renderDocument renders d for width in the given mode. muted selects the
-// unfocused-pane variant (D136).
-func renderDocument(d document, mode renderMode, width int, muted bool) (string, error) {
-	if mode == modeText {
+// renderDoc renders d for width in the mode this viewer shows it in. muted
+// selects the unfocused-pane variant (D136).
+func (v viewer) renderDoc(d document, width int, muted bool) (string, error) {
+	if v.modeFor(d) == modeText {
 		return renderText(d.src, width, muted), nil
 	}
 	return renderMarkdownStyled(d.src, width, muted)
@@ -145,7 +146,7 @@ func renderText(src []byte, width int, muted bool) string {
 			}
 			if gutter > 0 {
 				if j == 0 {
-					out.WriteString(numStyle.Render(leftPad(strconv.Itoa(i+1), digits) + " "))
+					out.WriteString(numStyle.Render(fmt.Sprintf("%*d", digits, i+1) + " "))
 				} else {
 					out.WriteString(blank)
 				}
@@ -157,13 +158,6 @@ func renderText(src []byte, width int, muted bool) string {
 		}
 	}
 	return out.String()
-}
-
-func leftPad(s string, width int) string {
-	if n := width - len(s); n > 0 {
-		return strings.Repeat(" ", n) + s
-	}
-	return s
 }
 
 // sanitizeControl replaces control characters (ESC and friends) with U+FFFD so

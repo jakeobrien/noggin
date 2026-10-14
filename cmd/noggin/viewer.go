@@ -475,7 +475,7 @@ func (v viewer) renderPeek() viewer {
 		return v
 	}
 	v.peek.vp.SetWidth(v.vp.Width())
-	out, err := renderDocument(v.peek.doc, v.modeFor(v.peek.doc), v.peek.vp.Width(), false)
+	out, err := v.renderDoc(v.peek.doc, v.peek.vp.Width(), false)
 	if err != nil {
 		v.peek.err = err
 		// S9/M8.2: Peek's own location-line visibility (peekContentHeight)
@@ -492,7 +492,7 @@ func (v viewer) renderPeek() viewer {
 	v.peek.vp.SetContent(strings.TrimRight(out, "\n"))
 	v.peek.vp.GotoTop()
 	v.mutedPeekContent = ""
-	if m, err := renderDocument(v.peek.doc, v.modeFor(v.peek.doc), v.peek.vp.Width(), true); err == nil {
+	if m, err := v.renderDoc(v.peek.doc, v.peek.vp.Width(), true); err == nil {
 		v.mutedPeekContent = strings.TrimRight(m, "\n")
 	}
 	return v
@@ -513,7 +513,7 @@ func (v viewer) render() viewer {
 	if !v.doc.isOpen() {
 		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
-	} else if out, err := renderDocument(v.doc, v.modeFor(v.doc), v.vp.Width(), false); err != nil {
+	} else if out, err := v.renderDoc(v.doc, v.vp.Width(), false); err != nil {
 		v.err = err
 		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
@@ -527,7 +527,7 @@ func (v viewer) render() viewer {
 		// Glamour pads the document with trailing blank lines; they would
 		// be scrollable emptiness past the end.
 		v.vp.SetContent(strings.TrimRight(out, "\n"))
-		if m, err := renderDocument(v.doc, v.modeFor(v.doc), v.vp.Width(), true); err == nil {
+		if m, err := v.renderDoc(v.doc, v.vp.Width(), true); err == nil {
 			v.mutedContent = strings.TrimRight(m, "\n")
 		}
 	}
