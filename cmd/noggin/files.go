@@ -59,6 +59,13 @@ type filesNav struct {
 	// expansion rather than a fixed node.
 	selected int
 
+	// offset is the index of the first row the list window shows (tk-ew1),
+	// remembered between frames so the window stays put while the cursor
+	// roams inside it. Kept current by syncScroll (model.Update and resize
+	// call it); rowsView re-derives it from the same rule, so a view never
+	// shows the selection off screen even before a sync.
+	offset int
+
 	// memory holds, per Source (a Root, or — C6/M1.4 — the Wikipedia Query
 	// Source), the expansion set and selected node's Path last left there
 	// (M3.1/S3), and — since M4.6 — the Browse Mode and per-mode Browse
@@ -500,6 +507,25 @@ func (f filesNav) setSize(width, height int) filesNav {
 	return f
 }
 
+// listHeight is how many lines the row list gets: the content box less the
+// mode/scope row (view).
+func (f filesNav) listHeight() int {
+	return max(f.height-1, 0)
+}
+
+// scrollOffsetFor is the list window's first row for the current selection
+// (scrollOffset applied to the remembered offset).
+func (f filesNav) scrollOffsetFor() int {
+	return scrollOffset(f.offset, f.selected, f.rowCount(), f.listHeight())
+}
+
+// syncScroll persists the window offset for the current selection, row set
+// and pane size (tk-ew1). Call after anything that can change them.
+func (f filesNav) syncScroll() filesNav {
+	f.offset = f.scrollOffsetFor()
+	return f
+}
+
 // fileRow is one rendered line: a node and how deep it sits, so the render can
 // indent it. Rows are produced by flattening the tree to just its open part.
 type fileRow struct {
@@ -764,8 +790,8 @@ func (f filesNav) rowsView(height int) string {
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
 	}
-	return windowedView(f.width, height, f.selected, len(rows), func(idx int) string {
-		return f.renderRow(rows[idx], idx == f.selected)
+	return windowedViewRows(f.width, height, f.scrollOffsetFor(), len(rows), 1, func(idx int) []string {
+		return []string{f.renderRow(rows[idx], idx == f.selected)}
 	})
 }
 
@@ -782,8 +808,8 @@ func (f filesNav) flatRowsView(height int) string {
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
 	}
-	return windowedView(f.width, height, f.selected, len(rows), func(idx int) string {
-		return f.renderFlatRow(rows[idx], idx == f.selected)
+	return windowedViewRows(f.width, height, f.scrollOffsetFor(), len(rows), 1, func(idx int) []string {
+		return []string{f.renderFlatRow(rows[idx], idx == f.selected)}
 	})
 }
 

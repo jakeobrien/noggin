@@ -1523,7 +1523,27 @@ func (m model) Init() tea.Cmd {
 	return m.scheduleStaleCheck()
 }
 
+// Update applies msg (update) and then re-syncs the sidebar panes' scroll
+// offsets (tk-ew1) to whatever selection, row set and size the message left
+// behind, so every path that moves a cursor or reshapes a list — keys, wheel,
+// store writes, resize — keeps the persisted window offset current in one
+// place rather than at each site.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	if nm, ok := next.(model); ok {
+		next = nm.syncScroll()
+	}
+	return next, cmd
+}
+
+// syncScroll persists both sidebar panes' window offsets (tk-ew1).
+func (m model) syncScroll() model {
+	m.files = m.files.syncScroll()
+	m.roots = m.roots.syncScroll()
+	return m
+}
+
+func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case editFinishedMsg:
 		return m.finishEdit(msg), nil
@@ -1929,6 +1949,7 @@ func (m model) resize(width, height int, cause resizeCause) model {
 	m.files = m.files.setSize(filesContent.width, filesContent.height)
 	rootsContent := l.roots.content()
 	m.roots = m.roots.setSize(rootsContent.width, rootsContent.height)
+	m = m.syncScroll()
 	// The Picker modal is sized here too, not only from render (M3.2): its
 	// Preview pane holds a real viewport.Model whose scroll position must
 	// survive across renders (unlike promptView's textinput, sized fresh

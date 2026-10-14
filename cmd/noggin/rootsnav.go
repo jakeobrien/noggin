@@ -56,6 +56,7 @@ type rootsNav struct {
 	active    int // index into rows of the active root, or -1
 	wikipedia bool
 	selected  int // index into rows the cursor sits on
+	offset    int // index of the first row the window shows (tk-ew1); see syncScroll
 
 	// unfocused is set on a per-frame copy by model.frame while the pane
 	// lacks focus: its selected row draws as a dim bar and its other text
@@ -328,6 +329,19 @@ var (
 	rootsPathStyle = lipgloss.NewStyle().Foreground(theme.Subtle)
 )
 
+// scrollOffsetFor is the window's first entry for the current selection:
+// scrollOffset applied to the remembered offset, in whole two-line entries.
+func (r rootsNav) scrollOffsetFor() int {
+	return scrollOffset(r.offset, r.selected, r.rowCount(), r.height/rootRowHeight)
+}
+
+// syncScroll persists the window offset for the current selection, row set
+// and pane size (tk-ew1). Call after anything that can change them.
+func (r rootsNav) syncScroll() rootsNav {
+	r.offset = r.scrollOffsetFor()
+	return r
+}
+
 // view renders the pane's content box at exactly its width x height, the same
 // contract the Files Nav and viewer keep. Unlike before C6/M1.2, there is no
 // empty state: the Wikipedia row (rowCount) means the Sources Nav always has
@@ -336,7 +350,7 @@ func (r rootsNav) view() string {
 	if r.width <= 0 || r.height <= 0 {
 		return ""
 	}
-	return windowedViewRows(r.width, r.height, r.selected, r.rowCount(), rootRowHeight, r.renderRow)
+	return windowedViewRows(r.width, r.height, r.scrollOffsetFor(), r.rowCount(), rootRowHeight, r.renderRow)
 }
 
 // renderRow lays out one entry across its two lines (S5). Line 1 carries the
