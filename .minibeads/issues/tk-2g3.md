@@ -1,6 +1,6 @@
 ---
 title: Exact find and Grep landing in Text Render Mode
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -9,7 +9,8 @@ depends_on:
   tk-0ta: parent-child
   tk-eru: blocks
 created_at: 2026-10-14T18:19:25.176169932+00:00
-updated_at: 2026-10-14T18:19:25.199025640+00:00
+updated_at: 2026-10-14T18:48:44.648265646+00:00
+closed_at: 2026-10-14T18:48:44.648265604+00:00
 ---
 
 # Description

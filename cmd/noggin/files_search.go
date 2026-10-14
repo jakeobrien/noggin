@@ -421,6 +421,10 @@ type grepResult struct {
 	file pickerFile
 	line int
 	text string
+	// col is the byte offset in the raw source line of the line's first
+	// match, as rg reports it (submatches[0].start); the exact landing column
+	// in Text mode (D140).
+	col int
 }
 
 // grepArgMaxBytes bounds the total byte length of file-path arguments a
@@ -564,10 +568,15 @@ func grepBatch(files []pickerFile, query string) []grepResult {
 		if !ok {
 			continue
 		}
+		col := 0
+		if len(msg.Data.Submatches) > 0 {
+			col = msg.Data.Submatches[0].Start
+		}
 		results = append(results, grepResult{
 			file: file,
 			line: msg.Data.LineNumber,
 			text: strings.TrimRight(msg.Data.Lines.Text, "\n"),
+			col:  col,
 		})
 	}
 	return results
@@ -589,5 +598,8 @@ type rgJSONMessage struct {
 			Text string `json:"text"`
 		} `json:"lines"`
 		LineNumber int `json:"line_number"`
+		Submatches []struct {
+			Start int `json:"start"`
+		} `json:"submatches"`
 	} `json:"data"`
 }

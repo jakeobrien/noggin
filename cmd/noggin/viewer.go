@@ -36,6 +36,13 @@ type viewer struct {
 	// actually shown in, since a Text file ignores it.
 	mode renderMode
 
+	// text is the Text layout of the open document when it is shown as Text,
+	// nil otherwise (render sets it). Find searches its source lines, and
+	// textMatch is the span of the current match drawn reversed in it (nil
+	// when none).
+	text      *textLayout
+	textMatch *textSpan
+
 	// mutedContent/mutedPeekContent are the same rendered document and Peek
 	// in the muted Glamour style (unfocused_style.go; identical line
 	// structure, so the viewport's scroll offset and find highlight carry
@@ -510,10 +517,20 @@ func (v viewer) render() viewer {
 	v.findState = newFind()
 	v.vp.StyleLineFunc = nil
 	v.mutedContent = ""
+	v.text, v.textMatch = nil, nil
+	var out string
+	var err error
+	if v.doc.isOpen() && v.modeFor(v.doc) == modeText {
+		// One layout serves both the focused and muted content, and Find.
+		v.text = layoutText(v.doc.src, v.vp.Width())
+		out = v.text.render(false)
+	} else if v.doc.isOpen() {
+		out, err = v.renderDoc(v.doc, v.vp.Width(), false)
+	}
 	if !v.doc.isOpen() {
 		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
-	} else if out, err := v.renderDoc(v.doc, v.vp.Width(), false); err != nil {
+	} else if err != nil {
 		v.err = err
 		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
@@ -526,9 +543,15 @@ func (v viewer) render() viewer {
 		v.vp.SetHeight(v.docContentHeight())
 		// Glamour pads the document with trailing blank lines; they would
 		// be scrollable emptiness past the end.
-		v.vp.SetContent(strings.TrimRight(out, "\n"))
-		if m, err := v.renderDoc(v.doc, v.vp.Width(), true); err == nil {
-			v.mutedContent = strings.TrimRight(m, "\n")
+		if v.text != nil {
+			// Not trimmed: the layout's row count is what Find indexes by.
+			v.vp.SetContent(out)
+			v.mutedContent = v.text.render(true)
+		} else {
+			v.vp.SetContent(strings.TrimRight(out, "\n"))
+			if m, err := v.renderDoc(v.doc, v.vp.Width(), true); err == nil {
+				v.mutedContent = strings.TrimRight(m, "\n")
+			}
 		}
 	}
 	// A width change reflows Peek (S7, M7.1) exactly like the Active

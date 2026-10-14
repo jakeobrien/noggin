@@ -1078,7 +1078,13 @@ func (m model) activateGrepPickerInto(target pane) model {
 	// activatePickerInto above.
 	m = m.navigate(target, d)
 	v := m.viewerFor(target).commitQuery(query)
-	if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line, v.vp.Width()); ok {
+	if v.text != nil {
+		// Text mode (D140): ripgrep's own line and column, no D34 guess.
+		if ordinal, ok := textGrepLanding(d.src, v.findState.matches, g.line, g.col); ok {
+			v.findState.current = ordinal
+			v = v.applyCurrentMatch()
+		}
+	} else if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line, v.vp.Width()); ok {
 		v.findState.current = ordinal
 		v = v.applyCurrentMatch()
 	}
@@ -1135,6 +1141,34 @@ func resolveGrepLanding(src []byte, rendered, query string, line, width int) (or
 		return 0, false
 	}
 	return ordinal, true
+}
+
+// textGrepLanding is the index into a Text-mode find's matches of the Grep
+// Result at ripgrep's 1-based line and byte column col (D140): the match on
+// that source line starting at that column, once the column is translated from
+// the raw line into the display line (tabs expanded, control characters and a
+// BOM replaced or dropped, as textLines does). When no match starts exactly
+// there — the file changed since ripgrep read it, or the display text no
+// longer contains the query — the first match on the line stands in; ok is
+// false when there is none.
+func textGrepLanding(src []byte, matches []findMatch, line, col int) (int, bool) {
+	displayCol := textDisplayCol(src, line-1, col)
+	first := -1
+	for i, m := range matches {
+		if m.src != line-1 {
+			continue
+		}
+		if m.colStart == displayCol {
+			return i, true
+		}
+		if first < 0 {
+			first = i
+		}
+	}
+	if first < 0 {
+		return 0, false
+	}
+	return first, true
 }
 
 // matchesBefore counts the matches on lines before line; matches are in

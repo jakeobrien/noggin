@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-2g3-c1b048458e4",
+    "issue_id": "tk-2g3",
+    "author": "noggin",
+    "body": "Implemented: Text-mode Find over source lines (textLayout.find) with span-only highlight (viewer.withTextMatch); Grep landing uses rg's submatch column (textGrepLanding). Notes: a Grep Result with no match on its line degrades to the first match (D34's degrade path); Text content is no longer right-trimmed so row indexes match the layout.",
+    "created_at": "2026-10-14T18:48:44.643199396Z",
+    "updated_at": "2026-10-14T18:48:44.643199396Z"
+  }
+]

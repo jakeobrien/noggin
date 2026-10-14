@@ -505,6 +505,15 @@ shown as text without changing the viewer's mode, so `m` on one is refused with
 a Footer message. A Wikipedia article in Text mode shows its converted
 markdown.
 
+**Find in Text mode** is exact. `/` matches against the source lines (smart-case
+as usual), so a match can span a soft-wrapped row, and it finds what rendering
+hides — a link's URL, the `**` around bold. Only the matched span of the current
+match is highlighted, not the whole line; `n`/`N` and wrap-around work as in
+Markdown mode. Activating a Grep Result into a viewer in Text mode lands on
+ripgrep's exact line and column, as the current match of a committed find.
+Find in Markdown mode is unchanged: it searches the rendered text and marks the
+whole line.
+
 ## Editing
 
 Press `e` to hand off to your editor: `$EDITOR` if set, otherwise `vi`. `e` is

@@ -25,6 +25,10 @@ import (
 // directly and are not implicated — findMatches below computes that line
 // number correctly instead, against the escape-stripped content, and this
 // file drives EnsureVisible/StyleLineFunc with it.
+//
+// In Text mode (D140) none of that applies: there is no Glamour ANSI in the
+// body, matches are found in the source lines (textLayout.find) and only the
+// matched span is drawn (viewer.withTextMatch).
 type find struct {
 	// editing is true while the query has the keyboard: every key but
 	// Cancel and Activate (see model.handleFindInput) types into it rather
@@ -44,8 +48,15 @@ type find struct {
 // own line space — the viewport's SoftWrap is off (viewer.go's render already
 // wraps to the pane width), so this is directly the viewport's line index,
 // not a further wrapping of it.
+//
+// In Text mode (D140) a match is found in the source lines instead:
+// line is still the viewport row the match starts on (a match can span several
+// soft-wrapped rows; endLine is the one it ends on), inText is set, src is the
+// source line and colStart/colEnd the byte range within that line.
 type findMatch struct {
 	line, colStart, colEnd int
+	src, endLine           int
+	inText                 bool
 }
 
 // newFind is the no-search-in-progress state: no query, no matches, no
@@ -72,7 +83,7 @@ func (v viewer) startFind() (viewer, tea.Cmd) {
 func (v viewer) updateFindQuery(msg tea.KeyPressMsg) (viewer, tea.Cmd) {
 	next, cmd := v.findState.input.Update(msg)
 	v.findState.input = next
-	v.findState.matches = findMatches(v.vp.GetContent(), v.findState.input.Value())
+	v.findState.matches = v.findIn(v.findState.input.Value())
 	v.findState.current = nearestMatch(v.findState.matches, v.vp.YOffset())
 	return v.applyCurrentMatch(), cmd
 }
@@ -100,7 +111,7 @@ func (v viewer) commitFind() viewer {
 func (v viewer) commitQuery(query string) viewer {
 	v.findState = newFind()
 	v.findState.input.SetValue(query)
-	v.findState.matches = findMatches(v.vp.GetContent(), query)
+	v.findState.matches = v.findIn(query)
 	v.findState.current = nearestMatch(v.findState.matches, 0)
 	return v.applyCurrentMatch()
 }
@@ -111,7 +122,7 @@ func (v viewer) commitQuery(query string) viewer {
 func (v viewer) cancelFind() viewer {
 	v.findState = newFind()
 	v.vp.StyleLineFunc = nil
-	return v
+	return v.withTextMatch(nil)
 }
 
 // findEditing reports whether the query currently has the keyboard.
@@ -148,9 +159,21 @@ func (v viewer) findPrevious() viewer {
 func (v viewer) applyCurrentMatch() viewer {
 	if v.findState.current < 0 || v.findState.current >= len(v.findState.matches) {
 		v.vp.StyleLineFunc = nil
-		return v
+		return v.withTextMatch(nil)
 	}
 	m := v.findState.matches[v.findState.current]
+	if m.inText {
+		// Text has no ANSI in the body, so the matched span alone is drawn
+		// (withTextMatch); the rows are already wrapped, so no horizontal
+		// scroll is wanted.
+		v.vp.EnsureVisible(m.line, 0, 0)
+		if bottom := v.vp.YOffset() + v.vp.Height(); m.endLine >= bottom {
+			// Show the rest of a match that wraps, but never at the cost of
+			// its first row.
+			v.vp.SetYOffset(min(m.line, m.endLine-v.vp.Height()+1))
+		}
+		return v.withTextMatch(&textSpan{line: m.src, start: m.colStart, end: m.colEnd})
+	}
 	v.vp.EnsureVisible(m.line, m.colStart, m.colEnd)
 	line := m.line
 	v.vp.StyleLineFunc = func(i int) lipgloss.Style {
@@ -160,6 +183,15 @@ func (v viewer) applyCurrentMatch() viewer {
 		return lipgloss.NewStyle()
 	}
 	return v
+}
+
+// findIn locates every occurrence of query in the open document: in the source
+// lines when it is shown as Text, in the rendered content otherwise.
+func (v viewer) findIn(query string) []findMatch {
+	if v.text != nil {
+		return v.text.find(query)
+	}
+	return findMatches(v.vp.GetContent(), query)
 }
 
 // findView renders the query prompt at width, for the footer to show in
@@ -184,10 +216,14 @@ func (v viewer) findView(width int) string {
 // Case sensitivity is smart-case per S8: an all-lowercase query matches
 // either case, any uppercase in it makes the match case-sensitive.
 func findMatches(content, query string) []findMatch {
+	return findInText(ansi.Strip(content), query)
+}
+
+// findInText is findMatches over text that has no ANSI to strip.
+func findInText(stripped, query string) []findMatch {
 	if query == "" {
 		return nil
 	}
-	stripped := ansi.Strip(content)
 	smartCase := query == strings.ToLower(query)
 
 	// The case-insensitive path searches a folded copy of stripped rather

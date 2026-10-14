@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -98,66 +99,206 @@ var (
 	gutterStyle      = lipgloss.NewStyle().Foreground(theme.Subtle)
 	mutedGutterStyle = lipgloss.NewStyle().Foreground(theme.UnfocusedSubtle)
 	mutedTextStyle   = lipgloss.NewStyle().Foreground(theme.UnfocusedText)
+	matchSpanStyle   = lipgloss.NewStyle().Reverse(true)
 )
+
+// textSpan is a byte range [start, end) within one display line of a Text
+// render (textLayout.lines): what Find indicates as the current match.
+type textSpan struct{ line, start, end int }
+
+// textLayout is a document laid out as Text for one pane width: every source
+// line, soft-wrapped into rows, with the row each line starts on. It is the
+// one place that knows how a source line maps onto viewport rows, so Find can
+// search source lines and still scroll to, and highlight on, the rows a match
+// lands on. A layout is immutable once built.
+type textLayout struct {
+	// rows[i] are the plain (unstyled, gutterless) rows of display line i.
+	// Concatenated they are exactly that line, so a byte offset in the line
+	// lands in a definite row.
+	rows [][]string
+	// rowStart[i] is the viewport row display line i starts on; the final
+	// entry is the total row count.
+	rowStart []int
+	// digits is the line-number gutter's digit count; gutter is its full
+	// width in cells (0 in a pane too narrow to show one).
+	digits, gutter int
+}
+
+// textLines is src as Text shows it, one display line per entry: tabs
+// expanded, a leading BOM and each trailing carriage return dropped, and
+// control characters replaced so a file can never drive the terminal.
+func textLines(src []byte) []string {
+	text := strings.TrimPrefix(string(expandTabs(src)), "\ufeff")
+	if text == "" {
+		return nil
+	}
+	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
+	for i, line := range lines {
+		lines[i] = sanitizeControl(strings.TrimSuffix(line, "\r"))
+	}
+	return lines
+}
+
+// textDisplayCol translates a byte column within raw source line n (0-based)
+// into the byte column of the same place in the display line textLines makes
+// of it: tabs expanded, control characters replaced, a leading BOM dropped. The
+// transform is local to a line and to the text before the column, so the
+// prefix alone determines the result.
+func textDisplayCol(src []byte, n, col int) int {
+	for ; n > 0; n-- {
+		i := bytes.IndexByte(src, '\n')
+		if i < 0 {
+			return 0
+		}
+		src = src[i+1:]
+	}
+	if i := bytes.IndexByte(src, '\n'); i >= 0 {
+		src = src[:i]
+	}
+	prefix := sanitizeControl(string(expandTabs(src[:min(max(col, 0), len(src))])))
+	return len(strings.TrimPrefix(prefix, "\ufeff"))
+}
+
+// layoutText lays src out for a pane width cells wide. A pane too narrow for
+// a gutter and any text beside it gets the text alone, so the rows stay
+// within the pane. A non-positive width does not wrap.
+func layoutText(src []byte, width int) *textLayout {
+	lines := textLines(src)
+	l := &textLayout{
+		rows:     make([][]string, len(lines)),
+		rowStart: make([]int, len(lines)+1),
+		digits:   len(strconv.Itoa(len(lines))),
+	}
+	l.gutter = l.digits + 1
+	if width > 0 && width <= l.gutter+1 {
+		l.gutter = 0
+	}
+	wrapAt := 0
+	if width > 0 {
+		wrapAt = width - l.gutter
+	}
+	for i, line := range lines {
+		l.rows[i] = []string{line}
+		if wrapAt > 0 {
+			l.rows[i] = strings.Split(ansi.Hardwrap(line, wrapAt, true), "\n")
+		}
+		l.rowStart[i+1] = l.rowStart[i] + len(l.rows[i])
+	}
+	return l
+}
+
+// lineRows is display line i as styled viewport rows: a dim number on the
+// first row and a blank gutter on the continuation rows, the body unstyled
+// (or muted, for an unfocused pane, D136). span, when it is on line i, is
+// drawn reversed.
+func (l *textLayout) lineRows(i int, muted bool, span *textSpan) []string {
+	numStyle, bodyStyle := gutterStyle, lipgloss.NewStyle()
+	if muted {
+		numStyle, bodyStyle = mutedGutterStyle, mutedTextStyle
+	}
+	body := func(s string) string {
+		if s == "" || !muted {
+			return s
+		}
+		return bodyStyle.Render(s)
+	}
+	out := make([]string, len(l.rows[i]))
+	off := 0
+	for j, row := range l.rows[i] {
+		end := off + len(row)
+		if span != nil && span.line == i && max(span.start, off) < min(span.end, end) {
+			lo, hi := max(span.start, off)-off, min(span.end, end)-off
+			row = body(row[:lo]) + matchSpanStyle.Render(row[lo:hi]) + body(row[hi:])
+		} else {
+			row = body(row)
+		}
+		off = end
+		switch {
+		case l.gutter == 0:
+		case j == 0:
+			row = numStyle.Render(fmt.Sprintf("%*d", l.digits, i+1)+" ") + row
+		default:
+			row = strings.Repeat(" ", l.gutter) + row
+		}
+		out[j] = row
+	}
+	return out
+}
+
+// render is the whole layout as viewport content.
+func (l *textLayout) render(muted bool) string {
+	rows := make([]string, 0, l.rowStart[len(l.rows)])
+	for i := range l.rows {
+		rows = append(rows, l.lineRows(i, muted, nil)...)
+	}
+	return strings.Join(rows, "\n")
+}
+
+// find locates every occurrence of query in the source lines, with the same
+// smart-case rule as Markdown Find. A match lies within one source line, so it
+// can span soft-wrapped rows. line is the viewport row the match starts on.
+func (l *textLayout) find(query string) []findMatch {
+	if query == "" || len(l.rows) == 0 {
+		return nil
+	}
+	lines := make([]string, len(l.rows))
+	for i, rows := range l.rows {
+		lines[i] = strings.Join(rows, "")
+	}
+	found := findInText(strings.Join(lines, "\n"), query)
+	for i, m := range found {
+		row, off := 0, 0
+		for row+1 < len(l.rows[m.line]) && off+len(l.rows[m.line][row]) <= m.colStart {
+			off += len(l.rows[m.line][row])
+			row++
+		}
+		endRow := row
+		for off+len(l.rows[m.line][endRow]) < m.colEnd && endRow+1 < len(l.rows[m.line]) {
+			off += len(l.rows[m.line][endRow])
+			endRow++
+		}
+		found[i] = findMatch{
+			line: l.rowStart[m.line] + row, colStart: m.colStart, colEnd: m.colEnd,
+			src: m.line, endLine: l.rowStart[m.line] + endRow, inText: true,
+		}
+	}
+	return found
+}
 
 // renderText renders src as raw text for a pane width cells wide: every
 // source line numbered in a dim gutter, tabs expanded, long lines soft-wrapped
 // with a blank gutter on the continuation rows. There is no syntax colour; the
 // only styling is the gutter's, and the muted variant of both for an
-// unfocused pane (D136). A non-positive width does not wrap.
-//
-// Control characters other than tab would be interpreted by the terminal
-// rather than shown, so they are replaced; a trailing carriage return (CRLF
-// files) is dropped.
+// unfocused pane (D136).
 func renderText(src []byte, width int, muted bool) string {
-	text := strings.TrimPrefix(string(expandTabs(src)), "\ufeff")
-	if text == "" {
-		return ""
-	}
-	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
-	digits := len(strconv.Itoa(len(lines)))
-	gutter := digits + 1
-	// A pane too narrow for a gutter and any text beside it gets the text
-	// alone, so the rows stay within the pane.
-	if width > 0 && width <= gutter+1 {
-		gutter = 0
-	}
-	wrapAt := 0
-	if width > 0 {
-		wrapAt = width - gutter
-	}
+	return layoutText(src, width).render(muted)
+}
 
-	numStyle, bodyStyle := gutterStyle, lipgloss.NewStyle()
-	if muted {
-		numStyle, bodyStyle = mutedGutterStyle, mutedTextStyle
+// withTextMatch indicates span (nil clears it) in the Text render: only the
+// matched span is drawn reversed. Only the lines the old and new span sit on
+// are re-rendered and spliced into the viewport content, so stepping through
+// matches in a large file does not re-style the whole document.
+func (v viewer) withTextMatch(span *textSpan) viewer {
+	if v.text == nil {
+		return v
 	}
-	blank := strings.Repeat(" ", gutter)
-
-	var out strings.Builder
-	for i, line := range lines {
-		line = sanitizeControl(strings.TrimSuffix(line, "\r"))
-		rows := []string{line}
-		if wrapAt > 0 {
-			rows = strings.Split(ansi.Hardwrap(line, wrapAt, true), "\n")
+	old := v.textMatch
+	v.textMatch = span
+	patch := func(content string, muted bool) string {
+		if content == "" {
+			return content
 		}
-		for j, row := range rows {
-			if i+j > 0 {
-				out.WriteByte('\n')
+		rows := strings.Split(content, "\n")
+		for _, s := range []*textSpan{old, span} {
+			if s != nil {
+				copy(rows[v.text.rowStart[s.line]:], v.text.lineRows(s.line, muted, span))
 			}
-			if gutter > 0 {
-				if j == 0 {
-					out.WriteString(numStyle.Render(fmt.Sprintf("%*d", digits, i+1) + " "))
-				} else {
-					out.WriteString(blank)
-				}
-			}
-			if row != "" && muted {
-				row = bodyStyle.Render(row)
-			}
-			out.WriteString(row)
 		}
+		return strings.Join(rows, "\n")
 	}
-	return out.String()
+	v.vp.SetContent(patch(v.vp.GetContent(), false))
+	v.mutedContent = patch(v.mutedContent, true)
+	return v
 }
 
 // sanitizeControl replaces control characters (ESC and friends) with U+FFFD so

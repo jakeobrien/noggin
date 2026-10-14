@@ -97,7 +97,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 
 [^hidden]: Hides/shows dotfiles and files under dot-directories in File and Grep results at once; the title gains ` · Hidden` while on. Session-only. No effect in Wikipedia mode. `.git/` is always excluded.
 
-[^pickopen]: Activates the selected Result into DV1 (`enter`) or DV2 (`ctrl+enter`/`ctrl+l`) and closes the Picker, without changing the Active Root or the Files Nav's expansion/selection. A Grep Result lands on the matched line, with `n`/`N` working from it; a Wikipedia Result fetches the article asynchronously.
+[^pickopen]: Activates the selected Result into DV1 (`enter`) or DV2 (`ctrl+enter`/`ctrl+l`) and closes the Picker, without changing the Active Root or the Files Nav's expansion/selection. A Grep Result lands on the matched line (ripgrep's exact line and column when the viewer is in Text mode), with `n`/`N` working from it; a Wikipedia Result fetches the article asynchronously.
 
 ## Notes
 
