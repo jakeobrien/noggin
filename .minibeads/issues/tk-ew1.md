@@ -1,12 +1,13 @@
 ---
 title: 'Sidebar panes: scroll with a one-third margin instead of pinning the cursor to the edge'
-status: open
+status: closed
 priority: 2
 issue_type: task
 labels:
 - needs-triage
 created_at: 2026-10-14T15:22:58.226397454+00:00
-updated_at: 2026-10-14T15:22:58.226397454+00:00
+updated_at: 2026-10-14T16:14:45.903435089+00:00
+closed_at: 2026-10-14T16:14:45.903434964+00:00
 ---
 
 # Description

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-ew1-c7b58661f74",
+    "issue_id": "tk-ew1",
+    "author": "noggin",
+    "body": "Implemented in 9f1b839: persisted offset + scrollOffset margin rule (nav.go), synced from model.Update/resize. Picker intentionally keeps edge-pinned scrolling.",
+    "created_at": "2026-10-14T16:14:45.898384005Z",
+    "updated_at": "2026-10-14T16:14:45.898384005Z"
+  }
+]
