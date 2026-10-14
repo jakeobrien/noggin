@@ -97,7 +97,7 @@ func renderModeFixture(t *testing.T) (m model, md, other, txt string) {
 	md = writeFileContent(t, filepath.Join(dir, "a.md"), "# Title\n\nsome **bold** text\n")
 	other = writeFileContent(t, filepath.Join(dir, "b.md"), "# Other\n\nsecond\n")
 	txt = writeFileContent(t, filepath.Join(dir, "notes.txt"), "plain\nnotes\n")
-	node, err := tree.Walk(dir)
+	node, err := tree.Walk(dir, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatal(err)
 	}

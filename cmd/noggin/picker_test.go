@@ -340,7 +340,7 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	fileB := filepath.Join(rootB, "report.md")
 	writeFileContent(t, fileB, "root B report\n")
 
-	nodeA, err := tree.Walk(rootA)
+	nodeA, err := tree.Walk(rootA, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("walking %s: %v", rootA, err)
 	}
@@ -517,7 +517,7 @@ func TestPickerActivateGrepResultDoesNotChangeFilesNav(t *testing.T) {
 	fileB := filepath.Join(rootB, "report.md")
 	writeFileContent(t, fileB, "a report line\n")
 
-	nodeA, err := tree.Walk(rootA)
+	nodeA, err := tree.Walk(rootA, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("walking %s: %v", rootA, err)
 	}

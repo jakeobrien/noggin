@@ -42,7 +42,7 @@ func refusalFixture(t *testing.T) (m model, good, bad string) {
 	dir := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	good = writeFileContent(t, filepath.Join(dir, "good.md"), "# good\n")
 	bad = writeBinary(t, filepath.Join(dir, "bad.md"))
-	node, err := tree.Walk(dir)
+	node, err := tree.Walk(dir, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatal(err)
 	}

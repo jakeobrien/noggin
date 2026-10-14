@@ -28,7 +28,7 @@ func TestActivateRecordsLastViewedRegardlessOfRootProvenance(t *testing.T) {
 		docPath := writeFileContent(t, filepath.Join(project, "doc.md"), "# Doc\n")
 		docsPath := filepath.Join(dir, "documents")
 
-		node, err := tree.Walk(project)
+		node, err := tree.Walk(project, tree.FilterMarkdown)
 		if err != nil {
 			t.Fatalf("tree.Walk: %v", err)
 		}
@@ -66,7 +66,7 @@ func TestActivateRecordsLastViewedRegardlessOfRootProvenance(t *testing.T) {
 		elsewhere := mkdir(t, filepath.Join(dir, "elsewhere"))
 		docsPath := filepath.Join(dir, "documents")
 
-		node, err := tree.Walk(project)
+		node, err := tree.Walk(project, tree.FilterMarkdown)
 		if err != nil {
 			t.Fatalf("tree.Walk: %v", err)
 		}

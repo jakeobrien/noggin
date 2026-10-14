@@ -325,7 +325,7 @@ func TestFilesNavRecentModeRendersFlatRows(t *testing.T) {
 	viewed := recentFixtureFile(t, rootDir, "viewed.md")
 	recentFixtureFile(t, rootDir, "unviewed.md")
 
-	node, err := tree.Walk(rootDir)
+	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestFilesNavRecentModeEmptyShowsAMessage(t *testing.T) {
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 	recentFixtureFile(t, rootDir, "unviewed.md")
 
-	node, err := tree.Walk(rootDir)
+	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestFilesNavRecentModeShowsStarMarker(t *testing.T) {
 	starred := recentFixtureFile(t, rootDir, "starred.md")
 	unstarred := recentFixtureFile(t, rootDir, "unstarred.md")
 
-	node, err := tree.Walk(rootDir)
+	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

@@ -34,8 +34,7 @@ var markdown = struct {
 // extensionless `README`/`CHANGELOG`, case-insensitive. `.txt` and `LICENSE`
 // are Text files, not Markdown.
 //
-// Until the File Filter lands the Tree and the Pickers list Markdown files
-// only; the Picker's search layer (cmd/noggin) applies this same predicate to
+// The Pickers' search layer (cmd/noggin) applies this same predicate to
 // ripgrep's file list so the classification stays declared in one place.
 // Directories are not subject to it: they are always listed.
 func IsMarkdown(name string) bool {
@@ -43,4 +42,42 @@ func IsMarkdown(name string) bool {
 		return markdown.exts[strings.ToLower(ext)]
 	}
 	return markdown.names[strings.ToUpper(name)]
+}
+
+// Filter is the File Filter (D140): which files the Tree lists. Directories
+// are always listed. The zero value is FilterMarkdown, the session default.
+type Filter int
+
+const (
+	// FilterMarkdown lists Markdown files only.
+	FilterMarkdown Filter = iota
+	// FilterAll lists Markdown files plus Text files; binaries stay hidden by
+	// the sniff (CheckOpenable's), however they are named.
+	FilterAll
+)
+
+// String is the filter's display name, as the Files Nav status row shows it.
+func (f Filter) String() string {
+	if f == FilterAll {
+		return "All"
+	}
+	return "Markdown"
+}
+
+// Toggled is the other filter.
+func (f Filter) Toggled() Filter {
+	if f == FilterAll {
+		return FilterMarkdown
+	}
+	return FilterAll
+}
+
+// shows reports whether f lists the (non-directory) file called name at path.
+// The name test comes first so Markdown mode, and every Markdown file under
+// All, never touches the filesystem.
+func (f Filter) shows(path, name string) bool {
+	if IsMarkdown(name) {
+		return true
+	}
+	return f == FilterAll && isTextFile(path)
 }

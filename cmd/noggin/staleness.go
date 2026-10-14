@@ -57,6 +57,11 @@ type staleBaseline struct {
 	root string
 	dirs map[string]dirSnapshot
 	docs []docSnapshot
+
+	// filter is the File Filter the tree was walked under, so re-listing a
+	// directory compares like with like: a change to a file the filter hides
+	// never raises the indicator (D139, D140).
+	filter tree.Filter
 }
 
 // dirSnapshot is one known directory's state at snapshot time: its own
@@ -108,8 +113,8 @@ type docSnapshot struct {
 // path at all, never a placeholder empty one). Every Stat is against a path
 // the caller already knows about — nothing here discovers a new path via
 // os.ReadDir.
-func snapshotStaleness(root *tree.Node, docPaths ...string) staleBaseline {
-	b := staleBaseline{dirs: map[string]dirSnapshot{}}
+func snapshotStaleness(root *tree.Node, filter tree.Filter, docPaths ...string) staleBaseline {
+	b := staleBaseline{dirs: map[string]dirSnapshot{}, filter: filter}
 	if root != nil {
 		b.root = root.Path
 	}
@@ -237,7 +242,7 @@ func (b staleBaseline) dirChanged(path string, want dirSnapshot) bool {
 	if !moved {
 		return false
 	}
-	entries, err := tree.ListDir(b.root, path)
+	entries, err := tree.ListDir(b.root, path, b.filter)
 	if err != nil {
 		return true
 	}
@@ -293,15 +298,38 @@ func (m model) resetStaleBaseline() model {
 		dv1Path = m.dv1.doc.path
 	}
 	if m.dv2 == nil {
-		m.staleBaseline = snapshotStaleness(m.files.root, dv1Path)
+		m.staleBaseline = snapshotStaleness(m.files.root, m.activeFilter(), dv1Path)
 	} else {
 		dv2Path := ""
 		if m.dv2.doc.isOpen() {
 			dv2Path = m.dv2.doc.path
 		}
-		m.staleBaseline = snapshotStaleness(m.files.root, dv1Path, dv2Path)
+		m.staleBaseline = snapshotStaleness(m.files.root, m.activeFilter(), dv1Path, dv2Path)
 	}
 	m.stale = false
+	m.staleGen++
+	return m
+}
+
+// activeFilter is the File Filter of the Active Root (tree.FilterMarkdown
+// with none open).
+func (m model) activeFilter() tree.Filter {
+	if m.files.root == nil {
+		return tree.FilterMarkdown
+	}
+	return m.files.filterFor(m.files.root.Path)
+}
+
+// rebaseTreeStaleness re-snapshots the Root's tree after a File Filter toggle
+// re-walked it, so staleness compares listings under the new filter (D139).
+// Unlike resetStaleBaseline it keeps the tracked documents and any raised
+// indicator: nothing re-read a document, so none is known-good again. The
+// generation moves on so a check still running against the old filter is
+// discarded.
+func (m model) rebaseTreeStaleness() model {
+	b := snapshotStaleness(m.files.root, m.activeFilter())
+	b.docs = m.staleBaseline.docs
+	m.staleBaseline = b
 	m.staleGen++
 	return m
 }

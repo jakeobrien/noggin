@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"noggin/internal/tree"
 )
 
 // --- directory re-list filter: only changes the tree would show count ------
@@ -15,7 +17,7 @@ import (
 // what stale() says.
 func staleAfter(t *testing.T, root, dir string, change func()) bool {
 	t.Helper()
-	b := snapshotStaleness(walkFor(t, root), "")
+	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, "")
 	if b.stale() {
 		t.Fatalf("setup: baseline already stale before any change")
 	}
@@ -105,7 +107,7 @@ func TestStaleDetectsAGitignoreEditedInPlace(t *testing.T) {
 	writeFile(t, filepath.Join(sub, "doc.md"))
 	ignore := writeFileContent(t, filepath.Join(root, ".gitignore"), "*.log\n")
 
-	b := snapshotStaleness(walkFor(t, root), "")
+	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, "")
 	bumpMtimeForward(t, ignore)
 	if err := os.WriteFile(ignore, []byte("*.log\nsub/\n"), 0o644); err != nil {
 		t.Fatal(err)

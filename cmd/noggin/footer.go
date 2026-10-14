@@ -72,7 +72,7 @@ func paneHints(p pane) []key.Binding {
 	case rootsPane:
 		return []key.Binding{keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.FileFilter, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is

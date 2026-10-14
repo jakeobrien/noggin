@@ -43,7 +43,7 @@ func TestFilesNavEveryModeScopeCombinationEmptyShowsAMessage(t *testing.T) {
 	dir := t.TempDir()
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 
-	node, err := tree.Walk(rootDir)
+	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestTreeEmptyMessageDiffersFromNoRootOpen(t *testing.T) {
 
 	dir := t.TempDir()
 	empty := mkdir(t, filepath.Join(dir, "empty-project"))
-	node, err := tree.Walk(empty)
+	node, err := tree.Walk(empty, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

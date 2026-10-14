@@ -203,6 +203,7 @@ acting on its usual binding: `enter` confirms, `esc` cancels.
 | `s` | star / unstar the selected document or article |
 | `tab` | cycle Browse Mode: `Tree` → `Recent` → `Starred` → `Tree` … (Wikipedia active: `Recent` ↔ `Starred` only, no `Tree`) |
 | `shift+tab` | cycle the current mode's Browse Scope (no-op in `Tree`) |
+| `a` | toggle the Active Root's File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown)) |
 
 See [Browsing: Tree, Recent, Starred](#browsing-tree-recent-starred).
 
@@ -386,8 +387,28 @@ noggin classifies every file it meets:
 - **Text file**: any other file that is not binary.
 - **Binary file**: a NUL byte in the first ~8KB (the test ripgrep and git use).
 
-For now the Tree and the Pickers list **Markdown files only**; a later
-File Filter will widen them to Text files. Whatever is listed, noggin refuses
+What the Tree lists is set by the **File Filter**, `Markdown` or `All`:
+
+- **Markdown** (the default): Markdown files only.
+- **All**: Markdown files plus Text files. Binary files stay hidden, whatever
+  they are named.
+
+Press `a` in the Files Nav to toggle the Active Root's filter. Each Root keeps
+its own, for the rest of the session; a Root you have not toggled is on
+`Markdown`, except that launching `noggin <file>` on a Text file starts its
+ad-hoc Root on `All`, so the file you opened is in the Tree. The Tree's status
+row names the filter, e.g. `Tree · - · All`. With Wikipedia active there is no
+Root and so no filter: `a` does nothing but say so in the Footer.
+
+The filter bounds only the Tree. `Recent` and `Starred` ignore it, so starred
+and recent files stay reachable, and the Pickers still list **Markdown files
+only** for now. When a toggle hides the selected file, the selection moves to
+its nearest surviving ancestor, as `R` Refresh does; folders stay
+expanded and open documents stay open. The staleness indicator compares the
+filtered listing, so a change to a file the filter hides does not raise it.
+Git status markers appear on every file the Tree shows.
+
+Whatever is listed, noggin refuses
 to open a binary file or one over ~10MB, on every route — the Files Nav, the
 Picker, `noggin <file>`, Recent/Starred, history walks and Refresh — with a
 Footer message such as `cannot open app.bin: binary file` or `cannot open
@@ -408,7 +429,7 @@ notes.
 
 The Files Nav has three Browse Modes, cycled with `tab` (Files Nav focused):
 `Tree` (the file tree), `Recent`, and `Starred`. A status row below the
-pane's title always names the current mode and scope, e.g. `Tree · -`,
+pane's title always names the current mode and scope, e.g. `Tree · - · Markdown`,
 `Recent · Active Source`, `Starred · All Starred` — costing the list one row
 of height in every mode.
 

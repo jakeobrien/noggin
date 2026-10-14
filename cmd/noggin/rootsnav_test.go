@@ -518,7 +518,7 @@ func TestToggleStarWithNoStorePathDeclinesAndMessages(t *testing.T) {
 // fresh-Root reset — this test is what proves it rather than leaving it an
 // assumption.
 func TestActivateRootLeavesOpenDocumentUntouched(t *testing.T) {
-	rootA, err := tree.Walk("testdata/tree")
+	rootA, err := tree.Walk("testdata/tree", tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("walk testdata/tree: %v", err)
 	}

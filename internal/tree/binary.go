@@ -54,25 +54,55 @@ func CheckOpenable(path string) error {
 	if info.Size() > MaxOpenSize {
 		return ErrTooLarge
 	}
-	key := sniffKey{path, info.ModTime(), info.Size()}
-	sniffCache.Lock()
-	binary, hit := sniffCache.m[key]
-	sniffCache.Unlock()
-	if !hit {
-		if binary, err = sniffBinary(path); err != nil {
-			return err
-		}
-		sniffCache.Lock()
-		if len(sniffCache.m) >= sniffCacheMax {
-			clear(sniffCache.m)
-		}
-		sniffCache.m[key] = binary
-		sniffCache.Unlock()
+	binary, err := cachedBinary(path, info)
+	if err != nil {
+		return err
 	}
 	if binary {
 		return ErrBinary
 	}
 	return nil
+}
+
+// cachedBinary is the binary sniff of path, cached by (path, mtime, size) of
+// the info the caller just took, so an unchanged file is sniffed once.
+func cachedBinary(path string, info os.FileInfo) (bool, error) {
+	key := sniffKey{path, info.ModTime(), info.Size()}
+	sniffCache.Lock()
+	binary, hit := sniffCache.m[key]
+	sniffCache.Unlock()
+	if hit {
+		return binary, nil
+	}
+	binary, err := sniffBinary(path)
+	if err != nil {
+		return false, err
+	}
+	sniffCache.Lock()
+	if len(sniffCache.m) >= sniffCacheMax {
+		clear(sniffCache.m)
+	}
+	sniffCache.m[key] = binary
+	sniffCache.Unlock()
+	return binary, nil
+}
+
+// isTextFile reports whether the file at path belongs in a File Filter `All`
+// listing as a Text file: a regular file (never a FIFO, socket or a symlink
+// to a directory, which a sniff could block on or fail) whose head has no NUL
+// byte. A file that cannot be sniffed is shown, so opening it reports the
+// real error. Size is not considered: an oversize Text file is listed and
+// refused when opened (CheckOpenable).
+func isTextFile(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return true
+	}
+	if !info.Mode().IsRegular() {
+		return false
+	}
+	binary, err := cachedBinary(path, info)
+	return err != nil || !binary
 }
 
 // sniffBinary reports whether the first sniffLen bytes of path contain a NUL.

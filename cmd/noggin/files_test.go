@@ -280,7 +280,7 @@ func TestModelRoutesKeysToFocusedFilesPane(t *testing.T) {
 // it. fixtureTree's nodes are not backed by real files, so this walks the
 // checked-in testdata/tree fixture instead (loadDocument needs a real path).
 func TestActivateOpensSelectedFileAndMovesFocus(t *testing.T) {
-	root, err := tree.Walk("testdata/tree")
+	root, err := tree.Walk("testdata/tree", tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk(testdata/tree): %v", err)
 	}

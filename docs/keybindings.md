@@ -59,6 +59,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 | `c` | rename Root [^rename] | — | — | - | - | — | - |
 | `tab` | — | cycle Browse Mode [^browse] | — | — | — | — | cycle mode File → Grep → Wikipedia |
 | `shift+tab` | — | cycle Browse Scope [^browse] | — | — | — | — | cycle Scope [^scope] |
+| `a` | — | toggle File Filter [^filter] | — | - | - | — | - |
 | `alt+h` | — | — | — | — | — | — | toggle dotfiles [^hidden] |
 | **Dismissal** | | | | | | | |
 | `esc` | — | — | — | cancel query | discard edit | close help | close Picker |
@@ -92,6 +93,8 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 [^rename]: Edits the Root's name inline (`enter` confirms, `esc` cancels, an empty name reverts to the folder's base name). Refused with a Footer message on the Wikipedia row and on an unstarred ad-hoc Root.
 
 [^browse]: `tab` cycles `Tree` → `Recent` → `Starred` (with Wikipedia active, `Tree` drops out and it toggles `Recent` ↔ `Starred`). `shift+tab` cycles the current mode's Scope: `Recent` = Active Source ↔ All Sources; `Starred` = Active Source → All Starred → Orphans (no `Orphans` with Wikipedia active). No-op in `Tree`. Mode and scope are remembered per Source for the session.
+
+[^filter]: Flips the Active Root's File Filter between `Markdown` and `All` (Markdown files plus non-binary Text files). Per Root, session-only; a Root starts on `Markdown`, except the ad-hoc Root of `noggin <file>` on a Text file, which starts on `All`. Bounds the Tree only (`Recent`/`Starred` ignore it) and is named on the Tree's status row. A selection the toggle hides moves to its nearest surviving ancestor. With Wikipedia active it does nothing but show a Footer message.
 
 [^scope]: File and Grep cycle Active Root → All Roots → Starred (with Wikipedia as Active Source, only All Roots ↔ Starred). No-op in Wikipedia mode. The Prompt text is kept across mode and scope switches.
 

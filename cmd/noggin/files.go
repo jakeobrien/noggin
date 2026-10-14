@@ -78,6 +78,15 @@ type filesNav struct {
 	// been visited this session.
 	memory map[string]filesNavMemory
 
+	// filters is each Root's File Filter (D140), keyed by Root Path:
+	// session-only, and a Root absent from the map is on tree.FilterMarkdown.
+	// It lives beside memory but apart from filesNavMemory because the model
+	// needs a Root's filter *before* walking it into setRoot (activateRoot,
+	// launch), and it must outlive the Root being inactive. Never mutated in
+	// place: withFilter swaps in a fresh map, the same value-semantic
+	// convention expanded follows.
+	filters map[string]tree.Filter
+
 	// status holds S8's per-file git markers for the current root, keyed by
 	// absolute Path (gitStatus's return shape, ready to match tree.Node.Path
 	// directly). Unlike memory, it is never restored from a prior visit — the
@@ -369,6 +378,35 @@ func (f filesNav) nearestSurvivingIndex(path string) int {
 		path = parent
 	}
 	return 0
+}
+
+// filterFor is the File Filter of the Root at path (tree.FilterMarkdown for
+// one never set).
+func (f filesNav) filterFor(path string) tree.Filter {
+	return f.filters[path]
+}
+
+// withFilter records filter as the File Filter of the Root at path.
+func (f filesNav) withFilter(path string, filter tree.Filter) filesNav {
+	next := make(map[string]tree.Filter, len(f.filters)+1)
+	for k, v := range f.filters {
+		next[k] = v
+	}
+	next[path] = filter
+	f.filters = next
+	return f
+}
+
+// withFilteredRoot swaps in root, re-walked under a changed File Filter. In
+// Tree mode the selection falls back to the nearest surviving ancestor
+// (refreshRoot). In a flat mode f.selected indexes the Recent/Starred list,
+// which the filter does not touch, so only the tree is replaced.
+func (f filesNav) withFilteredRoot(root *tree.Node) filesNav {
+	if f.flatMode() {
+		f.root = root
+		return f
+	}
+	return f.refreshRoot(root)
 }
 
 // withStatus installs S8's per-file git status markers for the pane's
@@ -754,6 +792,11 @@ func (f filesNav) view() string {
 // (footer.go's joinHints) so the two status lines read consistently.
 func (f filesNav) modeScopeRow() string {
 	text := f.mode.label() + " \u00b7 " + f.scopeLabel()
+	// The File Filter bounds only the Tree (D140): Recent and Starred ignore
+	// it, so only the Tree's row names it.
+	if f.mode == treeBrowse && f.root != nil {
+		text += " \u00b7 " + f.filterFor(f.root.Path).String()
+	}
 	return mutedText(modeScopeRowStyle, f.unfocused, true).Width(f.width).MaxWidth(f.width).Render(text)
 }
 

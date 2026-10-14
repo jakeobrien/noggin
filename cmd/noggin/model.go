@@ -440,7 +440,13 @@ func (m model) applyResolution(res resolution) model {
 	m = m.refreshFilesRecentSource()
 
 	if path := res.activeRootPath(); path != "" {
-		if node, err := tree.Walk(path); err != nil {
+		// D140: `noggin <file>` on a Text file starts its ad-hoc Root on All,
+		// so the file it opened is in the Tree beside it.
+		if res.docPath != "" && !res.roots[res.active].starred &&
+			!tree.IsMarkdown(filepath.Base(res.docPath)) && tree.CheckOpenable(res.docPath) == nil {
+			m.files = m.files.withFilter(path, tree.FilterAll)
+		}
+		if node, err := tree.Walk(path, m.files.filterFor(path)); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", path, err)
 		} else {
 			m = m.openFolder(node)
@@ -773,7 +779,7 @@ func (m model) activateRoot() model {
 		m.message = fmt.Sprintf("%s no longer exists; not activated", row.root.path)
 		return m
 	}
-	node, err := tree.Walk(row.root.path)
+	node, err := tree.Walk(row.root.path, m.files.filterFor(row.root.path))
 	if err != nil {
 		m.message = fmt.Sprintf("cannot read %s: %v", row.root.path, err)
 		return m
@@ -781,6 +787,37 @@ func (m model) activateRoot() model {
 	m.roots = m.roots.activate(m.roots.selected)
 	m.message = ""
 	return m.openFolder(node)
+}
+
+// toggleFileFilter flips the Active Root's File Filter between Markdown and
+// All (D140) and re-walks the Root under it. The selection falls back to the
+// nearest surviving ancestor when the toggle hides it (filesNav.
+// withFilteredRoot); expansion and open documents are untouched. With the
+// Wikipedia Source active there is no Root and so no filter: a Footer message
+// says so. A failed walk leaves the filter as it was.
+func (m model) toggleFileFilter() model {
+	if m.files.wikipedia {
+		m.message = "the Wikipedia Source has no File Filter"
+		return m
+	}
+	if m.files.root == nil {
+		return m
+	}
+	path := m.files.root.Path
+	next := m.files.filterFor(path).Toggled()
+	node, err := tree.Walk(path, next)
+	if err != nil {
+		m.message = fmt.Sprintf("cannot read %s: %v", path, err)
+		return m
+	}
+	// A selection change is one of Peek's clearing triggers (S7).
+	m = m.clearPeek()
+	m.files = m.files.withFilter(path, next).withFilteredRoot(node).withStatus(gitStatus(path))
+	m.message = ""
+	if m.files.flatMode() {
+		m.message = fmt.Sprintf("File Filter: %s (Recent and Starred ignore it)", next)
+	}
+	return m.rebaseTreeStaleness()
 }
 
 // activateWikipediaSource makes the Wikipedia Query Source the model's
@@ -1303,7 +1340,7 @@ func (m model) refresh() (model, tea.Cmd) {
 	// S7/M7.1: a refresh is one of Peek's clearing triggers.
 	m = m.clearPeek()
 	if m.files.root != nil {
-		if node, err := tree.Walk(m.files.root.Path); err != nil {
+		if node, err := tree.Walk(m.files.root.Path, m.files.filterFor(m.files.root.Path)); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", m.files.root.Path, err)
 		} else {
 			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path)).withStarred(m.filesStarredMarks())
@@ -1701,6 +1738,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case filesPane:
 			if key.Matches(msg, keys.Activate) {
 				return m.activate()
+			}
+			if key.Matches(msg, keys.FileFilter) {
+				return m.toggleFileFilter(), nil
 			}
 			// Peek (S7, M7.1) is Files-Nav-only, unlike every other binding
 			// matched above in the global switch — that is what keeps it

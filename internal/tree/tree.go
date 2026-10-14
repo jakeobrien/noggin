@@ -8,7 +8,7 @@ import (
 )
 
 // Node is one entry in the browsable tree: a directory (with Children) or a
-// readable file (Children nil). Path is absolute so the viewer can load a file
+// listed file (Children nil). Path is absolute so the viewer can load a file
 // without knowing the root.
 type Node struct {
 	Name     string
@@ -17,23 +17,23 @@ type Node struct {
 	Children []*Node
 }
 
-// Walk builds the browsable tree rooted at root, applying the readable-file
-// policy (S6) and honouring `.gitignore`. `.git` is always excluded; dotfiles
-// and hidden directories are otherwise kept; directories are always listed even
-// when they hold nothing readable. Children are sorted directories-first, then
-// by name.
+// Walk builds the browsable tree rooted at root, listing the files filter
+// allows (the File Filter, D140) and honouring `.gitignore`. `.git` is always
+// excluded; dotfiles and hidden directories are otherwise kept; directories are
+// always listed even when they hold nothing listable. Children are sorted
+// directories-first, then by name.
 //
 // root must be a directory; a file argument is M3.1's concern (cwd becomes the
 // root), not the walk's. Walk does not stat root itself to special-case a
 // non-directory: walkDir's os.ReadDir fails naturally (ENOTDIR) and that error
 // propagates, which is all a caller-contract violation needs.
-func Walk(root string) (*Node, error) {
+func Walk(root string, filter Filter) (*Node, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
 	}
 	node := &Node{Name: filepath.Base(abs), Path: abs, IsDir: true}
-	if err := walkDir(node, "", nil); err != nil {
+	if err := walkDir(node, "", nil, filter); err != nil {
 		return nil, err
 	}
 	return node, nil
@@ -47,15 +47,15 @@ type Entry struct {
 }
 
 // ListDir reports the entries Walk would give dir's node as Children, in the
-// same order, without recursing: the same readable-file policy, `.git`
-// exclusion and `.gitignore` files from root down to dir (dir's own
+// same order, without recursing: the same filter, `.git` exclusion and
+// `.gitignore` files from root down to dir (dir's own
 // included). dir must be root or a directory under it that Walk would list.
 // A missing or unreadable dir is an error.
 //
 // It exists so a caller holding an already-walked tree can re-check one
 // directory cheaply (the staleness check, cmd/noggin) and get the answer the
 // tree would have, rather than re-walking the whole Root to find out.
-func ListDir(root, dir string) ([]Entry, error) {
+func ListDir(root, dir string, filter Filter) ([]Entry, error) {
 	rel, err := filepath.Rel(root, dir)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func ListDir(root, dir string) ([]Entry, error) {
 		}
 	}
 
-	entries, _, err := readVisible(dir, rel, stack)
+	entries, _, err := readVisible(dir, rel, stack, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -94,10 +94,11 @@ func ListDir(root, dir string) ([]Entry, error) {
 
 // readVisible lists dir (at slash path rel from the walk root) and keeps what
 // Walk shows: `.git` and anything a `.gitignore` in stack or in dir itself
-// ignores are dropped, directories are always kept, files only if Markdown.
+// ignores are dropped, directories are always kept, files only if filter
+// shows them.
 // It returns the entries unsorted, plus stack extended with dir's own
 // `.gitignore` for the caller to pass down to dir's children.
-func readVisible(dir, rel string, stack []ignoreFile) ([]Entry, []ignoreFile, error) {
+func readVisible(dir, rel string, stack []ignoreFile, filter Filter) ([]Entry, []ignoreFile, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, nil, err
@@ -119,7 +120,7 @@ func readVisible(dir, rel string, stack []ignoreFile) ([]Entry, []ignoreFile, er
 		if ignored(stack, childRel(rel, name), isDir) {
 			continue
 		}
-		if isDir || IsMarkdown(name) {
+		if isDir || filter.shows(filepath.Join(dir, name), name) {
 			out = append(out, Entry{Name: name, IsDir: isDir})
 		}
 	}
@@ -129,8 +130,8 @@ func readVisible(dir, rel string, stack []ignoreFile) ([]Entry, []ignoreFile, er
 // walkDir populates dir.Children. rel is dir's slash path relative to the walk
 // root ("" at the root); stack is the `.gitignore` files accumulated from the
 // root down to dir's parent.
-func walkDir(dir *Node, rel string, stack []ignoreFile) error {
-	entries, stack, err := readVisible(dir.Path, rel, stack)
+func walkDir(dir *Node, rel string, stack []ignoreFile, filter Filter) error {
+	entries, stack, err := readVisible(dir.Path, rel, stack, filter)
 	if err != nil {
 		return err
 	}
@@ -143,7 +144,7 @@ func walkDir(dir *Node, rel string, stack []ignoreFile) error {
 			IsDir: e.IsDir,
 		}
 		if e.IsDir {
-			if err := walkDir(child, childRel(rel, e.Name), stack); err != nil {
+			if err := walkDir(child, childRel(rel, e.Name), stack, filter); err != nil {
 				return err
 			}
 		}

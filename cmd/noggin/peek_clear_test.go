@@ -19,7 +19,7 @@ func peekFixtureScrollable(t *testing.T) (m model, wantOffset int) {
 	activePath := writeFileContent(t, filepath.Join(root, "active.md"), listContent(60))
 	writeFileContent(t, filepath.Join(root, "peeked.md"), "# Peeked\n")
 
-	node, err := tree.Walk(root)
+	node, err := tree.Walk(root, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -139,7 +139,7 @@ func TestPeekClearedRestoresViewShowingTheActiveDocumentAgain(t *testing.T) {
 func TestPeekClearedWithNoActiveDocumentEmptiesTheViewer(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	writeFileContent(t, filepath.Join(root, "peeked.md"), "# Peeked\n")
-	node, err := tree.Walk(root)
+	node, err := tree.Walk(root, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

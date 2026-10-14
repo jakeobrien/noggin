@@ -265,6 +265,12 @@ type keyMap struct {
 	FilesMode  key.Binding
 	FilesScope key.Binding
 
+	// FileFilter toggles the Active Root's File Filter between Markdown and
+	// All (D140, tree.Filter): Files-Nav-only, like Peek, so it is matched in
+	// Update's filesPane case. It bounds the Tree only; with the Wikipedia
+	// Source active it does nothing but say so in the Footer.
+	FileFilter key.Binding
+
 	// HistoryBack and HistoryForward walk a focused Document Viewer's own S9
 	// back/forward stack (C4/M6.1): matched in Update's dv1Pane/dv2Pane case
 	// beside keys.Star, so — like it — they act on whichever viewer holds
@@ -446,6 +452,10 @@ var keys = keyMap{
 	FilesScope: key.NewBinding(
 		key.WithKeys("shift+tab"),
 		key.WithHelp("shift+tab", "scope"),
+	),
+	FileFilter: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "file filter"),
 	),
 	ActivateDV2: key.NewBinding(
 		key.WithKeys("ctrl+enter", "ctrl+l"),

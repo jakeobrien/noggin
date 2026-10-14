@@ -22,7 +22,7 @@ func recencyFixture(t *testing.T) (m model, storePath string, aPath, bPath strin
 	bPath = writeFileContent(t, filepath.Join(root, "b.md"), "# B\n")
 	storePath = filepath.Join(dir, "documents")
 
-	node, err := tree.Walk(root)
+	node, err := tree.Walk(root, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestActivateStoreWriteFailureSurfacesMessage(t *testing.T) {
 	aPath := writeFileContent(t, filepath.Join(root, "a.md"), "# A\n")
 	badStore := storeWriteFailurePath(t, dir)
 
-	node, err := tree.Walk(root)
+	node, err := tree.Walk(root, tree.FilterMarkdown)
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

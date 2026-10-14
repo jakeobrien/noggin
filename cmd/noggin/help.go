@@ -99,7 +99,7 @@ func helpBindings(p pane) []key.Binding {
 		}
 	case filesPane:
 		return []key.Binding{
-			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown,
+			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.FileFilter, keys.Star, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.Peek,
