@@ -162,6 +162,7 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `ctrl+x` | close DV2, wherever focus is (no-op if DV2 doesn't exist); focus moves to DV1 if DV2 held it |
 | `R` | refresh the Active Root's file tree and every open Document Viewer's document from disk (re-fetches an open Wikipedia article instead) |
 | `e` | edit the active document in `$EDITOR` (refused on a Wikipedia article) |
+| `m` | toggle the viewer between Markdown and Text rendering (see [Render Mode](#render-mode)) |
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
 | `space` | open the Picker (fuzzy find files, grep across files, or search Wikipedia — see below) |
@@ -172,7 +173,7 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 There is no pane-cycling key: every pane is reached by a direct focus key
 (`r`/`f`/`o`/`ctrl+o`) instead — see [Focus](#focus).
 
-`e`, `/`, `n` and `N` are reachable from any pane, not just a Document
+`e`, `m`, `/`, `n` and `N` are reachable from any pane, not just a Document
 Viewer's, but always act on DV1's document — unless focus is currently on
 DV2, in which case they act on DV2's.
 
@@ -475,8 +476,34 @@ Peeked document while the Peek lasts:
   markdown` — Wikipedia's own reuse licence, the article's own URL as
   attribution, and a note that the HTML has been converted to markdown
 
+Every form ends with the document's [Render Mode](#render-mode): `· Markdown`
+or `· Text`. On a narrow pane it is the path that is truncated, not the mode.
+
 The row is absent entirely when the viewer has no document open (or none to
 Peek).
+
+## Render Mode
+
+Each Document Viewer shows its document in one of two Render Modes, toggled
+with `m`:
+
+- **Markdown** (the default): the document rendered as styled markdown.
+- **Text**: the raw source exactly as written — frontmatter included — with
+  tabs expanded, long lines soft-wrapped to the pane width, a dim line-number
+  gutter (blank on continuation rows) and no colour. An unfocused pane shows a
+  muted variant.
+
+`m` is reachable from any pane and, like `e` and `/`, acts on DV1's viewer
+unless focus is on DV2, in which case it acts on DV2's. The mode belongs to the
+viewer and is sticky: it carries across every document opened, Peeked or
+walked to with `[`/`]` in that viewer, for the rest of the session. DV1 and DV2
+each have their own, and a new DV2 starts on Markdown. Toggling resets any find
+in progress.
+
+A Text file (anything that is not a [Markdown file](#what-gets-shown)) is always
+shown as text without changing the viewer's mode, so `m` on one is refused with
+a Footer message. A Wikipedia article in Text mode shows its converted
+markdown.
 
 ## Editing
 

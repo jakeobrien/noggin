@@ -1,6 +1,10 @@
 package main
 
-import "path/filepath"
+import (
+	"path/filepath"
+
+	"charm.land/lipgloss/v2"
+)
 
 // wikipediaAttribution is S9a's own fixed wording for a Wikipedia article's
 // location line — the three obligations D98 identified (attribution via the
@@ -29,7 +33,18 @@ const (
 // (picker_view.go) already give their own identical "which Root covers
 // this path" computation — S9's location line is a fourth reader of
 // rootForPath/displayName, not a reason to cache a copy anywhere new.
-func documentLocation(doc document, roots []root) string {
+//
+// The line ends with the render mode the document is shown in (D140):
+// `· Markdown` or `· Text`.
+func documentLocation(doc document, roots []root, mode renderMode) string {
+	return documentPlace(doc, roots) + modeSuffix(mode)
+}
+
+// modeSuffix is the Location line's closing render mode segment (D140).
+func modeSuffix(mode renderMode) string { return " · " + mode.String() }
+
+// documentPlace is documentLocation without the trailing render mode.
+func documentPlace(doc document, roots []root) string {
 	if doc.isArticle() {
 		return wikipediaAttributionPrefix + doc.path + wikipediaAttributionSuffix
 	}
@@ -138,11 +153,12 @@ func (v viewer) locationDoc() (document, bool) {
 // viewer itself (documentLocation's own doc comment gives the same
 // reasoning).
 func (m model) viewerLocationLine(p pane) string {
-	doc, ok := m.viewerFor(p).locationDoc()
+	v := m.viewerFor(p)
+	doc, ok := v.locationDoc()
 	if !ok {
 		return ""
 	}
-	return documentLocation(doc, m.roots.rootList())
+	return documentLocation(doc, m.roots.rootList(), v.modeFor(doc))
 }
 
 // composeViewerContent appends pane p's own S9/S9a location line beneath
@@ -157,10 +173,19 @@ func (m model) viewerLocationLine(p pane) string {
 // the same docLocationVisible/peekLocationVisible booleans, so they can
 // never disagree.
 func (m model) composeViewerContent(p pane, width int, content string) string {
-	line := m.viewerLocationLine(p)
-	if line == "" {
+	v := m.viewerFor(p)
+	doc, ok := v.locationDoc()
+	if !ok {
 		return content
 	}
-	row := locationLineStyle.Width(width).MaxWidth(width).Render(rightTruncate(line, width))
+	// Truncate the place, not the render mode: the mode is what the line is
+	// there to say on a narrow pane, and the place's tail is what it already
+	// keeps.
+	place, suffix := documentPlace(doc, m.roots.rootList()), modeSuffix(v.modeFor(doc))
+	text := rightTruncate(place+suffix, width)
+	if room := width - lipgloss.Width(suffix); room >= 2 {
+		text = rightTruncate(place, room) + suffix
+	}
+	row := locationLineStyle.Width(width).MaxWidth(width).Render(text)
 	return content + "\n" + row
 }

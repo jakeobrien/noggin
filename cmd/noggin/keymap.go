@@ -60,6 +60,12 @@ type keyMap struct {
 	// (S3, C6/M4.3): there is nothing on disk to hand $EDITOR.
 	Edit key.Binding
 
+	// RenderMode toggles the targeted viewer between Markdown and Text
+	// rendering (D140, textview.go). Global like Edit and Find, and aimed at
+	// the same viewer: DV1, or DV2 when DV2 holds Focus. Refused with a Footer
+	// message on a Text file, which is always shown as text.
+	RenderMode key.Binding
+
 	// Find starts an incremental search over the open document (S8, M5.1):
 	// global like Edit, and refused the same way with no document open.
 	// FindNext and FindPrevious step through the matches it produces,
@@ -344,6 +350,10 @@ var keys = keyMap{
 	Edit: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "edit"),
+	),
+	RenderMode: key.NewBinding(
+		key.WithKeys("m"),
+		key.WithHelp("m", "markdown/text"),
 	),
 	Find: key.NewBinding(
 		key.WithKeys("/"),

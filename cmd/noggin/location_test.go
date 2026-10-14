@@ -49,7 +49,7 @@ func locationRootFixture(t *testing.T) (m model, rootPath, filePath string) {
 // Root, exactly the "<Root name> · <relative path>" form PLAN M8.2 names.
 func TestLocationLineForFileUnderARoot(t *testing.T) {
 	m, rootPath, _ := locationRootFixture(t)
-	want := filepath.Base(rootPath) + " · sub/doc.md"
+	want := filepath.Base(rootPath) + " · sub/doc.md · Markdown"
 	if got := m.viewerLocationLine(dv1Pane); got != want {
 		t.Errorf("location line = %q, want %q", got, want)
 	}
@@ -65,7 +65,7 @@ func TestLocationLineForFileUnderARenamedRoot(t *testing.T) {
 	rows := m.roots.rows
 	rows[0].root.name = "My Notes"
 	m.roots.rows = rows
-	want := "My Notes · sub/doc.md"
+	want := "My Notes · sub/doc.md · Markdown"
 	if got := m.viewerLocationLine(dv1Pane); got != want {
 		t.Errorf("location line = %q, want %q", got, want)
 	}
@@ -78,7 +78,7 @@ func TestLocationLineForFileUnderARenamedRoot(t *testing.T) {
 // it opens with no Root at all.
 func TestLocationLineForOrphanFile(t *testing.T) {
 	m := openedFixture(t, 80, 24)
-	if got, want := m.viewerLocationLine(dv1Pane), fixturePath; got != want {
+	if got, want := m.viewerLocationLine(dv1Pane), fixturePath+" · Markdown"; got != want {
 		t.Errorf("location line = %q, want %q (the document's own full path)", got, want)
 	}
 }
@@ -91,7 +91,7 @@ func TestLocationLineForOrphanFile(t *testing.T) {
 // combining with either.
 func TestLocationLineForArticleIsTheExactThreeSegmentAttribution(t *testing.T) {
 	m := sized(t, newModel().openDocument(fixtureArticle()), 80, 24)
-	want := "CC BY-SA 4.0 · https://en.wikipedia.org/wiki/Leonhard_Euler · Reformatted to markdown"
+	want := "CC BY-SA 4.0 · https://en.wikipedia.org/wiki/Leonhard_Euler · Reformatted to markdown · Markdown"
 	if got := m.viewerLocationLine(dv1Pane); got != want {
 		t.Errorf("location line = %q, want %q", got, want)
 	}
@@ -144,7 +144,7 @@ func TestLocationLineCostsOneRowOnlyWhenAShown(t *testing.T) {
 func TestLocationLineReflectsThePeekedDocumentNotTheActiveOne(t *testing.T) {
 	m, _, _ := peekFixture(t)
 	before := m.viewerLocationLine(dv1Pane)
-	if !strings.HasSuffix(before, "active.md") {
+	if !strings.HasSuffix(before, "active.md · Markdown") {
 		t.Fatalf("setup: location line before Peek = %q, want it to name active.md", before)
 	}
 
@@ -154,7 +154,7 @@ func TestLocationLineReflectsThePeekedDocumentNotTheActiveOne(t *testing.T) {
 	}
 
 	got := m.viewerLocationLine(dv1Pane)
-	if !strings.HasSuffix(got, "peeked.md") {
+	if !strings.HasSuffix(got, "peeked.md · Markdown") {
 		t.Errorf("location line while Peeking = %q, want it to name peeked.md", got)
 	}
 	if got == before {
@@ -175,8 +175,8 @@ func TestLocationLineForDV2IsIndependentOfDV1(t *testing.T) {
 	}
 	m = m.openDocumentInto(dv2Pane, d)
 
-	wantDV1 := filepath.Base(rootPath) + " · sub/doc.md"
-	wantDV2 := filepath.Base(rootPath) + " · second.md"
+	wantDV1 := filepath.Base(rootPath) + " · sub/doc.md · Markdown"
+	wantDV2 := filepath.Base(rootPath) + " · second.md · Markdown"
 	if got := m.viewerLocationLine(dv1Pane); got != wantDV1 {
 		t.Errorf("dv1Pane location line = %q, want %q", got, wantDV1)
 	}

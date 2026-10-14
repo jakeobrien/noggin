@@ -29,6 +29,13 @@ type viewer struct {
 
 	findState find
 
+	// mode is this viewer's Render Mode (D140, textview.go): sticky across
+	// every document opened, Peeked or walked to by history in it, and
+	// session-only. The zero value is Markdown, so a fresh viewer (a new DV2
+	// included) starts there. modeFor gives the mode a particular document is
+	// actually shown in, since a Text file ignores it.
+	mode renderMode
+
 	// mutedContent/mutedPeekContent are the same rendered document and Peek
 	// in the muted Glamour style (unfocused_style.go; identical line
 	// structure, so the viewport's scroll offset and find highlight carry
@@ -468,7 +475,7 @@ func (v viewer) renderPeek() viewer {
 		return v
 	}
 	v.peek.vp.SetWidth(v.vp.Width())
-	out, err := renderMarkdown(v.peek.doc.src, v.peek.vp.Width())
+	out, err := renderDocument(v.peek.doc, v.modeFor(v.peek.doc), v.peek.vp.Width(), false)
 	if err != nil {
 		v.peek.err = err
 		// S9/M8.2: Peek's own location-line visibility (peekContentHeight)
@@ -485,7 +492,7 @@ func (v viewer) renderPeek() viewer {
 	v.peek.vp.SetContent(strings.TrimRight(out, "\n"))
 	v.peek.vp.GotoTop()
 	v.mutedPeekContent = ""
-	if m, err := renderMarkdownStyled(v.peek.doc.src, v.peek.vp.Width(), true); err == nil {
+	if m, err := renderDocument(v.peek.doc, v.modeFor(v.peek.doc), v.peek.vp.Width(), true); err == nil {
 		v.mutedPeekContent = strings.TrimRight(m, "\n")
 	}
 	return v
@@ -506,7 +513,7 @@ func (v viewer) render() viewer {
 	if !v.doc.isOpen() {
 		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
-	} else if out, err := renderMarkdown(v.doc.src, v.vp.Width()); err != nil {
+	} else if out, err := renderDocument(v.doc, v.modeFor(v.doc), v.vp.Width(), false); err != nil {
 		v.err = err
 		v.vp.SetHeight(v.docContentHeight())
 		v.vp.SetContent("")
@@ -520,7 +527,7 @@ func (v viewer) render() viewer {
 		// Glamour pads the document with trailing blank lines; they would
 		// be scrollable emptiness past the end.
 		v.vp.SetContent(strings.TrimRight(out, "\n"))
-		if m, err := renderMarkdownStyled(v.doc.src, v.vp.Width(), true); err == nil {
+		if m, err := renderDocument(v.doc, v.modeFor(v.doc), v.vp.Width(), true); err == nil {
 			v.mutedContent = strings.TrimRight(m, "\n")
 		}
 	}

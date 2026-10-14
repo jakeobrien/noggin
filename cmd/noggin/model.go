@@ -1647,6 +1647,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.restorePicker()
 		case key.Matches(msg, keys.Edit):
 			return m.startEdit()
+		case key.Matches(msg, keys.RenderMode):
+			return m.toggleRenderMode(), nil
 		case key.Matches(msg, keys.Find):
 			return m.startFind()
 		// FindNext and FindPrevious are global like Find itself, not scoped to
