@@ -137,12 +137,12 @@ func TestHelpModalListsPageAndHalfPageTogetherForTheViewer(t *testing.T) {
 // without changing what a terminal actually displays, so a byte-exact
 // comparison would fail on formatting, not content.
 func TestHelpOverlayLeavesTheFrameVisibleAroundIt(t *testing.T) {
-	// Height 36, not 24 (RenderMode added one more row; PickerRestore added one more row; C2a/M9.1 grew filesPane's helpBindings list past
+	// Height 37, not 24 (PickerFilter added one more row; RenderMode added one more row; PickerRestore added one more row; C2a/M9.1 grew filesPane's helpBindings list past
 	// what a 24-row terminal fits without clamping, M2.8 grew it by one more
 	// row (keys.Star), and M4.8 grew it by one more again (FilesMode,
 	// FilesScope) — see TestHelpOverlayNeverExceedsTheTerminal for that
 	// clamped case, which this test is not exercising).
-	m := sized(t, newModel().openFolder(fixtureTree()), 80, 36)
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 37)
 	beforeLines := plainLines(m.View().Content)
 
 	m = press(t, m, "?")
@@ -385,7 +385,7 @@ func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
 // joins them for the identical reason: also usually a no-op with DV2
 // absent, also listed unconditionally as its own discoverability backstop.
 func TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane(t *testing.T) {
-	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.ToggleHidden}
+	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.ToggleHidden, keys.PickerFilter}
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		bindings := helpBindings(p)
 		for _, w := range want {

@@ -120,7 +120,7 @@ func readVisible(dir, rel string, stack []ignoreFile, filter Filter) ([]Entry, [
 		if ignored(stack, childRel(rel, name), isDir) {
 			continue
 		}
-		if isDir || filter.shows(filepath.Join(dir, name), name) {
+		if isDir || filter.Shows(filepath.Join(dir, name), name) {
 			out = append(out, Entry{Name: name, IsDir: isDir})
 		}
 	}

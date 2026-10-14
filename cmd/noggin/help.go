@@ -93,7 +93,7 @@ func helpBindings(p pane) []key.Binding {
 		return []key.Binding{
 			keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.PickerFilter,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,
 		}
@@ -101,7 +101,7 @@ func helpBindings(p pane) []key.Binding {
 		return []key.Binding{
 			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.FileFilter, keys.Star, keys.LineUp, keys.LineDown,
 			keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.PickerFilter,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.Peek,
 			keys.ActivateDV2, keys.PeekDV2,
 			keys.Help, keys.Quit,
@@ -114,7 +114,7 @@ func helpBindings(p pane) []key.Binding {
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
 			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.PickerFilter,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,
 		)

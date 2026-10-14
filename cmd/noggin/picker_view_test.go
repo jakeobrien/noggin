@@ -500,7 +500,7 @@ func TestPickerStatusStates(t *testing.T) {
 			avail:        ripgrepAvailability{available: true},
 			hideDotfiles: true,
 			setup:        func(p *picker) {},
-			want:         []string{"File · Active Source · Hidden"},
+			want:         []string{"File · Active Source · Markdown · Hidden"},
 		},
 		{
 			name:  "Grep and All Roots indicator",

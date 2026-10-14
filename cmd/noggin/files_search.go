@@ -59,10 +59,12 @@ type pickerFile struct {
 	title   string
 }
 
-// listFiles is the File Picker's candidate set (S3, S13): every Markdown
-// file under scope, found via `rg --files` (S14) with the Readable
-// allowlist (tree.IsMarkdown) applied on top — rg itself has no notion of
-// it. A Broken Root is skipped, never an error (S6, liveRootsInScope); a
+// listFiles is the File Picker's candidate set (S3, S13): every file the File
+// Filter shows (D140) under scope, found via `rg --files` (S14) with the
+// filter (tree.Filter.Shows) applied on top — rg itself has no notion of it.
+// Under `All` that is Markdown plus Text files: rg lists binaries too, so the
+// binary sniff drops them. filter is the Active Root's, applied uniformly to
+// every Root searched. A Broken Root is skipped, never an error (S6, liveRootsInScope); a
 // live Root that rg still cannot read (e.g. permission denied, or a TOCTOU
 // race with liveRootsInScope's own stat) is likewise absorbed by rgFiles
 // rather than aborting the whole scope, so one unreadable Root never blanks
@@ -82,17 +84,18 @@ type pickerFile struct {
 // full, not just the dotfile-named-file half of it. `.git` needs no such
 // check here: rgFiles' own `--glob '!.git'` already keeps it out of rel
 // entirely, toggle or not.
-func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool) []pickerFile {
+func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool, filter tree.Filter) []pickerFile {
 	var files []pickerFile
 	for _, r := range liveRootsInScope(roots, active, scope) {
 		for _, rel := range rgFiles(r.path) {
-			if !tree.IsMarkdown(filepath.Base(rel)) {
-				continue
-			}
 			if hideDotfiles && isDotfilePath(rel) {
 				continue
 			}
-			files = append(files, pickerFile{root: r, path: filepath.Join(r.path, rel)})
+			path := filepath.Join(r.path, rel)
+			if !filter.Shows(path, filepath.Base(rel)) {
+				continue
+			}
+			files = append(files, pickerFile{root: r, path: path})
 		}
 	}
 	return files
@@ -111,8 +114,9 @@ func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool) [
 //     — the Picker's job is finding something to open or grep, and a
 //     missing file can do neither (loadDocument would just fail on
 //     Activate, and rg has nothing to read for it either);
-//   - the Markdown classification (tree.IsMarkdown) still applies, matching
-//     every other candidate set this Picker ever offers;
+//   - the File Filter does not apply (D140): a starred file stays reachable
+//     whatever the filter. Only a binary, or a file that is not a regular
+//     file, is dropped (tree.FilterAll.Shows), as it could not be opened;
 //   - hideDotfiles still applies, for the same "session-scoped toggle,
 //     applies to every candidate set" reason listFiles honours it — checked
 //     against the document's own absolute path rather than a Root-relative
@@ -153,7 +157,7 @@ func starredPickerFiles(docs map[string]docRecord, roots []root, hideDotfiles bo
 		if pathMissing(path) {
 			continue
 		}
-		if !tree.IsMarkdown(filepath.Base(path)) {
+		if !tree.FilterAll.Shows(path, filepath.Base(path)) {
 			continue
 		}
 		if hideDotfiles && isDotfilePath(path) {

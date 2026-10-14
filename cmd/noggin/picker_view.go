@@ -173,6 +173,11 @@ func pickerModeScope(p picker, hideDotfiles bool) string {
 		}
 	}
 	label := mode + " · " + scope
+	// The File Filter (D140) bounds File and Grep except in the Starred
+	// scope, which ignores it; Wikipedia mode has no files at all.
+	if p.mode != wikipediaMode && p.scope != starredScope {
+		label += " · " + p.filter.String()
+	}
 	if hideDotfiles {
 		// S4/M6.2's alt+h toggle has no other visible confirmation — the
 		// title is the one place mode/Scope already surface "what would

@@ -61,6 +61,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 | `shift+tab` | — | cycle Browse Scope [^browse] | — | — | — | — | cycle Scope [^scope] |
 | `a` | — | toggle File Filter [^filter] | — | - | - | — | - |
 | `alt+h` | — | — | — | — | — | — | toggle dotfiles [^hidden] |
+| `alt+a` | — | — | — | — | — | — | toggle File Filter [^pickfilter] |
 | **Dismissal** | | | | | | | |
 | `esc` | — | — | — | cancel query | discard edit | close help | close Picker |
 
@@ -96,6 +97,8 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 
 [^filter]: Flips the Active Root's File Filter between `Markdown` and `All` (Markdown files plus non-binary Text files). Per Root, session-only; a Root starts on `Markdown`, except the ad-hoc Root of `noggin <file>` on a Text file, which starts on `All`. Bounds the Tree only (`Recent`/`Starred` ignore it) and is named on the Tree's status row. A selection the toggle hides moves to its nearest surviving ancestor. With Wikipedia active it does nothing but show a Footer message.
 
+[^pickfilter]: Flips the Active Root's File Filter between `Markdown` and `All`, the same per-Root state as the Files Nav's `a` (the Tree is re-walked too). File and Grep's Active Root and All Roots scopes use the Active Root's filter for every Root searched; `All` means Markdown plus non-binary files. The `Starred` scope and Wikipedia mode ignore it. With Wikipedia as the Active Source it toggles the most recently set value (initially `Markdown`). The title names the filter, e.g. `Grep · All Roots · All`.
+
 [^scope]: File and Grep cycle Active Root → All Roots → Starred (with Wikipedia as Active Source, only All Roots ↔ Starred). No-op in Wikipedia mode. The Prompt text is kept across mode and scope switches.
 
 [^hidden]: Hides/shows dotfiles and files under dot-directories in File and Grep results at once; the title gains ` · Hidden` while on. Session-only. No effect in Wikipedia mode. `.git/` is always excluded.
@@ -104,6 +107,6 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 
 ## Notes
 
-- **Typing modes are exclusive.** While Find, Rename or the Picker's Prompt is active, every key not listed for that mode is entered as text — `q` never quits and `j` never scrolls. This is why the Picker has its own `alt+s` / `alt+h` and arrow-only movement.
+- **Typing modes are exclusive.** While Find, Rename or the Picker's Prompt is active, every key not listed for that mode is entered as text — `q` never quits and `j` never scrolls. This is why the Picker has its own `alt+s` / `alt+h` / `alt+a` and arrow-only movement.
 - **Mouse**: wheel scrolling is also supported, aimed at the pane under the cursor rather than the focused one. It isn't a key command, so isn't tabulated.
 - **Where `?` shows these**: the Help Modal lists a per-pane subset (`helpBindings` in `help.go`); the Footer shows a shorter one. Neither lists `alt+s`, which appears only in the Picker's footer hint.

@@ -199,6 +199,11 @@ type keyMap struct {
 	// must not treat this as query text.
 	ToggleHidden key.Binding
 
+	// PickerFilter toggles the File Filter (D140, tree.Filter) from the
+	// Picker: the same per-Root state as the Files Nav's FileFilter. alt+a for
+	// the same non-printable reason ToggleHidden is alt+h.
+	PickerFilter key.Binding
+
 	// PickerStar is S2/M2.5's Picker-only star toggle: acts on the Picker's
 	// currently selected Result (either mode), the same conceptual action
 	// keys.Star already gives the Sources Nav, Files Nav and a focused Document
@@ -436,6 +441,10 @@ var keys = keyMap{
 	ToggleHidden: key.NewBinding(
 		key.WithKeys("alt+h"),
 		key.WithHelp("alt+h", "hidden files"),
+	),
+	PickerFilter: key.NewBinding(
+		key.WithKeys("alt+a"),
+		key.WithHelp("alt+a", "file filter"),
 	),
 	PickerStar: key.NewBinding(
 		key.WithKeys("alt+s"),

@@ -243,6 +243,7 @@ leave. Everything else is on a non-printable key:
 | `tab` | switch mode: File → Grep → Wikipedia → File … (the typed query carries over) |
 | `shift+tab` | switch Scope (no-op in Wikipedia mode, which has none — see below) |
 | `alt+h` | toggle hiding dotfiles from the Results, for the rest of this session (File/Grep only) |
+| `alt+a` | toggle the File Filter between `Markdown` and `All` (File/Grep only; see [What gets shown](#what-gets-shown)) |
 | `alt+s` | star / unstar the selected Result (file or article) |
 | `enter` | activate the selected Result into DV1 (fetches an article, then renders it) |
 | `ctrl+enter` (fallback `ctrl+l`) | activate the selected Result into DV2 instead, creating it if needed |
@@ -400,9 +401,10 @@ ad-hoc Root on `All`, so the file you opened is in the Tree. The Tree's status
 row names the filter, e.g. `Tree · - · All`. With Wikipedia active there is no
 Root and so no filter: `a` does nothing but say so in the Footer.
 
-The filter bounds only the Tree. `Recent` and `Starred` ignore it, so starred
-and recent files stay reachable, and the Pickers still list **Markdown files
-only** for now. When a toggle hides the selected file, the selection moves to
+The filter bounds the Tree and the File and Grep Pickers' `Active Root` and
+`All Roots` scopes (see [the Picker](#finding-across-files-the-picker)).
+`Recent` and `Starred` ignore it, so starred and recent files stay reachable,
+and so does the Picker's `Starred` scope. When a toggle hides the selected file, the selection moves to
 its nearest surviving ancestor, as `R` Refresh does; folders stay
 expanded and open documents stay open. The staleness indicator compares the
 filtered listing, so a change to a file the filter hides does not raise it.
@@ -649,7 +651,8 @@ articles matched on title and labelled `Wikipedia`; `All Roots` and Grep in
 every scope never include an article). With Wikipedia the Active Source,
 File and Grep have no Active Root to offer, so their Scope cycles only
 `All Roots` ↔ `Starred`. The title above the Prompt names both mode and
-scope, e.g. `File · Active Root` or `Grep · Starred`. All Roots silently
+scope and the File Filter, e.g. `File · Active Root · Markdown` or
+`Grep · All Roots · All` (see `alt+h`/`alt+a` below). All Roots silently
 skips any Broken root.
 
 A query shorter than 2 characters doesn't search at all ("type at least 2
@@ -686,6 +689,19 @@ pane. `alt+h` toggles hiding them again, in both modes at once; the title
 above the Prompt gains a ` · Hidden` suffix while the toggle is on. It's
 session-only — relaunching noggin resets it to showing dotfiles. `alt+h` has
 no effect in Wikipedia mode.
+
+**File Filter.** `alt+a` toggles the same `Markdown` | `All` File Filter the
+Files Nav's `a` does, and it is the same per-Root state: toggling it in the
+Picker re-walks the Active Root's Tree, and vice versa. File and Grep search
+the `Active Root` and `All Roots` scopes under the **Active Root's** filter,
+applied to every Root searched, so `All Roots` never mixes two filters. `All`
+means Markdown plus non-binary files: ripgrep's file list is run through the
+same binary check as the Tree, and Grep already skips binaries. The `Starred`
+scope ignores the filter, and so does Wikipedia mode. With Wikipedia as the
+Active Source there is no Active Root, so the Picker uses the most recently set
+filter value (or `Markdown`), and `alt+a` toggles that value. The filter is
+named in the title, e.g. `Grep · All Roots · All` (left off in `Starred` scope
+and Wikipedia mode, which ignore it).
 
 ## Wikipedia
 

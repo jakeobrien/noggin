@@ -72,12 +72,14 @@ func (f Filter) Toggled() Filter {
 	return FilterAll
 }
 
-// shows reports whether f lists the (non-directory) file called name at path.
+// Shows reports whether f lists the (non-directory) file called name at path.
+// The Pickers apply it to ripgrep's file list, so the File Filter is decided in
+// one place.
 // The name test comes first so Markdown mode, and every Markdown file under
 // All, never touches the filesystem. Under All, every other file is statted
 // and (once per mtime/size) sniffed, so the first walk of a big un-ignored
 // tree costs a read of each file's head.
-func (f Filter) shows(path, name string) bool {
+func (f Filter) Shows(path, name string) bool {
 	if IsMarkdown(name) {
 		return true
 	}

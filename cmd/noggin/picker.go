@@ -112,6 +112,7 @@ type pickerResults struct {
 	mode         pickerMode
 	scope        pickerScope
 	hideDotfiles bool
+	filter       tree.Filter
 	files        []pickerFile
 	grep         []grepResult
 	wikipedia    []wikipedia.SearchResult
@@ -132,7 +133,12 @@ type picker struct {
 	open  bool
 	mode  pickerMode
 	scope pickerScope
-	input textinput.Model
+	// filter is the File Filter (D140) this Picker searches under, taken from
+	// the model when it opens (model.pickerFilter) and changed only by alt+a
+	// (togglePickerFilter), so the Picker can label and compare its Results
+	// without being handed the model.
+	filter tree.Filter
+	input  textinput.Model
 
 	// seq identifies the current query generation: every change to what
 	// would be searched (a keystroke, and later a mode/Scope switch)
@@ -287,6 +293,7 @@ func (m model) openPicker() (model, tea.Cmd) {
 	if m.roots.activeIsWikipedia() {
 		m.picker.mode = wikipediaMode
 	}
+	m.picker.filter = m.pickerFilter()
 	m.picker.open = true
 	cmd := m.picker.input.Focus()
 	return m, cmd
@@ -448,6 +455,35 @@ func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
+// togglePickerFilter is alt+a: it flips the File Filter (D140) and re-searches.
+// With an Active Root it is that Root's filter (the Files Nav's `a` state, so
+// the Tree is re-walked too); with Wikipedia active there is no Root and it
+// flips the most recently set value instead. Wikipedia mode and the Starred
+// scope ignore the filter, so like toggleHiddenFiles they relabel the rows on
+// screen rather than fire a search whose results could not differ.
+func (m model) togglePickerFilter() (model, tea.Cmd) {
+	next := m.picker.filter.Toggled()
+	if m.files.root == nil {
+		m.lastFilter = next
+	} else {
+		var ok bool
+		if m, ok = m.setActiveRootFilter(next); !ok {
+			return m, nil
+		}
+	}
+	return m.applyPickerFilter(next)
+}
+
+// applyPickerFilter puts next on the open Picker and refreshes its Results.
+func (m model) applyPickerFilter(next tree.Filter) (model, tea.Cmd) {
+	m.picker.filter = next
+	if m.picker.mode == wikipediaMode || m.picker.scope == starredScope {
+		m.picker.results.filter = next
+		return m, nil
+	}
+	return m.queuePickerSearch()
+}
+
 // switchPickerMode cycles the open Picker's mode File → Grep → Wikipedia →
 // File (S2, S7/M5.1; C6/M3.2 extends the old File ↔ Grep two-way flip to a
 // three-way cycle, reachable from any Active Source — the cycle itself
@@ -548,7 +584,7 @@ func (m model) dispatchPickerSearch(msg pickerSearchMsg) (model, tea.Cmd) {
 	}
 	m.picker.searching = true
 	return m, pickerSearchCmd(m.picker.seq, m.picker.mode, m.picker.scope,
-		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles, m.docs, m.wikipediaClient)
+		m.picker.input.Value(), m.roots.rootList(), m.roots.active, m.hideDotfiles, m.picker.filter, m.docs, m.wikipediaClient)
 }
 
 // resultCount is how many Result rows the current mode has to show right
@@ -781,7 +817,7 @@ func (p picker) showPreview(yOffset int) picker {
 // because they are still sitting in p.results.
 func (p picker) resultsCurrent(hideDotfiles bool) bool {
 	return p.results.query == p.input.Value() && p.results.mode == p.mode && p.results.scope == p.scope &&
-		p.results.hideDotfiles == hideDotfiles
+		p.results.hideDotfiles == hideDotfiles && p.results.filter == p.filter
 }
 
 // searchable is whether the current Prompt may be searched at all: the
@@ -823,9 +859,9 @@ func (m model) searchable() bool {
 // fake via withWikipediaClient); it is a parameter like every other value
 // here rather than read from model for the same reason roots/docs/active
 // are copied in, not read from m, in this function's own doc comment.
-func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int, hideDotfiles bool, docs map[string]docRecord, wikipediaClient pickerWikipediaClient) tea.Cmd {
+func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, roots []root, active int, hideDotfiles bool, filter tree.Filter, docs map[string]docRecord, wikipediaClient pickerWikipediaClient) tea.Cmd {
 	return func() tea.Msg {
-		results := pickerResults{query: query, mode: mode, scope: scope, hideDotfiles: hideDotfiles}
+		results := pickerResults{query: query, mode: mode, scope: scope, hideDotfiles: hideDotfiles, filter: filter}
 		if mode == wikipediaMode {
 			// S2: a title search, not a local file/grep one — no Root, no
 			// Scope (wikipediaMode has none, C6/M3.2), no ripgrep. A
@@ -848,7 +884,7 @@ func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, 
 			// never sees starredScope at all.
 			files = starredPickerFiles(docs, roots, hideDotfiles)
 		} else {
-			files = listFiles(roots, active, scope, hideDotfiles)
+			files = listFiles(roots, active, scope, hideDotfiles, filter)
 		}
 		switch mode {
 		case grepMode:
@@ -888,6 +924,7 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 		m.picker.results.mode = msg.results.mode
 		m.picker.results.scope = msg.results.scope
 		m.picker.results.hideDotfiles = msg.results.hideDotfiles
+		m.picker.results.filter = msg.results.filter
 		return m
 	}
 	m.picker.wikipediaErr = ""
@@ -1309,6 +1346,8 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.switchPickerScope()
 	case key.Matches(msg, keys.ToggleHidden):
 		return m.toggleHiddenFiles()
+	case key.Matches(msg, keys.PickerFilter):
+		return m.togglePickerFilter()
 	case key.Matches(msg, keys.PickerStar):
 		return m.togglePickerStar(), nil
 	}
