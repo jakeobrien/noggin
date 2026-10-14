@@ -82,5 +82,5 @@ func (f Filter) Shows(path, name string) bool {
 	if IsMarkdown(name) {
 		return true
 	}
-	return f == FilterAll && isTextFile(path)
+	return f == FilterAll && IsNotBinary(path)
 }

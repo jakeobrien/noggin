@@ -116,7 +116,8 @@ func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool, f
 //     Activate, and rg has nothing to read for it either);
 //   - the File Filter does not apply (D140): a starred file stays reachable
 //     whatever the filter. Only a binary, or a file that is not a regular
-//     file, is dropped (tree.FilterAll.Shows), as it could not be opened;
+//     file, is dropped (tree.IsNotBinary, skipped for a Markdown name, as the
+//     File Filter does), as it could not be opened;
 //   - hideDotfiles still applies, for the same "session-scoped toggle,
 //     applies to every candidate set" reason listFiles honours it — checked
 //     against the document's own absolute path rather than a Root-relative
@@ -157,7 +158,7 @@ func starredPickerFiles(docs map[string]docRecord, roots []root, hideDotfiles bo
 		if pathMissing(path) {
 			continue
 		}
-		if !tree.FilterAll.Shows(path, filepath.Base(path)) {
+		if !tree.IsMarkdown(filepath.Base(path)) && !tree.IsNotBinary(path) {
 			continue
 		}
 		if hideDotfiles && isDotfilePath(path) {

@@ -90,14 +90,15 @@ func cachedBinary(path string, info os.FileInfo) (bool, error) {
 	return binary, nil
 }
 
-// isTextFile reports whether the file at path belongs in a File Filter `All`
-// listing as a Text file: a regular file (never a FIFO, socket or a symlink
-// to a directory, which a sniff could block on or fail) whose head has no NUL
-// byte. A file that cannot be sniffed is shown, so opening it reports the
-// real error; one that no longer exists (a dangling symlink, a file deleted
-// mid-walk) is hidden. Size is not considered: an oversize Text file is listed and
-// refused when opened (CheckOpenable).
-func isTextFile(path string) bool {
+// IsNotBinary reports whether the file at path is a non-binary regular file:
+// what a File Filter `All` listing and the Picker's Starred scope keep. It is
+// a regular file (never a FIFO, socket or a symlink to a directory, which a
+// sniff could block on or fail) whose head has no NUL byte. A file that cannot
+// be sniffed is kept, so opening it reports the real error; one that no longer
+// exists (a dangling symlink, a file deleted mid-walk) is dropped. Size is not
+// considered: an oversize file is listed and refused when opened
+// (CheckOpenable).
+func IsNotBinary(path string) bool {
 	info, err := os.Stat(path)
 	if err != nil {
 		return !errors.Is(err, fs.ErrNotExist)

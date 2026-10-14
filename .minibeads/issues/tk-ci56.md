@@ -1,6 +1,6 @@
 ---
 title: 'Prefactor: one place decides Text vs Markdown Render Mode in the viewer'
-status: open
+status: closed
 priority: 2
 issue_type: task
 labels:
@@ -8,7 +8,8 @@ labels:
 depends_on:
   tk-0ta: parent-child
 created_at: 2026-10-14T20:44:14.094393284+00:00
-updated_at: 2026-10-14T20:44:14.094393284+00:00
+updated_at: 2026-10-14T20:53:14.336879916+00:00
+closed_at: 2026-10-14T20:53:14.336879750+00:00
 ---
 
 # Description

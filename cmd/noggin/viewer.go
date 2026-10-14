@@ -36,8 +36,13 @@ type viewer struct {
 	// actually shown in, since a Text file ignores it.
 	mode renderMode
 
-	// text is the Text layout of the open document when it is shown as Text,
-	// nil otherwise (render sets it). Find searches its source lines, and
+	// shownMode is the mode the open document is shown in (modeFor, resolved
+	// once by render; Markdown with nothing open). Every mode-specific
+	// behaviour (shownMode.behaviour()) hangs off it.
+	shownMode renderMode
+
+	// text is the Text layout of the open document, set by render exactly
+	// when shownMode is Text, nil otherwise. Find searches its source lines, and
 	// textMatch is the span of the current match drawn reversed in it (nil
 	// when none).
 	text      *textLayout
@@ -520,9 +525,13 @@ func (v viewer) render() viewer {
 	v.vp.StyleLineFunc = nil
 	v.mutedContent = ""
 	v.text, v.textMatch = nil, nil
+	v.shownMode = modeMarkdown
+	if v.doc.isOpen() {
+		v.shownMode = v.modeFor(v.doc)
+	}
 	var out string
 	var err error
-	if v.doc.isOpen() && v.modeFor(v.doc) == modeText {
+	if v.shownMode == modeText {
 		// One layout serves both the focused and muted content, and Find.
 		v.text = layoutText(v.doc.src, v.vp.Width())
 		out = v.text.render(false)
@@ -545,7 +554,7 @@ func (v viewer) render() viewer {
 		v.vp.SetHeight(v.docContentHeight())
 		// Glamour pads the document with trailing blank lines; they would
 		// be scrollable emptiness past the end.
-		if v.text != nil {
+		if v.shownMode == modeText {
 			// Not trimmed: the layout's row count is what Find indexes by.
 			v.vp.SetContent(out)
 			v.mutedContent = v.text.render(true)

@@ -40,17 +40,21 @@ func (r renderMode) toggled() renderMode {
 	return modeText
 }
 
-// isTextFile reports whether d is a Text file (D140): a file that is not a
-// Markdown file. It is always shown as text, whatever the viewer's mode. An
-// article is never one: its converted markdown can be shown either way.
-func isTextFile(d document) bool {
+// isNotMarkdownFile reports whether d is a Text file in the viewer's sense
+// (D140): an open file that is not a Markdown file. It is always shown as text,
+// whatever the viewer's mode. An article is never one: its converted markdown
+// can be shown either way. (Whether a file is binary is tree.IsNotBinary's
+// question, not this one's.)
+func isNotMarkdownFile(d document) bool {
 	return d.isOpen() && !d.isArticle() && !tree.IsMarkdown(filepath.Base(d.path))
 }
 
 // modeFor is the mode d is actually shown in by this viewer: its own mode,
-// except that a Text file is always shown as Text.
+// except that a Text file is always shown as Text. render resolves it once for
+// the Active Document (viewer.shownMode); every mode-specific behaviour of Find
+// hangs off that (modeBehaviour), not off a fresh check.
 func (v viewer) modeFor(d document) renderMode {
-	if isTextFile(d) {
+	if isNotMarkdownFile(d) {
 		return modeText
 	}
 	return v.mode
@@ -72,7 +76,7 @@ func (v viewer) shownDoc() document {
 // Markdown lands on ripgrep's exact location in Text instead. With no find
 // active the scroll position is kept as a proportion of the document.
 func (v viewer) toggleMode() viewer {
-	prev, wasText, frac := v.findState, v.text != nil, v.scrollFraction()
+	prev, was, frac := v.findState, v.shownMode, v.scrollFraction()
 	v.mode = v.mode.toggled()
 	v = v.render()
 	if !v.doc.isOpen() {
@@ -84,27 +88,27 @@ func (v viewer) toggleMode() viewer {
 	v = v.withScrollFraction(frac)
 	v.findState = prev
 	v.findState.matches = v.findIn(prev.input.Value())
-	v.findState.current = v.carriedMatch(prev, wasText)
+	v.findState.current = v.carriedMatch(prev, was)
 	return v.applyCurrentMatch()
 }
 
 // carriedMatch is the index, in the matches just found in this viewer's new
-// mode, of the match prev (the find state in the old mode, wasText saying which
+// mode, of the match prev (the find state in the old mode, was saying which
 // it was) had current; -1 when there are no matches. A match with no
 // counterpart degrades to the first one, as D34 does; with no current match to
 // carry (the query only matches in this mode), the nearest one to the scroll
 // position is current.
-func (v viewer) carriedMatch(prev find, wasText bool) int {
+func (v viewer) carriedMatch(prev find, was renderMode) int {
 	matches := v.findState.matches
 	if len(matches) == 0 {
 		return -1
 	}
-	isText := v.text != nil
-	if wasText == isText {
+	now := v.shownMode
+	if was == now {
 		return min(max(prev.current, 0), len(matches)-1)
 	}
-	if isText && prev.landing != nil {
-		if i, ok := textGrepLanding(v.doc.src, matches, prev.landing.line, prev.landing.col); ok {
+	if prev.landing != nil {
+		if i, ok := now.behaviour().carriedLanding(v.doc.src, matches, *prev.landing); ok {
 			return i
 		}
 	}
@@ -115,20 +119,8 @@ func (v viewer) carriedMatch(prev find, wasText bool) int {
 	// reshapes its text, so an occurrence the card drops must not shift every
 	// body match after it.
 	srcLines, renderedLines := frontmatterSpan(v.doc.src, v.vp.Width())
-	headIn := func(ms []findMatch, text bool) int {
-		n := 0
-		for _, m := range ms {
-			line, limit := m.line, renderedLines
-			if text {
-				line, limit = m.src, srcLines
-			}
-			if line < limit {
-				n++
-			}
-		}
-		return n
-	}
-	fromHead, toHead := headIn(prev.matches, wasText), headIn(matches, isText)
+	fromHead := was.behaviour().headMatches(prev.matches, srcLines, renderedLines)
+	toHead := now.behaviour().headMatches(matches, srcLines, renderedLines)
 	switch cur := prev.current; {
 	case cur >= fromHead && toHead+cur-fromHead < len(matches):
 		return toHead + cur - fromHead
@@ -170,7 +162,7 @@ func (v viewer) renderDoc(d document, width int, muted bool) (string, error) {
 func (m model) toggleRenderMode() model {
 	p := m.focusedViewerPane()
 	v := m.viewerFor(p)
-	if shown := v.shownDoc(); isTextFile(shown) {
+	if shown := v.shownDoc(); isNotMarkdownFile(shown) {
 		m.message = "cannot switch render mode: " + shown.label() + " is a text file"
 		return m
 	}
@@ -341,7 +333,7 @@ func (l *textLayout) find(query string) []findMatch {
 		}
 		found[i] = findMatch{
 			line: l.rowStart[m.line] + row, colStart: m.colStart, colEnd: m.colEnd,
-			src: m.line, endLine: l.rowStart[m.line] + endRow, inText: true,
+			src: m.line, endLine: l.rowStart[m.line] + endRow,
 		}
 	}
 	return found
@@ -361,9 +353,6 @@ func renderText(src []byte, width int, muted bool) string {
 // are re-rendered and spliced into the viewport content, so stepping through
 // matches in a large file does not re-style the whole document.
 func (v viewer) withTextMatch(span *textSpan) viewer {
-	if v.text == nil {
-		return v
-	}
 	old := v.textMatch
 	v.textMatch = span
 	v.vp.SetContent(v.text.patch(v.vp.GetContent(), false, old, span))

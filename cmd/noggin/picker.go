@@ -1193,20 +1193,7 @@ func (m model) activateGrepPickerInto(target pane) model {
 	// activatePickerInto above.
 	m = m.navigate(target, d)
 	v := m.viewerFor(target).commitQuery(query)
-	if v.text != nil {
-		// Text mode (D140): ripgrep's own line and column, no D34 guess.
-		if ordinal, ok := textGrepLanding(d.src, v.findState.matches, g.line, g.col); ok {
-			v.findState.current = ordinal
-			v = v.applyCurrentMatch()
-		}
-	} else if ordinal, ok := resolveGrepLanding(d.src, v.vp.GetContent(), query, g.line, v.vp.Width()); ok {
-		v.findState.current = ordinal
-		v = v.applyCurrentMatch()
-	} else {
-		// D34's degrade path: remember ripgrep's own location so a switch to
-		// Text can land exactly (D140).
-		v.findState.landing = &grepLanding{line: g.line, col: g.col}
-	}
+	v = v.shownMode.behaviour().landGrep(v, g.line, g.col)
 	m = m.withViewerFor(target, v)
 	return m.dismissPicker()
 }

@@ -137,7 +137,7 @@ func TestTextFindSeesLinkURLsAndMarkdownSyntax(t *testing.T) {
 	md := text
 	md.mode = modeMarkdown
 	md = md.render().commitQuery("bold")
-	if md.text != nil || len(md.findState.matches) != 1 || md.findState.matches[0].inText || md.vp.StyleLineFunc == nil {
+	if md.text != nil || len(md.findState.matches) != 1 || md.vp.StyleLineFunc == nil {
 		t.Errorf("Markdown find changed: layout %v, matches %+v", md.text != nil, md.findState.matches)
 	}
 }
@@ -180,7 +180,7 @@ func TestTextFindHighlightFollowsTheMutedContent(t *testing.T) {
 
 func TestTextGrepLanding(t *testing.T) {
 	// match is a Text find match on source line src, starting at display byte col.
-	match := func(src, col int) findMatch { return findMatch{src: src, colStart: col, inText: true} }
+	match := func(src, col int) findMatch { return findMatch{src: src, colStart: col} }
 	for _, tc := range []struct {
 		name    string
 		src     string

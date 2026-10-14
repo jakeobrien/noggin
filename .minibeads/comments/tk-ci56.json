@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-ci56-ca69f01b42e",
+    "issue_id": "tk-ci56",
+    "author": "noggin",
+    "body": "Done: viewer.shownMode resolved once in render; Find/indicate/Grep landing/carry-over hang off modeBehaviour (mode_behaviour.go); findMatch.inText removed; isTextFile renamed isNotMarkdownFile (viewer) and tree.IsNotBinary (tree; Starred scope calls it directly).",
+    "created_at": "2026-10-14T20:53:14.333139583Z",
+    "updated_at": "2026-10-14T20:53:14.333139583Z"
+  }
+]
