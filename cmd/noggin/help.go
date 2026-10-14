@@ -92,7 +92,7 @@ func helpBindings(p pane) []key.Binding {
 	case rootsPane:
 		return []key.Binding{
 			keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown,
-			keys.Edit, keys.Navigator, keys.Picker,
+			keys.Edit, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,
@@ -100,7 +100,7 @@ func helpBindings(p pane) []key.Binding {
 	case filesPane:
 		return []key.Binding{
 			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown,
-			keys.Edit, keys.Navigator, keys.Picker,
+			keys.Edit, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.Peek,
 			keys.ActivateDV2, keys.PeekDV2,
@@ -113,7 +113,7 @@ func helpBindings(p pane) []key.Binding {
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
-			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.Navigator, keys.Picker,
+			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,

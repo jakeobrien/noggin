@@ -165,6 +165,7 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
 | `space` | open the Picker (fuzzy find files, grep across files, or search Wikipedia — see below) |
+| `ctrl+space` | reopen the Picker to its last non-empty query, mode and Scope (opens normally if there is none) |
 | `q` / `ctrl+c` | quit |
 | `esc` | context-dependent cancel (dismiss find, discard a rename, close Help, close Picker) |
 
@@ -552,8 +553,12 @@ Press `space` from any pane, including with the Navigator hidden, to open the
 Picker: a modal fuzzy-finder over the files in scope, or a Wikipedia title
 search. It always opens the same way — empty Prompt, and File mode/Active
 Root scope, unless Wikipedia is the Active Source, in which case it opens
-straight into Wikipedia mode instead — and never remembers anything between
-opens, in this session or the next.
+straight into Wikipedia mode instead. `space` never remembers anything: the
+one exception is `ctrl+space`, which reopens the Picker to the query, mode and
+Scope of the last session dismissed with something typed (by `esc` or by
+activating a Result), and searches it straight away. A session dismissed with
+an empty Prompt doesn't replace it, and with nothing saved `ctrl+space` opens
+normally. It lasts for the current session only — it isn't saved between runs.
 
 The Picker has three modes, switched in place with `tab` without losing what
 you've typed:

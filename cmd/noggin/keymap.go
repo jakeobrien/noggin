@@ -154,6 +154,13 @@ type keyMap struct {
 	// the Help Modal already share.
 	Picker key.Binding
 
+	// PickerRestore (ctrl+space) opens the Picker to the last non-empty
+	// session's query, mode and Scope (model.restorePicker), or just opens
+	// it normally when there is none. Global like Picker. Both names are
+	// bound because the terminal sends the same NUL byte for ctrl+space and
+	// ctrl+@, and the decoder may report either.
+	PickerRestore key.Binding
+
 	// PickerUp and PickerDown move the open Picker's Results selection
 	// (S2, M2.3). Nav Keys' shared LineUp/LineDown (above) deliberately
 	// are not reused here: their "k"/"j" alternates are printable, and
@@ -389,6 +396,10 @@ var keys = keyMap{
 	Picker: key.NewBinding(
 		key.WithKeys("space"),
 		key.WithHelp("space", "picker"),
+	),
+	PickerRestore: key.NewBinding(
+		key.WithKeys("ctrl+space", "ctrl+@"),
+		key.WithHelp("ctrl+space", "reopen picker"),
 	),
 	PickerUp: key.NewBinding(
 		key.WithKeys("up"),

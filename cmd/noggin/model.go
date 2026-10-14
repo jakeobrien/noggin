@@ -124,6 +124,13 @@ type model struct {
 	// model (relaunch) resets it, matching S4's "reset on relaunch".
 	hideDotfiles bool
 
+	// lastPicker is the query/mode/Scope of the most recent Picker session
+	// dismissed with a non-empty Prompt, for keys.PickerRestore. Session-only
+	// and on model rather than picker for the same reason hideDotfiles is:
+	// resetPicker replaces the picker struct on every open/close. nil until
+	// a non-empty dismissal.
+	lastPicker *lastPickerState
+
 	// roots is the session's note sources (S1): the Sources Nav pane and its
 	// selection, doubling as the record of which root is active. message
 	// carries a transient footer notice — a launch-time rejection (S1) or a
@@ -1612,6 +1619,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.openHelp(), nil
 		case key.Matches(msg, keys.Picker):
 			return m.openPicker()
+		case key.Matches(msg, keys.PickerRestore):
+			return m.restorePicker()
 		case key.Matches(msg, keys.Edit):
 			return m.startEdit()
 		case key.Matches(msg, keys.Find):

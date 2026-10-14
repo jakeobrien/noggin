@@ -36,6 +36,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 | `R` | refresh [^refresh] | refresh [^refresh] | refresh [^refresh] | - | - | — | - |
 | `?` | open help | open help | open help | - | - | close help | - |
 | `space` | open Picker | open Picker | open Picker | - | - | — | - |
+| `ctrl+space` | reopen Picker to last query | reopen Picker to last query | reopen Picker to last query | - | - | — | - |
 | `e` | edit [^edit] | edit [^edit] | edit [^edit] | - | - | — | - |
 | `/` | find [^find] | find [^find] | find [^find] | - | - | — | - |
 | `n` / `N` | next / prev match [^find] | next / prev match [^find] | next / prev match [^find] | - | - | — | - |

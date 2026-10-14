@@ -296,8 +296,54 @@ func (m model) openPicker() (model, tea.Cmd) {
 //
 // Both fields are carried over by resetPicker (D51/M2.1a), the same helper
 // openPicker uses; this is a bare call to it, not a duplicated sequence.
+//
+// The one thing that does outlive a dismissal is m.lastPicker (see
+// lastPickerState): a non-empty Prompt's query, mode and Scope are captured
+// into it here, before the reset, so keys.PickerRestore (restorePicker) can
+// reopen to them. A dismissal with an empty Prompt leaves it untouched.
 func (m model) dismissPicker() model {
+	if q := m.picker.input.Value(); q != "" {
+		m.lastPicker = &lastPickerState{query: q, mode: m.picker.mode, scope: m.picker.scope}
+	}
 	return m.resetPicker()
+}
+
+// lastPickerState is what a dismissed Picker leaves behind for
+// keys.PickerRestore: the typed query plus the mode and Scope it was
+// searching. Scope is stored as its kind (activeRootScope/allRootsScope/
+// starredScope), not a resolved path, so it re-resolves against whatever is
+// the Active Source at restore time. Session-only: it lives on model, never
+// persisted, and a plain openPicker neither reads nor clears it.
+type lastPickerState struct {
+	query string
+	mode  pickerMode
+	scope pickerScope
+}
+
+// restorePicker opens the Picker to m.lastPicker's query, mode and Scope and
+// searches it immediately (queuePickerSearch, so debounce/generation rules
+// are the usual ones; the Results cursor starts at 0 and the Prompt cursor
+// at the end of the query). With nothing saved it is exactly openPicker.
+//
+// The saved mode wins over openPicker's "land on Wikipedia mode when
+// Wikipedia is the Active Source" rule. One fix-up mirrors
+// switchPickerMode's: File/Grep mode with Wikipedia active must not carry
+// activeRootScope, since there is no Active Root to search.
+func (m model) restorePicker() (model, tea.Cmd) {
+	m, cmd := m.openPicker()
+	if m.lastPicker == nil {
+		return m, cmd
+	}
+	last := *m.lastPicker
+	m.picker.mode = last.mode
+	m.picker.scope = last.scope
+	if m.picker.mode != wikipediaMode && m.roots.activeIsWikipedia() && m.picker.scope == activeRootScope {
+		m.picker.scope = allRootsScope
+	}
+	m.picker.input.SetValue(last.query)
+	m.picker.input.CursorEnd()
+	m, searchCmd := m.queuePickerSearch()
+	return m, tea.Batch(cmd, searchCmd)
 }
 
 // pickerSearchMsg is a matured debounce timer: the Prompt has been quiet for
@@ -1121,6 +1167,9 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
 		return m.dismissPicker(), nil
+	case key.Matches(msg, keys.PickerRestore):
+		// Already open: nothing to restore, and never query text.
+		return m, nil
 	case key.Matches(msg, keys.PickerUp):
 		m.picker = m.picker.move(-1).syncPreview(m.hideDotfiles)
 		return m, nil
