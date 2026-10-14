@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-fbb-c114ec90ec0",
+    "issue_id": "tk-fbb",
+    "author": "noggin",
+    "body": "Implemented: alt+a (keys.PickerFilter) toggles the File Filter via the same setActiveRootFilter as the Files Nav's a. picker.filter/results.filter label and stale results; listFiles applies tree.Filter.Shows to rg --files (binary sniff under All); Active Root/All Roots use the Active Root's filter; with no Root (Wikipedia) model.lastFilter is used and toggled; title gains the filter (omitted in Starred scope and Wikipedia mode); Starred scope ignores it (starredPickerFiles now keeps starred Text files). Tests in picker_file_filter_test.go; README, keybindings.md, Help and footer updated.",
+    "created_at": "2026-10-14T19:34:23.546949869Z",
+    "updated_at": "2026-10-14T19:34:23.546949869Z"
+  }
+]

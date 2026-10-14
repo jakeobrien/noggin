@@ -243,7 +243,7 @@ leave. Everything else is on a non-printable key:
 | `tab` | switch mode: File → Grep → Wikipedia → File … (the typed query carries over) |
 | `shift+tab` | switch Scope (no-op in Wikipedia mode, which has none — see below) |
 | `alt+h` | toggle hiding dotfiles from the Results, for the rest of this session (File/Grep only) |
-| `alt+a` | toggle the File Filter between `Markdown` and `All` (File/Grep only; see [What gets shown](#what-gets-shown)) |
+| `alt+a` | toggle the File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown); it changes nothing visible in Wikipedia mode) |
 | `alt+s` | star / unstar the selected Result (file or article) |
 | `enter` | activate the selected Result into DV1 (fetches an article, then renders it) |
 | `ctrl+enter` (fallback `ctrl+l`) | activate the selected Result into DV2 instead, creating it if needed |
@@ -404,7 +404,8 @@ Root and so no filter: `a` does nothing but say so in the Footer.
 The filter bounds the Tree and the File and Grep Pickers' `Active Root` and
 `All Roots` scopes (see [the Picker](#finding-across-files-the-picker)).
 `Recent` and `Starred` ignore it, so starred and recent files stay reachable,
-and so does the Picker's `Starred` scope. When a toggle hides the selected file, the selection moves to
+and so does the Picker's `Starred` scope.
+When a toggle hides the selected file, the selection moves to
 its nearest surviving ancestor, as `R` Refresh does; folders stay
 expanded and open documents stay open. The staleness indicator compares the
 filtered listing, so a change to a file the filter hides does not raise it.
@@ -697,7 +698,8 @@ the `Active Root` and `All Roots` scopes under the **Active Root's** filter,
 applied to every Root searched, so `All Roots` never mixes two filters. `All`
 means Markdown plus non-binary files: ripgrep's file list is run through the
 same binary check as the Tree, and Grep already skips binaries. The `Starred`
-scope ignores the filter, and so does Wikipedia mode. With Wikipedia as the
+scope ignores the filter, and so does Wikipedia mode (`alt+a` there still
+flips the stored value, for when you switch back to File or Grep). With Wikipedia as the
 Active Source there is no Active Root, so the Picker uses the most recently set
 filter value (or `Markdown`), and `alt+a` toggles that value. The filter is
 named in the title, e.g. `Grep · All Roots · All` (left off in `Starred` scope

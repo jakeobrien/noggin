@@ -44,7 +44,7 @@ type pickerFile struct {
 	// "only File search that spans both classes" S6 asks Starred scope for.
 	// path holds the article's canonical/derived URL here (its docs-map key,
 	// M1.5) rather than a filesystem path — never passed to os.Stat,
-	// tree.IsMarkdown, filepath.Rel or rg (grepPickerFiles' own filesOnly
+	// tree.Filter.Shows, filepath.Rel or rg (grepPickerFiles' own filesOnly
 	// filter keeps it out of Grep entirely, per S6's "Grep never includes
 	// Wikipedia, in any scope"). title is the article's own display title:
 	// S6's "matched on title" means fuzzy ranking (fileNameSource) and match
@@ -64,8 +64,8 @@ type pickerFile struct {
 // filter (tree.Filter.Shows) applied on top — rg itself has no notion of it.
 // Under `All` that is Markdown plus Text files: rg lists binaries too, so the
 // binary sniff drops them. filter is the Active Root's, applied uniformly to
-// every Root searched. A Broken Root is skipped, never an error (S6, liveRootsInScope); a
-// live Root that rg still cannot read (e.g. permission denied, or a TOCTOU
+// every Root searched. A Broken Root is skipped, never an error (S6,
+// liveRootsInScope); a live Root that rg still cannot read (e.g. permission denied, or a TOCTOU
 // race with liveRootsInScope's own stat) is likewise absorbed by rgFiles
 // rather than aborting the whole scope, so one unreadable Root never blanks
 // out the rest.
@@ -135,7 +135,7 @@ func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool, f
 // An article record (rec.Article, C6/M3.5) is included unconditionally
 // alongside starred files, as a pickerFile{article: true} pseudo-candidate
 // rather than a real file: none of the file-specific filters above apply
-// to it (there is nothing on disk to stat, no Readable-extension check, no
+// to it (there is nothing on disk to stat, no File Filter check, no
 // dotfile path to hide it by), matching S6's own "the only File search
 // that spans both classes". Grep's own candidate set is filtered back down
 // to files only one call site up (pickerSearchCmd's filesOnly), not here —
@@ -226,8 +226,8 @@ func isDotfilePath(rel string) bool {
 // hold for one regardless.
 //
 // --hidden is S4/M6.1: without it, rg's own default silently drops every
-// dotfile and dot-directory before the Markdown classification (listFiles' own
-// filepath.Base + tree.IsMarkdown) ever sees them — the mismatch the Picker
+// dotfile and dot-directory before the File Filter (listFiles' own
+// tree.Filter.Shows) ever sees them — the mismatch the Picker
 // used to have with the Files Nav tree, which never applied a hidden-file
 // rule of its own (tree.Walk's doc comment: "dotfiles and hidden
 // directories are otherwise kept"). Adding it is what makes the two panes
