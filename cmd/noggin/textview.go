@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode"
 
+	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -77,8 +78,14 @@ func (v viewer) shownDoc() document {
 // active the scroll position is kept as a proportion of the document.
 func (v viewer) toggleMode() viewer {
 	prev, was, frac := v.findState, v.docMode, v.scrollFraction()
+	peekFrac := scrollFractionOf(v.peek.vp)
 	v.mode = v.mode.toggled()
 	v = v.render()
+	// The Peek re-renders from the top; it is the Peek's own place that is
+	// carried, the Active Document's being carried below.
+	if v.peeking() {
+		scrollToFraction(&v.peek.vp, peekFrac)
+	}
 	if !v.doc.isOpen() {
 		return v
 	}
@@ -132,18 +139,26 @@ func (v viewer) carriedMatch(prev find, was renderMode) int {
 
 // scrollFraction is how far down the document the viewport is, from 0 (top) to
 // 1 (bottom); 0 when everything fits.
-func (v viewer) scrollFraction() float64 {
-	if span := v.vp.TotalLineCount() - v.vp.Height(); span > 0 {
-		return float64(v.vp.YOffset()) / float64(span)
+func (v viewer) scrollFraction() float64 { return scrollFractionOf(v.vp) }
+
+// scrollFractionOf is scrollFraction for any viewport.
+func scrollFractionOf(vp viewport.Model) float64 {
+	if span := vp.TotalLineCount() - vp.Height(); span > 0 {
+		return float64(vp.YOffset()) / float64(span)
 	}
 	return 0
 }
 
 // withScrollFraction scrolls to the given fraction of the document.
 func (v viewer) withScrollFraction(f float64) viewer {
-	span := max(v.vp.TotalLineCount()-v.vp.Height(), 0)
-	v.vp.SetYOffset(int(math.Round(f * float64(span))))
+	scrollToFraction(&v.vp, f)
 	return v
+}
+
+// scrollToFraction scrolls vp to the given fraction of its document.
+func scrollToFraction(vp *viewport.Model, f float64) {
+	span := max(vp.TotalLineCount()-vp.Height(), 0)
+	vp.SetYOffset(int(math.Round(f * float64(span))))
 }
 
 // renderDoc renders d for width in the mode this viewer shows it in. muted

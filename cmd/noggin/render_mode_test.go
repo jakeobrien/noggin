@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -325,5 +326,94 @@ func TestRenderModeBindingIsDocumented(t *testing.T) {
 		if !found {
 			t.Errorf("Help modal for pane %v does not list the render mode key", p)
 		}
+	}
+}
+
+// peekToggleFixture is a DV1 and a DV2, each holding a long Active Document
+// with a committed find ("item 5") and a long Peek over it, scrolled
+// part-way; focus is on p.
+func peekToggleFixture(t *testing.T, p pane) model {
+	t.Helper()
+	dir := t.TempDir()
+	active := writeFileContent(t, filepath.Join(dir, "active.md"), listContent(60))
+	peeked := writeFileContent(t, filepath.Join(dir, "peeked.md"), listContent(90))
+	m := sized(t, newModel(), 80, 14)
+	m = openPath(t, m, dv1Pane, active)
+	m = openPath(t, m, dv2Pane, active)
+	m = m.setFocus(p)
+	m = press(t, m, "/")
+	m = typeText(t, m, "item 5")
+	m = press(t, m, "enter")
+	m = press(t, m, keys.FindNext.Keys()[0])
+	if len(m.viewerFor(p).findState.matches) < 3 {
+		t.Fatalf("setup: too few matches")
+	}
+	v := m.viewerFor(p).startPeek(mustLoad(t, peeked))
+	v.peek.vp.SetYOffset(v.peek.vp.TotalLineCount() / 3)
+	if v.peek.vp.YOffset() == 0 {
+		t.Fatal("setup: Peek did not scroll")
+	}
+	return m.withViewerFor(p, v)
+}
+
+func TestRenderModeToggleDuringPeekKeepsPeekScrollProportion(t *testing.T) {
+	for _, p := range []pane{dv1Pane, dv2Pane} {
+		m := peekToggleFixture(t, p)
+		before := scrollFractionOf(m.viewerFor(p).peek.vp)
+		m = press(t, m, keys.RenderMode.Keys()[0])
+		v := m.viewerFor(p)
+		if v.mode != modeText || !v.peeking() {
+			t.Fatalf("pane %v: mode = %v peeking = %v, want Text and still Peeking", p, v.mode, v.peeking())
+		}
+		if got := ansi.Strip(v.peek.vp.GetContent()); !strings.HasPrefix(got, " 1 - item 1") {
+			t.Errorf("pane %v: Peek not re-rendered as Text: %.30q", p, got)
+		}
+		got := scrollFractionOf(v.peek.vp)
+		if got == 0 || math.Abs(got-before) > 0.05 {
+			t.Errorf("pane %v: Peek scroll fraction = %.2f after toggle, want about %.2f", p, got, before)
+		}
+	}
+}
+
+func TestRenderModeToggleDuringPeekCarriesActiveDocumentUnderneath(t *testing.T) {
+	for _, p := range []pane{dv1Pane, dv2Pane} {
+		m := peekToggleFixture(t, p)
+		before := m.viewerFor(p)
+		m = press(t, m, keys.RenderMode.Keys()[0])
+		after := m.viewerFor(p)
+		if got := after.findState.input.Value(); got != "item 5" {
+			t.Errorf("pane %v: Active Document find query = %q, want kept", p, got)
+		}
+		if after.findState.current != before.findState.current {
+			t.Errorf("pane %v: current match = %d, want %d", p, after.findState.current, before.findState.current)
+		}
+		m = m.withViewerFor(p, m.viewerFor(p).clearPeek())
+		v := m.viewerFor(p)
+		if v.docMode != modeText || v.findState.input.Value() != "item 5" {
+			t.Errorf("pane %v: after ending the Peek mode = %v query = %q", p, v.docMode, v.findState.input.Value())
+		}
+	}
+}
+
+func TestRenderModeToggleDuringPeekKeepsActiveScrollProportion(t *testing.T) {
+	for _, p := range []pane{dv1Pane, dv2Pane} {
+		m := peekToggleFixture(t, p)
+		v := m.viewerFor(p)
+		v.findState = newFind() // no find: scroll is carried as a proportion
+		v = v.withScrollFraction(0.5)
+		m = m.withViewerFor(p, v)
+		m = press(t, m, keys.RenderMode.Keys()[0])
+		if got := scrollFractionOf(m.viewerFor(p).vp); math.Abs(got-0.5) > 0.05 {
+			t.Errorf("pane %v: Active Document scroll fraction = %.2f, want about 0.5", p, got)
+		}
+	}
+}
+
+func TestRenderModeRefusedOnPeekedTextFileOverMarkdown(t *testing.T) {
+	m, _, _, txt := renderModeFixture(t)
+	m = m.startPeekFor(t, txt)
+	m = press(t, m, keys.RenderMode.Keys()[0])
+	if m.dv1.mode != modeMarkdown || !strings.Contains(m.message, "notes.txt") {
+		t.Errorf("mode = %v message = %q, want a refusal naming notes.txt", m.dv1.mode, m.message)
 	}
 }

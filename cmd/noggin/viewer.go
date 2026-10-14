@@ -481,7 +481,8 @@ func (v viewer) clearPeek() viewer {
 // render() so a width change (setSize) reflows Peek exactly like the Active
 // Document, and a no-op when not Peeking. GotoTop on every call is
 // deliberate: Peek never scrolls (S7), so it is always shown from the top
-// regardless of what a previous render left YOffset at.
+// regardless of what a previous render left YOffset at. toggleMode is the one
+// caller that puts the Peek's place back afterwards (D140).
 func (v viewer) renderPeek() viewer {
 	if !v.peeking() {
 		return v

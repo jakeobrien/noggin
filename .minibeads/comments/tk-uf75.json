@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-uf75-c388272a3e9",
+    "issue_id": "tk-uf75",
+    "author": "noggin",
+    "body": "Peek keeps its proportional scroll across a Render Mode toggle (toggleMode); Active Document underneath already carried scroll/find. Tests in render_mode_test.go cover DV1 and DV2.",
+    "created_at": "2026-10-14T20:58:13.929137976Z",
+    "updated_at": "2026-10-14T20:58:13.929137976Z"
+  }
+]

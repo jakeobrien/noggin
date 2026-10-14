@@ -1,6 +1,6 @@
 ---
 title: Toggling Render Mode while Peeking keeps your place
-status: open
+status: closed
 priority: 2
 issue_type: bug
 labels:
@@ -9,7 +9,8 @@ depends_on:
   tk-0ta: parent-child
   tk-ci56: blocks
 created_at: 2026-10-14T20:44:32.122698126+00:00
-updated_at: 2026-10-14T20:44:32.126466834+00:00
+updated_at: 2026-10-14T20:58:13.933619934+00:00
+closed_at: 2026-10-14T20:58:13.933619767+00:00
 ---
 
 # Description
