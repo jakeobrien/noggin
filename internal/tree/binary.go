@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"sync"
 	"time"
@@ -24,8 +25,10 @@ const (
 	sniffLen = 8 << 10
 	// MaxOpenSize is the largest file noggin will open (~10MB).
 	MaxOpenSize = 10 << 20
-	// sniffCacheMax bounds the sniff cache; it is simply reset when full.
-	sniffCacheMax = 4096
+	// sniffCacheMax bounds the sniff cache; it is simply reset when full. It
+	// is sized for a File Filter `All` walk, which sniffs every non-Markdown
+	// file in a Root (a few MB at this cap), not for one-off opens.
+	sniffCacheMax = 1 << 16
 )
 
 type sniffKey struct {
@@ -91,12 +94,13 @@ func cachedBinary(path string, info os.FileInfo) (bool, error) {
 // listing as a Text file: a regular file (never a FIFO, socket or a symlink
 // to a directory, which a sniff could block on or fail) whose head has no NUL
 // byte. A file that cannot be sniffed is shown, so opening it reports the
-// real error. Size is not considered: an oversize Text file is listed and
+// real error; one that no longer exists (a dangling symlink, a file deleted
+// mid-walk) is hidden. Size is not considered: an oversize Text file is listed and
 // refused when opened (CheckOpenable).
 func isTextFile(path string) bool {
 	info, err := os.Stat(path)
 	if err != nil {
-		return true
+		return !errors.Is(err, fs.ErrNotExist)
 	}
 	if !info.Mode().IsRegular() {
 		return false

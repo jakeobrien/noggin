@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"noggin/internal/tree"
 )
 
 // root is one of the session's note sources: an absolute path plus whether it
@@ -48,6 +50,18 @@ type resolution struct {
 	active  int    // index into roots, or -1 when there are none
 	docPath string // absolute path of the document to open, or ""
 	message string // rejection notice, or "" when the launch was clean
+}
+
+// startsOnAll reports whether the active Root starts on the File Filter `All`
+// (D140): launching `noggin <file>` on a Text file puts the file in the Tree
+// beside it. Only the ad-hoc Root qualifies — a starred cwd Root keeps the
+// default — and a file noggin would refuse to open (binary, oversize) does not
+// count, since it is never shown.
+func (r resolution) startsOnAll() bool {
+	if r.docPath == "" || r.active < 0 || r.active >= len(r.roots) || r.roots[r.active].starred {
+		return false
+	}
+	return !tree.IsMarkdown(filepath.Base(r.docPath)) && tree.CheckOpenable(r.docPath) == nil
 }
 
 // activeRootPath is the path of the active root, or "" when none is active.

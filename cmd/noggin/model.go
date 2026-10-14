@@ -440,10 +440,7 @@ func (m model) applyResolution(res resolution) model {
 	m = m.refreshFilesRecentSource()
 
 	if path := res.activeRootPath(); path != "" {
-		// D140: `noggin <file>` on a Text file starts its ad-hoc Root on All,
-		// so the file it opened is in the Tree beside it.
-		if res.docPath != "" && !res.roots[res.active].starred &&
-			!tree.IsMarkdown(filepath.Base(res.docPath)) && tree.CheckOpenable(res.docPath) == nil {
+		if res.startsOnAll() {
 			m.files = m.files.withFilter(path, tree.FilterAll)
 		}
 		if node, err := tree.Walk(path, m.files.filterFor(path)); err != nil {
@@ -812,7 +809,7 @@ func (m model) toggleFileFilter() model {
 	}
 	// A selection change is one of Peek's clearing triggers (S7).
 	m = m.clearPeek()
-	m.files = m.files.withFilter(path, next).withFilteredRoot(node).withStatus(gitStatus(path))
+	m.files = m.files.withFilter(path, next).withFilteredRoot(node)
 	m.message = ""
 	if m.files.flatMode() {
 		m.message = fmt.Sprintf("File Filter: %s (Recent and Starred ignore it)", next)

@@ -113,6 +113,20 @@ func TestFilterAllHidesASymlinkedDirectory(t *testing.T) {
 	}
 }
 
+func TestFilterAllHidesADanglingSymlink(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Symlink(filepath.Join(root, "gone"), filepath.Join(root, "dangling")); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	node, err := Walk(root, FilterAll)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := childNames(node); len(got) != 0 {
+		t.Errorf("All lists %v, want the dangling symlink hidden", got)
+	}
+}
+
 func TestListDirMatchesWalkUnderEveryFilter(t *testing.T) {
 	root := filterFixture(t)
 	for _, f := range []Filter{FilterMarkdown, FilterAll} {

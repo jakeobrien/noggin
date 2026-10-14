@@ -1,6 +1,6 @@
 ---
 title: File Filter in the Files Nav (a toggle)
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -9,7 +9,8 @@ depends_on:
   tk-0ta: parent-child
   tk-qei: blocks
 created_at: 2026-10-14T18:19:25.184343349+00:00
-updated_at: 2026-10-14T18:19:25.208143890+00:00
+updated_at: 2026-10-14T19:18:26.904186121+00:00
+closed_at: 2026-10-14T19:18:26.904185871+00:00
 ---
 
 # Description

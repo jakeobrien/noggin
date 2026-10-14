@@ -17,15 +17,22 @@ func TestFilterAllHidesAFifoWithoutBlocking(t *testing.T) {
 	if err := syscall.Mkfifo(filepath.Join(root, "pipe"), 0o644); err != nil {
 		t.Skip("mkfifo unavailable:", err)
 	}
-	done := make(chan *Node, 1)
+	type result struct {
+		node *Node
+		err  error
+	}
+	done := make(chan result, 1)
 	go func() {
-		node, _ := Walk(root, FilterAll)
-		done <- node
+		node, err := Walk(root, FilterAll)
+		done <- result{node, err}
 	}()
 	select {
-	case node := <-done:
-		if slices.Contains(childNames(node), "pipe") {
-			t.Errorf("All lists a FIFO: %v", childNames(node))
+	case r := <-done:
+		if r.err != nil {
+			t.Fatal(r.err)
+		}
+		if slices.Contains(childNames(r.node), "pipe") {
+			t.Errorf("All lists a FIFO: %v", childNames(r.node))
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Walk under All blocked on a FIFO")

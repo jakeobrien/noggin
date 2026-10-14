@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -163,22 +162,30 @@ func TestFileFilterWithNoRootIsAQuietNoOp(t *testing.T) {
 	}
 }
 
-func TestFileFilterIgnoredByRecentAndStarredAndOnlyShownForTree(t *testing.T) {
-	m := filterModel(t, filterRoot(t))
-	m.files = m.files.cycleMode() // Recent
-	m = pressFilter(t, m)
-	if got := m.files.filterFor(m.files.root.Path); got != tree.FilterAll {
-		t.Errorf("filter = %v, want All toggled from Recent too", got)
-	}
-	if got := statusRow(m); strings.Contains(got, "All") || strings.Contains(got, "Markdown") {
-		t.Errorf("Recent status row = %q, want no filter shown", got)
-	}
-	if !strings.Contains(m.message, "Recent and Starred ignore") {
-		t.Errorf("message = %q, want a note that Recent and Starred ignore the filter", m.message)
+func TestFileFilterIsOnlyShownForTreeAndRecentAndStarredIgnoreIt(t *testing.T) {
+	for _, cycles := range []int{1, 2} { // Recent, Starred
+		m := filterModel(t, filterRoot(t))
+		for i := 0; i < cycles; i++ {
+			m.files = m.files.cycleMode()
+		}
+		m = pressFilter(t, m)
+		mode := m.files.mode.label()
+		if got := m.files.filterFor(m.files.root.Path); got != tree.FilterAll {
+			t.Errorf("%s: filter = %v, want All toggled from here too", mode, got)
+		}
+		if got := statusRow(m); strings.Contains(got, "All") || strings.Contains(got, "Markdown") {
+			t.Errorf("%s status row = %q, want no filter shown", mode, got)
+		}
+		if !strings.Contains(m.message, "Recent and Starred ignore") {
+			t.Errorf("%s: message = %q, want a note that Recent and Starred ignore the filter", mode, m.message)
+		}
+		if got := m.files.flatRows(); len(got) != 0 {
+			t.Errorf("%s rows = %v, want the (empty) flat list unaffected by the filter", mode, got)
+		}
 	}
 }
 
-func TestFileFilterToggleReWalksAndRecomputesGitStatus(t *testing.T) {
+func TestFileFilterShowsAGitMarkerOnANewlyListedFile(t *testing.T) {
 	requireGit(t)
 	repo := newGitRepo(t)
 	writeFileContent(t, filepath.Join(repo, "todo.txt"), "untracked text\n")
@@ -235,7 +242,6 @@ func TestLaunchOnATextFileLeavesAStarredCwdRootOnMarkdown(t *testing.T) {
 // --- staleness (D139) -------------------------------------------------------
 
 func TestStalenessUnderAllIgnoresHiddenBinariesButSeesTextFiles(t *testing.T) {
-	root := filterRoot(t)
 	for _, tc := range []struct {
 		name, content string
 		want          bool
@@ -244,14 +250,14 @@ func TestStalenessUnderAllIgnoresHiddenBinariesButSeesTextFiles(t *testing.T) {
 		{"new.txt", "text\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			root := filterRoot(t)
 			node, err := tree.Walk(root, tree.FilterAll)
 			if err != nil {
 				t.Fatal(err)
 			}
 			b := snapshotStaleness(node, tree.FilterAll)
 			bumpMtimeForward(t, root)
-			p := writeFileContent(t, filepath.Join(root, tc.name), tc.content)
-			defer os.Remove(p)
+			writeFileContent(t, filepath.Join(root, tc.name), tc.content)
 			if got := b.stale(); got != tc.want {
 				t.Errorf("stale() = %v after adding %s under All, want %v", got, tc.name, tc.want)
 			}

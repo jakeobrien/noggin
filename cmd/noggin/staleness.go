@@ -297,14 +297,15 @@ func (m model) resetStaleBaseline() model {
 	if m.dv1.doc.isOpen() {
 		dv1Path = m.dv1.doc.path
 	}
+	filter := m.activeFilter()
 	if m.dv2 == nil {
-		m.staleBaseline = snapshotStaleness(m.files.root, m.activeFilter(), dv1Path)
+		m.staleBaseline = snapshotStaleness(m.files.root, filter, dv1Path)
 	} else {
 		dv2Path := ""
 		if m.dv2.doc.isOpen() {
 			dv2Path = m.dv2.doc.path
 		}
-		m.staleBaseline = snapshotStaleness(m.files.root, m.activeFilter(), dv1Path, dv2Path)
+		m.staleBaseline = snapshotStaleness(m.files.root, filter, dv1Path, dv2Path)
 	}
 	m.stale = false
 	m.staleGen++

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-3vr-c3c022fa135",
+    "issue_id": "tk-3vr",
+    "author": "noggin",
+    "body": "Implemented: tree.Filter (Markdown|All) threaded through Walk/ListDir; per-Root filters on filesNav; 'a' toggle; status row; staleness carries the filter; launch-on-Text-file starts the ad-hoc Root on All (starred cwd Root and refused files excluded). README, keybindings.md and Help updated.",
+    "created_at": "2026-10-14T19:18:26.895786579Z",
+    "updated_at": "2026-10-14T19:18:26.895786579Z"
+  }
+]
