@@ -1,6 +1,6 @@
 ---
 title: Preserve find match and scroll when toggling Render Mode
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -9,7 +9,8 @@ depends_on:
   tk-0ta: parent-child
   tk-2g3: blocks
 created_at: 2026-10-14T18:19:25.178647474+00:00
-updated_at: 2026-10-14T18:19:25.202343932+00:00
+updated_at: 2026-10-14T19:00:52.922495827+00:00
+closed_at: 2026-10-14T19:00:52.922495785+00:00
 ---
 
 # Description

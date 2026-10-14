@@ -511,6 +511,8 @@ func (v viewer) renderPeek() viewer {
 // document, so every match's line number would be wrong, and a re-render also
 // means a different document is open (or the same one just re-read from disk,
 // M4.1) — either way, stale matches over content that no longer exists.
+// toggleMode (textview.go) is the one caller that carries a find across a
+// re-render: it re-runs the query in the new mode itself.
 func (v viewer) render() viewer {
 	v.renderedWidth = v.vp.Width()
 	v.err = nil

@@ -81,19 +81,19 @@ func (v viewer) toggleMode() viewer {
 	if prev.input.Value() == "" && !prev.editing {
 		return v.withScrollFraction(frac)
 	}
+	v = v.withScrollFraction(frac)
 	v.findState = prev
 	v.findState.matches = v.findIn(prev.input.Value())
 	v.findState.current = v.carriedMatch(prev, wasText)
-	if v.findState.current < 0 {
-		return v.withScrollFraction(frac)
-	}
-	return v.withScrollFraction(frac).applyCurrentMatch()
+	return v.applyCurrentMatch()
 }
 
 // carriedMatch is the index, in the matches just found in this viewer's new
 // mode, of the match prev (the find state in the old mode, wasText saying which
 // it was) had current; -1 when there are no matches. A match with no
-// counterpart degrades to the first one, as D34 does.
+// counterpart degrades to the first one, as D34 does; with no current match to
+// carry (the query only matches in this mode), the nearest one to the scroll
+// position is current.
 func (v viewer) carriedMatch(prev find, wasText bool) int {
 	matches := v.findState.matches
 	if len(matches) == 0 {
@@ -109,7 +109,7 @@ func (v viewer) carriedMatch(prev find, wasText bool) int {
 		}
 	}
 	if prev.current < 0 || prev.current >= len(prev.matches) {
-		return 0
+		return nearestMatch(matches, v.vp.YOffset())
 	}
 	// Frontmatter is counted apart from the body (D138): the Frontmatter Card
 	// reshapes its text, so an occurrence the card drops must not shift every

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-edt-c064aa4d61a",
+    "issue_id": "tk-edt",
+    "author": "noggin",
+    "body": "Implemented: viewer.toggleMode keeps the find query, re-runs it, keeps the current match by ordinal (frontmatter counted apart, D138), lands on rg's location after a fallen-back Markdown Grep landing (find.landing), else keeps proportional scroll. Degrade when a match has no counterpart: first match; no current match to carry: nearest to scroll.",
+    "created_at": "2026-10-14T19:00:52.916187827Z",
+    "updated_at": "2026-10-14T19:00:52.916187827Z"
+  }
+]

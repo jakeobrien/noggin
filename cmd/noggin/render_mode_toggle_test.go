@@ -261,3 +261,34 @@ func TestToggleCountsFrontmatterApartFromTheBody(t *testing.T) {
 		t.Errorf("Markdown: current %d on %q, want 2 on the second body needle", m.dv1.findState.current, got)
 	}
 }
+
+// A query that only matches in the other mode still lands on a match, nearest
+// the kept scroll position.
+func TestToggleToAModeWhereOnlyTheQueryMatchesKeepsAMatchCurrent(t *testing.T) {
+	m := toggleModel(t, "x <!-- needle -->\n") // the hidden comment is no match in Markdown
+	m = committedFind(t, m, "needle", 0)
+	if m.dv1.hasFindMatches() {
+		t.Fatal("setup: a match in Markdown")
+	}
+	m = press(t, m, keys.RenderMode.Keys()[0])
+	if f := m.dv1.findState; len(f.matches) != 1 || f.current != 0 {
+		t.Errorf("matches %d, current %d, want 1 and 0", len(f.matches), f.current)
+	}
+}
+
+// A fallen-back landing toggled to Text and straight back to Markdown keeps its
+// ripgrep location for the next Text visit.
+func TestGrepLandingSurvivesAToggleRoundTrip(t *testing.T) {
+	v := newViewer().setSize(80, 12)
+	v = v.open(mustLoad(t, writeFileContent(t, filepath.Join(t.TempDir(), "d.md"), "<!-- needle -->\n\nneedle\n\nneedle\n")))
+	v = v.commitQuery("needle") // Markdown: 2 matches, current 0
+	v.findState.landing = &grepLanding{line: 5, col: 0}
+	v = v.toggleMode()
+	if v.findState.current != 2 {
+		t.Fatalf("Text current = %d, want 2 (ripgrep's line 5)", v.findState.current)
+	}
+	v = v.toggleMode().toggleMode()
+	if v.findState.current != 2 {
+		t.Errorf("after a round trip, Text current = %d, want 2", v.findState.current)
+	}
+}
