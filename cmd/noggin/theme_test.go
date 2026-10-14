@@ -105,7 +105,7 @@ func TestThemesMeetContrast(t *testing.T) {
 // TestMarkdownStyleConfigStaysInThePalette: every colour in the generated
 // stylesheet is one the Theme names, so no literal can sneak in beside it.
 func TestMarkdownStyleConfigStaysInThePalette(t *testing.T) {
-	th := nightTheme
+	th := gruvboxMaterialTheme
 	palette := map[string]bool{hexOf(th.Fg): true}
 	for _, fields := range []map[string]color.Color{colorFields(th.Markdown), colorFields(th.Syntax)} {
 		for _, c := range fields {
@@ -150,8 +150,8 @@ func TestMarkdownStyleConfigStaysInThePalette(t *testing.T) {
 // TestMutedMarkdownStyleConfigDiffersFromFocused: muting recolours the
 // stylesheet and keeps its structure.
 func TestMutedMarkdownStyleConfigDiffersFromFocused(t *testing.T) {
-	focused := markdownStyleConfig(nightTheme)
-	muted, err := mutedMarkdownStyleConfig(nightTheme)
+	focused := markdownStyleConfig(gruvboxMaterialTheme)
+	muted, err := mutedMarkdownStyleConfig(gruvboxMaterialTheme)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func paintedCells(frame string, w, h int) []uv.Line {
 // with an explicit Fg and Bg, the styles that chose a colour keep it, and the
 // visible text is unchanged.
 func TestPaintCanvasColoursEveryCell(t *testing.T) {
-	th := nightTheme
+	th := gruvboxMaterialTheme
 	red := lipgloss.Color("#ff0000")
 	blue := lipgloss.Color("#0000ff")
 	frame := strings.Join([]string{
@@ -240,18 +240,18 @@ func TestPaintCanvasColoursEveryCell(t *testing.T) {
 // Theme's Fg and Bg like any other (the terminal swaps them), so it shows
 // Bg-on-Fg rather than the user's colours.
 func TestPaintCanvasKeepsReverseVideoReadable(t *testing.T) {
-	out := paintCanvas(lipgloss.NewStyle().Reverse(true).Render("sel"), 6, 1, nightTheme)
+	out := paintCanvas(lipgloss.NewStyle().Reverse(true).Render("sel"), 6, 1, gruvboxMaterialTheme)
 	c := paintedCells(out, 6, 1)[0][0]
 	if c.Style.Attrs&uv.AttrReverse == 0 {
 		t.Fatalf("reverse attribute lost: %+v", c.Style)
 	}
-	if hexOf(c.Style.Fg) != hexOf(nightTheme.Fg) || hexOf(c.Style.Bg) != hexOf(nightTheme.Bg) {
+	if hexOf(c.Style.Fg) != hexOf(gruvboxMaterialTheme.Fg) || hexOf(c.Style.Bg) != hexOf(gruvboxMaterialTheme.Bg) {
 		t.Errorf("reverse cell colours = %s on %s, want the Theme's", hexOf(c.Style.Fg), hexOf(c.Style.Bg))
 	}
 }
 
 func TestPaintCanvasLeavesUnsizedFramesAlone(t *testing.T) {
-	if got := paintCanvas("x", 0, 0, nightTheme); got != "x" {
+	if got := paintCanvas("x", 0, 0, gruvboxMaterialTheme); got != "x" {
 		t.Errorf("paintCanvas on an unsized frame = %q, want it untouched", got)
 	}
 }
@@ -314,7 +314,7 @@ func styledLineWith(view, text string) (string, bool) {
 // Glamour call; it mirrors renderMarkdownStyled's options.)
 func TestThemedMarkdownIsTruecolour(t *testing.T) {
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStyles(markdownStyleConfig(nightTheme)),
+		glamour.WithStyles(markdownStyleConfig(gruvboxMaterialTheme)),
 		glamour.WithChromaFormatter("terminal16m"),
 		glamour.WithWordWrap(60),
 	)

@@ -71,68 +71,68 @@ type SyntaxTheme struct {
 
 // theme is the active Theme. A package var so a test can swap it; production
 // code never reassigns it.
-var theme = nightTheme
+var theme = gruvboxMaterialTheme
 
-// nightTheme is the only shipped Theme: a cool, low-glare dark palette (after
-// Tokyo Night). Foreground tokens keep at least WCAG AA contrast (4.5:1)
-// against Bg, and syntax tokens against Markdown.CodeBg — theme_test.go
-// enforces both for any Theme in allThemes.
-var nightTheme = Theme{
-	Bg:        lipgloss.Color("#1a1b26"),
-	Fg:        lipgloss.Color("#c0caf5"),
-	Subtle:    lipgloss.Color("#8a93bd"),
-	Border:    lipgloss.Color("#6a7399"),
-	Accent:    lipgloss.Color("#bb9af7"),
-	Highlight: lipgloss.Color("#e0af68"),
+// gruvboxMaterialTheme is the only shipped Theme: a warm, low-glare dark
+// palette after Gruvbox Material (dark, medium contrast). Foreground tokens
+// keep at least WCAG AA contrast (4.5:1) against Bg, and syntax tokens against
+// Markdown.CodeBg — theme_test.go enforces both for any Theme in allThemes.
+var gruvboxMaterialTheme = Theme{
+	Bg:        lipgloss.Color("#282828"),
+	Fg:        lipgloss.Color("#d4be98"),
+	Subtle:    lipgloss.Color("#a89984"),
+	Border:    lipgloss.Color("#7c6f64"),
+	Accent:    lipgloss.Color("#a9b665"),
+	Highlight: lipgloss.Color("#d8a657"),
 
-	UnfocusedBar:    lipgloss.Color("#2f334d"),
-	UnfocusedText:   lipgloss.Color("#9aa5ce"),
-	UnfocusedSubtle: lipgloss.Color("#7680a8"),
+	UnfocusedBar:    lipgloss.Color("#45403d"),
+	UnfocusedText:   lipgloss.Color("#c5b18a"),
+	UnfocusedSubtle: lipgloss.Color("#928374"),
 
 	Markdown: MarkdownTheme{
-		H1Fg:      lipgloss.Color("#1a1b26"),
-		H1Bg:      lipgloss.Color("#7aa2f7"),
-		Heading:   lipgloss.Color("#7aa2f7"),
-		H2:        lipgloss.Color("#ff9e64"),
-		H3:        lipgloss.Color("#9ece6a"),
-		H4:        lipgloss.Color("#7dcfff"),
-		H5:        lipgloss.Color("#bb9af7"),
-		H6:        lipgloss.Color("#e0af68"),
-		Emph:      lipgloss.Color("#73daca"),
-		Strong:    lipgloss.Color("#73daca"),
-		Link:      lipgloss.Color("#7dcfff"),
-		LinkText:  lipgloss.Color("#9ece6a"),
-		Image:     lipgloss.Color("#f7768e"),
-		ImageText: lipgloss.Color("#8a93bd"),
-		Code:      lipgloss.Color("#ff9e64"),
-		CodeBg:    lipgloss.Color("#292e42"),
-		Rule:      lipgloss.Color("#6a7399"),
+		H1Fg:      lipgloss.Color("#282828"),
+		H1Bg:      lipgloss.Color("#d8a657"),
+		Heading:   lipgloss.Color("#ea6962"),
+		H2:        lipgloss.Color("#ea6962"),
+		H3:        lipgloss.Color("#e78a4e"),
+		H4:        lipgloss.Color("#a9b665"),
+		H5:        lipgloss.Color("#7daea3"),
+		H6:        lipgloss.Color("#d3869b"),
+		Emph:      lipgloss.Color("#d3869b"),
+		Strong:    lipgloss.Color("#e78a4e"),
+		Link:      lipgloss.Color("#7daea3"),
+		LinkText:  lipgloss.Color("#89b482"),
+		Image:     lipgloss.Color("#d3869b"),
+		ImageText: lipgloss.Color("#a89984"),
+		Code:      lipgloss.Color("#89b482"),
+		CodeBg:    lipgloss.Color("#32302f"),
+		Rule:      lipgloss.Color("#7c6f64"),
 	},
 	Syntax: SyntaxTheme{
-		Text:        lipgloss.Color("#c0caf5"),
-		Comment:     lipgloss.Color("#9099c0"),
-		Preproc:     lipgloss.Color("#ff9e64"),
-		Keyword:     lipgloss.Color("#bb9af7"),
-		Type:        lipgloss.Color("#2ac3de"),
-		Function:    lipgloss.Color("#7aa2f7"),
-		Builtin:     lipgloss.Color("#7dcfff"),
-		String:      lipgloss.Color("#9ece6a"),
-		Escape:      lipgloss.Color("#89ddff"),
-		Number:      lipgloss.Color("#ff9e64"),
-		Operator:    lipgloss.Color("#89ddff"),
-		Punctuation: lipgloss.Color("#a9b1d6"),
-		Tag:         lipgloss.Color("#f7768e"),
-		Attribute:   lipgloss.Color("#e0af68"),
-		Inserted:    lipgloss.Color("#9ece6a"),
-		Deleted:     lipgloss.Color("#f7768e"),
-		ErrorFg:     lipgloss.Color("#1a1b26"),
-		ErrorBg:     lipgloss.Color("#f7768e"),
+		Text:        lipgloss.Color("#d4be98"),
+		Comment:     lipgloss.Color("#a89984"),
+		Preproc:     lipgloss.Color("#d3869b"),
+		Keyword:     lipgloss.Color("#ef7770"),
+		Type:        lipgloss.Color("#d8a657"),
+		Function:    lipgloss.Color("#a9b665"),
+		Builtin:     lipgloss.Color("#89b482"),
+		String:      lipgloss.Color("#a9b665"),
+		Escape:      lipgloss.Color("#89b482"),
+		Number:      lipgloss.Color("#d3869b"),
+		Operator:    lipgloss.Color("#e78a4e"),
+		Punctuation: lipgloss.Color("#a89984"),
+		Tag:         lipgloss.Color("#ef7770"),
+		Attribute:   lipgloss.Color("#d8a657"),
+		Inserted:    lipgloss.Color("#a9b665"),
+		Deleted:     lipgloss.Color("#ef7770"),
+		ErrorFg:     lipgloss.Color("#282828"),
+		ErrorBg:     lipgloss.Color("#ea6962"),
 	},
 }
 
 // allThemes is every shipped Theme, for the tests that hold each to the same
 // contrast bar.
-var allThemes = map[string]Theme{"night": nightTheme}
+var allThemes = map[string]Theme{"gruvbox-material": gruvboxMaterialTheme}
 
 // hexOf is c as "#rrggbb", the form Glamour's stylesheets take.
 func hexOf(c color.Color) string {
