@@ -1,6 +1,6 @@
 ---
 title: View toggles alt+h / alt+i / alt+m shared by Files Nav and Picker, with status indicator
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -8,7 +8,8 @@ labels:
 depends_on:
   tk-95fr: parent-child
 created_at: 2026-10-15T16:20:45.720680382+00:00
-updated_at: 2026-10-15T16:20:45.720680382+00:00
+updated_at: 2026-10-15T16:57:53.769053278+00:00
+closed_at: 2026-10-15T16:57:53.769053195+00:00
 ---
 
 # Description

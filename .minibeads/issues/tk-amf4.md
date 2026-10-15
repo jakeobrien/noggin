@@ -1,6 +1,6 @@
 ---
 title: Left arrow collapses to parent folder in the Files Nav Tree
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -8,7 +8,8 @@ labels:
 depends_on:
   tk-95fr: parent-child
 created_at: 2026-10-15T16:20:45.718060299+00:00
-updated_at: 2026-10-15T16:20:45.718060299+00:00
+updated_at: 2026-10-15T16:57:53.765743903+00:00
+closed_at: 2026-10-15T16:57:53.765743861+00:00
 ---
 
 # Description

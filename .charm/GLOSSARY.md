@@ -157,9 +157,7 @@
   Root lifecycle: un-starring a Root never touches them.
 - **Targeting modifier** — the `ctrl+` prefix on Files Nav's Activate/Peek and the Picker's
   Activate that routes the action to DV2 instead of DV1, creating DV2 first if it doesn't
-  already exist. Unmodified keys always target DV1. The same `ctrl+` prefix is also used by
-  S5's focus-jump keys (`ctrl+o` jumps Focus to DV2) for consistency, though that is a
-  distinct mechanism with no load/peek routing involved (C3; `shift+` before D55).
+  already exist. Unmodified keys always target DV1 (C3; `shift+` before D55).
 - **Text file** — any file that is neither a Markdown file nor binary (a NUL byte early in
   the file). Shown only as raw text. Binary files are never shown or opened (D140).
 - **View toggles** — the two session-wide switches over what exists in the Tree and the

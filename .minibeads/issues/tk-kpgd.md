@@ -1,6 +1,6 @@
 ---
 title: Tab / shift+tab cycle Focus across visible panes
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -8,7 +8,8 @@ labels:
 depends_on:
   tk-95fr: parent-child
 created_at: 2026-10-15T16:20:45.710365591+00:00
-updated_at: 2026-10-15T16:20:45.710365591+00:00
+updated_at: 2026-10-15T16:57:53.757068403+00:00
+closed_at: 2026-10-15T16:57:53.757068361+00:00
 ---
 
 # Description

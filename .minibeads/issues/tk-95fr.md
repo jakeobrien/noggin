@@ -1,13 +1,14 @@
 ---
 title: 'Spec: keymap batch (remaps, Tab focus cycle, ctrl+w, left-arrow, view toggles)'
-status: open
+status: closed
 priority: 2
 issue_type: epic
 labels:
 - spec
 - ready-for-agent
 created_at: 2026-10-15T16:20:33.602254377+00:00
-updated_at: 2026-10-15T16:20:33.602254377+00:00
+updated_at: 2026-10-15T16:57:53.775067611+00:00
+closed_at: 2026-10-15T16:57:53.775067570+00:00
 ---
 
 # Description

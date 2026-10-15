@@ -1,6 +1,6 @@
 ---
 title: ctrl+w closes/merges Document Viewers (replaces ctrl+x)
-status: open
+status: closed
 priority: 2
 issue_type: feature
 labels:
@@ -8,7 +8,8 @@ labels:
 depends_on:
   tk-95fr: parent-child
 created_at: 2026-10-15T16:20:45.714723341+00:00
-updated_at: 2026-10-15T16:20:45.714723341+00:00
+updated_at: 2026-10-15T16:57:53.762174778+00:00
+closed_at: 2026-10-15T16:57:53.762174695+00:00
 ---
 
 # Description

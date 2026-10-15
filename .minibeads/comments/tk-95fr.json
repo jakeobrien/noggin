@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-95fr-c5593627984",
+    "issue_id": "tk-95fr",
+    "author": "noggin",
+    "body": "All five children implemented on branch keymap-batch (bad013e..22ce3dd). Docs updated in docs/keybindings.md and README.md; decision D141; glossary 'View toggles'. Spec deviation: the Files Nav File Filter moved to alt+m in tk-7pr6 (not tk-kwki) because its old key 'a' became Browse Scope there.",
+    "created_at": "2026-10-15T16:57:53.772206820Z",
+    "updated_at": "2026-10-15T16:57:53.772206820Z"
+  }
+]
