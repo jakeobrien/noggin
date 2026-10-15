@@ -173,7 +173,7 @@ func TestPickerWikipediaModeFailureKeepsPreviousResults(t *testing.T) {
 	if m.picker.wikipediaErr == "" {
 		t.Error("wikipediaErr is empty after a failed search, want the error text set")
 	}
-	if got := pickerStatus(m.picker, m.ripgrep, m.pickerBounds()); got != m.picker.wikipediaErr {
+	if got := pickerStatus(m.picker, m.ripgrep, m.searchBounds()); got != m.picker.wikipediaErr {
 		t.Errorf("pickerStatus = %q, want the wikipediaErr text %q", got, m.picker.wikipediaErr)
 	}
 	if m.picker.searching {
@@ -245,7 +245,7 @@ func TestPickerWikipediaModeSearchesWithoutRipgrep(t *testing.T) {
 	if len(m.picker.results.wikipedia) != 1 {
 		t.Errorf("results.wikipedia = %v, want the fake's one result", m.picker.results.wikipedia)
 	}
-	if got := pickerStatus(m.picker, m.ripgrep, m.pickerBounds()); got != "" {
+	if got := pickerStatus(m.picker, m.ripgrep, m.searchBounds()); got != "" {
 		t.Errorf("pickerStatus = %q with rg unavailable but results present, want empty", got)
 	}
 }
@@ -270,7 +270,7 @@ func TestPickerAltHInWikipediaModeTogglesWithoutRequerying(t *testing.T) {
 	if len(fake.calls) != 1 {
 		t.Fatalf("Search calls = %v, want exactly one call before alt+h", fake.calls)
 	}
-	if !m.picker.resultsCurrent(m.pickerBounds()) {
+	if !m.picker.resultsCurrent(m.searchBounds()) {
 		t.Fatal("results not current before alt+h; setup is broken")
 	}
 
@@ -293,8 +293,8 @@ func TestPickerAltHInWikipediaModeTogglesWithoutRequerying(t *testing.T) {
 	// The existing Results must still read as current — not stale — so the
 	// already-displayed rows stay on screen rather than the view reading
 	// them as belonging to a superseded search.
-	if !m.picker.resultsCurrent(m.pickerBounds()) {
-		t.Fatal("results.hideDotfiles was not patched to match the new toggle: resultsCurrent reports stale")
+	if !m.picker.resultsCurrent(m.searchBounds()) {
+		t.Fatal("results.bounds was not patched to match the new toggle: resultsCurrent reports stale")
 	}
 	if len(m.picker.results.wikipedia) != 1 {
 		t.Errorf("results.wikipedia after alt+h = %v, want the original result untouched", m.picker.results.wikipedia)
@@ -312,7 +312,7 @@ func TestPickerAltHInWikipediaModeTogglesWithoutRequerying(t *testing.T) {
 	if len(fake.calls) != 1 {
 		t.Fatalf("Search calls after the second alt+h = %v, want still exactly one (no requery)", fake.calls)
 	}
-	if !m.picker.resultsCurrent(m.pickerBounds()) {
-		t.Fatal("results.hideDotfiles was not patched back: resultsCurrent reports stale")
+	if !m.picker.resultsCurrent(m.searchBounds()) {
+		t.Fatal("results.bounds was not patched back: resultsCurrent reports stale")
 	}
 }

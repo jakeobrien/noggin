@@ -1,0 +1,10 @@
+[
+  {
+    "id": "tk-xw3p-c934699afbb",
+    "issue_id": "tk-xw3p",
+    "author": "noggin",
+    "body": "Triage. Done: pickerResults embeds pickerBounds (resultsCurrent is one ==, one patch site per relabel); pickerSearchCmd takes pickerBounds; filesNav filter is set via model.setFileFilter (Root or no-Root fallback in one place); withFilter renamed withRootFilter and documents the lastFilter effect; model.pickerBounds() renamed searchBounds(); applyPickerFilter(next) became refreshPickerAfterFilter(); test assertions now read searchBounds(). Dropped as wontfix: fileFilter/filterFor/lastFilter/withLastFilter synonyms (each has a distinct, documented role; filterFor in walk paths is correct), and the three Picker candidate funcs duplication (pre-existing, not part of this change).",
+    "created_at": "2026-10-15T14:42:49.067457105Z",
+    "updated_at": "2026-10-15T14:42:49.067457105Z"
+  }
+]

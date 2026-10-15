@@ -217,7 +217,7 @@ func TestPickerPreviewExplainsRefusal(t *testing.T) {
 		files: []pickerFile{{root: root{path: dir}, path: bad}},
 	}
 	m.picker.selected = 0
-	p := m.picker.syncPreview(m.pickerBounds())
+	p := m.picker.syncPreview(m.searchBounds())
 	if got := p.preview.GetContent(); !strings.Contains(got, "binary file") {
 		t.Errorf("preview = %q, want it to say binary file", got)
 	}

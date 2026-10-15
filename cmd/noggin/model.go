@@ -441,7 +441,7 @@ func (m model) applyResolution(res resolution) model {
 
 	if path := res.activeRootPath(); path != "" {
 		if res.startsOnAll() {
-			m.files = m.files.withFilter(path, tree.FilterAll)
+			m.files = m.files.withRootFilter(path, tree.FilterAll)
 		}
 		if node, err := tree.Walk(path, m.files.filterFor(path)); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", path, err)
@@ -804,20 +804,22 @@ func (m model) toggleFileFilter() model {
 	if m.files.root == nil {
 		return m
 	}
-	m, ok := m.setActiveRootFilter(m.files.fileFilter().Toggled())
+	m, ok := m.setFileFilter(m.files.fileFilter().Toggled())
 	if ok && m.files.flatMode() {
 		m.message = fmt.Sprintf("File Filter: %s (Recent and Starred ignore it)", m.files.fileFilter())
 	}
 	return m
 }
 
-// setActiveRootFilter sets the Active Root's File Filter to next and re-walks
-// the Root under it, the one path both the Files Nav's `a` and the Picker's
-// alt+a take (they share one per-Root state). It reports whether the filter
-// changed: a failed walk, or no Active Root, leaves it as it was.
-func (m model) setActiveRootFilter(next tree.Filter) (model, bool) {
+// setFileFilter sets the File Filter in effect to next, the one path both the
+// Files Nav's `a` and the Picker's alt+a take (they share one per-Root state).
+// With an Active Root it is that Root's, and the Root is re-walked under it;
+// with none (Wikipedia active) it is only the fallback fileFilter reads. It
+// reports whether the filter changed: a failed walk leaves it as it was.
+func (m model) setFileFilter(next tree.Filter) (model, bool) {
 	if m.files.root == nil {
-		return m, false
+		m.files = m.files.withLastFilter(next)
+		return m, true
 	}
 	path := m.files.root.Path
 	node, err := tree.Walk(path, next)
@@ -827,7 +829,7 @@ func (m model) setActiveRootFilter(next tree.Filter) (model, bool) {
 	}
 	// A selection change is one of Peek's clearing triggers (S7).
 	m = m.clearPeek()
-	m.files = m.files.withFilter(path, next).withFilteredRoot(node)
+	m.files = m.files.withRootFilter(path, next).withFilteredRoot(node)
 	m.message = ""
 	return m.rebaseTreeStaleness(), true
 }
@@ -2143,7 +2145,7 @@ func (m model) render() string {
 	case m.helpOpen:
 		return overlayHelp(frame, m.width, m.height, m.focus)
 	case m.picker.open:
-		return overlayPicker(frame, m.width, m.height, m.picker, m.ripgrep, m.pickerBounds(), m.docs)
+		return overlayPicker(frame, m.width, m.height, m.picker, m.ripgrep, m.searchBounds(), m.docs)
 	default:
 		return frame
 	}

@@ -83,7 +83,7 @@ type filesNav struct {
 	// It lives beside memory but apart from filesNavMemory because the model
 	// needs a Root's filter *before* walking it into setRoot (activateRoot,
 	// launch), and it must outlive the Root being inactive. Never mutated in
-	// place: withFilter swaps in a fresh map, the same value-semantic
+	// place: withRootFilter swaps in a fresh map, the same value-semantic
 	// convention expanded follows.
 	filters map[string]tree.Filter
 
@@ -430,9 +430,10 @@ func (f filesNav) withLastFilter(filter tree.Filter) filesNav {
 	return f
 }
 
-// withFilter records filter as the File Filter of the Root at path, and as
-// the most recently set value.
-func (f filesNav) withFilter(path string, filter tree.Filter) filesNav {
+// withRootFilter records filter as the File Filter of the Root at path, and
+// also as the most recently set value (lastFilter) — so the Wikipedia fallback
+// carries on from whatever was last chosen.
+func (f filesNav) withRootFilter(path string, filter tree.Filter) filesNav {
 	next := make(map[string]tree.Filter, len(f.filters)+1)
 	for k, v := range f.filters {
 		next[k] = v

@@ -86,7 +86,7 @@ func resultBases(m model) []string {
 func TestPickerFileFilterTogglesFileResultsAndTheTitle(t *testing.T) {
 	m, _, _ := filterPickerModel(t)
 	m, _ = m.openPicker()
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "File · Active Source · Markdown" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "File · Active Source · Markdown" {
 		t.Errorf("title on open = %q", got)
 	}
 	m = searchPicker(t, m, "alpha")
@@ -95,7 +95,7 @@ func TestPickerFileFilterTogglesFileResultsAndTheTitle(t *testing.T) {
 	}
 
 	m, seq := pressPickerFilter(t, m)
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "File · Active Source · All" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "File · Active Source · All" {
 		t.Errorf("title under All = %q", got)
 	}
 	m = researchPicker(t, m, seq)
@@ -120,7 +120,7 @@ func TestPickerFileFilterAppliesToGrep(t *testing.T) {
 	}
 
 	m, seq := pressPickerFilter(t, m)
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "Grep · Active Root · All" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "Grep · Active Root · All" {
 		t.Errorf("title = %q", got)
 	}
 	m = researchPicker(t, m, seq)
@@ -148,14 +148,14 @@ func TestPickerFileFilterIsTheFilesNavsPerRootState(t *testing.T) {
 	// changes what it opens on.
 	m = press(t, m, keys.Cancel.Keys()[0])
 	m, _ = m.openPicker()
-	if m.files.fileFilter() != tree.FilterAll {
-		t.Errorf("reopened Picker filter = %v, want All", m.files.fileFilter())
+	if m.searchBounds().filter != tree.FilterAll {
+		t.Errorf("reopened Picker filter = %v, want All", m.searchBounds().filter)
 	}
 	m = press(t, m, keys.Cancel.Keys()[0])
 	m = pressFilter(t, m.setFocus(filesPane))
 	m, _ = m.openPicker()
-	if m.files.fileFilter() != tree.FilterMarkdown {
-		t.Errorf("Picker filter after the Files Nav's `a` = %v, want Markdown", m.files.fileFilter())
+	if m.searchBounds().filter != tree.FilterMarkdown {
+		t.Errorf("Picker filter after the Files Nav's `a` = %v, want Markdown", m.searchBounds().filter)
 	}
 }
 
@@ -173,7 +173,7 @@ func TestPickerAllRootsUsesTheActiveRootsFilterForEveryRoot(t *testing.T) {
 	if got := resultBases(m); !slices.Equal(got, []string{"beta.md", "beta.txt"}) {
 		t.Errorf("All Roots results = %v, want Root b's Text file too (Root a's filter applies)", got)
 	}
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "File · All Roots · All" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "File · All Roots · All" {
 		t.Errorf("title = %q", got)
 	}
 
@@ -197,7 +197,7 @@ func TestPickerStarredScopeIgnoresTheFilter(t *testing.T) {
 	if m.picker.scope != starredScope {
 		t.Fatalf("scope = %v, want Starred", m.picker.scope)
 	}
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "File · Starred" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "File · Starred" {
 		t.Errorf("title = %q, want no filter named in Starred scope", got)
 	}
 
@@ -212,7 +212,7 @@ func TestPickerStarredScopeIgnoresTheFilter(t *testing.T) {
 	if seq != 0 {
 		t.Errorf("alt+a in Starred scope scheduled a search")
 	}
-	if !m.picker.resultsCurrent(m.pickerBounds()) {
+	if !m.picker.resultsCurrent(m.searchBounds()) {
 		t.Errorf("Starred results went stale after alt+a")
 	}
 	if got := m.files.filterFor(a); got != tree.FilterAll {
@@ -253,7 +253,7 @@ func TestPickerFileFilterWithWikipediaActiveUsesTheLastSetValue(t *testing.T) {
 	if got := resultBases(m); !slices.Equal(got, []string{"beta.md", "beta.txt"}) {
 		t.Errorf("results = %v, want All's", got)
 	}
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "File · All Roots · All" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "File · All Roots · All" {
 		t.Errorf("title = %q", got)
 	}
 
@@ -277,14 +277,14 @@ func TestPickerFilterFollowsTheMostRecentlySetValueIntoWikipedia(t *testing.T) {
 
 func TestPickerFileFilterInWikipediaModeIsSaidInTheFooterNotTheTitle(t *testing.T) {
 	m := pickerWithWikipediaActive(t)
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "Wikipedia · -" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "Wikipedia · -" {
 		t.Errorf("title = %q", got)
 	}
 	m, seq := pressPickerFilter(t, m)
 	if seq != 0 {
 		t.Errorf("alt+a in Wikipedia mode scheduled a search")
 	}
-	if got := pickerModeScope(m.picker, m.pickerBounds()); got != "Wikipedia · -" {
+	if got := pickerModeScope(m.picker, m.searchBounds()); got != "Wikipedia · -" {
 		t.Errorf("title after alt+a = %q", got)
 	}
 	if m.message != "File Filter: All" {
