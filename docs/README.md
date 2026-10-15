@@ -69,15 +69,15 @@ searches Roots, so it keeps saying "Active Root").
 
 ```
 -------------------------------------------------
-| Navigator     | Document Viewer                |
-|---------------|           (DV1)                |
-| Sources Nav   |                                 |
-|---------------|                                 |
-| Files Nav     |                                 |
-|               |                                 |
-|---------------------------------------------------|
-| Footer                                             |
--------------------------------------------------------
+| Navigator     | Document Viewer               |
+|---------------|           (DV1)               |
+| Sources Nav   |                               |
+|---------------|                               |
+| Files Nav     |                               |
+|               |                               |
+|-----------------------------------------------|
+| Footer                                        |
+-------------------------------------------------
 ```
 
 A second Document Viewer (DV2) can appear beside the first, splitting the
@@ -86,16 +86,16 @@ below:
 
 ```
 -------------------------------------------------------------
-| Navigator     | Document Viewer  | Document Viewer          |
-|---------------|      (DV1)       |        (DV2)             |
-| Sources Nav   |                  |                           |
-|---------------|                  |                           |
-| Files Nav     |                  |                           |
-|               |                  |                           |
------------------------------------------------------------------
-| (staleness row, only while something is stale)                 |
-| Footer                                                          |
---------------------------------------------------------------------
+| Navigator     | Document Viewer  | Document Viewer        |
+|---------------|      (DV1)       |        (DV2)           |
+| Sources Nav   |                  |                        |
+|---------------|                  |                        |
+| Files Nav     |                  |                        |
+|               |                  |                        |
+-------------------------------------------------------------
+| (staleness row, only while something is stale)            |
+| Footer                                                    |
+-------------------------------------------------------------
 ```
 
 - **Sources Nav** — the list of Sources in this session: the ad-hoc root (if
