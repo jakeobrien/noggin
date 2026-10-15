@@ -49,9 +49,8 @@ func elementText(s *goquery.Selection) string {
 // article proper (M2.2): navboxes, sidebars, infoboxes, citation
 // superscripts, reference-list sections, metadata tables and images.
 // Edit-section links (.mw-editsection) are included defensively even though
-// Parsoid's REST HTML never carries them — see .charm/cycle/PROGRESS.md's
-// handoff. Content tables (table.wikitable) are untouched; link stripping is
-// M2.3, blank-line/orphan cleanup is M2.4.
+// Parsoid's REST HTML never carries them. Content tables (table.wikitable)
+// are untouched; link stripping is M2.3, blank-line/orphan cleanup is M2.4.
 func stripChrome(html string) (string, error) {
 	return transformHTML(html, "strip chrome", func(doc *goquery.Document) {
 		stripChromeInPlace(doc)

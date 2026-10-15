@@ -906,7 +906,7 @@ check("M4.2 exits 0 after the message-clear check", code == 0, f"exit {code}")
 # renders the fixture with real ANSI colour (no-TTY styling is a go-test-only
 # fallback), and it is exactly that styling which drifts viewport.Model's own
 # SetHighlights out of alignment with the document's real line numbers
-# (.charm/knowledge/viewport-search-ansi-offsets.md). go test alone cannot catch that
+# (docs/dev/viewport-highlight-drift.md). go test alone cannot catch that
 # — it never renders in colour — so this is the one place a regression would
 # actually show up.
 
@@ -1368,7 +1368,7 @@ check("C2a/M6.2 pty: exits 0 after the Grep mode alt+h flow", code == 0, f"exit 
 # --- C2a/M7.1: Peek (`p` in the Files Nav) ---------------------------------
 # The inverted header (colour, unlike the plain-text checks go test already
 # covers) is exactly the kind of rendering ambiguity M4.1's git markers
-# needed a pty check for (.charm/knowledge/pty-verification.md) — go test
+# needed a pty check for (docs/dev/pty-harness.md) — go test
 # has no TTY and so never exercises the SGR reverse-video code at all.
 
 peek_root = tempfile.mkdtemp()

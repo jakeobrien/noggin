@@ -13,7 +13,7 @@ import (
 // concern for security-review) or shell out to `git check-ignore` (which only
 // works inside a real git worktree, wrong for arbitrary roots).
 //
-// See .charm/knowledge/gitignore-matching.md for the semantics covered and
+// See docs/dev/ignore-rules.md for the semantics covered and
 // the ones deliberately left out.
 
 // ignorePattern is one compiled `.gitignore` line.

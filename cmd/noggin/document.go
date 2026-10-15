@@ -171,7 +171,7 @@ func splitFrontmatter(src []byte) (frontmatter, bool) {
 // (D138). It is the fallback for frontmatter the Frontmatter Card cannot
 // show. Left as-is, CommonMark reads the opening `---` as a thematic break
 // and the closing one as a setext heading underline, rendering the block as a
-// spurious H2 (.charm/knowledge/frontmatter-rendering.md).
+// spurious H2 (docs/dev/glamour-gotchas.md).
 //
 // Only the two fence lines are replaced, each by one line, so the result has
 // exactly the source's lines: resolveGrepLanding relies on ripgrep's raw-file

@@ -13,7 +13,7 @@ import (
 
 // searchBase is Wikimedia's title-search endpoint (S2): prefix/title
 // matching over article titles, not full-text search — see
-// .charm/cycle/findings/wikimedia-api.md.
+// docs/dev/wikipedia.md.
 //
 // A var, not a const (M2.9/TRIAGE T1, T22), solely so a test can point
 // Search's own hardcoded production URL at an httptest server and back —

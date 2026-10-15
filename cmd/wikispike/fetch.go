@@ -13,7 +13,7 @@ import (
 // restBase is Wikimedia's public REST API for parsed page HTML (S2: English
 // Wikipedia only, no auth, no search). The response is Parsoid HTML, which is
 // not the same markup as a rendered article page — see
-// .charm/cycle/findings/ for which attributes to key stripping off.
+// docs/dev/wikipedia.md for which attributes to key stripping off.
 const restBase = "https://en.wikipedia.org/api/rest_v1/page/html/"
 
 // userAgent identifies the spike to Wikimedia (S8). Their policy asks for an

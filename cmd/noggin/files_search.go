@@ -220,10 +220,9 @@ func isDotfilePath(rel string) bool {
 // already-stat'd-missing case liveRootsInScope filters).
 //
 // --no-require-git widens rg's default: by default rg only honours a
-// .gitignore file when the target sits inside a git repository (verified
-// against the sandbox's real rg, `.charm/cycle/findings/` — a plain,
+// .gitignore file when the target sits inside a git repository, so a plain,
 // non-git noggin Root with its own `.gitignore` would otherwise have it
-// silently ignored). A Root is a plain folder, not necessarily a git
+// silently ignored (docs/dev/ignore-rules.md). A Root is a plain folder, not necessarily a git
 // checkout, so this flag is what makes D28's "rg's ignore rules govern"
 // hold for one regardless.
 //
