@@ -9,7 +9,7 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 )
 
-// The Frontmatter Card (D138): a document's YAML frontmatter drawn as a
+// The Frontmatter Card: a document's YAML frontmatter drawn as a
 // bordered key/value box above its rendered body, instead of as raw YAML.
 // Frontmatter the card cannot show faithfully (nested values, TOML, invalid
 // YAML, too narrow a pane) falls back to the verbatim code block
@@ -86,7 +86,7 @@ const (
 // than width allows (a non-positive width is unbounded). Keys sit in a column
 // as wide as the longest (at most half the card); values wrap within
 // theirs with a hanging indent. ok is false when width is too narrow for a
-// card. muted draws it in the unfocused pane's receded colours (D136).
+// card. muted draws it in the unfocused pane's receded colours.
 func frontmatterCard(fields []frontmatterField, width int, muted bool) (string, bool) {
 	outer := math.MaxInt32
 	if width > 0 {

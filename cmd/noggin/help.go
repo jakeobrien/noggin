@@ -15,14 +15,14 @@ import (
 // modal is the discoverability backstop that comment promises. The viewer's
 // scroll bindings are pulled from scrollActions (viewer.go) rather than
 // re-listed by hand, per that slice's own comment. keys.Picker is added to
-// every case for the same reason (D39/M2.3): opening the Picker is global
+// every case for the same reason (M2.3): opening the Picker is global
 // and reachable from any Focus, so its binding belongs in the discoverability
-// backstop everywhere, the same way Navigator already is. Edit is viewer-only (D141), so only
-// the viewer case lists it.
+// backstop everywhere, the same way Navigator already is. Edit is
+// viewer-only, so only the viewer case lists it.
 //
 // keys.PickerUp/PickerDown/PickerMode/PickerScope are also added to every
 // case, even though they only do anything once the Picker is already open
-// (D46/M2.3a, TRIAGE T5): the Help Modal itself is unreachable while the
+// (M2.3a, TRIAGE T5): the Help Modal itself is unreachable while the
 // Picker owns the keyboard (see handlePickerInput), so these three panes —
 // before the Picker opens — are the *only* place Help is ever reachable
 // from to document them. Leaving them out (the original M2.3 shape) left
@@ -63,12 +63,12 @@ import (
 // never actually trigger.
 //
 // keys.FilesMode/keys.FilesScope (C4/M4.1) join filesPane's list too (M4.8,
-// TRIAGE T20, D81), for the identical Files-Nav-only reason as Peek/
+// TRIAGE T20), for the identical Files-Nav-only reason as Peek/
 // ActivateDV2/PeekDV2 just above — S5's Browse mode/scope cycle has no other
 // discoverability surface than this modal and paneHints' matching addition
 // (footer.go). Their descriptions ("mode", "scope") are shared with
 // keys.PickerMode/keys.PickerScope, listed here for the Picker-open case;
-// the keys differ (t/a vs alt+t/alt+a, D141), so the modal documents each
+// the keys differ (t/a vs alt+t/alt+a), so the modal documents each
 // context once.
 //
 // keys.HistoryBack/keys.HistoryForward (C4/M6.1) join the viewer case below
@@ -125,7 +125,7 @@ func modalStyle() lipgloss.Style {
 
 // helpBox renders the Help Modal's content for a pane's context: the pane's
 // title, then every binding helpBindings names for it, through bubbles/help's
-// own column renderer (going with the grain, D1, rather than hand-rolling
+// own column renderer (going with the grain, rather than hand-rolling
 // key/description alignment). ShowAll picks the "full help" (column) form
 // over the single-line "short help" form the footer already uses for its own
 // truncating hints; leaving the model's width at zero (its zero value) means

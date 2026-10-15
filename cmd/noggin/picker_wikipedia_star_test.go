@@ -103,7 +103,7 @@ func TestPickerStarNoOpWithNothingSelectedInWikipediaMode(t *testing.T) {
 }
 
 // TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInWikipediaMode is
-// D72's live-marker rule (TestPickerStarTogglingUpdatesTheRenderedMarkerLive,
+// the live-marker rule (TestPickerStarTogglingUpdatesTheRenderedMarkerLive,
 // TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode), checked for
 // wikipediaMode's own row (pickerWikipediaRow, M3.4): toggling PickerStar
 // shows the marker in the very next View(), with no separate refresh step.

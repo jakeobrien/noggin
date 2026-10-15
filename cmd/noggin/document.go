@@ -43,8 +43,8 @@ func (d document) isOpen() bool { return d.path != "" }
 // isArticleKey reports whether key names a Wikipedia article (its canonical
 // URL) rather than a file (an absolute path) — the same "://" heuristic
 // docStoreKey (model.go) relies on to tell the document store's two key
-// shapes apart, shared here (D127's own precedent: this is a reliable way to
-// tell them apart in practice, not a filesystem-level guarantee) so a
+// shapes apart, shared here (a reliable way to tell them
+// apart in practice, not a filesystem-level guarantee) so a
 // document's identity can be classified without threading a redundant bool
 // field through every constructor and test literal.
 func isArticleKey(key string) bool { return strings.Contains(key, "://") }
@@ -70,7 +70,7 @@ func (d document) label() string {
 
 // loadDocument reads path into a document. A binary file or one over
 // tree.MaxOpenSize is refused with tree.ErrBinary / tree.ErrTooLarge before
-// any of it is read (D140); every open route goes through here, so the
+// any of it is read; every open route goes through here, so the
 // refusal lives in one place.
 func loadDocument(path string) (document, error) {
 	if err := tree.CheckOpenable(path); err != nil {
@@ -96,7 +96,7 @@ func cannotOpen(path string, err error) string {
 // articleDocument builds a document for a fetched Wikipedia article (S3):
 // path is the article's canonical URL (S4's store key), title its own
 // display title, and src the already markdown-converted content
-// (D112/M2.1's pipeline) — the same shape loadDocument produces for a file,
+// (M2.1's pipeline) — the same shape loadDocument produces for a file,
 // so viewer.open/render (document.go/viewer.go) and everything downstream
 // (Document History, Find) treat the two identically from here on. M4.2's
 // fetch-completion handler is the eventual real caller; M4.1 exercises it
@@ -167,9 +167,9 @@ func splitFrontmatter(src []byte) (frontmatter, bool) {
 }
 
 // fenceFrontmatter rewrites a leading frontmatter block as a fenced code block,
-// so Glamour shows it verbatim and Chroma-highlighted ahead of the document
-// (D138). It is the fallback for frontmatter the Frontmatter Card cannot
-// show. Left as-is, CommonMark reads the opening `---` as a thematic break
+// so Glamour shows it verbatim and Chroma-highlighted ahead of the document.
+// It is the fallback for frontmatter the Frontmatter Card cannot show. Left
+// as-is, CommonMark reads the opening `---` as a thematic break
 // and the closing one as a setext heading underline, rendering the block as a
 // spurious H2 (docs/dev/glamour-gotchas.md).
 //
@@ -292,7 +292,7 @@ func expandTabs(src []byte) []byte {
 
 // renderMarkdown renders markdown to styled, width-wrapped terminal output.
 // Frontmatter is shown as a Frontmatter Card above the document, or as a code
-// block where the card cannot show it (D138). Width is the number of cells the
+// block where the card cannot show it. Width is the number of cells the
 // result may occupy; a non-positive width renders unwrapped.
 func renderMarkdown(src []byte, width int) (string, error) {
 	return renderMarkdownStyled(src, width, false)

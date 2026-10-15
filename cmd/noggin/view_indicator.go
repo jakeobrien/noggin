@@ -8,7 +8,7 @@ import (
 	"noggin/internal/tree"
 )
 
-// The view-toggle indicator (D141) is a short, right-aligned run of plain
+// The view-toggle indicator is a short, right-aligned run of plain
 // text on the Files Nav status row and the Picker's title, one slot per view
 // toggle: `h` when hidden files are shown (else a space), `i` when ignored
 // files are shown (else a space), then ` md` or `txt` for the File Filter —

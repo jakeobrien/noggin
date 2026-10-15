@@ -16,7 +16,7 @@ import (
 	"noggin/internal/tree"
 )
 
-// renderMode is how a Document Viewer shows a document (D140): Markdown
+// renderMode is how a Document Viewer shows a document: Markdown
 // (rendered by Glamour) or Text (raw source, line-numbered). One per viewer;
 // the zero value is Markdown, which is what every viewer starts on.
 type renderMode int
@@ -41,8 +41,8 @@ func (r renderMode) toggled() renderMode {
 	return modeText
 }
 
-// isNotMarkdownFile reports whether d is a Text file in the viewer's sense
-// (D140): an open file that is not a Markdown file. It is always shown as text,
+// isNotMarkdownFile reports whether d is a Text file in the viewer's sense:
+// an open file that is not a Markdown file. It is always shown as text,
 // whatever the viewer's mode. An article is never one: its converted markdown
 // can be shown either way. (Whether a file is binary is tree.IsNotBinary's
 // question, not this one's.)
@@ -71,9 +71,9 @@ func (v viewer) shownDoc() document {
 }
 
 // toggleMode flips the viewer's render mode and re-renders, carrying over what
-// the reader was looking at (D140). A find (in progress or committed) keeps its
+// the reader was looking at. A find (in progress or committed) keeps its
 // query, is re-run in the new mode, and keeps the current match by occurrence
-// ordinal, as D34 maps one; a Grep landing that fell back to the first match in
+// ordinal (ADR-0002); a Grep landing that fell back to the first match in
 // Markdown lands on ripgrep's exact location in Text instead. With no find
 // active the scroll position is kept as a proportion of the document. A Peek
 // is re-rendered too, keeping its own proportional scroll position; the Active
@@ -103,7 +103,7 @@ func (v viewer) toggleMode() viewer {
 // carriedMatch is the index, in the matches just found in this viewer's new
 // mode, of the match prev (the find state in the old mode, was saying which
 // it was) had current; -1 when there are no matches. A match with no
-// counterpart degrades to the first one, as D34 does; with no current match to
+// counterpart degrades to the first one; with no current match to
 // carry (the query only matches in this mode), the nearest one to the scroll
 // position is current.
 func (v viewer) carriedMatch(prev find, was renderMode) int {
@@ -123,7 +123,7 @@ func (v viewer) carriedMatch(prev find, was renderMode) int {
 	if prev.current < 0 || prev.current >= len(prev.matches) {
 		return nearestMatch(matches, v.vp.YOffset())
 	}
-	// Frontmatter is counted apart from the body (D138): the Frontmatter Card
+	// Frontmatter is counted apart from the body: the Frontmatter Card
 	// reshapes its text, so an occurrence the card drops must not shift every
 	// body match after it.
 	srcLines, renderedLines := frontmatterSpan(v.doc.src, v.vp.Width())
@@ -163,7 +163,7 @@ func scrollToFraction(vp *viewport.Model, f float64) {
 }
 
 // renderDoc renders d for width in the mode this viewer shows it in. muted
-// selects the unfocused-pane variant (D136).
+// selects the unfocused-pane variant.
 func (v viewer) renderDoc(d document, width int, muted bool) (string, error) {
 	if v.modeFor(d) == modeText {
 		return renderText(d.src, width, muted), nil
@@ -280,7 +280,7 @@ func layoutText(src []byte, width int) *textLayout {
 
 // lineRows is display line i as styled viewport rows: a dim number on the
 // first row and a blank gutter on the continuation rows, the body unstyled
-// (or muted, for an unfocused pane, D136). span, when it is on line i, is
+// (or muted, for an unfocused pane). span, when it is on line i, is
 // drawn reversed.
 func (l *textLayout) lineRows(i int, muted bool, span *textSpan) []string {
 	numStyle, bodyStyle := gutterStyle(), lipgloss.NewStyle()
@@ -360,7 +360,7 @@ func (l *textLayout) find(query string) []findMatch {
 // source line numbered in a dim gutter, tabs expanded, long lines soft-wrapped
 // with a blank gutter on the continuation rows. There is no syntax colour; the
 // only styling is the gutter's, and the muted variant of both for an
-// unfocused pane (D136).
+// unfocused pane.
 func renderText(src []byte, width int, muted bool) string {
 	return layoutText(src, width).render(muted)
 }

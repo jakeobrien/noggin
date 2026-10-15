@@ -9,7 +9,7 @@ import (
 	"noggin/internal/tree"
 )
 
-// D140: binary files and files over tree.MaxOpenSize are refused with a
+// Binary files and files over tree.MaxOpenSize are refused with a
 // Footer message on every open route. These tests drive each route against a
 // Markdown-named file whose content is binary (it passes the Tree/Picker
 // listing, so only the open-time check can stop it) or oversize.

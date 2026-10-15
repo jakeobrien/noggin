@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-// D141's CloseViewer (ctrl+w) acts on the focused viewer: from DV2 it closes
+// CloseViewer (ctrl+w) acts on the focused viewer: from DV2 it closes
 // DV2 (Focus -> DV1); from DV1 with DV2 open, DV1 takes over DV2's whole
 // state and DV2 closes; from DV1 alone it clears DV1; from a Navigator pane
 // it does nothing.

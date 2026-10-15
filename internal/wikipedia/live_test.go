@@ -10,13 +10,13 @@ import (
 
 // This file mirrors cmd/wikispike's live_test.go (same opt-in guard, same
 // once-per-title fetch cache across the whole test binary run) so the stage
-// tests moved here in M2.1 (D120) keep exercising real article HTML without
+// tests moved here in M2.1 keep exercising real article HTML without
 // re-fetching per test.
 //
 // WIKISPIKE_LIVE=1 go test ./internal/wikipedia -run Live -v
 
 // skipUnlessLive is the shared opt-in guard every live test starts with, so
-// `make check` stays hermetic (D101).
+// `make check` stays hermetic.
 func skipUnlessLive(t *testing.T) {
 	t.Helper()
 	if os.Getenv("WIKISPIKE_LIVE") == "" {

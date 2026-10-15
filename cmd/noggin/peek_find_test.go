@@ -7,11 +7,11 @@ import (
 	"noggin/internal/tree"
 )
 
-// TestFindNextPreviousAreNoOpsWhilePeeking checks C2a/M7.3's fix (D51,
-// TRIAGE T13/T14/T16): a pre-existing committed Find on the Active Document
-// must not let n/N drift its viewport while Peeking a different file — the
-// gap D51 describes, where the real viewport's YOffset could silently move
-// even though the screen shows peek.vp instead — and clearing Peek
+// TestFindNextPreviousAreNoOpsWhilePeeking checks C2a/M7.3's fix (TRIAGE
+// T13/T14/T16): a pre-existing committed Find on the Active Document must
+// not let n/N drift its viewport while Peeking a different file — the gap
+// where the real viewport's YOffset could silently move even though the
+// screen shows peek.vp instead — and clearing Peek
 // afterward must restore the exact pre-Peek scroll offset and match index,
 // not a drifted one.
 func TestFindNextPreviousAreNoOpsWhilePeeking(t *testing.T) {

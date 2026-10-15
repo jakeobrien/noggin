@@ -50,7 +50,7 @@ func (l layout) navigatorWidth() int { return l.roots.width }
 
 // splitViewer divides l.viewer into DV1's and DV2's regions (C3/M1.2, S1):
 // a fixed 50/50 left-right split, DV1 first, when dv2Exists; DV1 alone at
-// the full region, DV2 the zero rect, otherwise. D54: no minimum-width
+// the full region, DV2 the zero rect, otherwise. There is no minimum-width
 // guard — each half always gets its exact share of the width, however
 // narrow, unlike the Navigator column's own minNavigatorWidth/
 // minViewerWidth floor. An odd viewer width rounds DV1's half up and DV2's

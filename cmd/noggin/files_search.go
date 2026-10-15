@@ -34,8 +34,8 @@ type pickerFile struct {
 	// starredPickerFiles (below): root is the zero value when this is true
 	// (there is no covering Root to carry), and the Results/Preview row
 	// renderers (picker_view.go's pickerLocationLabel) fall back to the
-	// document's own parent directory instead of a Root's own name (D117/
-	// M8.3), the same fallback browse_list.go's buildBrowseRow already gives
+	// document's own parent directory instead of a Root's own name (M8.3),
+	// the same fallback browse_list.go's buildBrowseRow already gives
 	// an orphan browseRow. Every other pickerFile producer (listFiles) leaves
 	// this false: a file found by walking a session Root always has one.
 	orphan bool
@@ -60,7 +60,7 @@ type pickerFile struct {
 }
 
 // listFiles is the File Picker's candidate set (S3, S13): every file the File
-// Filter shows (D140) under scope, found via `rg --files` (S14) with the
+// Filter shows under scope, found via `rg --files` (S14) with the
 // filter (tree.Filter.Shows) applied on top — rg itself has no notion of it.
 // Under `All` that is Markdown plus Text files: rg lists binaries too, so the
 // binary sniff drops them. The filter is the Active Root's, applied uniformly to
@@ -76,7 +76,7 @@ type pickerFile struct {
 //
 // bounds carries the File Filter and the session-wide view toggles
 // (filesNav's, threaded in so this stays a pure function of its arguments
-// like the rest of this file). showIgnored widens rgFiles' listing (D141).
+// like the rest of this file). showIgnored widens rgFiles' listing.
 // hideDotfiles is S4/M6.2's `alt+h` toggle: when true, a
 // candidate is dropped if any path component between the Root and the file
 // itself starts with `.` (isDotfilePath) — not just the file's own base name,
@@ -115,7 +115,7 @@ func listFiles(roots []root, active int, scope pickerScope, bounds pickerBounds)
 //     — the Picker's job is finding something to open or grep, and a
 //     missing file can do neither (loadDocument would just fail on
 //     Activate, and rg has nothing to read for it either);
-//   - the File Filter does not apply (D140): a starred file stays reachable
+//   - the File Filter does not apply: a starred file stays reachable
 //     whatever the filter. Only a binary, or a file that is not a regular
 //     file, is dropped (tree.IsNotBinary, skipped for a Markdown name, as the
 //     File Filter does), as it could not be opened;
@@ -200,7 +200,7 @@ func filesOnly(files []pickerFile) []pickerFile {
 // anywhere along it: the file's own base name, or any directory component
 // between the Root and the file. filepath.Separator is deliberately not
 // used here — rgFiles documents its own output as slash-relative
-// regardless of OS (matching the porcelain-path reasoning M4.1's D46
+// regardless of OS (matching the porcelain-path reasoning M4.1
 // already settled for git status paths), so splitting on `/` is what
 // actually matches rgFiles' contract rather than the host OS's separator.
 func isDotfilePath(rel string) bool {
@@ -223,7 +223,7 @@ func isDotfilePath(rel string) bool {
 // .gitignore file when the target sits inside a git repository, so a plain,
 // non-git noggin Root with its own `.gitignore` would otherwise have it
 // silently ignored (docs/dev/ignore-rules.md). A Root is a plain folder, not necessarily a git
-// checkout, so this flag is what makes D28's "rg's ignore rules govern"
+// checkout, so this flag is what makes "rg's ignore rules govern" (ADR-0004)
 // hold for one regardless.
 //
 // --hidden is S4/M6.1: without it, rg's own default silently drops every
@@ -250,7 +250,7 @@ func isDotfilePath(rel string) bool {
 // apply to at all, not whether the rules themselves run (S4's "`.gitignore`
 // handling is unchanged everywhere").
 //
-// showIgnored is D141's alt+i: --no-ignore-vcs drops the git ignore rules
+// showIgnored is the alt+i toggle: --no-ignore-vcs drops the git ignore rules
 // (`.gitignore`, `.git/info/exclude`, the global excludes file) — the same
 // rules the Tree's own matcher stops applying — and tree.HeavyDirs are then
 // globbed out, the same folders the Tree keeps excluded while showing
@@ -278,9 +278,9 @@ func rgFiles(dir string, showIgnored bool) []string {
 
 // fileNameSource adapts []pickerFile to fuzzy.Source, exposing each file's
 // base name only — never its path — so fuzzy.FindFrom cannot see, and so
-// cannot be swayed by, path components (D31: the File Picker matches the
-// file name only).
-// String returns f's base name for File Picker fuzzy ranking (D31) — or,
+// cannot be swayed by, path components (the File Picker matches the file
+// name only).
+// String returns f's base name for File Picker fuzzy ranking — or,
 // for an article pseudo-candidate (C6/M3.5, pickerFile.article), its own
 // title instead: S6 asks for a starred article to be "matched on title",
 // and path here is a URL with no filepath.Base worth matching against (its
@@ -297,7 +297,7 @@ func (s fileNameSource) String(i int) string {
 func (s fileNameSource) Len() int { return len(s) }
 
 // fuzzyFiles ranks listFiles' candidate set against query by file name only
-// (D31) and caps the result at pickerResultCap, reporting whether the cap
+// and caps the result at pickerResultCap, reporting whether the cap
 // truncated it (S12/C2). fuzzy.FindFrom already returns matches best-first (its
 // own bonus/penalty scoring), so ranking here is just capping that order —
 // listFiles is deliberately the unranked, uncapped half of this split.
@@ -375,7 +375,7 @@ func runeIndexByByte(s string) map[int]int {
 // picker_view.go).
 //
 // Matching mirrors what actually produced the row: a literal substring
-// search (rg's --fixed-strings, D29 — a query's regex metacharacters are
+// search (rg's --fixed-strings — a query's regex metacharacters are
 // just characters) with smart case (rg's --smart-case: an all-lowercase
 // query matches either case, any uppercase makes it case-sensitive). Every
 // occurrence in the line is reported, not just the first: rg reports the
@@ -433,20 +433,20 @@ func grepMatchPositions(text, query string) []int {
 // grepResult is one matching line the Grep Picker can show (S4): which file
 // (with its Root, like pickerFile carries) it was found in, its 1-based
 // line number and the line's own text. The line number is rg's raw-file
-// count, not the Document Viewer's rendered/wrapped line index — D34 records
-// how M4.3/M4.4 bridge that.
+// count, not the Document Viewer's rendered/wrapped line index (see
+// ADR-0002); M4.3/M4.4 bridge that.
 type grepResult struct {
 	file pickerFile
 	line int
 	text string
 	// col is the byte offset in the raw source line of the line's first
 	// match, as rg reports it (submatches[0].start); the exact landing column
-	// in Text mode (D140).
+	// in Text mode.
 	col int
 }
 
 // grepArgMaxBytes bounds the total byte length of file-path arguments a
-// single rg invocation may receive (TRIAGE T1 / D43): grepFiles used to
+// single rg invocation may receive (TRIAGE T1): grepFiles used to
 // pass every file in Scope as a literal CLI argument to one rg call, so an
 // All Roots search over a large tree could push the argument list past the
 // OS's ARG_MAX — and cmd.Output()'s resulting exec error was silently
@@ -499,7 +499,7 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 }
 
 // grepPickerFiles searches query literally (S4: rg's --fixed-strings, so
-// regex metacharacters in a half-typed query are just characters — D29)
+// regex metacharacters in a half-typed query are just characters)
 // with smart case (rg's own --smart-case flag, set in grepBatch, implements
 // exactly find.go's S8 semantic: all-lowercase matches either case, any
 // uppercase makes it case-sensitive) across whatever candidate file list
@@ -512,7 +512,7 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 // S8's "whole store, no Roots involved" scope has no use for. (A thin
 // roots-based wrapper, grepFiles, once sat in front of this for the
 // listFiles case specifically; C4/M5.2 deleted it once M5.1's split left it
-// with no production caller — see D94. files_search_test.go's coverage
+// with no production caller. files_search_test.go's coverage
 // calls grepPickerFiles(listFiles(...), query) directly instead.)
 //
 // It runs rg over the *explicit* file list the caller passed in, rather
@@ -527,7 +527,7 @@ func batchFilePaths(files []pickerFile, maxBytes int) [][]pickerFile {
 // (and risking disagreeing with) it.
 //
 // The file list is run through rg in batches (batchFilePaths, grepBatch)
-// rather than one invocation (D43/M1.4a) — see grepArgMaxBytes. Batches are
+// rather than one invocation (M1.4a) — see grepArgMaxBytes. Batches are
 // merged in order and pickerResultCap/truncation (S12/C2, matching fuzzyFiles)
 // is applied across that merged total, not per batch, so a match count that
 // only exceeds the cap once batches are combined is still reported

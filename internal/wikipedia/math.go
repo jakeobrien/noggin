@@ -12,7 +12,7 @@ import (
 // renderMath replaces each Wikipedia formula (a span carrying
 // typeof="mw:Extension/math") with plain text, so the formula survives the
 // pipeline as ordinary prose instead of silently vanishing when stripChrome
-// drops image/math markup — the S6a maths exception (D104, M3.4).
+// drops image/math markup — the S6a maths exception (M3.4).
 //
 // Parsoid marks a formula as display/block-style two ways, checked against a
 // live fetch of `E (mathematical constant)`: the span carries
@@ -62,8 +62,7 @@ func renderMath(html string) (string, error) {
 // mathDataMW is the slice of Parsoid's data-mw JSON this needs: the
 // formula's raw TeX source, under body.extsrc, and whether Parsoid marked it
 // display/block-style, under attrs.display — both present for every
-// mw:Extension/math span Parsoid emits, with no OCR or extra fetch required
-// (D104).
+// mw:Extension/math span Parsoid emits, with no OCR or extra fetch required.
 type mathDataMW struct {
 	Attrs struct {
 		Display string `json:"display"`

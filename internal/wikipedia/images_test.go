@@ -146,7 +146,7 @@ func TestRenderImagesLeavesUnrecoverableNodeForStripChrome(t *testing.T) {
 }
 
 // TestArticleMarkdownFromHTMLKeepsImagePlaceholder is the full-pipeline
-// check: an image that used to vanish without a trace (pre-D104) now
+// check: an image that used to vanish without a trace now
 // survives as a backtick-wrapped, bracketed placeholder next to its
 // original position, with no dangling brackets or link markup, through
 // fetch's real successor stages (render maths, render images, strip,

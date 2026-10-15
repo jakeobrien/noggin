@@ -50,7 +50,7 @@ func filePaths(files []pickerFile) []string {
 
 // TestListFilesAppliesMarkdownClassification: only Markdown files come back;
 // everything else rg finds — Text files (.txt, LICENSE) included, until the
-// File Filter lands — is dropped (S13, D140).
+// File Filter lands — is dropped (S13).
 func TestListFilesAppliesMarkdownClassification(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -262,8 +262,8 @@ func TestFuzzyFilesRanksStrongerNameMatchAbove(t *testing.T) {
 // TestFuzzyFilesIgnoresPathComponents: a file whose directory contains the
 // query but whose base name does not is not matched, while a file whose
 // base name matches is found even though nothing in its directory does
-// (D31: "the File Picker matches the file name only, never path
-// components").
+// (the File Picker matches the file name only, never path
+// components).
 func TestFuzzyFilesIgnoresPathComponents(t *testing.T) {
 	pathOnly := pickerFileAt("/journal/unrelated.md") // dir matches, name does not
 	nameOnly := pickerFileAt("/misc/journal.md")      // name matches, dir does not
@@ -318,7 +318,7 @@ func grepLines(results []grepResult) []string {
 
 // TestGrepPickerFilesMatchesLiterally: a query containing regex metacharacters
 // matches only their literal occurrence, not what they'd mean as regex
-// (S4, D29: --fixed-strings).
+// (S4: --fixed-strings).
 func TestGrepPickerFilesMatchesLiterally(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -450,9 +450,9 @@ func TestGrepPickerFilesOnlySearchesMarkdownFiles(t *testing.T) {
 // TestGrepPickerFilesCapsAndReportsTruncation: a match count larger than
 // pickerResultCap comes back capped at that length with the truncation
 // flag set (S12/C2), the same shape fuzzyFiles gives the File Picker; a match
-// count exactly at the cap comes back untouched and unflagged (TRIAGE T3 /
-// D45, matching TestFuzzyFilesCapsAndReportsTruncation's existing coverage
-// of that boundary).
+// count exactly at the cap comes back untouched and unflagged (TRIAGE T3,
+// matching TestFuzzyFilesCapsAndReportsTruncation's existing coverage of
+// that boundary).
 func TestGrepPickerFilesCapsAndReportsTruncation(t *testing.T) {
 	requireRipgrep(t)
 	notesWithLines := func(t *testing.T, n int) []root {
@@ -486,7 +486,7 @@ func TestGrepPickerFilesCapsAndReportsTruncation(t *testing.T) {
 // TestGrepPickerFilesBatchesAcrossArgSizeLimit: with grepArgMaxBytes shrunk
 // to force one file per rg invocation, grepPickerFiles still finds matches
 // in files from every batch, merged as if it had run in a single invocation
-// (TRIAGE T1 / D43, M1.4a) — a small injected limit exercises the same
+// (TRIAGE T1, M1.4a) — a small injected limit exercises the same
 // batching boundary a real ARG_MAX overflow would, cheaply. A genuine
 // no-match under the same batching still reports "no results", not
 // something conflated with a batch that failed to run.
@@ -532,7 +532,7 @@ func TestGrepPickerFilesBatchesAcrossArgSizeLimit(t *testing.T) {
 // false positive from batch-boundary accounting (e.g. checking the cap
 // only at the end of a batch rather than as each result is appended).
 //
-// D56 (TRIAGE T23): today grepPickerFiles checks the cap per-appended-
+// TRIAGE T23: today grepPickerFiles checks the cap per-appended-
 // result inside the innermost loop regardless of batch boundaries, so this
 // test can't yet exercise a path TestGrepPickerFilesCapsAndReportsTruncation
 // doesn't already cover — kept anyway as a forward-looking regression
@@ -769,7 +769,7 @@ func TestStarredPickerFilesExcludesMissingFiles(t *testing.T) {
 }
 
 // TestStarredPickerFilesIgnoresTheFileFilter: Starred scope ignores the File
-// Filter (D140), so a starred Text file stays reachable; only a binary, which
+// Filter, so a starred Text file stays reachable; only a binary, which
 // could not be opened, is dropped.
 func TestStarredPickerFilesIgnoresTheFileFilter(t *testing.T) {
 	dir := t.TempDir()

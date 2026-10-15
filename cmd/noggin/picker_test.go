@@ -124,7 +124,7 @@ func TestPickerDismissRestoresThePreOpenFrameByteForByte(t *testing.T) {
 }
 
 // TestPickerReopenAfterDismissKeepsPreviewSize is M3.2a's own acceptance
-// criterion (D48/TRIAGE T6): dismissPicker must carry the Preview
+// criterion (TRIAGE T6): dismissPicker must carry the Preview
 // viewport's Width/Height over its reset the same way openPicker already
 // does, so a dismiss immediately followed by a reopen — with no
 // tea.WindowSizeMsg (and so no model.resize call) in between, the ordinary
@@ -205,7 +205,7 @@ func TestPickerTypesEveryPrintableKeyIncludingBindingsElsewhere(t *testing.T) {
 
 // TestPickerNonTypingKeysDoNotType is S2's other half: Cancel, Activate,
 // ActivateDV2 (C3/M1.5), PickerUp/PickerDown, the Preview scroll keys and
-// PickerMode/PickerScope are all non-printable (D2's "always typing" only
+// PickerMode/PickerScope are all non-printable (the Prompt's "always typing" rule only
 // ever binds printable keystrokes), so none of them should ever reach the
 // Prompt — checked here for every one but Cancel, which this task's earlier
 // acceptance criterion (M2.1's dismiss-on-Cancel) already covers by making
@@ -348,7 +348,7 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	m := openedFixture(t, 80, 24).withRipgrep(ripgrepAvailability{available: true})
 	m.roots = m.roots.setRoots([]root{{path: rootA}, {path: rootB}}, 0)
 	m = m.openFolder(nodeA)
-	// Expand "sub" (TRIAGE T4/D56): without at least one expanded
+	// Expand "sub" (TRIAGE T4): without at least one expanded
 	// subdirectory, m.files.expanded is empty both before and after
 	// Activate, so the reflect.DeepEqual check below would pass even if
 	// Activate started clearing or replacing expansion state — an empty
@@ -357,7 +357,7 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	m.files = m.files.move(1) // off the tree's initial selection
 	wantSelected := m.files.selected
 	// A cloned copy, not just m.files.expanded itself (still less its
-	// count): the whole key set must match afterwards (M3.3b/D49/TRIAGE
+	// count): the whole key set must match afterwards (M3.3b/TRIAGE
 	// T9), not merely its cardinality — a same-count substitution (e.g.
 	// Activate collapsing rootA's node but expanding a different one) would
 	// pass a count-only check.
@@ -441,12 +441,12 @@ func TestPickerActivateWithAReadErrorLeavesSessionRunning(t *testing.T) {
 // own acceptance criterion (S10, S11): activating a Grep search whose match
 // sits deep in a long file makes that file the Active Document, with the
 // Document Viewer scrolled so the matched line is on screen and indicated
-// — the rendered-content re-derivation D34 calls for, not rg's raw-file
+// — the rendered-content re-derivation of ADR-0002, not rg's raw-file
 // line number directly (which the fixture's own reflow, mirroring
 // TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight's setup, is
 // exactly why the assertion below checks by content/offset rather than
 // pinning the exact rendered line index the way that Preview-side test can
-// for raw text). This single-match fixture alone does not isolate D34's
+// for raw text). This single-match fixture alone does not isolate the
 // ordinal-resolution bridge (resolveGrepLanding) from a plain "land
 // somewhere near the match" bridge: with only one occurrence, disabling
 // resolveGrepLanding's ordinal lookup would still happen to land in the
@@ -667,15 +667,15 @@ func TestPickerActivateGrepResultLandsOnTheSelectedOccurrenceNotJustTheFirst(t *
 }
 
 // TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen
-// is resolveGrepLanding's *other* explicit degrade trigger (D34's headline
+// is resolveGrepLanding's *other* explicit degrade trigger (the headline
 // motivating example, "the query spanned syntax Glamour removed"): an HTML
 // comment is dropped from Glamour's render entirely, so a grep match whose
 // only occurrence sits inside one has no counterpart anywhere in the
 // rendered content (ordinal >= len(rend), not the frontmatter-offset
 // branch the sibling test below exercises) — and, with no other occurrence
 // in the body either, commitQuery's own nearestMatch(matches, 0) has
-// nothing to fall back to, exercising D34's full "if there are none, open
-// it plain at the top" chain end to end.
+// nothing to fall back to, exercising the full "if there are none, open it
+// plain at the top" chain end to end.
 func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -705,7 +705,7 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 		t.Error("degrade path found a find match, want none: the query's only raw occurrence is inside an HTML comment Glamour strips entirely")
 	}
 	if got.dv1.offset() != 0 {
-		t.Errorf("Document Viewer offset = %d, want 0 (opened plain at the top per D34's full degrade)", got.dv1.offset())
+		t.Errorf("Document Viewer offset = %d, want 0 (opened plain at the top via the full degrade)", got.dv1.offset())
 	}
 	// Scoped to the viewer pane's own rendering, not the whole frame (S5's
 	// two-line Sources Nav rows use a bare Reverse(true) on an active row's
@@ -720,10 +720,10 @@ func TestPickerActivateGrepResultInsideStrippedHTMLCommentDegradesToPlainOpen(t 
 }
 
 // TestPickerActivateGrepResultInsideFrontmatterLandsOnIt: frontmatter is
-// shown (D138), so a Grep Result on a frontmatter line has a rendered
-// counterpart in the Frontmatter Card and lands on it, not on the body's
-// later occurrence of the same query. (Under D5's stripping this was a
-// degrade case.)
+// shown, so a Grep Result on a frontmatter line has a rendered counterpart
+// in the Frontmatter Card and lands on it, not on the body's later
+// occurrence of the same query. (When frontmatter was stripped before
+// rendering, this was a degrade case.)
 func TestPickerActivateGrepResultInsideFrontmatterLandsOnIt(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -764,7 +764,7 @@ func TestPickerActivateGrepResultInsideFrontmatterLandsOnIt(t *testing.T) {
 	}
 	view := got.dv1.view()
 	if !strings.Contains(view, "report") || !strings.Contains(view, "╭") {
-		t.Error("frontmatter card is not shown in the rendered view (D138)")
+		t.Error("frontmatter card is not shown in the rendered view")
 	}
 	if !hasReverse(view) {
 		t.Error("no line indicated, want the frontmatter match highlighted")
@@ -837,7 +837,7 @@ func TestPickerActivateGrepResultCommitsFindWithNextPreviousTraversal(t *testing
 }
 
 // TestPickerPreviewShowsSelectedFileRawFromTop is M3.2's own acceptance
-// criterion, as D140 amends it: the Preview pane's content is the selected
+// criterion: the Preview pane's content is the selected
 // Result's raw file bytes — no Glamour styling — laid out by the Text
 // renderer, and starts scrolled to the top.
 func TestPickerPreviewShowsSelectedFileRawFromTop(t *testing.T) {
@@ -994,7 +994,7 @@ func numberedLinesFixture(t *testing.T, dir, name string, n, matchLine int, text
 // TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight is M4.2's
 // own acceptance criterion (S9): activating a Grep search whose match sits
 // deep in a long file leaves the Preview scrolled so that line is within
-// the visible window, and carries the highlight style (D140: the exact span, not the whole line).
+// the visible window, and carries the highlight style (the exact span, not the whole line).
 func TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -1021,7 +1021,7 @@ func TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight(t *testing.T) 
 		t.Fatalf("matched line %d (0-based) not within the visible window [%d, %d)", idx, yOff, yOff+height)
 	}
 
-	// D140: only the matched span is reversed, not the whole line.
+	// Only the matched span is reversed, not the whole line.
 	rows := strings.Split(m.picker.preview.GetContent(), "\n")
 	want := gutterStyle().Render(fmt.Sprintf("%3d ", matchLine)) + "the target " + matchSpanStyle.Render("report") + " line"
 	if rows[idx] != want {
@@ -1116,7 +1116,7 @@ func pickerRoot(t *testing.T) (model, string) {
 // extra keystroke — no toggle, no special syntax, just typing a query
 // either mode would already take for a non-dotfile. File mode matches the
 // dotfile's *name*; Grep mode separately matches its *content* — the two
-// naturally take different queries (D31: File mode never looks at path or
+// naturally take different queries (File mode never looks at path or
 // content), so this checks each mode's own natural match, not one query
 // surviving a mode switch (TestPickerModeSwitchCarriesThePromptAndRerunsTheSearch,
 // just below, already owns that).
@@ -1856,7 +1856,7 @@ func TestPickerGrepModeWiresToGrepPickerFilesAndRendersRows(t *testing.T) {
 }
 
 // TestPickerGrepPreviewMatchesTextViewerAfterActivation is tk-uld's
-// acceptance criterion (D140): the Preview of a Grep Result is what a
+// acceptance criterion: the Preview of a Grep Result is what a
 // Text-mode viewer shows once the Result is activated — soft wrap, expanded
 // tabs, the gutter and the exact match span — here on a line that wraps and
 // carries a tab before the match.

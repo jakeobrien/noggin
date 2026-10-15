@@ -79,7 +79,7 @@ var pipeline = articleMarkdown
 
 // articleMarkdown is the spike's pipeline: fetch by exact title, then run the
 // internal/wikipedia conversion pipeline (render maths, render images, strip
-// chrome, delink, convert, clean up — moved there in M2.1/D120 so cmd/noggin
+// chrome, delink, convert, clean up — moved there in M2.1 so cmd/noggin
 // can import it too). articleMarkdownFromHTML is kept as a thin wrapper so
 // live tests can share one cached fetch across every stage-specific check
 // instead of each re-fetching the same four titles (TRIAGE T1, PLAN M2.5) —

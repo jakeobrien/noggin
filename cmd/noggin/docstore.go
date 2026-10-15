@@ -13,14 +13,14 @@ import (
 // 10x the per-Root `Recent` view cap (S6's 100), generous for a store that
 // spans every Root a session has ever touched while keeping the on-disk
 // file (well under 100KB at this row size) and any future in-memory scan of
-// it trivially cheap (D68).
+// it trivially cheap.
 const docStoreCap = 1000
 
 // docStoreName is the document store's file name, alongside the starred-
 // Roots store under the same data directory (dataDir, M1.1) but a distinct
 // file and format (M1.2): unlike the Roots store's one-path-per-line list,
 // each document record carries several fields (docRecord). It has no
-// attachment to Roots at all (D61) — a record is addressed purely by its
+// attachment to Roots at all (ADR-0005) — a record is addressed purely by its
 // own key, a file's absolute path or (C6/M1.5) an article's canonical URL,
 // independent of which Root, if any, covers a file's path.
 const docStoreName = "documents"

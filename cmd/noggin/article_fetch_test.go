@@ -124,7 +124,7 @@ func TestActivateWikipediaResultDispatchesFetchWithIndicator(t *testing.T) {
 
 // TestActivateWikipediaResultOpensCanonicalArticleInDV1 is S3's full round
 // trip for the unmodified key: once the fetch completes, DV1 renders the
-// canonical article (D129/M4.1's articleDocument), the indicator is gone,
+// canonical article (M4.1's articleDocument), the indicator is gone,
 // and Activate's usual side effects (S4 recency, S9 history) apply exactly
 // as they do for a file (TestActivateRecordsLastViewed's own shape).
 func TestActivateWikipediaResultOpensCanonicalArticleInDV1(t *testing.T) {

@@ -597,9 +597,9 @@ func TestStaleRowAbsentWhenNotStale(t *testing.T) {
 
 // TestStaleRowPresentWhenStale is S9/C3/M5.1's own done-when, positive half:
 // the row claims its one line and shows staleMessage — driven at 80 cols, a
-// width the old Footer-suffix design (D49, appendStaleSuffix) never
-// rendered the indicator at all: it only ever fit above ~200-244 cols
-// (D53), since hintText's own greedy fill left it no room. A dedicated row
+// width the old Footer-suffix design (appendStaleSuffix) never
+// rendered the indicator at all: it only ever fit above ~200-244 cols,
+// since hintText's own greedy fill left it no room. A dedicated row
 // has no such competition.
 func TestStaleRowPresentWhenStale(t *testing.T) {
 	l := computeLayout(80, 24, false, true)
@@ -654,7 +654,7 @@ func TestStaleRowDoesNotAffectFooterContent(t *testing.T) {
 }
 
 // TestStaleRowCoexistsWithATransientMessage: unlike the old Footer-suffix
-// design (where D22's transient message and S10's standing indicator shared
+// design (where the transient message and S10's standing indicator shared
 // one line and the message had to win), the row is its own line now — a
 // transient message on the Footer and the stale row both show at once.
 func TestStaleRowCoexistsWithATransientMessage(t *testing.T) {
@@ -690,7 +690,7 @@ func TestRenderStaleRowTruncatesRatherThanWraps(t *testing.T) {
 	}
 }
 
-// TestSnapshotStalenessUntracksADocumentWhoseStatFails is D49/the fix for
+// TestSnapshotStalenessUntracksADocumentWhoseStatFails is the fix for
 // a narrow TOCTOU window: a docPath that cannot be statted at snapshot
 // time must be left untracked (docPath == ""), not half-recorded with a
 // zero-value ModTime/Size that could never compare equal to the real

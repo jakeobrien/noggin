@@ -2,9 +2,9 @@ package tree
 
 import "testing"
 
-// TestIsMarkdown locks the Markdown classification (D140, GLOSSARY.md
-// "Markdown file"): extensions and the conventional extensionless names both
-// match case-insensitively (D23); `.txt` and `LICENSE` are Text, not Markdown.
+// TestIsMarkdown locks the Markdown classification (GLOSSARY.md "Markdown
+// file"): extensions and the conventional extensionless names both match
+// case-insensitively; `.txt` and `LICENSE` are Text, not Markdown.
 func TestIsMarkdown(t *testing.T) {
 	cases := []struct {
 		name string

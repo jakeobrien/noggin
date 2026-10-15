@@ -12,7 +12,7 @@ import (
 // starts with "mw:File" — figures, thumbnails, inline file references) with
 // a plain-text placeholder, so the image survives the pipeline as a short
 // textual hint instead of vanishing without a trace when stripChrome would
-// otherwise remove it — the S6a image exception (D104, M3.5).
+// otherwise remove it — the S6a image exception (M3.5).
 //
 // SPEC S3a's priority order, applied per image: the figure's caption,
 // falling back to the img's alt-text, falling back to a filename derived

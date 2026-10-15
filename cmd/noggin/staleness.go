@@ -32,7 +32,7 @@ const staleMessage = "something changed on disk; press R to refresh"
 // about (root plus every directory node under it). A check is one os.Stat
 // per directory (plus one per existing `.gitignore`), and only a directory
 // whose mtime moved is re-listed (tree.ListDir) and compared against what
-// the tree shows there (D139). A directory's mtime moves for entries the
+// the tree shows there (ADR-0006). A directory's mtime moves for entries the
 // tree never shows — editor swap/probe files, .DS_Store, a non-Markdown or
 // gitignored file, the temp file of an atomic save — so the re-list is what
 // keeps those from raising the indicator, while still never calling
@@ -60,7 +60,7 @@ type staleBaseline struct {
 
 	// opts are what the tree was walked under (File Filter, hidden/ignored
 	// toggles), so re-listing a directory compares like with like: a change
-	// to a file the tree hides never raises the indicator (D139, D140, D141).
+	// to a file the tree hides never raises the indicator.
 	opts tree.Options
 }
 
@@ -70,7 +70,7 @@ type staleBaseline struct {
 // `.gitignore`'s stamp (exists=false if it had none). A `.gitignore` is
 // tracked on its own because it is never a tree entry, yet editing,
 // creating or removing one can change what the tree shows anywhere beneath
-// it — so any change to one counts as stale outright (D139).
+// it — so any change to one counts as stale outright.
 type dirSnapshot struct {
 	modTime   time.Time
 	entries   []tree.Entry
@@ -313,7 +313,7 @@ func (m model) resetStaleBaseline() model {
 }
 
 // rebaseTreeStaleness re-snapshots the Root's tree after a File Filter toggle
-// re-walked it, so staleness compares listings under the new filter (D139).
+// re-walked it, so staleness compares listings under the new filter.
 // Unlike resetStaleBaseline it keeps the tracked documents and any raised
 // indicator: nothing re-read a document, so none is known-good again. The
 // generation moves on so a check still running against the old filter is
@@ -350,7 +350,7 @@ func (m model) runStaleCheck(staleCheckMsg) (model, tea.Cmd) {
 }
 
 // checkStaleOnFocus runs a check the moment the terminal regains focus
-// (tea.FocusMsg, D139) — the common "edited it in another window, came
+// (tea.FocusMsg) — the common "edited it in another window, came
 // back" case — instead of waiting up to a full staleCheckInterval. It is
 // in addition to the periodic timer, not a replacement: terminals that
 // never report focus (or tmux without focus-events) still get the timer,

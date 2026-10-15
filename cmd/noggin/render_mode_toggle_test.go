@@ -122,9 +122,10 @@ func TestToggleKeepsCommittedFindAndMatchOrdinalTextToMarkdown(t *testing.T) {
 	}
 }
 
-// Occurrences Glamour drops (here an HTML comment) shift the ordinal mapping, as in
-// D34: the Nth occurrence in one mode is the Nth in the other, so a match that
-// has no counterpart degrades to the first match rather than failing.
+// Occurrences Glamour drops (here an HTML comment) shift the ordinal mapping
+// (ADR-0002): the Nth occurrence in one mode is the Nth in the other, so a
+// match that has no counterpart degrades to the first match rather than
+// failing.
 func TestToggleWithAnUnmappableMatchDegradesToTheFirstMatch(t *testing.T) {
 	m := toggleModel(t, "<!-- needle -->\n\nbody needle\n")
 	m = press(t, m, keys.RenderMode.Keys()[0]) // to Text: two matches
@@ -245,7 +246,7 @@ func TestToggleWithoutFindKeepsProportionalScroll(t *testing.T) {
 }
 
 // The Frontmatter Card drops the comment's occurrence, so the body is counted
-// apart from the frontmatter (D138) and the body's matches still line up.
+// apart from the frontmatter and the body's matches still line up.
 func TestToggleCountsFrontmatterApartFromTheBody(t *testing.T) {
 	m := toggleModel(t, "---\ntitle: 'needle' # needle\n---\n\nbody needle one\n\nbody needle two\n")
 	m = committedFind(t, m, "needle", 2) // Markdown: card, one, two

@@ -38,17 +38,17 @@ func longDocFixture(t *testing.T) (m model, docA, docB, docC string) {
 }
 
 // TestReActivatingTheAlreadyActiveDocumentPreservesScrollPosition regression-
-// tests D91's flagged-but-untested side effect (TRIAGE T43): re-Activating a
+// tests a flagged-but-untested side effect (TRIAGE T43): re-Activating a
 // document that is already the Active Document, with no navigation in
 // between, preserves its scroll position rather than resetting to top.
-// D91 put M6.2's docOffsets save-before-leaving/restore-on-arrival logic
+// M6.2's docOffsets save-before-leaving/restore-on-arrival logic lives
 // inside viewer.open() itself rather than only in the history walk, so
 // every Activate funnels through it, including a no-motion re-Activate of
 // the document already open — open() banks the outgoing (= incoming)
 // document's offset via rememberOffset(), then immediately restores that
 // same value from docOffsets, a no-op by construction rather than a special
-// case, per D91's own reasoning. This was flagged as untested by review
-// (D91) rather than demonstrated broken; this test closes that gap.
+// case. This was flagged as untested by review rather than demonstrated
+// broken; this test closes that gap.
 func TestReActivatingTheAlreadyActiveDocumentPreservesScrollPosition(t *testing.T) {
 	m, docA, _, _ := longDocFixture(t)
 

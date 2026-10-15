@@ -8,7 +8,7 @@ import (
 	"noggin/internal/tree"
 )
 
-// D141: alt+h (hidden files) and alt+i (ignored files) are session-wide view
+// alt+h (hidden files) and alt+i (ignored files) are session-wide view
 // toggles shared by the Files Nav Tree and the Picker, shown by a
 // right-aligned indicator on the Files Nav status row.
 

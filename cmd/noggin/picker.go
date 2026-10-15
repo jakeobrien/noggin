@@ -70,9 +70,9 @@ func pickerDebounceFor(mode pickerMode) time.Duration {
 // no search may escape for a sub-threshold query.
 //
 // The number was originally S12/C2's own ("at least 3 characters", cycle C2);
-// C6/S13 revises it down to 2 (C2/D31), on the same one-character-queries-
-// are-too-broad reasoning, now weighed against 2 being the shortest useful
-// Wikipedia title prefix.
+// C6/S13 revises it down to 2, on the same one-character-queries-are-too-broad
+// reasoning, now weighed against 2 being the shortest useful Wikipedia title
+// prefix.
 const pickerQueryMinLength = 2
 
 // pickerWikipediaResultLimit bounds a Wikipedia title search the same way
@@ -168,8 +168,8 @@ type picker struct {
 	selected int
 
 	// preview is the Preview pane's own viewport (M3.2): the file's raw
-	// source laid out by the Text renderer (D140: soft wrap, line-number
-	// gutter), whatever the file is — no Glamour, unlike the Document
+	// source laid out by the Text renderer (soft wrap, line-number gutter),
+	// whatever the file is — no Glamour, unlike the Document
 	// Viewer's own vp (viewer.go) — scrolled independently of the Prompt/Results. Sized
 	// from model.resize the same way m.viewer/m.files/m.roots already are
 	// (computePickerLayout's preview rect), so PageUp/PageDown/HalfPageUp/
@@ -208,8 +208,8 @@ type picker struct {
 	// previewSrc is the loaded file's bytes (or, with previewPlain, a short
 	// explanatory message) and previewLayout their Text layout at the
 	// Preview's current width, nil until built or after a resize
-	// invalidates it (D140: the Preview uses the Text renderer). previewSpan
-	// is the match span currently drawn reversed in it, so a move to another
+	// invalidates it. previewSpan is the match span currently drawn reversed
+	// in it, so a move to another
 	// match in the same file re-styles only two lines.
 	previewSrc    []byte
 	previewPlain  bool
@@ -238,7 +238,7 @@ type picker struct {
 func newPicker() picker {
 	vp := viewport.New(viewport.WithWidth(0), viewport.WithHeight(0))
 	// Same reason viewer.go's newViewer clears it: keys reach the Preview
-	// through handlePickerInput's own non-typing set (keymap.go/D2), never
+	// through handlePickerInput's own non-typing set (keymap.go), never
 	// through the viewport's own KeyMap.
 	vp.KeyMap = viewport.KeyMap{}
 	vp.FillHeight = true
@@ -247,13 +247,13 @@ func newPicker() picker {
 
 // resetPicker is the shared "bump seq, snapshot preview size, replace with
 // newPicker(), restore seq, restore preview size" sequence every full Picker
-// state reset needs (D51/M2.1a): openPicker and dismissPicker both discard
-// the whole picker struct, but two fields must survive that regardless —
+// state reset needs: openPicker and dismissPicker both discard the whole
+// picker struct, but two fields must survive that regardless —
 // see dismissPicker's doc comment for why seq and the Preview viewport's
 // width/height are carried over rather than reset with everything else.
 // Before this was extracted, both callers duplicated the sequence verbatim,
 // which is exactly the shape that let one of them (dismissPicker) ship
-// without the preview-size carry-over until D48/M3.2a caught it — a third
+// without the preview-size carry-over until that was caught — a third
 // reset path (anticipated around M4.x's grep preview) now has nowhere to
 // independently regress that fix; it calls this instead of repeating the
 // sequence a third time.
@@ -308,14 +308,14 @@ func (m model) openPicker() (model, tea.Cmd) {
 //   - the Preview viewport's width/height, carried over the same way and
 //     for the same reason openPicker carries them into its own reset: they
 //     are a property of the terminal (model.resize), not of the closed
-//     Picker's state. Without this (D48/M3.2a), a session that opens the
+//     Picker's state. Without this, a session that opens the
 //     Picker, dismisses it and reopens it with no tea.WindowSizeMsg in
 //     between — the common case, since dismissing never resizes the
 //     terminal — would render an empty 0x0 Preview until the next resize,
 //     because newPicker()'s fresh viewport.Model starts at 0x0 and nothing
 //     would set it again.
 //
-// Both fields are carried over by resetPicker (D51/M2.1a), the same helper
+// Both fields are carried over by resetPicker, the same helper
 // openPicker uses; this is a bare call to it, not a duplicated sequence.
 //
 // The one thing that does outlive a dismissal is m.lastPicker (see
@@ -452,7 +452,7 @@ func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
-// toggleIgnoredFiles is the Picker's alt+i (D141): toggleHiddenFiles' twin
+// toggleIgnoredFiles is the Picker's alt+i: toggleHiddenFiles' twin
 // for the session-wide ignored-files toggle. Showing ignored files changes
 // ripgrep's listing (rgFiles' --no-ignore-vcs); the Starred scope never asks
 // ripgrep and Wikipedia mode has no files, so both just relabel the rows on
@@ -469,7 +469,7 @@ func (m model) toggleIgnoredFiles() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
-// togglePickerFilter is alt+m: it flips the File Filter (D140) and re-searches.
+// togglePickerFilter is alt+m: it flips the File Filter and re-searches.
 // With an Active Root it is that Root's filter (the Files Nav's alt+m state, so
 // the Tree is re-walked too); with Wikipedia active there is no Root and it
 // flips the most recently set value instead (setFileFilter covers both). Either
@@ -658,7 +658,7 @@ func (p picker) setPreviewSize(width, height int) picker {
 // grepMode has no candidate here — M4.1 gave the Results list its own
 // grepMode rows and M4.2 gives the Preview pane its own grepMode target
 // (pickerPreviewTarget, below), and M4.3's grepMode Activate
-// (activateGrepPicker) needs D34's extra ordinal-resolution data a plain
+// (activateGrepPicker) needs the extra ordinal-resolution data a plain
 // pickerFile can't carry, so it has its own candidate lookup
 // (pickerGrepCandidate) instead of sharing this one; this function's own
 // contract ("what fileMode's Activate would open") is why it must not
@@ -679,7 +679,7 @@ func (p picker) pickerPreviewCandidate(bounds pickerBounds) (pickerFile, bool) {
 // Picker opens scrolled to the matched line with that line highlighted").
 // line is 0 for a File Result (previews from the top instead, M3.2's own
 // contract, unchanged) and for "nothing selected"; col is ripgrep's byte
-// column of the match on that line (D140's exact span). Unlike
+// column of the match on that line (the exact span). Unlike
 // pickerPreviewCandidate, this covers both modes — the Preview pane itself
 // has no reason to wait for M4.3's Activate hand-off the way Activate
 // does, since showing the matched file's raw bytes never changes the
@@ -718,8 +718,8 @@ func (p picker) pickerPreviewTarget(bounds pickerBounds) (f pickerFile, line, co
 //
 // The read is raw bytes, straight from disk — no loadDocument, no
 // renderMarkdown: M3.2 is explicit that the Preview shows "raw, unrendered
-// text", unlike the Document Viewer's own Glamour-rendered vp. D140 only
-// changes how that text is drawn (showPreview), not what it is.
+// text", unlike the Document Viewer's own Glamour-rendered vp. showPreview
+// only changes how that text is drawn, not what it is.
 func (p picker) syncPreview(bounds pickerBounds) picker {
 	f, line, col, ok := p.pickerPreviewTarget(bounds)
 	if !ok {
@@ -748,7 +748,7 @@ func (p picker) syncPreview(bounds pickerBounds) picker {
 			// file" error, the same misleading-as-broken text
 			// activatePickerInto's own article branch avoids.
 			//
-			// C6/M4.2: Activate now does fetch this same row (D119's "every
+			// C6/M4.2: Activate now does fetch this same row (the "every
 			// network call is user-initiated" list: search, Activate, Peek,
 			// Refresh — a Results-list selection move, which is what drives
 			// this method, is deliberately not on that list), so the
@@ -758,7 +758,7 @@ func (p picker) syncPreview(bounds pickerBounds) picker {
 			src = []byte("no preview — Wikipedia articles are not previewed from here")
 			p.previewPlain = true
 		} else {
-			// D140: the Preview never reads a binary or oversize file
+			// The Preview never reads a binary or oversize file
 			// either; it says why instead.
 			err := tree.CheckOpenable(f.path)
 			if err == nil || !(errors.Is(err, tree.ErrBinary) || errors.Is(err, tree.ErrTooLarge)) {
@@ -777,7 +777,7 @@ func (p picker) syncPreview(bounds pickerBounds) picker {
 	return p.showPreview(0)
 }
 
-// showPreview draws the loaded file into the Preview viewport (D140): the
+// showPreview draws the loaded file into the Preview viewport: the
 // Text renderer's soft wrap, expanded tabs and line-number gutter, so the
 // Preview of a Grep Result matches what a Text-mode viewer shows once it is
 // activated. A Grep Result's match is highlighted as the exact span ripgrep
@@ -977,19 +977,19 @@ func (m model) applyPickerResults(msg pickerResultsMsg) model {
 //
 // grepMode is delegated to activateGrepPicker (M4.3): a Grep Result's
 // activation additionally has to land the Document Viewer on the matched
-// line (D34), which fileMode's plain openDocument has no reason to do.
+// line, which fileMode's plain openDocument has no reason to do.
 func (m model) activatePicker() (model, tea.Cmd) {
 	return m.activatePickerInto(dv1Pane)
 }
 
 // activatePickerInto is activatePicker's targeted form (C3/S3, M1.5): the
 // Picker's own home for the `ctrl+` targeting modifier the Files Nav
-// already has (M1.4) — keys.ActivateDV2 (ctrl+enter, ctrl+l fallback, D55)
+// already has (M1.4) — keys.ActivateDV2 (ctrl+enter, ctrl+l fallback)
 // loads the previewed Result into DV2 instead of DV1, creating DV2 first if
 // absent, and moves Focus there (openDocumentInto's own behavior, S3);
 // plain Activate keeps targeting DV1 via the dv1Pane wrapper above. No
 // Picker-specific carve-out is needed for handlePickerInput's always-typing
-// Prompt (TRIAGE T3, closed structurally by D55): both of ActivateDV2's
+// Prompt (TRIAGE T3, closed structurally): both of ActivateDV2's
 // chords are raw control bytes, matched in handlePickerInput before the
 // fallthrough to the Prompt, so a literal `l`/`L` keystroke there is
 // unaffected.
@@ -1088,7 +1088,7 @@ func (m model) activatePickerInto(target pane) (model, tea.Cmd) {
 // title that turns out to be a redirect (rare: title search itself already
 // matches real page titles), a later Fetch resolves the true canonical URL
 // under a separate record; this one is not migrated or merged (see
-// wikipedia.ArticleURL's own doc comment, and D122's precedent of accepting
+// wikipedia.ArticleURL's own doc comment, and the precedent of accepting
 // the narrower guarantee for a title noggin has not yet confirmed is
 // canonical).
 func (m model) togglePickerStar() model {
@@ -1117,7 +1117,7 @@ func (m model) togglePickerStar() model {
 // Result, in whichever mode is open — the one piece togglePickerStar needs
 // that pickerPreviewCandidate (fileMode) and pickerGrepCandidate (grepMode)
 // do not already share directly, since Star (unlike Activate) does not
-// otherwise care which mode produced the Result or need D34's extra
+// otherwise care which mode produced the Result or need the extra
 // ordinal-resolution data pickerGrepCandidate's grepResult also carries.
 func (m model) pickerSelectedPath() (string, bool) {
 	if m.picker.mode == grepMode {
@@ -1169,19 +1169,19 @@ func (p picker) pickerGrepCandidate(bounds pickerBounds) (grepResult, bool) {
 // activateGrepPicker is activatePicker's grepMode counterpart (M4.3, S10,
 // S11): the matched file becomes the Active Document, and the Document
 // Viewer lands on the matched line — re-derived in the rendered content's
-// own line space rather than trusted from rg's raw-file line number, per
-// D34: Glamour's rendering (re-flow, tab expansion, markdown syntax
+// own line space rather than trusted from rg's raw-file line number
+// (ADR-0002): Glamour's rendering (re-flow, tab expansion, markdown syntax
 // removed) does not preserve rg's line numbers across that boundary.
 //
 // The hand-off reuses find.go's own machinery (commitQuery, applyCurrentMatch)
-// rather than a bespoke scroll — D34's own reasoning, and what lets M4.4's
+// rather than a bespoke scroll — which is also what lets M4.4's
 // next/previous traversal fall out of this for free rather than needing its
 // own wiring: commitQuery already puts the Document Viewer into exactly the
 // "committed find" state FindNext/FindPrevious already know how to walk.
 // commitQuery's own nearestMatch(matches, 0) default ("first match from the
-// top, or none") is D34's degrade path verbatim, so the current match is
-// only overridden here when resolveGrepLanding actually resolves an ordinal
-// — never left in a half-set state, and never a failed or crashed
+// top, or none") is the ordinal-mapping degrade path verbatim, so the current
+// match is only overridden here when resolveGrepLanding actually resolves an
+// ordinal — never left in a half-set state, and never a failed or crashed
 // activation either way.
 //
 // A read error surfaces as a footer message the same way activatePicker's
@@ -1220,7 +1220,7 @@ func (m model) activateGrepPickerInto(target pane) model {
 	return m.dismissPicker()
 }
 
-// resolveGrepLanding is D34's occurrence-ordinal bridge from a Grep
+// resolveGrepLanding is the occurrence-ordinal bridge (ADR-0002) from a Grep
 // Result's raw-file line number to a match index into
 // findMatches(rendered, query): "the Nth literal occurrence of the query"
 // is a property of the text itself, invariant to how it later gets wrapped
@@ -1228,10 +1228,10 @@ func (m model) activateGrepPickerInto(target pane) model {
 // Nth occurrence in the rendered content too. rendered is src as rendered
 // at width.
 //
-// The Frontmatter Card (D138) reshapes its text ("title: x" is drawn as
+// The Frontmatter Card reshapes its text ("title: x" is drawn as
 // "title  x"), so frontmatter and body are counted as separate segments
 // (frontmatterSpan): a raw frontmatter occurrence the card does not
-// reproduce cannot shift every body match after it. ok is false — D34's
+// reproduce cannot shift every body match after it. ok is false — the
 // explicit degrade trigger — when the resolved ordinal has no counterpart in
 // its segment of the rendered matches (the card dropped it, or Glamour
 // removed or reordered occurrences before it, e.g. inside stripped markdown
@@ -1241,7 +1241,8 @@ func (m model) activateGrepPickerInto(target pane) model {
 // reports one Result per matching line, not per occurrence within it
 // (grepBatch's own comment), so a line with several occurrences of query
 // picks its first as the line's representative match — the same
-// approximation D34 accepts for markdown-syntax-adjacent matches.
+// approximation the ordinal mapping accepts for markdown-syntax-adjacent
+// matches.
 func resolveGrepLanding(src []byte, rendered, query string, line, width int) (ordinal int, ok bool) {
 	raw := findMatches(string(src), query)
 	target := -1
@@ -1272,7 +1273,7 @@ func resolveGrepLanding(src []byte, rendered, query string, line, width int) (or
 }
 
 // textGrepLanding is the index into a Text-mode find's matches of the Grep
-// Result at ripgrep's 1-based line and byte column col (D140): the match on
+// Result at ripgrep's 1-based line and byte column col: the match on
 // that source line starting at that column, once the column is translated from
 // the raw line into the display line (tabs expanded, control characters and a
 // BOM replaced or dropped, as textLines does). When no match starts exactly
@@ -1325,8 +1326,8 @@ func matchesBefore(matches []findMatch, line int) int {
 // Activate opens the previewed Result and dismisses the Picker (M3.3,
 // activatePicker); keys.ActivateDV2 (ctrl+enter, ctrl+l fallback) is
 // Activate's C3/S3/M1.5 targeting twin, routing the same open-and-dismiss
-// into DV2 (activatePickerInto) — both its chords are raw control bytes
-// (D55), so neither is ever mistaken for typed query text; PickerMode and
+// into DV2 (activatePickerInto) — both its chords are raw control bytes,
+// so neither is ever mistaken for typed query text; PickerMode and
 // PickerScope switch mode and Scope in place (M5.1 switchPickerMode, M5.2
 // switchPickerScope). All are recognised and handled here rather than
 // falling through to the Prompt.

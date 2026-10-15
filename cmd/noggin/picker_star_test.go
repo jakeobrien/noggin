@@ -113,9 +113,9 @@ func TestPickerStarNoOpWithNothingSelected(t *testing.T) {
 	}
 }
 
-// TestPickerStarTogglingUpdatesTheRenderedMarkerLive is D72's resolution of
+// TestPickerStarTogglingUpdatesTheRenderedMarkerLive is the resolution of
 // TRIAGE T8, end to end: unlike the Files Nav's own m.files.starred cache
-// (M2.7/D70, which needed an explicit resync when a star changed via a
+// (M2.7, which needed an explicit resync when a star changed via a
 // different surface), the Picker's Results rows read the S1 store straight
 // off m.docs on every render (pickerResultsContent's own docs parameter),
 // so there is nothing to go stale — toggling PickerStar must show the
@@ -170,7 +170,7 @@ func TestPickerStarTogglingUpdatesTheRenderedMarkerLive(t *testing.T) {
 // TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode is M2.13's
 // Grep-mode variant of TestPickerStarTogglingUpdatesTheRenderedMarkerLive,
 // closing the mode-parity gap M2.11's acceptance wording left open (TRIAGE
-// T19/D78): the same live, no-refresh-needed marker toggle must hold for a
+// T19): the same live, no-refresh-needed marker toggle must hold for a
 // Grep Result's row, not only a File Result's.
 func TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode(t *testing.T) {
 	dir := t.TempDir()

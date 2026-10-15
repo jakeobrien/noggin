@@ -3,7 +3,7 @@
 // onward — provides the title-search and canonical-fetch capability the
 // Wikipedia Source (C6) is built on. cmd/noggin imports this package;
 // cmd/wikispike stays as a thin CLI over it for eyeballing conversion quality
-// across many articles (D120).
+// across many articles.
 package wikipedia
 
 // ArticleMarkdownFromHTML runs the conversion pipeline (render maths, render

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// D141: Options.HideDotfiles and Options.ShowIgnored.
+// Tests for Options.HideDotfiles and Options.ShowIgnored.
 
 func optionsFixture(t *testing.T) string {
 	return writeTree(t, map[string]string{

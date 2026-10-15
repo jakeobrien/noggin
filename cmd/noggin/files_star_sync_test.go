@@ -9,7 +9,7 @@ import (
 )
 
 // TestFilesNavMarkerSyncsWhenStarredFromDocumentViewer is M2.7's acceptance
-// criterion (TRIAGE T7 / D70): before this fix, only toggleDocStar (the
+// criterion (TRIAGE T7): before this fix, only toggleDocStar (the
 // Files Nav's own Star action) refreshed m.files.starred, so a star flipped
 // from a focused Document Viewer's Active Document left that same file's
 // Files Nav row showing a stale marker until the pane's next

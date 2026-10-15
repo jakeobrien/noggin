@@ -67,7 +67,7 @@ func TestPeekIntoRecentRowDV2(t *testing.T) {
 }
 
 // TestActivateIntoRecentRowDV1AndDV2 confirms activateInto's flat-row
-// resolution (already M4.3/D80's fix) still works from Recent, not just
+// resolution (already M4.3's fix) still works from Recent, not just
 // Starred, into both viewers — the other half of M4.5's own acceptance
 // wording ("tests activate and peek a Recent row into DV1 and into DV2").
 func TestActivateIntoRecentRowDV1AndDV2(t *testing.T) {

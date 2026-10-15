@@ -27,7 +27,7 @@ func fixtureArticle() document {
 // document type itself: an article document is keyed by its canonical URL
 // (S4's store key), labelled by its title rather than a URL-derived name,
 // and told apart from a file document by isArticle() — the same "://"
-// heuristic docStoreKey already used for the document store (D127).
+// heuristic docStoreKey already used for the document store.
 func TestArticleDocumentIdentity(t *testing.T) {
 	d := fixtureArticle()
 	if !d.isOpen() {

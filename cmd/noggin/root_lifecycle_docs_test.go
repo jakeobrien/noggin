@@ -14,7 +14,7 @@ import (
 // TestUnstarringRootLeavesDocumentStoreUntouched is M2.6's own acceptance
 // criterion, verbatim: un-starring a Root holding starred and recently-
 // viewed documents leaves every document record byte-identical afterwards
-// (S2's "nothing about the Root lifecycle destroys document stars", D61).
+// (S2's "nothing about the Root lifecycle destroys document stars", ADR-0005).
 //
 // This does not depend on M3.1 (recording `lastViewed` on Activate): the
 // "recently-viewed" record here is seeded directly into the S1 store via

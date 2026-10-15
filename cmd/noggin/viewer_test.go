@@ -11,7 +11,7 @@ import (
 const fixturePath = "testdata/fixture.md"
 
 // frontmatterLines are the fixture's frontmatter as its Frontmatter Card shows
-// it (D138): each key, then its value, in source order.
+// it: each key, then its value, in source order.
 var frontmatterLines = []string{
 	"title", "Fixture Document",
 	"tags", "noggin, fixture",
@@ -83,7 +83,7 @@ func TestFenceFrontmatter(t *testing.T) {
 				t.Errorf("fenceFrontmatter(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 			// Line numbers must survive the rewrite: resolveGrepLanding maps
-			// ripgrep's raw-file lines straight onto this text (D34).
+			// ripgrep's raw-file lines straight onto this text (ADR-0002).
 			if in, out := strings.Count(tc.in, "\n"), strings.Count(got, "\n"); in != out {
 				t.Errorf("fenceFrontmatter changed the line count from %d to %d", in, out)
 			}

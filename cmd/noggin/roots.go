@@ -52,11 +52,11 @@ type resolution struct {
 	message string // rejection notice, or "" when the launch was clean
 }
 
-// startsOnAll reports whether the active Root starts on the File Filter `All`
-// (D140): launching `noggin <file>` on a Text file puts the file in the Tree
-// beside it, whether the launch directory is an ad-hoc or an already starred
-// Root. A file noggin would refuse to open (binary, oversize) does not count,
-// since it is never shown.
+// startsOnAll reports whether the active Root starts on the File Filter `All`:
+// launching `noggin <file>` on a Text file puts the file in the Tree beside
+// it, whether the launch directory is an ad-hoc or an already starred Root. A
+// file noggin would refuse to open (binary, oversize) does not count, since it
+// is never shown.
 func (r resolution) startsOnAll() bool {
 	if r.docPath == "" || r.active < 0 || r.active >= len(r.roots) {
 		return false
@@ -329,7 +329,7 @@ func strictlyInside(parent, child string) bool {
 // root, if any, path sits strictly inside — or false when no root covers it
 // (an "orphan" document, S1/S5: a record is never attached to a Root, so
 // which one "owns" it for display purposes is always derived by path, never
-// stored). Roots never nest (C1/D6), so at most one can ever match; this
+// stored). Roots never nest (ADR-0003), so at most one can ever match; this
 // stops at the first regardless; path is expected already cleaned/absolute,
 // same as every other strictlyInside caller.
 func rootForPath(roots []root, path string) (root, bool) {

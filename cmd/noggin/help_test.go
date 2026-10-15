@@ -241,7 +241,7 @@ func TestHelpModalOwnsTheKeyboardWhileOpen(t *testing.T) {
 	}
 }
 
-// TestHelpModalSwallowsQuitToo checks D26's specific claim directly: Quit is
+// TestHelpModalSwallowsQuitToo checks one specific claim directly: Quit is
 // among the keys the modal traps, not just movement — pressing q or ctrl+c
 // while Help is open must not quit the program.
 func TestHelpModalSwallowsQuitToo(t *testing.T) {
@@ -261,10 +261,10 @@ func TestHelpModalSwallowsQuitToo(t *testing.T) {
 	}
 }
 
-// TestHelpOverlayNeverExceedsTheTerminal is the edge case behind D26's
-// clamping: the viewer's full binding list (scrollActions plus ten more, see
-// helpBindings) renders taller than a short terminal. Without clamping, the
-// compositor would size its canvas to the modal's own height rather than the
+// TestHelpOverlayNeverExceedsTheTerminal is the edge case behind the
+// overlay's clamping: the viewer's full binding list (scrollActions plus ten
+// more, see helpBindings) renders taller than a short terminal. Without
+// clamping, the compositor would size its canvas to the modal's own height rather than the
 // terminal's (verified directly against this lipgloss build), growing the
 // frame past what View() can draw inline. The clamp must keep the rendered
 // frame at exactly width x height regardless.
@@ -323,7 +323,7 @@ func TestHelpUnreachableWhilePickerOpen(t *testing.T) {
 }
 
 // TestHelpBindingsListPickersOwnBindingsFromEveryPane is M2.3a's own
-// acceptance criterion (D46/TRIAGE T5): the Help Modal is by design
+// acceptance criterion (TRIAGE T5): the Help Modal is by design
 // unreachable while the Picker owns the keyboard (handlePickerInput), so
 // the three panes Help *is* reachable from, before the Picker opens, are
 // where its own in-Picker actions (PickerUp/PickerDown/PickerMode/
@@ -350,8 +350,8 @@ func TestHelpBindingsListPickersOwnBindingsFromEveryPane(t *testing.T) {
 	}
 }
 
-// TestHelpBindingsNameThePickerFromEveryPane is helpBindings' half of D39's
-// "M2.3 makes the [ctrl+p] binding... discoverable": the Help Modal's
+// TestHelpBindingsNameThePickerFromEveryPane is helpBindings' half of M2.3's
+// requirement that the ctrl+p binding be discoverable: the Help Modal's
 // full binding list for every pane now names the Picker, the same
 // always-available-regardless-of-focus treatment Edit/Navigator already
 // get.
@@ -417,7 +417,7 @@ func TestHelpBindingsListPeekOnlyForFilesPane(t *testing.T) {
 }
 
 // TestCtrlPNamedOnlyInFilesPaneHelp is the Help Modal's half of
-// TestCtrlPNamedOnlyByPeekDV2 (footer_test.go): C3/M1.4a's D55 rebind makes
+// TestCtrlPNamedOnlyByPeekDV2 (footer_test.go): C3/M1.4a's rebind makes
 // ctrl+p a legitimate binding again (PeekDV2), but only reachable from
 // filesPane, the one helpBindings case PeekDV2 belongs to.
 func TestCtrlPNamedOnlyInFilesPaneHelp(t *testing.T) {
@@ -427,7 +427,7 @@ func TestCtrlPNamedOnlyInFilesPaneHelp(t *testing.T) {
 		}
 	}
 	if box := helpBox(filesPane); !strings.Contains(box, "ctrl+p") {
-		t.Errorf("filesPane help modal = %q, want it to name ctrl+p (PeekDV2, D55)", box)
+		t.Errorf("filesPane help modal = %q, want it to name ctrl+p (PeekDV2)", box)
 	}
 }
 

@@ -17,7 +17,7 @@ import (
 // WIKISPIKE_LIVE=1 go test ./cmd/wikispike -run Live -v
 
 // skipUnlessLive is the shared opt-in guard every live test starts with, so
-// `make check` stays hermetic (D101).
+// `make check` stays hermetic.
 func skipUnlessLive(t *testing.T) {
 	t.Helper()
 	if os.Getenv("WIKISPIKE_LIVE") == "" {

@@ -30,7 +30,7 @@ import (
 // Refresh (S2) (C2a/M9.1) is unaffected by the same change and stays
 // global — reachable from every one of these three panes, the same way
 // Navigator/Picker already are — so all three panes list it. CloseViewer
-// (D141) is listed for the viewers only: from a viewer it always acts (DV1's
+// is listed for the viewers only: from a viewer it always acts (DV1's
 // own ctrl+w takes over DV2 or clears DV1), while from a nav pane it is a
 // no-op whenever DV2 does not exist, the common case. Peek (S7) and
 // C3/S3's two targeting modifiers, ActivateDV2/PeekDV2 (C3/M1.4), are
@@ -48,7 +48,7 @@ import (
 // order.
 //
 // keys.FilesMode/keys.FilesScope (C4/M4.1) join filesPane's list here too
-// (M4.8, TRIAGE T20, D81), mirroring M2.8's keys.Star treatment above: they
+// (M4.8, TRIAGE T20), mirroring M2.8's keys.Star treatment above: they
 // were a real, frequently-used action (S5's Browse mode/scope cycle) with no
 // footer hint anywhere. Files-Nav-only by design, like Peek/ActivateDV2/
 // PeekDV2 below, so they appear only in this case, placed right after
@@ -109,10 +109,11 @@ func navHint() key.Binding {
 // against. ToggleHidden (S4/M6.2, C2a/M9.1) is included for the same
 // reason PickerMode/PickerScope are: it always does something while the
 // Picker is open, regardless of mode or Scope. Star (S2/M2.5, the same
-// ctrl+s every pane stars with since D141) joins them for the identical reason — star/un-star always acts on whatever
-// Result is currently selected. ActivateDV2 closes the list: the Picker opens
-// its selection in DV2 as the Files Nav does, a real action with no other
-// footer hint. PickerUp/PickerDown are left off, like the nav panes' Up/Down.
+// ctrl+s every pane stars with) joins them for the identical reason —
+// star/un-star always acts on whatever Result is currently selected.
+// ActivateDV2 closes the list: the Picker opens its selection in DV2 as the
+// Files Nav does, a real action with no other footer hint. PickerUp/PickerDown
+// are left off, like the nav panes' Up/Down.
 func pickerHints() []key.Binding {
 	return []key.Binding{
 		keys.Activate, keys.Cancel,

@@ -2,7 +2,7 @@ package main
 
 import "charm.land/lipgloss/v2"
 
-// modeBehaviour is what differs between the two Render Modes (D140) once a
+// modeBehaviour is what differs between the two Render Modes once a
 // document is shown: how Find locates matches, how the current one is
 // indicated, and how a Grep Result's location maps onto a match. render
 // resolves the mode a document is shown in once (viewer.docMode) and
@@ -60,8 +60,8 @@ func (markdownBehaviour) clearIndication(v viewer) viewer {
 	return v
 }
 
-// landGrep is D34's occurrence-ordinal bridge; its degrade path remembers
-// ripgrep's own location so a switch to Text can land exactly (D140).
+// landGrep is the occurrence-ordinal bridge (ADR-0002); its degrade path
+// remembers ripgrep's own location so a switch to Text can land exactly.
 func (markdownBehaviour) landGrep(v viewer, line, col int) viewer {
 	if ordinal, ok := resolveGrepLanding(v.doc.src, v.vp.GetContent(), v.findState.input.Value(), line, v.vp.Width()); ok {
 		v.findState.current = ordinal
@@ -112,7 +112,7 @@ func (textBehaviour) clearIndication(v viewer) viewer {
 	return v.withTextMatch(nil)
 }
 
-// landGrep lands on ripgrep's own line and column, no D34 guess.
+// landGrep lands on ripgrep's own line and column, no occurrence-ordinal guess.
 func (textBehaviour) landGrep(v viewer, line, col int) viewer {
 	if ordinal, ok := textGrepLanding(v.doc.src, v.findState.matches, line, col); ok {
 		v.findState.current = ordinal

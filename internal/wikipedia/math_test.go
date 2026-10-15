@@ -137,7 +137,7 @@ func TestRenderMathDisplayFormulaFallsBackToRawSourceOnTermtexError(t *testing.T
 }
 
 // TestArticleMarkdownFromHTMLKeepsMathAsProse is the full-pipeline check:
-// a formula that used to vanish without a trace (pre-D104) now survives as
+// a formula that used to vanish without a trace now survives as
 // readable text and leaves no mid-sentence gap either way (Unicode or raw
 // source), through fetch's real successor stages (strip, delink, convert,
 // clean up).

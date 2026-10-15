@@ -33,8 +33,8 @@ const (
 // non-Navigator fallback.
 var focusOrder = []pane{rootsPane, filesPane, dv1Pane}
 
-// focusRing is the order Tab/Shift+Tab cycle Focus through (D141,
-// model.cycleFocus). Unlike focusOrder it includes DV2: cycling only ever
+// focusRing is the order Tab/Shift+Tab cycle Focus through
+// (model.cycleFocus). Unlike focusOrder it includes DV2: cycling only ever
 // lands on a visible pane, so a missing DV2 is simply skipped.
 var focusRing = []pane{rootsPane, filesPane, dv1Pane, dv2Pane}
 
@@ -127,7 +127,7 @@ type model struct {
 	// carries a transient footer notice — a launch-time rejection (S1) or a
 	// refused action (e.g. activating a broken root, S3); M4.2 will add
 	// clear-on-next-keypress and richer hints, but showing it at all cannot
-	// wait for that milestone (see D22).
+	// wait for that milestone.
 	roots   rootsNav
 	message string
 
@@ -612,7 +612,7 @@ func (m model) ensureDV2() model {
 	return m.resize(m.width, m.height, resizeCauseSecondViewer)
 }
 
-// closeViewer is D141's ctrl+w: it acts on the focused Document Viewer.
+// closeViewer is the ctrl+w handler: it acts on the focused Document Viewer.
 //
 //   - DV2 focused: closeDV2 (Focus moves to DV1).
 //   - DV1 focused, DV2 open: DV1 takes over DV2's whole viewer state —
@@ -651,9 +651,9 @@ func (m model) closeViewer() model {
 	return m.resize(m.width, m.height, resizeCauseViewerClosed)
 }
 
-// closeDV2 is S4/C3/M2.1's binding (ctrl+w from DV2 since D141): closes DV2, a no-op if it does
-// not exist (mirroring FocusDV2's own "a bare request has no document to
-// create/close" shape). Focus is set to dv1Pane directly (not through
+// closeDV2 is S4/C3/M2.1's binding (ctrl+w from DV2): closes DV2, a no-op if
+// it does not exist (mirroring FocusDV2's own "a bare request has no document
+// to create/close" shape). Focus is set to dv1Pane directly (not through
 // resolveFocus's generic focusOrder fallback) when it was on dv2Pane: DV2 no
 // longer being visible would otherwise make resolveFocus(dv2Pane) fall back
 // through rootsPane/filesPane/dv1Pane, landing wherever the Navigator
@@ -730,7 +730,7 @@ func (m model) activate() (model, tea.Cmd) {
 
 // activateInto is activate's targeted form (C3/S3, M1.4): the Files Nav's
 // selected file loaded into target rather than always DV1 — dv2Pane when the
-// ActivateDV2 modifier (ctrl+enter / ctrl+l, D55) was used, dv1Pane for the
+// ActivateDV2 modifier (ctrl+enter / ctrl+l) was used, dv1Pane for the
 // plain key.
 // Every refusal above (folder, empty pane, read error) applies identically
 // whichever viewer is targeted, and is checked before openDocumentInto runs,
@@ -783,8 +783,8 @@ func (m model) activateInto(target pane) (model, tea.Cmd) {
 //
 // C6/M5.2: row.article routes through fetchArticleInto (S3) instead of
 // loadDocument — row.path is the article's canonical URL here, not a real
-// file, the same D129 landmine M4.3's Refresh already sidestepped; row.name
-// already carries the article's title (buildDocBrowseRow), exactly
+// file, the same path-is-a-URL landmine M4.3's Refresh already sidestepped;
+// row.name already carries the article's title (buildDocBrowseRow), exactly
 // what Fetch takes, mirroring activatePickerInto's own f.article branch
 // (picker.go). fetchArticleInto handles Focus, DV2 creation and recency
 // itself on completion (applyArticleFetch), so this returns its Cmd
@@ -833,7 +833,7 @@ func (m model) activateRoot() model {
 }
 
 // toggleFileFilter flips the Active Root's File Filter between Markdown and
-// All (D140) and re-walks the Root under it. The selection falls back to the
+// All and re-walks the Root under it. The selection falls back to the
 // nearest surviving ancestor when the toggle hides it (filesNav.
 // withFilteredRoot); expansion and open documents are untouched. With the
 // Wikipedia Source active there is no Root and so no filter: a Footer message
@@ -878,7 +878,7 @@ func (m model) setFileFilter(next tree.Filter) (model, bool) {
 	return m.rebaseTreeStaleness(), true
 }
 
-// setViewToggles sets the session-wide hidden/ignored toggles (D141), the one
+// setViewToggles sets the session-wide hidden/ignored toggles, the one
 // path the Files Nav's and the Picker's alt+h/alt+i both take. With an Active
 // Root the Root is re-walked under them (selection falling back to the nearest
 // surviving ancestor, withFilteredRoot) and staleness re-snapshotted, exactly
@@ -1178,7 +1178,7 @@ func (m model) toggleActiveDocStar() model {
 	return m.withDocRecord(v.doc.path, rec)
 }
 
-// editFinishedMsg reports that $EDITOR has exited (S10, D3). path is the
+// editFinishedMsg reports that $EDITOR has exited (S10). path is the
 // document that was handed off, carried on the message rather than re-read
 // from the viewer at delivery time, since focus and the open document could in
 // principle have changed while the terminal was away. err is any failure
@@ -1194,7 +1194,8 @@ type editFinishedMsg struct {
 }
 
 // startEdit hands the active document to $EDITOR (falling back to vi),
-// releasing the terminal for the duration and resuming when it exits (D3).
+// releasing the terminal for the duration and resuming when it exits
+// (ADR-0001).
 // It is global, not pane-specific: S10 names "the active document", not "the
 // focused pane". With no document open it reports that in the footer rather
 // than doing nothing.
@@ -1268,7 +1269,7 @@ func (m model) focusPane(target pane) model {
 }
 
 // cycleFocus moves Focus to the next (dir 1) or previous (dir -1) visible
-// pane in focusRing, wrapping (D141's Tab/Shift+Tab). Panes that are not
+// pane in focusRing, wrapping (Tab/Shift+Tab). Panes that are not
 // visible are skipped, so a hidden or width-dropped Navigator and a missing
 // DV2 drop out of the ring and nothing is ever revealed; with one visible
 // pane (or none) it is a no-op. Routed through setFocus like every other
@@ -1316,8 +1317,8 @@ func (m model) cycleFocus(dir int) model {
 // every other Wikipedia fetch (fetchArticleInto), unlike a file, which
 // still starts Peek synchronously with a nil Cmd.
 func (m model) togglePeek() (model, tea.Cmd) {
-	// S3: the unmodified key always targets DV1 (ctrl+p targets DV2, D55,
-	// see togglePeekInto) — an explicit target, not the focused-viewer
+	// S3: the unmodified key always targets DV1 (ctrl+p targets DV2, see
+	// togglePeekInto) — an explicit target, not the focused-viewer
 	// accessor, since Peek's target is never "whichever pane has Focus" (Peek is
 	// Files-Nav-only by design, so Focus is never on a viewer pane here
 	// anyway).
@@ -1325,7 +1326,7 @@ func (m model) togglePeek() (model, tea.Cmd) {
 }
 
 // togglePeekInto is togglePeek's targeted form (C3/S3, M1.4): Peek routed to
-// target — dv2Pane under the PeekDV2 modifier (ctrl+p, D55), creating DV2 first
+// target — dv2Pane under the PeekDV2 modifier (ctrl+p), creating DV2 first
 // if absent, dv1Pane for the plain key. Every rule togglePeek's own comment
 // lists is per-target here: the second-press toggle-off applies to the peek
 // living in *that* viewer (each viewer has its own Peek state, S2, so a peek
@@ -1339,7 +1340,7 @@ func (m model) togglePeek() (model, tea.Cmd) {
 // While the Files Nav is in a flat-list mode (Recent/Starred, M4.2/M4.3)
 // this resolves against the flat row on screen instead (selectedFlatRow),
 // not the unrelated tree row underneath (TRIAGE T21, M4.5's own fix for
-// Peek — activateInto/toggleDocStar already got this in M4.3/D80) —
+// Peek — activateInto/toggleDocStar already got this in M4.3) —
 // delegating to togglePeekFlatRowInto, which also refuses a broken Starred
 // row (S3) with the same "no longer exists" wording activateFlatRowInto
 // already gives Activate.
@@ -1389,8 +1390,8 @@ func (m model) togglePeekInto(target pane) (model, tea.Cmd) {
 // selected.
 //
 // C6/M5.2: row.article routes through fetchArticleInto (S3, peek == true)
-// instead of loadDocument, the same D129-landmine dodge activateFlatRowInto
-// makes for Activate — the already-Peeking/already-Active carve-out just
+// instead of loadDocument, the same path-is-a-URL landmine dodge
+// activateFlatRowInto makes for Activate — the already-Peeking/already-Active carve-out just
 // above already covers an article correctly (row.path is its canonical URL,
 // exactly what v.doc.path holds once open, article_fetch.go's
 // articleDocument), so no separate check is needed for it here.
@@ -1538,7 +1539,7 @@ func (m model) refresh() (model, tea.Cmd) {
 //
 // C6/M4.3: an open article routes to refreshArticleFetchInto instead —
 // loadDocument would try os.ReadFile on a URL and fail loudly, the exact
-// landmine D129's own revisit note named. The returned Cmd is what refresh's
+// landmine of treating a URL as a path. The returned Cmd is what refresh's
 // caller batches to actually run the re-fetch; nothing here can report a
 // dropped find synchronously the way the file branch does, since the article
 // content (and whatever it does to hasFindMatches) does not change until
@@ -1581,7 +1582,7 @@ func (m model) refreshViewer(p pane) (model, string, tea.Cmd) {
 // ("dv1 …, dv2 …"), a single drop leaves DV1's own wording unprefixed and
 // names DV2's explicitly, matching every pre-C3/M1.6a test's wording.
 //
-// It never overwrites an existing m.message (TRIAGE T11, D61): a Root-walk
+// It never overwrites an existing m.message (TRIAGE T11): a Root-walk
 // or per-viewer read failure set earlier in the same refresh/resize call is
 // strictly more consequential than a find silently dropping, the same
 // priority refreshViewer's own read-failure branch already gives itself —
@@ -1623,7 +1624,7 @@ func (m model) startFind() (model, tea.Cmd) {
 	}
 	next, cmd := v.startFind()
 	m = m.withFocusedViewer(next)
-	// C2a/M7.3 (D51/TRIAGE T14): routed through setFocus like every other
+	// C2a/M7.3 (TRIAGE T14): routed through setFocus like every other
 	// Focus assignment, not a bare m.focus = ..., for consistency with the
 	// chokepoint's own stated invariant — harmless in practice today only
 	// because the peeking() guard above always fires first, but this way
@@ -1680,7 +1681,7 @@ func (m model) handleHelpInput(msg tea.KeyPressMsg) model {
 }
 
 // finishEdit resumes after $EDITOR exits, re-rendering the edited document
-// from disk (D3's "no file watching" — this is the one explicit re-read) so
+// from disk (ADR-0006: no file watching — this is the one explicit re-read) so
 // changes are immediately visible. Reusing loadDocument and openDocument keeps
 // this the same read-and-open path as M2.3's activate and S1's launch, rather
 // than a third copy of it. A failure to launch or a since-vanished file is a
@@ -1758,7 +1759,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.runStaleCheck(msg)
 	case staleResultMsg:
 		return m.applyStaleResult(msg)
-	// D139: regaining terminal focus checks staleness immediately (View sets
+	// Regaining terminal focus checks staleness immediately (View sets
 	// ReportFocus). Not a keypress, so it never clears m.message.
 	case tea.FocusMsg:
 		return m.checkStaleOnFocus()
@@ -1771,7 +1772,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseWheelMsg:
 		return m.handleMouseWheel(msg), nil
 	case tea.KeyPressMsg:
-		// A transient message (D22) is displaced by the action it reports on;
+		// A transient message is displaced by the action it reports on;
 		// any keypress after that clears it (S11), whether or not this one
 		// sets a fresh message of its own.
 		m.message = ""
@@ -1820,7 +1821,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m.focusPane(dv2Pane), nil
-		// CloseViewer (D141) lives in this global switch, so — like every
+		// CloseViewer lives in this global switch, so — like every
 		// other binding here — it is unreachable while a find is editing, the
 		// Help Modal is open or the Picker is open. closeViewer itself decides
 		// what Focus it acts on.
@@ -1845,7 +1846,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// but the query lives in the Document Viewer regardless of which pane
 		// currently has focus.
 		//
-		// C2a/M7.3 (D51/TRIAGE T13): both are silent no-ops while Peeking, the
+		// C2a/M7.3 (TRIAGE T13): both are silent no-ops while Peeking, the
 		// same shape startEdit/startFind already had — without this guard a
 		// pre-existing committed Find on the Active Document lets n/N drift
 		// the real viewport's YOffset while the screen shows peek.vp instead,
@@ -1893,7 +1894,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, keys.StarredPrevious) {
 				return m.cycleStarred(-1), nil
 			}
-			// Edit is viewer-only (D141): the same physical key is Rename on
+			// Edit is viewer-only: the same physical key is Rename on
 			// the Sources Nav and does nothing on the Files Nav.
 			if key.Matches(msg, keys.Edit) {
 				return m.startEdit()
@@ -1922,7 +1923,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// creating it if absent. Neither can be confused with its plain
 			// twin — key.Matches compares the whole keystroke string, so
 			// "ctrl+enter"/"ctrl+l" never match Activate's "enter" and
-			// "ctrl+p" never matches Peek's "p" (D55).
+			// "ctrl+p" never matches Peek's "p".
 			if key.Matches(msg, keys.ActivateDV2) {
 				return m.activateInto(dv2Pane)
 			}
@@ -1940,7 +1941,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Expand/Collapse leave the selected node itself unchanged
 			// (only the rows around it), so only LineUp/LineDown count.
 			//
-			// C2a/M7.3 (D51/TRIAGE T16): this also fires on a boundary-clamped
+			// C2a/M7.3 (TRIAGE T16): this also fires on a boundary-clamped
 			// LineUp/LineDown that leaves the selected index unchanged (already
 			// at the top/bottom) — an accepted broadening of "any selection
 			// change", not a bug, since re-arriving at the same file just
@@ -1949,7 +1950,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m = m.clearPeek()
 			}
 			if next, handled := m.files.handleKey(msg); handled {
-				// Collapse can climb to the parent folder (D141), a
+				// Collapse can climb to the parent folder, a
 				// selection change like any other.
 				if key.Matches(msg, keys.Collapse) && next.selected != m.files.selected {
 					m = m.clearPeek()
@@ -2140,7 +2141,7 @@ func (m model) resize(width, height int, cause resizeCause) model {
 	// "search cleared"/"search dismissed" verbatim still passes — DV2's is
 	// named explicitly ("dv2 search …") since an unprefixed message would be
 	// ambiguous once two viewers exist, matching the lowercase dv1/dv2 style
-	// keymap.go's help text already uses (D57).
+	// keymap.go's help text already uses.
 	findWasEditing := m.dv1.findEditing()
 	findHadMatches := m.dv1.hasFindMatches()
 	m.dv1 = m.dv1.setSize(viewerContent.width, viewerContent.height)
@@ -2271,7 +2272,7 @@ var (
 // terminal — nothing was left in the alt screen buffer to restore on exit,
 // and mouse wheel events were never captured, so they fell through to the
 // terminal's own native scrollback instead of scrolling a pane), as is
-// ReportFocus (D139). Every other field (cursor, window title, ...) stays at
+// ReportFocus. Every other field (cursor, window title, ...) stays at
 // its zero value.
 func (m model) View() tea.View {
 	v := tea.NewView(paintCanvas(m.render(), m.width, m.height, theme))
@@ -2292,7 +2293,7 @@ func (m model) View() tea.View {
 	// button is pressed the way MouseModeAllMotion would.
 	v.MouseMode = tea.MouseModeCellMotion
 	// Terminal focus events drive an immediate staleness check on refocus
-	// (D139, checkStaleOnFocus). Terminals that don't support them ignore
+	// (checkStaleOnFocus). Terminals that don't support them ignore
 	// the request; the periodic check covers those.
 	v.ReportFocus = true
 	return v
@@ -2461,7 +2462,7 @@ func (m model) paneTitle(p pane) string {
 // right now, since rootsPane's ordinary hints (Activate "open", Star
 // "star" …) no longer apply while every other key types into the row's
 // input instead (model.handleRenameInput); otherwise a transient message
-// (D22) when one is set; otherwise the open Picker's own hints
+// when one is set; otherwise the open Picker's own hints
 // (pickerHintText, M2.3) when it is open, or the focused pane's key hints
 // (hintText) otherwise, truncated to fit (S11). Update clears m.message on
 // every keypress, so a message shown here never survives past the next key.

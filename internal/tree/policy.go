@@ -10,8 +10,8 @@ import (
 )
 
 // markdown is the single, trivially adjustable declaration of what noggin
-// classifies as a Markdown file (D140, GLOSSARY.md). Extensions and the
-// conventional extensionless names are matched case-insensitively (D23).
+// classifies as a Markdown file (GLOSSARY.md). Extensions and the
+// conventional extensionless names are matched case-insensitively.
 // Every other non-binary file is a Text file.
 var markdown = struct {
 	exts  map[string]bool
@@ -30,7 +30,7 @@ var markdown = struct {
 }
 
 // IsMarkdown reports whether a file with the given base name is a Markdown
-// file (D140): a `.md`/`.markdown`/`.mdown`/`.mkd` extension or an
+// file: a `.md`/`.markdown`/`.mdown`/`.mkd` extension or an
 // extensionless `README`/`CHANGELOG`, case-insensitive. `.txt` and `LICENSE`
 // are Text files, not Markdown.
 //
@@ -44,7 +44,7 @@ func IsMarkdown(name string) bool {
 	return markdown.names[strings.ToUpper(name)]
 }
 
-// Filter is the File Filter (D140): which files the Tree lists. Directories
+// Filter is the File Filter: which files the Tree lists. Directories
 // are always listed. The zero value is FilterMarkdown, the session default.
 type Filter int
 

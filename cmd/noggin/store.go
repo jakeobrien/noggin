@@ -10,7 +10,7 @@ import (
 
 // storeSubdir and storeName locate the starred-roots file under noggin's data
 // directory (dataDir, S1). One plain file, hand-editable, so a moved root can
-// be repaired directly in an editor (S2). This is a clean break from C1/D7's
+// be repaired directly in an editor (S2). This is a clean break from the old
 // config-directory location: an existing config-directory `roots` file is
 // never read or migrated here (S1) — main.go's loadStarredRoots is the only
 // reader, and it now resolves exclusively through dataDir.
@@ -228,9 +228,9 @@ func renameStore(path, target, name string) ([]storedRoot, error) {
 // same hazard, and the same escaping scheme, as the Document store's
 // <title>/<key> fields (docstore.go's escapeDocField/unescapeDocField,
 // M1.7/M1.8). Kept as this store's own copy rather than a shared call,
-// since the two stores are deliberately separate formats (D21/D67, the
-// Roots and Document store line formats respectively) that should
-// not need to import each other's parsing details to stay correct.
+// since the two stores are deliberately separate formats (the Roots
+// and Document store line formats respectively) that should not need to
+// import each other's parsing details to stay correct.
 func escapeStoreField(field string) string {
 	r := strings.NewReplacer(`\`, `\\`, "\t", `\t`, "\n", `\n`)
 	return r.Replace(field)

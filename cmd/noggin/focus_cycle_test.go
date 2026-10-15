@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-// D141: Tab cycles Focus forward Sources -> Files -> DV1 -> DV2 -> Sources
+// Tab cycles Focus forward Sources -> Files -> DV1 -> DV2 -> Sources
 // and Shift+Tab walks the same ring backward, skipping every pane that is not
 // visible. With a single focusable pane it is a no-op, and it never reveals a
 // hidden Navigator.

@@ -7,7 +7,7 @@ import (
 	"noggin/internal/tree"
 )
 
-// D141: Left in the Files Nav Tree collapses an expanded folder in place, and
+// Left in the Files Nav Tree collapses an expanded folder in place, and
 // otherwise climbs: a file or collapsed folder inside a folder collapses that
 // parent and selects it. At the top level, and in Recent/Starred, it does
 // nothing.

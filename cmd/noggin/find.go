@@ -11,8 +11,8 @@ import (
 
 // find is the viewer's S8 search state: the query prompt, the matches it
 // currently produces and which one is indicated. It is the viewer's alone
-// (D4's viewport-scrolling-only shape extends naturally to this: search
-// moves the same viewport, it does not add a cursor).
+// (the viewport-scrolling-only shape of ADR-0002 extends naturally to this:
+// search moves the same viewport, it does not add a cursor).
 //
 // A match's position is computed once, directly, rather than through
 // viewport.Model's own SetHighlights/HighlightNext/HighlightPrevious
@@ -25,7 +25,7 @@ import (
 // number correctly instead, against the escape-stripped content, and this
 // file drives EnsureVisible/StyleLineFunc with it.
 //
-// In Text mode (D140) none of that applies: there is no Glamour ANSI in the
+// In Text mode none of that applies: there is no Glamour ANSI in the
 // body, matches are found in the source lines (textLayout.find) and only the
 // matched span is drawn (viewer.withTextMatch).
 type find struct {
@@ -43,9 +43,9 @@ type find struct {
 	current int
 
 	// landing is ripgrep's own (line, column) for a Grep landing that fell
-	// back to the first match in Markdown (D34's degrade path); nil
-	// otherwise. It is kept with the find so a switch to Text can land
-	// exactly (D140), and dropped as soon as the current match moves.
+	// back to the first match in Markdown (the ordinal-mapping degrade
+	// path); nil otherwise. It is kept with the find so a switch to Text can
+	// land exactly, and dropped as soon as the current match moves.
 	landing *grepLanding
 }
 
@@ -58,7 +58,7 @@ type grepLanding struct{ line, col int }
 // wraps to the pane width), so this is directly the viewport's line index,
 // not a further wrapping of it.
 //
-// In Text mode (D140) a match is found in the source lines instead:
+// In Text mode a match is found in the source lines instead:
 // line is still the viewport row the match starts on (a match can span several
 // soft-wrapped rows; endLine is the one it ends on), src is the source line
 // and colStart/colEnd the byte range within that line. Which of the two a
@@ -110,11 +110,11 @@ func (v viewer) commitFind() viewer {
 // end state commitFind leaves a typed search in (not editing, matches
 // computed, the nearest one indicated), but for a query that arrives
 // already decided rather than typed a keystroke at a time (the Grep
-// Picker's query hand-off, M4.3/M4.4, D34) rather than through startFind's
+// Picker's query hand-off, M4.3/M4.4) rather than through startFind's
 // "begin blank and focus the input" path.
 //
 // current defaults to nearestMatch(matches, 0) — the first match from the
-// top, or none — which is deliberately also D34's own degrade path for a
+// top, or none — which is deliberately also the degrade path for a
 // Grep Result whose landing spot could not be re-derived in the rendered
 // document: activateGrepPicker calls this unconditionally and only
 // overrides current when it has a resolved ordinal to place it at instead.

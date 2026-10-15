@@ -8,7 +8,7 @@ import (
 	"noggin/internal/tree"
 )
 
-// TestCyclingToAShorterFlatListReClampsSelection is TRIAGE T23/D82's first
+// TestCyclingToAShorterFlatListReClampsSelection is TRIAGE T23's first
 // call site: selecting a lower Tree row, then cycling to a Recent/Starred
 // list with fewer rows than that index, must leave f.selected pointing at a
 // valid row of the new list rather than past its end — before clampSelected
@@ -56,7 +56,7 @@ func TestCyclingToAShorterFlatListReClampsSelection(t *testing.T) {
 	}
 }
 
-// TestUnstarringLastVisibleStarredRowReClampsSelection is TRIAGE T23/D82's
+// TestUnstarringLastVisibleStarredRowReClampsSelection is TRIAGE T23's
 // second call site: un-starring the selected row when it is the last one
 // visible in a Starred list shrinks that list out from under f.selected,
 // which must re-clamp to the new last row rather than leave the cursor
@@ -110,8 +110,8 @@ func TestUnstarringLastVisibleStarredRowReClampsSelection(t *testing.T) {
 	}
 }
 
-// TestCyclingScopeToASmallerFlatListReClampsSelection is TRIAGE T37/D88's
-// first gap: M4.7's own acceptance wording (D82) names cycleScope alongside
+// TestCyclingScopeToASmallerFlatListReClampsSelection is TRIAGE T37's
+// first gap: M4.7's own acceptance wording names cycleScope alongside
 // cycleMode as a site that can shrink the row set out from under
 // f.selected (clampSelected's own doc comment lists both), but only
 // cycleMode had a regression test before this. Recent's own two scope
@@ -174,7 +174,7 @@ func TestCyclingScopeToASmallerFlatListReClampsSelection(t *testing.T) {
 	}
 }
 
-// TestSettingRootRestoringAFlatModeReClampsSelection is TRIAGE T37/D88's
+// TestSettingRootRestoringAFlatModeReClampsSelection is TRIAGE T37's
 // second gap: setRoot's own doc comment names its flat-mode memory-restore
 // branch as a shrink site too ("clampSelected's final pass is what makes
 // this safe"), since the selectedPath it restores resolves against the

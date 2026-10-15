@@ -115,7 +115,7 @@ func (m model) fetchArticleInto(target pane, title string, peek bool) (model, te
 // in-progress indicator and the same "target moved on" staleness guard
 // (applyArticleFetch's token check) a plain Activate/Peek fetch already has,
 // for the same reasons — a refresh is exactly as much a real network fetch
-// as either of those (D119).
+// as either of those.
 func (m model) refreshArticleFetchInto(target pane) (model, tea.Cmd) {
 	v := m.viewerFor(target)
 	title := v.doc.title
@@ -142,7 +142,7 @@ func (m model) refreshArticleFetchInto(target pane) (model, tea.Cmd) {
 // found it — neither open()'s document, startPeek's peek, nor a refresh's
 // own previously-open article was ever touched by the dispatching method
 // itself, so there is nothing further to undo. A success builds the
-// canonical articleDocument (D129, M4.1) and one of three things: a refresh
+// canonical articleDocument (M4.1) and one of three things: a refresh
 // (msg.refresh, C6/M4.3) re-renders it in place via viewer.refreshDoc — the
 // same scroll-preserving, find-dropping re-render a file's own refresh
 // already gives, with no recency/history write since nothing navigated —
@@ -154,7 +154,7 @@ func (m model) refreshArticleFetchInto(target pane) (model, tea.Cmd) {
 // own fileMode branch already gives a file).
 func (m model) applyArticleFetch(msg articleFetchMsg) model {
 	// A DV2-targeted fetch arriving after DV2 closed can only still match a
-	// token if DV1 inherited DV2's state (model.closeViewer, D141): tokens
+	// token if DV1 inherited DV2's state (model.closeViewer): tokens
 	// are model-wide and never reused. Retarget it at DV1 so the result lands
 	// there instead of withViewerFor resurrecting DV2.
 	if msg.pane == dv2Pane && m.dv2 == nil {
@@ -167,7 +167,7 @@ func (m model) applyArticleFetch(msg articleFetchMsg) model {
 	v = v.endFetch(msg.peek)
 	m = m.withViewerFor(msg.pane, v)
 	if msg.err != nil {
-		// D61's own priority rule (model.combineDropMessages, model.go): never
+		// The priority rule of model.combineDropMessages (model.go): never
 		// clobber a message already set. Matters most for msg.refresh (C6/
 		// M4.3), whose completion arrives after refresh()'s own synchronous
 		// half (the other viewer's read failure or dropped-find message) has

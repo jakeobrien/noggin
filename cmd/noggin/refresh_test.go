@@ -536,7 +536,7 @@ func TestRefreshDV1ReadFailureWinsOverDV2ReadFailure(t *testing.T) {
 }
 
 // TestRefreshReadFailureMessageWinsOverFindDroppedMessage is TRIAGE T11
-// (D61, C3/M3.1a): a document that fails to re-read while it had a
+// (C3/M3.1a): a document that fails to re-read while it had a
 // committed Find used to lose its read-failure message to the find-dropped
 // one, because refresh's message-combining switch had no "already set"
 // guard, unlike refreshViewer's own read-failure branch (which does) and
@@ -745,7 +745,7 @@ func TestRefreshDoesNotTouchOtherRoots(t *testing.T) {
 // acceptance clause verbatim: R re-fetches an open Wikipedia article,
 // bypassing the session cache (Fetch's own refresh argument), rather than
 // trying to re-read a URL from disk (loadDocument would fail loudly on
-// that, D129's own named landmine) or serving a stale cached copy. The UI
+// that, a known landmine) or serving a stale cached copy. The UI
 // stays responsive in the meantime — the same in-progress indicator
 // Activate/Peek's own fetch already shows (M4.2) — and the fetched content
 // replaces the article in place once it completes.
@@ -826,7 +826,7 @@ func TestRefreshFailedArticleFetchLeavesTheArticleUntouchedAndReportsMessage(t *
 // committed find is dropped by its ordinary synchronous re-render (setting
 // "refreshed; dv2 search cleared", combineDropMessages' own precedent) at
 // the same moment DV1's article re-fetch is dispatched; the article's fetch
-// then fails. D61's "never clobber a message already set" rule
+// then fails. The "never clobber a message already set" rule
 // (combineDropMessages) must hold across that sync/async boundary too, not
 // just within refresh()'s own single call.
 func TestRefreshFailedArticleFetchDoesNotClobberDV2sOwnRefreshMessage(t *testing.T) {

@@ -7,10 +7,10 @@ import (
 )
 
 // wikipediaAttribution is S9a's own fixed wording for a Wikipedia article's
-// location line — the three obligations D98 identified (attribution via the
-// article's own canonical URL, a licensing notice naming the license, and an
-// indication the content was modified from the original) as one string, the
-// URL spliced in between the other two segments at call time
+// location line — the three obligations ADR-0007 identifies (attribution via
+// the article's own canonical URL, a licensing notice naming the license, and
+// an indication the content was modified from the original) as one string,
+// the URL spliced in between the other two segments at call time
 // (documentLocation, below). Never shown for a file — S9's own file/orphan
 // forms replace it entirely, they never combine.
 const (
@@ -20,7 +20,7 @@ const (
 
 // documentLocation renders S9/S9a's location line text for doc: an article
 // (doc.isArticle(), C6/M4.1) gets S9a's fixed three-segment CC BY-SA
-// attribution around its own canonical URL (doc.path, D98/D112); a file
+// attribution around its own canonical URL (doc.path); a file
 // under a covering session Root (rootForPath, roots.go) gets that Root's
 // own label (root.displayName, S8/M7.3) and its path relative to the Root
 // — the same filepath.Rel-with-fallback pairing pickerFileRow
@@ -34,7 +34,7 @@ const (
 // this path" computation — S9's location line is a fourth reader of
 // rootForPath/displayName, not a reason to cache a copy anywhere new.
 //
-// The render mode the line ends with (D140) is not part of this: see
+// The render mode the line ends with is not part of this: see
 // viewerLocation.
 func documentLocation(doc document, roots []root) string {
 	if doc.isArticle() {
@@ -151,7 +151,7 @@ func (m model) viewerLocationLine(p pane) string {
 
 // viewerLocation is viewerLocationLine in its two parts: the document's place
 // (documentLocation) and the closing render mode segment, `· Markdown` or
-// `· Text` (D140), shown in the mode the document is actually displayed in.
+// `· Text`, shown in the mode the document is actually displayed in.
 // ok is false when there is no line to draw.
 func (m model) viewerLocation(p pane) (place, suffix string, ok bool) {
 	v := m.viewerFor(p)
@@ -179,7 +179,7 @@ func (m model) composeViewerContent(p pane, width int, content string) string {
 		return content
 	}
 	// Truncate the place, not the render mode, which the line always ends
-	// with (D140).
+	// with.
 	text := rightTruncate(place+suffix, width)
 	if room := width - lipgloss.Width(suffix); room >= 2 {
 		text = rightTruncate(place, room) + suffix

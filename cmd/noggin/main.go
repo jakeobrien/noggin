@@ -15,7 +15,7 @@ func main() {
 	// walking the active root and opening any active document happen inside
 	// applyResolution, which downgrades their failures to messages too.
 	// loadStarredRoots reads the S1 store (M1.1's dataDir(), a clean break
-	// from C1/D7's config-directory location — the old config-dir file is
+	// from the old config-directory location — the old config-dir file is
 	// never read or migrated); a fresh install with no store yet, same as a
 	// garbage one, is a first run.
 	cwd, cwdErr := resolveCwd()

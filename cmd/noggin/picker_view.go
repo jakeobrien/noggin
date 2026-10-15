@@ -177,7 +177,7 @@ func pickerModeScope(p picker) string {
 	return mode + " · " + scope
 }
 
-// pickerIndicator is D141's view-toggle indicator for the open Picker,
+// pickerIndicator is the view-toggle indicator for the open Picker,
 // carrying only the slots that bound what it would search: none in Wikipedia
 // mode (no files at all); only hidden files in the Starred scope, which lists
 // the document store rather than asking ripgrep (so neither the ignore rules
@@ -271,11 +271,11 @@ func pickerStatus(p picker, avail ripgrepAvailability, bounds pickerBounds) stri
 var pickerSelectedStyle = lipgloss.NewStyle().Reverse(true)
 
 // pickerRootLabel renders a Root's own label for a File Picker row (S3,
-// S10/M8.3/D117): just its displayName (S8/M7.3 — persisted Name if it has
+// S10/M8.3): just its displayName (S8/M7.3 — persisted Name if it has
 // one, else the folder's base name), right-truncated to whatever budget is
 // left of width after rest (everything the row still renders after this
 // label, including its own connecting gap — e.g. "  " plus the file's
-// relative path). Before D117 this also appended a left-truncated parent
+// relative path). Previously this also appended a left-truncated parent
 // path (`leftTruncate`, rootsnav.go) to disambiguate two Roots sharing a
 // base name; that fragment is dropped — a row is now exactly "<Root name>"
 // + path relative to the Root, and S8's own per-Root names cover the rare
@@ -290,7 +290,7 @@ func pickerRootLabel(f pickerFile, width int, rest string) string {
 }
 
 // pickerLocationLabel is pickerFileRow's "where is this file" segment
-// (S3/S8, C4/M5.1): a covering Root's own name (pickerRootLabel, D117 — no
+// (S3/S8, C4/M5.1): a covering Root's own name (pickerRootLabel — no
 // parent fragment) for an ordinary candidate, — for a Starred-scope orphan
 // (pickerFile.orphan, starredPickerFiles) — the document's own
 // left-truncated parent directory alone, since there is no Root name to
@@ -318,7 +318,7 @@ func pickerLocationLabel(f pickerFile, width int, rest string) string {
 // pickerFileRow renders one File Picker Result (S3): the file's Root and its
 // path relative to that Root, so two same-named files in different Roots
 // read apart (M3.1's own acceptance criterion) — two Roots that also share a
-// base name are no longer told apart by this row at all (D117/M8.3; S8's
+// base name are no longer told apart by this row at all (M8.3; S8's
 // per-Root name is where that now lives). f.path is always inside
 // f.root.path (both pickerFile's own fields and listFiles' construction
 // guarantee it) for every non-orphan candidate, so filepath.Rel here cannot
@@ -329,7 +329,7 @@ func pickerLocationLabel(f pickerFile, width int, rest string) string {
 // just the file's own base name there, paired with pickerLocationLabel's
 // parent-directory fallback rather than a Root's own name. suffix ("  "+rel)
 // is computed once and reused both as pickerLocationLabel's rest argument
-// and as the literal text appended after it (TRIAGE T17/D52) — the two must
+// and as the literal text appended after it (TRIAGE T17) — the two must
 // always agree since they describe the same rendered characters, so a
 // single local var makes that structural rather than something two call
 // sites have to keep in sync by hand.
@@ -345,7 +345,7 @@ func pickerLocationLabel(f pickerFile, width int, rest string) string {
 // inside the dim segment is never dimmed, regardless of dimFrom — S10's own
 // "emphasized against it" — so highlightMatches resolves matched before dim
 // for every column.
-// starred is S3/D72's Picker-side star marker: a starred Result renders the
+// starred is S3's Picker-side star marker: a starred Result renders the
 // same "\u2605 "/"  " two-column field Files Nav, Sources Nav and the Document
 // Viewer already use, computed live from the caller's docs lookup rather
 // than cached on picker itself (unlike M2.7's m.files.starred, there is
@@ -394,11 +394,11 @@ func pickerFileRow(f pickerFile, query string, width int, selected bool, starred
 }
 
 // starMarker returns the two-column starred-state field used by Picker rows
-// (S3/D72): "\u2605 " when starred, two blank columns otherwise, so every row
+// (S3): "\u2605 " when starred, two blank columns otherwise, so every row
 // in a column stays aligned regardless of mixed starred state. files.go,
 // rootsnav.go and model.go's Document Viewer title render the identical
 // "\u2605 "/"  " literal independently rather than calling this helper
-// (TRIAGE T17/D76) — keep the two in sync by hand if either changes.
+// (TRIAGE T17) — keep the two in sync by hand if either changes.
 func starMarker(starred bool) string {
 	if starred {
 		return "\u2605 "
@@ -552,7 +552,7 @@ func highlightMatches(line string, columns []int, dimFrom int, selected bool) st
 // when selected (pickerSelectedStyle), plain otherwise — and clamps to
 // exactly width, the four-line `.Width(width).MaxWidth(width).Render(line)`
 // tail pickerFileRow and pickerGrepRow both ended with verbatim (TRIAGE
-// T21/D55) before this extraction, and M6's own row renderer is an
+// T21) before this extraction, and M6's own row renderer is an
 // anticipated third caller. Each caller is responsible for shaping/
 // truncating line itself first (pickerFileRow via pickerRootLabel's budget
 // math, pickerGrepRow via rightTruncate) — styleRow only applies the
@@ -593,14 +593,15 @@ func rightTruncate(s string, width int) string {
 
 // pickerGrepRow renders one Grep Picker Result (S4, M4.1): the file's path
 // relative to its Root, the matching line's 1-based line number (rg's own
-// count — D34 records why the Document Viewer hand-off cannot use it
-// directly, but the Preview/Results side of the Picker always addresses the
-// raw file, so rg's number is exactly right here) and the line's own text.
+// count — ADR-0002 explains why the Document Viewer hand-off cannot use
+// it directly, but the Preview/Results side of the Picker always
+// addresses the raw file, so rg's number is exactly right here) and the
+// line's own text.
 // Unlike pickerFileRow's Root label, this never shows the Root at all — S4
 // only asks for "the file, the line number and the line", not the Root,
 // and the line text itself is almost always enough to tell two matches
-// apart (D117/M8.3 dropped pickerFileRow's own former disambiguation too,
-// so post-D117 the two rows differ only in whether a Root label appears at
+// apart (M8.3 dropped pickerFileRow's own former disambiguation too,
+// so now the two rows differ only in whether a Root label appears at
 // all, not in how much of one they show). A Starred-scope orphan (S8,
 // C4/M5.1) falls out of the same filepath.Rel call for free: g.file.root is
 // the zero value (root.path == ""), so filepath.Rel("", g.file.path) errors
@@ -722,7 +723,7 @@ func pickerResultsContent(p picker, width, height int, bounds pickerBounds, docs
 		// docStoreKey, not a bare filepath.Clean (C6/M3.5): f.path is an
 		// article's canonical/derived URL for one of starredPickerFiles' own
 		// article rows, and filepath.Clean would corrupt it the same way
-		// docRecord/withDocRecord's own fix (D127) exists to prevent.
+		// docRecord/withDocRecord's own fix exists to prevent.
 		return pickerFileRow(f, p.results.query, width, idx == p.selected, docs[docStoreKey(f.path)].Starred)
 	})
 }

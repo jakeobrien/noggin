@@ -22,7 +22,7 @@ type Node struct {
 	Ignored bool
 }
 
-// Options bound what Walk and ListDir list (D140, D141). The zero value is
+// Options bound what Walk and ListDir list. The zero value is
 // the session default: Markdown files only, dotfiles shown, gitignored
 // entries hidden.
 type Options struct {
@@ -39,7 +39,7 @@ type Options struct {
 }
 
 // heavyDirs are directory names that stay excluded even when ShowIgnored
-// reveals gitignored entries (D141): dependency and cache folders big enough
+// reveals gitignored entries: dependency and cache folders big enough
 // to make an eager walk crawl, and never what someone browsing notes wants.
 // Matched by name at any depth, whether or not a `.gitignore` names them.
 // Declared once here; the Picker's ripgrep listing excludes the same set
@@ -71,7 +71,7 @@ func isHeavyDir(name string) bool {
 }
 
 // Walk builds the browsable tree rooted at root, listing what opts allows: the
-// files its Filter shows (D140), dotfiles unless HideDotfiles, and gitignored
+// files its Filter shows, dotfiles unless HideDotfiles, and gitignored
 // entries only when ShowIgnored (marked Ignored, heavyDirs excepted). `.git`
 // is always excluded; directories are always listed even when they hold
 // nothing listable. Children are sorted directories-first, then by name.

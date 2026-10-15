@@ -283,7 +283,7 @@ func TestLaunchOnAMarkdownFileLeavesAStarredCwdRootOnMarkdown(t *testing.T) {
 	}
 }
 
-// --- staleness (D139) -------------------------------------------------------
+// --- staleness (ADR-0006) ---------------------------------------------------
 
 func TestStalenessUnderAllIgnoresHiddenBinariesButSeesTextFiles(t *testing.T) {
 	for _, tc := range []struct {

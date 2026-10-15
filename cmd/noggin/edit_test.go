@@ -28,8 +28,8 @@ func TestEditWithNoDocumentReportsFooterMessage(t *testing.T) {
 // TestEditWithOpenDocumentReleasesTheTerminal covers the handoff itself: with
 // a document open, the edit key produces a command (tea.ExecProcess's, which
 // pauses the Program and runs $EDITOR) rather than a message, and leaves the
-// open document untouched until the editor actually exits. Viewer-only since
-// D141, so Focus sits on DV1.
+// open document untouched until the editor actually exits.
+// Viewer-only, so Focus sits on DV1.
 func TestEditWithOpenDocumentReleasesTheTerminal(t *testing.T) {
 	d, err := loadDocument(fixturePath)
 	if err != nil {
@@ -126,10 +126,11 @@ func TestEditOnAWikipediaArticleInDV2IsRefusedWithFooterMessage(t *testing.T) {
 	}
 }
 
-// TestFinishEditReloadsDocumentFromDisk covers D3's "re-renders from disk":
-// finishEdit is what M4.1's handoff resumes into once $EDITOR exits, and it
-// must reuse loadDocument (per the PROGRESS.md handoff) rather than duplicate
-// its read, so a change made while the terminal was away becomes visible.
+// TestFinishEditReloadsDocumentFromDisk covers the edit handoff's
+// "re-renders from disk" (ADR-0001): finishEdit is what M4.1's handoff
+// resumes into once $EDITOR exits, and it must reuse loadDocument (per the
+// PROGRESS.md handoff) rather than duplicate its read, so a change made while
+// the terminal was away becomes visible.
 func TestFinishEditReloadsDocumentFromDisk(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "note.md")
 	if err := os.WriteFile(path, []byte("# before\n"), 0o644); err != nil {
@@ -210,7 +211,7 @@ func TestFinishEditWithVanishedFileReportsFooterMessage(t *testing.T) {
 	}
 }
 
-// TestEditIsViewerOnly pins D141: `e` edits only from a focused Document
+// TestEditIsViewerOnly pins that `e` edits only from a focused Document
 // Viewer. On the Files Nav it does nothing at all — no command, no message —
 // even with a document open.
 func TestEditIsViewerOnly(t *testing.T) {

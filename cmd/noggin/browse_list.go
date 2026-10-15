@@ -55,7 +55,7 @@ type browseRow struct {
 	// article's canonical URL, M1.5's own store key), and model.go's
 	// activateFlatRowInto/togglePeekFlatRowInto read this to route through
 	// fetchArticleInto (S3) instead of loadDocument, which would just fail
-	// reading a URL as a file (D129's own named landmine, M4.3's precedent
+	// reading a URL as a file (a named landmine, M4.3's precedent
 	// for Refresh). Mirrors pickerFile's own article/title pair
 	// (files_search.go).
 	article bool

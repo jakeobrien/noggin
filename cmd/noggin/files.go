@@ -78,7 +78,7 @@ type filesNav struct {
 	// been visited this session.
 	memory map[string]filesNavMemory
 
-	// filters is each Root's File Filter (D140), keyed by Root Path:
+	// filters is each Root's File Filter, keyed by Root Path:
 	// session-only, and a Root absent from the map is on tree.FilterMarkdown.
 	// It lives beside memory but apart from filesNavMemory because the model
 	// needs a Root's filter *before* walking it into setRoot (activateRoot,
@@ -93,7 +93,7 @@ type filesNav struct {
 	// fileFilter falls back to this one. The zero value is tree.FilterMarkdown.
 	lastFilter tree.Filter
 
-	// hideDotfiles and showIgnored are the session-wide view toggles (D141):
+	// hideDotfiles and showIgnored are the session-wide view toggles:
 	// alt+h hides dotfiles (and everything under a dot-directory), alt+i
 	// reveals gitignored entries. One value each for the whole session —
 	// every Root's Tree and the Picker's File/Grep search read them here —
@@ -218,7 +218,7 @@ const wikipediaSourceKey = "\x00wikipedia"
 // Recent/Starred, whose flat lists have no relationship to that index at
 // all. clampSelected's final pass is what makes this safe: a restore into a
 // flat mode re-resolves f.selected against that list's own rowCount instead
-// of trusting the Tree-shaped value indexOfPath produced (TRIAGE T23/D82) —
+// of trusting the Tree-shaped value indexOfPath produced (TRIAGE T23) —
 // but only once f.activeRootPath itself already names root (below), not the
 // Root being left: a flat mode's Active Source scope reads the bucket keyed
 // by activeRootPath (recentRows/starredRows), and the model's own
@@ -510,7 +510,7 @@ func (f filesNav) withStarred(starred map[string]bool) filesNav {
 // (clampSelected): a store write that un-starred the selected row out of a
 // Starred list reaches this same path (model.withDocRecord's own
 // refreshFilesRecentSource call), and a shrinking Starred/Recent list is
-// exactly the case TRIAGE T23/D82 needs guarded here, not only from
+// exactly the case TRIAGE T23 needs guarded here, not only from
 // cycleMode/cycleScope/setRoot.
 func (f filesNav) withRecentSource(docs map[string]docRecord, roots []root, activeRootPath string) filesNav {
 	f.docs = docs
@@ -711,7 +711,7 @@ func (f filesNav) flatRows() []browseRow {
 // through this accessor now, none still on selectedNode (TRIAGE T24: this
 // comment used to claim Peek/Edit/DV2-targeting awaited M4.5's fix; M4.5
 // landed it). f.selected staying in range for this to succeed is
-// clampSelected's own job (TRIAGE T23/D82), not this method's.
+// clampSelected's own job (TRIAGE T23), not this method's.
 func (f filesNav) selectedFlatRow() (browseRow, bool) {
 	rows := f.flatRows()
 	if f.selected < 0 || f.selected >= len(rows) {
@@ -744,7 +744,7 @@ func (f filesNav) rowCount() int {
 // selected row out of a Starred list). Before this existed, any of those
 // could leave f.selected pointing past the end of the new row set, making
 // selectedFlatRow() return ok=false and Activate/Peek/Star silently no-op
-// with no footer message (TRIAGE T23/D82) — this is the one place that gap
+// with no footer message (TRIAGE T23) — this is the one place that gap
 // closes, called from every site that can shrink the row set rather than
 // each guarding itself.
 func (f filesNav) clampSelected() filesNav {
@@ -801,7 +801,7 @@ func (f filesNav) expand() filesNav {
 	return f
 }
 
-// collapse is Left (D141). On an expanded folder it closes that folder in
+// collapse is Left. On an expanded folder it closes that folder in
 // place; the selection stays on it, which keeps its index valid as its
 // children vanish beneath it. On a file or a collapsed folder it climbs: the
 // parent folder is closed and selected — the parent sits above the selection,
@@ -882,8 +882,8 @@ func (f filesNav) view() string {
 // modeScopeRow renders S5's own status line: the current Browse Mode and
 // Browse Scope, " \u00b7 "-joined the same way the footer joins its hints
 // (footer.go's joinHints) so the two status lines read consistently, with
-// D141's view-toggle indicator right-aligned. The toggles and the File Filter
-// bound only the Tree (D140, D141): Recent and Starred ignore them, so only
+// the view-toggle indicator right-aligned. The toggles and the File Filter
+// bound only the Tree: Recent and Starred ignore them, so only
 // the Tree's row carries the indicator.
 func (f filesNav) modeScopeRow() string {
 	left := f.mode.label() + " \u00b7 " + f.scopeLabel()
@@ -1065,7 +1065,7 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 	case selected:
 		style = selectedRowStyle(style, f.unfocused)
 	case r.node.Ignored:
-		// D141: a gitignored entry only alt+i revealed reads de-emphasised,
+		// A gitignored entry only alt+i revealed reads de-emphasised,
 		// the way `git status` greys ignored files.
 		style = mutedText(style.Foreground(theme.Subtle), f.unfocused, true)
 	default:

@@ -34,7 +34,7 @@ NEXT_THEME_ACCENT = "2;122;162;247"  # Theme.Accent  #7aa2f7
 NEXT_THEME_H1_BG  = "2;187;154;247"  # Markdown.H1Bg #bb9af7
 REVERSE_SGR = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")  # reverse video, alone or fused
 
-# D2 keeps key literals inside cmd/noggin/keymap.go, but a pty harness has to
+# Key literals live only in cmd/noggin/keymap.go, but a pty harness has to
 # put real bytes on the wire, and it is on the far side of a language boundary
 # from the keymap. This table is that carve-out, kept in one place and named
 # after the binding each entry stands for, so retuning a binding is still a
@@ -79,7 +79,7 @@ KEY = {
     # same encoding every other ctrl+ entry above already uses. ctrl+enter
     # is different: without Kitty/CSI-u/modifyOtherKeys negotiated (this
     # harness's handshake answers neither, see harness.py's REPLIES), a real
-    # terminal sends it byte-identical to plain enter (D53/D55's own keymap.go
+    # terminal sends it byte-identical to plain enter (keymap.go's own
     # comment) — there is no C0 byte for it. What a terminal that *does*
     # support the protocol sends, and what ultraviolet's EventDecoder.parseCsi
     # decodes unconditionally (not gated on whatever the DECRQM/flags query
@@ -189,12 +189,12 @@ for cols, rows in [(80, 24), (100, 30)]:
     check(f"M1.2 FocusFiles jumps focus back to Files at {cols}x{rows}",
           focused() == "Files", repr(focused()))
 
-    # D141: tab/shift+tab cycle Focus through the visible panes.
+    # tab/shift+tab cycle Focus through the visible panes.
     s.send(KEY["Tab"], 0.5)
     after_tab = focused()
     s.send(KEY["ShiftTab"], 0.5)
     after_shift_tab = focused()
-    check(f"D141 tab moves focus Files -> Document, shift+tab back at {cols}x{rows}",
+    check(f"tab moves focus Files -> Document, shift+tab back at {cols}x{rows}",
           after_tab == "Document" and after_shift_tab == "Files",
           f"tab -> {after_tab!r}, shift+tab -> {after_shift_tab!r}")
 
@@ -217,7 +217,7 @@ s.close()
 
 # --- M1.3: the document renders ------------------------------------------
 
-FRONTMATTER = ["Fixture Document", "noggin, fixture"]  # D138 Frontmatter Card values
+FRONTMATTER = ["Fixture Document", "noggin, fixture"]  # Frontmatter Card values
 
 for cols, rows in [(80, 24), (100, 30)]:
     s = Session([BINARY, FIXTURE], cols, rows)
@@ -233,9 +233,9 @@ for cols, rows in [(80, 24), (100, 30)]:
     check(f"M1.3 document heading on screen at {cols}x{rows}",
           "Reading Notes" in "\n".join(lines))
     for fm in FRONTMATTER:
-        check(f"D138 frontmatter card {fm!r} shown at {cols}x{rows}",
+        check(f"frontmatter card {fm!r} shown at {cols}x{rows}",
               fm in "\n".join(lines))
-    check(f"D138 frontmatter is a card, not raw YAML, at {cols}x{rows}",
+    check(f"frontmatter is a card, not raw YAML, at {cols}x{rows}",
           "title: Fixture Document" not in "\n".join(lines))
     check(f"M1.3 no literal tab reaches the screen at {cols}x{rows}",
           "\t" not in "".join(lines))
@@ -692,7 +692,7 @@ check("C2a/M5.1 pty: doomed.md is gone after R", "doomed.md" not in body, repr(b
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M5.1 pty: exits 0 after a refresh", code == 0, f"exit {code}")
 
-# --- D139: focus-triggered staleness check, hidden-entry filter -------------
+# --- Focus-triggered staleness check, hidden-entry filter -------------
 # Everything here finishes well inside the first 6s periodic tick, so a stale
 # row can only have come from the focus-in event. A focus-in (CSI I) after an
 # entry the tree never shows (a vim swap file) must not raise the row; one
@@ -707,26 +707,26 @@ with open(os.path.join(focus_root, "keep.md"), "w") as f:
 
 s = Session([BINARY, focus_root], 80, 24)
 out = s.pump(1.2)
-check("D139 pty: focus reporting enabled on start", b"\x1b[?1004h" in out)
+check("pty: focus reporting enabled on start", b"\x1b[?1004h" in out)
 
 with open(os.path.join(focus_root, ".keep.md.swp"), "w") as f:
     f.write("swap\n")
 s.send(FOCUS_IN, 0.6)
 body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
-check("D139 pty: a swap file the tree hides does not raise the stale row on focus",
+check("pty: a swap file the tree hides does not raise the stale row on focus",
       STALE_TEXT not in body, repr(body[-300:]))
 
 with open(os.path.join(focus_root, "new.md"), "w") as f:
     f.write("new\n")
 s.send(FOCUS_IN, 0.6)
 body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
-check("D139 pty: focus-in after a visible change raises the stale row before the periodic tick",
+check("pty: focus-in after a visible change raises the stale row before the periodic tick",
       STALE_TEXT in body, repr(body[-300:]))
 
 out = s.send(KEY["Quit"], 0.6)
 code = s.close()
-check("D139 pty: focus reporting disabled on quit", b"\x1b[?1004l" in out)
-check("D139 pty: exits 0 after the focus check", code == 0, f"exit {code}")
+check("pty: focus reporting disabled on quit", b"\x1b[?1004l" in out)
+check("pty: exits 0 after the focus check", code == 0, f"exit {code}")
 
 # A document open at a mid-scroll position keeps that position across a
 # refresh that only grows the file underneath it (S2's scroll-preserving
@@ -800,7 +800,7 @@ body = "\n".join(screen_of(out, 80, 24).raw_lines())
 check("M4.1 document opens before editing",
       "doc.md" in body and "Edit Handoff Fixture" in body, repr(body[:200]))
 
-s.send(KEY["FocusDV1"], 0.4)  # Edit is viewer-only (D141)
+s.send(KEY["FocusDV1"], 0.4)  # Edit is viewer-only
 s.send(KEY["Edit"], 1.5)
 sc = screen_of(s.out, 80, 24)
 lines = sc.raw_lines()
@@ -822,7 +822,7 @@ check("M4.1 exits 0 after an edit round-trip", code == 0, f"exit {code}")
 # With no document open, the key reports that instead of doing nothing.
 s = Session([BINARY], 80, 24, env={"EDITOR": fake_editor})
 s.pump(1.2)
-s.send(KEY["FocusDV1"], 0.4)  # Edit is viewer-only (D141)
+s.send(KEY["FocusDV1"], 0.4)  # Edit is viewer-only
 s.send(KEY["Edit"], 0.6)
 footer = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.1 editing with no document open reports it in the footer",
@@ -1256,7 +1256,7 @@ s.send(query, 1.0)  # first query typed, already in Grep mode/Active Root
 body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("M7.1 a Grep query populates the Results list with a matching line",
       "Grep · Active Root" in body and "docs/guide.md" in body, repr(body[:300]))
-# D58: a bare "reverse video appears somewhere on the wire" check would pass
+# A bare "reverse video appears somewhere on the wire" check would pass
 # even with Preview highlighting removed, because the selected Results row
 # (pickerSelectedStyle) is itself reverse-video regardless of the Preview.
 # Scope the assertion to reverse video (SGR param 7, wherever it falls in an
@@ -1302,7 +1302,7 @@ s.send(b"secret", 0.9)            # single search, already hidden
 hidden = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("C2a/M6.2 pty: alt+h hides the dotfile from the File Results",
       ".secret.md" not in hidden, repr(hidden[:300]))
-check("D141 pty: alt+h blanks the h slot of the Prompt title's indicator",
+check("pty: alt+h blanks the h slot of the Prompt title's indicator",
       "File \u00b7 Active Source" in hidden and "h    md" not in hidden and "     md" in hidden, repr(hidden[:300]))
 
 s.send(KEY["Cancel"], 0.3)
@@ -1319,7 +1319,7 @@ s.send(b"secret", 0.9)
 restored = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("C2a/M6.2 pty: a second alt+h restores the dotfile",
       ".secret.md" in restored, repr(restored[:300]))
-check("D141 pty: a second alt+h restores the h slot",
+check("pty: a second alt+h restores the h slot",
       "h    md" in restored, repr(restored[:300]))
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
@@ -1350,7 +1350,7 @@ hidden_grep = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 # actual match is listed.
 check("C2a/M6.2 pty: alt+h hides a dotfile's match from the Grep Results too",
       ".secret.md" not in hidden_grep, repr(hidden_grep[:300]))
-check("D141 pty: alt+h blanks the h slot of the Grep Prompt title's indicator",
+check("pty: alt+h blanks the h slot of the Grep Prompt title's indicator",
       "Grep \u00b7 Active Root" in hidden_grep and "h    md" not in hidden_grep, repr(hidden_grep[:300]))
 
 s.send(KEY["Cancel"], 0.3)
@@ -1459,7 +1459,7 @@ reverse_sgr = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")
 check("C2a/M8.1 pty: a bold name line reaches the wire on the Roots pane's first paint",
       bold_sgr.search(initial) is not None, repr(initial[:200]))
 # Files Nav holds focus at launch, so the Sources Nav's selected row is
-# unfocused: a dim grey bar (S11/D136), not reverse video.
+# unfocused: a dim grey bar (S11), not reverse video.
 dim_bar_sgr = re.compile(rb"\x1b\[(?:\d+;)*48;" + THEME_UNFOCUSED_BAR.encode() + rb"(?:;\d+)*m")
 check("C2a/M8.1 pty: an unfocused selected row reaches the wire as a dim bar",
       dim_bar_sgr.search(initial) is not None, repr(initial[:200]))
@@ -1702,7 +1702,7 @@ check("M8.2 pty: exits 0 after the location-line check", code == 0, f"exit {code
 # --- C6/M8.3 (S10): de-emphasized secondary text ---------------------------
 # rootsnav_test.go/picker_view_test.go already pin the per-column dim/bold
 # classification exactly (cellStyles); what a real terminal alone can
-# confirm is that S10's dim styling and D117's dropped Picker-row parent
+# confirm is that S10's dim styling and the dropped Picker-row parent
 # fragment both actually reach the wire.
 
 s = Session([BINARY, TREE], 80, 24)

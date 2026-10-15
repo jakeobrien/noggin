@@ -5,7 +5,7 @@ import (
 )
 
 // C3/M1.5: the Picker's own home for S3's `ctrl+` targeting modifier
-// (keys.ActivateDV2, ctrl+enter/ctrl+l per D55) — reusing the same binding
+// (keys.ActivateDV2, ctrl+enter/ctrl+l) — reusing the same binding
 // the Files Nav's Activate already carries (M1.4/M1.4a), not a new one:
 // both chords are raw control bytes, so handlePickerInput's always-typing
 // Prompt (S2) never mistakes either for query text, closing TRIAGE T3
@@ -15,7 +15,7 @@ import (
 // half for a fileMode Result: the modified chord creates DV2, loads the
 // previewed Result into it, moves Focus there and dismisses the Picker,
 // leaving DV1's own Active Document untouched. Driven once per bound key,
-// since D55's `ctrl+l` fallback must do exactly what `ctrl+enter` does
+// since the `ctrl+l` fallback must do exactly what `ctrl+enter` does
 // (mirrors target_test.go's TestActivateDV2LoadsSelectedFileIntoNewDV2AndMovesFocus
 // for the Files Nav's own version of this modifier).
 func TestPickerActivateDV2LoadsFileResultIntoNewDV2AndMovesFocus(t *testing.T) {
@@ -100,9 +100,9 @@ func TestPickerPlainActivateStillTargetsDV1WithActivateDV2Bound(t *testing.T) {
 
 // TestPickerActivateDV2TypingLiteralLLStillTypes confirms the fallback
 // chord's letter, typed without ctrl, is unaffected: `l`/`L` still reach
-// the Prompt as query text (D55's whole point — a raw control byte can
-// never be typed into an always-typing Prompt, so no carve-out was needed,
-// but the plain letters sharing that key must still work exactly as
+// the Prompt as query text (the point of the ctrl+ chords — a raw control
+// byte can never be typed into an always-typing Prompt, so no carve-out was
+// needed, but the plain letters sharing that key must still work exactly as
 // before).
 func TestPickerActivateDV2TypingLiteralLLStillTypes(t *testing.T) {
 	m := openedFixture(t, 80, 24)

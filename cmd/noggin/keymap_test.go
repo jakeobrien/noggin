@@ -11,7 +11,7 @@ import (
 // to. It lives here, in tests only, so that the names of modifiers and
 // non-rune keys stay test-only scaffolding — callers pass a binding's key
 // rather than spelling a key literal themselves (keymap.go remains the one
-// production file that names a key, per D2).
+// production file that names a key).
 //
 // Bubble Tea v2 has no public parser for its own key names (`Key.Keystroke` is
 // one-way and ultraviolet's name table is internal), so this is the inverse of

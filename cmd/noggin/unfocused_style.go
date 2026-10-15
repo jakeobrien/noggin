@@ -4,7 +4,7 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Unfocused-pane styling (S11, D136). The focused pane is marked by a thick
+// Unfocused-pane styling (S11). The focused pane is marked by a thick
 // border and a title bar (model.renderPane); an unfocused pane additionally
 // recedes:
 //

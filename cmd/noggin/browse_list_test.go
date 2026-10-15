@@ -85,7 +85,7 @@ func TestRecentRowsCapsAtOneHundredPerRoot(t *testing.T) {
 	}
 }
 
-// TestRecencyAndStarredNameTiesBreakByPath is TRIAGE T26's own gap (D83):
+// TestRecencyAndStarredNameTiesBreakByPath is TRIAGE T26's own gap:
 // no test exercised either sortByRecency's or starredRows' own path
 // tie-break for two records sharing an exact timestamp/name —
 // sortByRecency's doc comment already claims the tie-break (mirroring
@@ -141,8 +141,8 @@ func TestRecencyAndStarredNameTiesBreakByPath(t *testing.T) {
 	})
 }
 
-// TestRecentRowsCapsOrphanBucketAtOneHundred is TRIAGE T29's own gap
-// (D83): recentRows buckets an orphan document (no session Root covers it)
+// TestRecentRowsCapsOrphanBucketAtOneHundred is TRIAGE T29's own gap:
+// recentRows buckets an orphan document (no session Root covers it)
 // under the "" key exactly like any Root's own bucket, and the per-bucket
 // cap loop (recentRows' own comment: "Each bucket is ordered newest-first
 // and capped at recentPerRootCap ... independently") applies to every key
@@ -376,7 +376,7 @@ func TestFilesNavRecentModeEmptyShowsAMessage(t *testing.T) {
 	}
 }
 
-// TestFilesNavRecentModeShowsStarMarker is TRIAGE T31's own gap (D83):
+// TestFilesNavRecentModeShowsStarMarker is TRIAGE T31's own gap:
 // renderFlatRow's own doc comment says Recent rows "get the same star
 // marker prefix Tree rows carry (Recent is not Starred, so membership alone
 // does not already say it)", but no render test asserted the marker itself

@@ -51,7 +51,7 @@ func TestRenameEditsSelectedRootNameInline(t *testing.T) {
 	// Replace the seeded value directly (the same SetValue-on-the-textinput
 	// convention picker_test.go and friends already use for their own Prompt)
 	// rather than simulating a clear: backspace has no keymap.go binding to
-	// drive it through (D2), and what is under test here is commit/seed
+	// drive it through, and what is under test here is commit/seed
 	// behavior, not keystroke-level editing.
 	m.roots.renameInput.SetValue("Work")
 	m = press(t, m, "enter")

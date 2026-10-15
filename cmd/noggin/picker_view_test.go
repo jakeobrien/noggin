@@ -170,7 +170,7 @@ func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
 	joined := strings.Join(plainLines(m.View().Content), "\n")
 	resultsWidth := computePickerLayout(80, 24).results.content().width
 	// contentWidth mirrors pickerFileRow's own budget math: 2 columns are
-	// reserved for the (here, unstarred) star marker (D72) before the Root
+	// reserved for the (here, unstarred) star marker before the Root
 	// label's own truncation budget is computed.
 	contentWidth := resultsWidth - 2
 	wantA := "  " + pickerRootLabel(pickerFile{root: root{path: rootA}, path: fileA}, contentWidth, "  report.md") + "  report.md"
@@ -189,22 +189,22 @@ func TestPickerFileResultsShowRootAndRelativePath(t *testing.T) {
 	}
 }
 
-// C1/D22's Picker-row disambiguation tests (TestPickerFileResultsDisambig
-// uateSameBasenameRoots, M3.1a/D50/TRIAGE T10, and TestPickerFileRowFillsIts
+// C1's Picker-row disambiguation tests (TestPickerFileResultsDisambig
+// uateSameBasenameRoots, M3.1a/TRIAGE T10, and TestPickerFileRowFillsIts
 // FullBudget, which pinned the same parent-fragment's budget math against
-// TRIAGE T13/T15/D52) are retired here, not merely updated: D117/M8.3
-// dropped the Root's parent-path fragment from Picker File rows entirely
+// TRIAGE T13/T15) are retired here, not merely updated: M8.3 dropped the
+// Root's parent-path fragment from Picker File rows entirely
 // (pickerRootLabel), so there is no longer a disambiguating budget for
 // either test to pin — two Roots sharing a base name are now, by design,
 // indistinguishable in a File Picker row (S8's own per-Root name is meant to
 // cover that case instead). TestRootsNavDistinguishesSameNamedRootsByParent
-// (rootsnav_test.go) is unaffected — D117 only ever touched Picker rows, not
-// the Sources Nav's own path line. TestPickerRootLabelTruncatesALongName
+// (rootsnav_test.go) is unaffected — M8.3 only ever touched Picker rows,
+// not the Sources Nav's own path line. TestPickerRootLabelTruncatesALongName
 // below is this file's replacement budget-pinning test, scoped to what
-// pickerRootLabel actually does post-D117.
+// pickerRootLabel actually does now that the fragment is gone.
 
 // TestPickerRootLabelTruncatesALongName is pickerRootLabel's own remaining
-// budget-math case now that D117 dropped the parent fragment: a Root name
+// budget-math case now that the parent fragment is dropped: a Root name
 // too long for what's left of width after rest is right-truncated
 // (rightTruncate, the same "keep the prefix, ellipsis the tail" rule every
 // other name-like segment in this file uses), rather than overflowing the
@@ -273,13 +273,13 @@ func TestPickerFileRowRendersAnOrphanCandidateByItsOwnParentDirectory(t *testing
 	}
 }
 
-// TestPickerFileRowShowsStarMarkerForAStarredResult closes the S3/D72 gap
+// TestPickerFileRowShowsStarMarkerForAStarredResult closes the S3 gap
 // TRIAGE T8 found: S2/M2.5's own wording already talked about a Picker
 // Result's "star marker" being cleared, but no Picker row actually rendered
 // one. A starred Result's row now carries the same "\u2605 "/"  " two-column
 // field Files Nav and Sources Nav rows already use, prepended ahead of the
 // Root label rather than appended — the marker is styling-adjacent state,
-// not part of the Root label text pickerRootLabel computes (D117/M8.3: no
+// not part of the Root label text pickerRootLabel computes (M8.3: no
 // longer disambiguating, just the Root's own name).
 func TestPickerFileRowShowsStarMarkerForAStarredResult(t *testing.T) {
 	f := pickerFile{root: root{path: "/home/user/notes"}, path: "/home/user/notes/report.md"}
@@ -367,8 +367,8 @@ func TestPickerGrepRowRendersAnOrphanCandidateByItsFullPath(t *testing.T) {
 // wantA/wantB (report.md/notes.md) are still derived by calling
 // pickerGrepRow itself, same as before — useful as a sanity check that the
 // fixture produces the right file:line prefixes, but unable to catch a bug
-// in pickerGrepRow's own text handling (TRIAGE T22/D55: a tautological
-// assertion, the same shape T15/D52 already fixed for the file row test).
+// in pickerGrepRow's own text handling (TRIAGE T22: a tautological
+// assertion, the same shape T15 already fixed for the file row test).
 // wantC (short.md) closes that gap: its expected row is a literal computed
 // by hand from styleRow's left-align-and-pad behaviour (confirmed against
 // the real renderer, not assumed) rather than by calling pickerGrepRow, and
@@ -417,7 +417,7 @@ func TestPickerGrepResultsShowFileLineNumberAndText(t *testing.T) {
 	}
 
 	// wantC is hand-computed, not derived from pickerGrepRow: "short.md:1  hi"
-	// (14 runes), prefixed by the (unstarred) 2-column star marker (D72) and
+	// (14 runes), prefixed by the (unstarred) 2-column star marker and
 	// padded with spaces to resultsWidth (23 at this fixture's size) by
 	// styleRow's Width(resultsWidth), since 14 < 21 (resultsWidth minus the
 	// marker) means rightTruncate is a no-op and nothing needs truncating.
@@ -492,7 +492,7 @@ func TestPickerStatusStates(t *testing.T) {
 			want:  []string{"File · Active Source"},
 		},
 		{
-			// D141: the title's right-aligned view-toggle indicator drops
+			// The title's right-aligned view-toggle indicator drops
 			// its `h` slot while dotfiles are hidden.
 			name:         "mode and Scope indicator with dotfiles hidden",
 			avail:        ripgrepAvailability{available: true},
@@ -741,7 +741,7 @@ func TestPickerFileRowHighlightsMatchedNameCharacters(t *testing.T) {
 		t.Errorf("bold columns = %v, want %v\nrow: %q\nplain: %q", gotCols, want, got, plain)
 	}
 	// The Root label and the path components are matched against nothing
-	// (D31: the File Picker matches the file name only), so nothing before
+	// (the File Picker matches the file name only), so nothing before
 	// the name may be emphasized — implied by the exact comparison above,
 	// asserted separately so a failure says which half broke.
 	for _, c := range boldColumns(got) {
@@ -780,11 +780,11 @@ func TestPickerFileRowHighlightKeepsSelectionBar(t *testing.T) {
 	}
 }
 
-// TestPickerFileRowDropsTheParentPathFragment is S10/D117/M8.3's own
+// TestPickerFileRowDropsTheParentPathFragment is S10/M8.3's own
 // acceptance criterion, the fragment-absence half: a row is exactly
 // "<Root name>" + path relative to the Root, with no left-truncated parent
 // segment (leftTruncate's own "…" ellipsis, or any part of the Root's own
-// parent directory) in between — unlike the pre-D117 layout
+// parent directory) in between — unlike the old layout
 // TestPickerFileResultsDisambiguateSameBasenameRoots/TestPickerFileRowFills
 // ItsFullBudget (both retired, see the note above
 // TestPickerRootLabelTruncatesALongName) used to pin.
@@ -801,7 +801,7 @@ func TestPickerFileRowDropsTheParentPathFragment(t *testing.T) {
 		t.Errorf("pickerFileRow() = %q, want %q (Root name + path relative to the Root, no parent fragment)", got, want)
 	}
 	if strings.Contains(got, "…") || strings.Contains(got, "admin") || strings.Contains(got, "work") {
-		t.Errorf("pickerFileRow() = %q, want no trace of the Root's parent path (D117 dropped the fragment)", got)
+		t.Errorf("pickerFileRow() = %q, want no trace of the Root's parent path (the fragment is dropped)", got)
 	}
 }
 
@@ -855,7 +855,7 @@ func TestPickerFileRowDimsThePathButNotTheRootLabel(t *testing.T) {
 // TestPickerFileRowMatchedPathCharactersAreNeverDimmed is S10's own
 // "matched characters of the path emphasized against it": a matched file-
 // name character that falls inside the de-emphasized path segment (every
-// File Picker row's match is inside that segment — D31, the Root label is
+// File Picker row's match is inside that segment — the Root label is
 // never matched against) is bold and never dim, even though every other
 // character alongside it is dimmed.
 func TestPickerFileRowMatchedPathCharactersAreNeverDimmed(t *testing.T) {
@@ -920,7 +920,7 @@ func columnRange(start, n int) []int {
 // case here also pins that the prefix is never emphasized.
 func TestPickerGrepRowHighlightsTheQueryOccurrence(t *testing.T) {
 	f := pickerFile{root: root{path: "/tmp/notes"}, path: "/tmp/notes/report.md"}
-	const prefix = 15 // marker(2, D72) + "report.md:5  "(13)
+	const prefix = 15 // marker(2) + "report.md:5  "(13)
 
 	cases := []struct {
 		name     string
@@ -964,7 +964,7 @@ func TestPickerGrepRowHighlightsTheQueryOccurrence(t *testing.T) {
 		},
 		{
 			// width 25 leaves a content width of 23 (25 minus the 2-column
-			// star marker, D72) — the same content budget this case pinned
+			// star marker) — the same content budget this case pinned
 			// before the marker existed — so the row keeps 22 cells of text
 			// plus rightTruncate's ellipsis. The match starts at content
 			// column 13+7=20 and runs to 25, so only its first two

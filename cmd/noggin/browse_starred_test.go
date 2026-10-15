@@ -506,7 +506,7 @@ func TestToggleDocStarInStarredModeDropsAStarredArticleRowImmediately(t *testing
 
 	// 120, not the project's standard 80: at 80 the Files Nav column's own
 	// right-hand budget truncates "Wikipedia" (9 cols) to "...ipedia", the
-	// same class of width-dependent gotcha D52/TRIAGE T13 already named for
+	// same class of width-dependent gotcha TRIAGE T13 already named for
 	// the Picker's own Root label.
 	m := sized(t, newModel().withDocs(storePath, docs), 120, 24)
 	m = press(t, m, keys.FilesMode.Keys()[0])  // Tree -> Recent
@@ -562,8 +562,8 @@ func starredArticleWikipediaModel(t *testing.T, fetcher *fakeWikipediaFetcher) m
 // acceptance clause "Activate ... on an article row fetch per M4.2": with
 // Wikipedia active and a starred article the sole Starred/Active Source
 // row, Activate dispatches fetchArticleInto (row.article, activateFlatRow
-// Into) rather than failing loadDocument on the article's canonical URL
-// (D129's own landmine) — the same round trip article_fetch_test.go's own
+// Into) rather than failing loadDocument on the article's canonical URL —
+// the same round trip article_fetch_test.go's own
 // TestActivateWikipediaResultOpensCanonicalArticleInDV1 already pins for a
 // Picker Result, now reached from a Files Nav Starred row instead.
 func TestActivateStarredArticleFlatRowFetchesAndOpens(t *testing.T) {

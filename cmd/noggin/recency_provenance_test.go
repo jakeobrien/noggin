@@ -12,7 +12,7 @@ import (
 // acceptance criterion, verbatim: S4's "regardless of whether its Root is
 // starred, ad-hoc, or no longer in the session" — M3.1 already built
 // recordViewed/docRecord as a plain path-keyed write with no Root
-// attachment (D61), so this test exists to pin that guarantee at the
+// attachment (ADR-0005), so this test exists to pin that guarantee at the
 // Activate call site itself rather than only at the accessor level
 // (TestWithDocRecordPersistsImmediately), for the two provenance cases S4
 // names beyond the plain-Root one recency_test.go already covers.
@@ -57,7 +57,7 @@ func TestActivateRecordsLastViewedRegardlessOfRootProvenance(t *testing.T) {
 		// The Files Nav's Active Root (m.files.root, set here directly via
 		// openFolder, the same pattern root_lifecycle_docs_test.go's own
 		// M2.6 test uses) need not be a member of m.roots at all — the two
-		// are independent, per D61's "not attached to Roots". m.roots is
+		// are independent (ADR-0005). m.roots is
 		// left holding an entirely unrelated Root, standing in for "this
 		// document's Root left the session".
 		dir := t.TempDir()

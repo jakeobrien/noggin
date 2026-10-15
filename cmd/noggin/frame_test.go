@@ -143,7 +143,7 @@ func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 
 // TestSplitViewerEqualHalvesWhenDV2Exists is C3/M1.2's own layout test:
 // splitViewer divides the viewer region into two regions summing to its
-// full width, equal or off by exactly one column (D54: no minimum-width
+// full width, equal or off by exactly one column (there is no minimum-width
 // guard, so this holds at any size), and unchanged height.
 func TestSplitViewerEqualHalvesWhenDV2Exists(t *testing.T) {
 	for _, s := range frameSizes {
@@ -243,7 +243,7 @@ func press(t *testing.T, m model, name string) model {
 // binding — there is no binding for arbitrary typed text, so this builds the
 // tea.KeyPressMsg directly instead of going through keyPress, the same way
 // production code never does but a query's actual characters are not one of
-// the named keys D2 confines to keymap.go.
+// the named keys confined to keymap.go.
 func typeText(t *testing.T, m model, s string) model {
 	t.Helper()
 	for _, r := range s {

@@ -15,7 +15,8 @@ const emptyViewerText = "No document open. Pick a file in the Navigator."
 
 // viewer is the Document Viewer: the active document, its rendered form and the
 // scroll position within it. Navigation is viewport scrolling only — no cursor,
-// no selection (D4). findState is the S8 in-document search state, layered on top.
+// no selection (ADR-0002). findState is the S8 in-document search state,
+// layered on top.
 type viewer struct {
 	vp  viewport.Model
 	doc document
@@ -29,7 +30,7 @@ type viewer struct {
 
 	findState find
 
-	// mode is this viewer's Render Mode (D140, textview.go): sticky across
+	// mode is this viewer's Render Mode (textview.go): sticky across
 	// every document opened, Peeked or walked to by history in it, and
 	// session-only. The zero value is Markdown, so a fresh viewer (a new DV2
 	// included) starts there. modeFor gives the mode a particular document is
@@ -105,7 +106,7 @@ type viewer struct {
 	// (S9's Document History) is what consults it: a file's own history
 	// entry is deliberately re-read from disk on Back/Forward ("picking up
 	// latest content when navigating back", walkViewerHistory's own doc
-	// comment), but an article has nothing on disk to re-read — D114's
+	// comment), but an article has nothing on disk to re-read — ADR-0008's
 	// pointer-only store rule means its content lives only here, in memory
 	// for the session, exactly like the Wikipedia Client's own fetch cache
 	// (M2.3). Every path that can ever land in history first passed through
@@ -262,7 +263,7 @@ func (p peekState) isOpen() bool { return p.doc.isOpen() }
 func newViewer() viewer {
 	vp := viewport.New(viewport.WithWidth(0), viewport.WithHeight(0))
 	// The viewport's own KeyMap carries key literals; leaving it populated
-	// would put bindings outside keymap.go (D2) and duplicate the ones below.
+	// would put bindings outside keymap.go and duplicate the ones below.
 	vp.KeyMap = viewport.KeyMap{}
 	// v2 stops padding short content out to the viewport's height unless asked;
 	// the pane contract is a content box of exactly its size.
@@ -482,7 +483,7 @@ func (v viewer) clearPeek() viewer {
 // Document, and a no-op when not Peeking. GotoTop on every call is
 // deliberate: Peek never scrolls (S7), so it is always shown from the top
 // regardless of what a previous render left YOffset at. toggleMode is the one
-// caller that puts the Peek's place back afterwards (D140).
+// caller that puts the Peek's place back afterwards.
 func (v viewer) renderPeek() viewer {
 	if !v.peeking() {
 		return v

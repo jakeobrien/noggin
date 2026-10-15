@@ -131,7 +131,7 @@ func stripChromeInPlace(doc *goquery.Document) {
 
 	// Images: figures, thumbnails and inline file references all carry a
 	// typeof starting with "mw:File". By the time stripChrome runs,
-	// renderImages (M3.5, D104) has already replaced every image it could
+	// renderImages (M3.5) has already replaced every image it could
 	// derive a caption/alt/filename description for with a plain-text
 	// placeholder — this selector only catches the rare leftover
 	// renderImages couldn't handle. A final bare-<img> sweep catches
@@ -139,7 +139,7 @@ func stripChromeInPlace(doc *goquery.Document) {
 	//
 	// Rendered math formulae are also served as an <img> (an SVG render)
 	// under typeof="mw:Extension/math", but by the time stripChrome runs,
-	// renderMath (M3.4, D104) has already replaced every formula it could
+	// renderMath (M3.4) has already replaced every formula it could
 	// recover a source for with plain text — this selector only catches the
 	// rare leftover renderMath couldn't handle (missing/unparseable data-mw).
 	doc.Find(selectorFilePrefix + ", " + selectorMathExtension).Remove()

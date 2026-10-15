@@ -92,7 +92,7 @@ func TestFrontmatterCardDeclinesATinyWidth(t *testing.T) {
 }
 
 // TestUncardableFrontmatterRendersAsCodeBlock: the card's fallback is the
-// verbatim code block (D138), so nothing in the frontmatter is ever lost.
+// verbatim code block, so nothing in the frontmatter is ever lost.
 func TestUncardableFrontmatterRendersAsCodeBlock(t *testing.T) {
 	for name, src := range map[string]string{
 		"nested map": "---\nauthor:\n  name: Ada\n---\n# H\n",

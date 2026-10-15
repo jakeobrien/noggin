@@ -156,8 +156,8 @@ func articleURLFor(base, title string) string {
 // caller that needs a Document Store key for a title it has not fetched yet
 // (cmd/noggin's Picker star, C6/M3.4): a title-search SearchResult carries
 // no URL of its own, so the Picker derives one from the title alone rather
-// than requiring a Fetch first, the same trade D122 already accepts for the
-// fetch cache ("noggin's own records always hold the canonical title once
+// than requiring a Fetch first, the same trade the fetch cache already
+// accepts ("noggin's own records always hold the canonical title once
 // an article has been opened"). This is exact when title is already
 // canonical, which title search's own results always are unless the hit
 // itself happens to be a redirect page — that rare case is reconciled the

@@ -18,7 +18,7 @@ import (
 // approximation without any code here.
 //
 // Themes are hot-swappable: keys.Theme cycles `theme` through `themes`
-// (model.cycleTheme). Every style is therefore built from `theme` at the moment
+// (model.cycleTheme; why a global, ADR-0009). Every style is therefore built from `theme` at the moment
 // it is used, never captured in a package-level var at startup, and the one
 // thing rendered ahead of time — a Document Viewer's content — is re-rendered on
 // a switch (viewer.restyle).

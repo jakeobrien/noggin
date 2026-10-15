@@ -137,7 +137,7 @@ func TestFilesModeScopeRowCostsOneRowOfHeight(t *testing.T) {
 	}
 }
 
-// TestFilesNavViewHeightOneOmitsRowList is TRIAGE T25's own gap (D83):
+// TestFilesNavViewHeightOneOmitsRowList is TRIAGE T25's own gap:
 // view()'s own doc comment describes a height-1 short-circuit ("No room
 // left for the list past the mode/scope row itself") that every sibling
 // branch of rowsView/flatRowsView already has a dedicated test for, but

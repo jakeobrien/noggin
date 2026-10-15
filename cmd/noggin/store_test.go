@@ -298,7 +298,7 @@ func TestDataDirFallsBackToHome(t *testing.T) {
 }
 
 // TestStoreIgnoresConfigDirCleanBreak is M1.1's acceptance criterion: a
-// populated config-directory store (the pre-C4/D7 location) is never read,
+// populated config-directory store (the old location) is never read,
 // and starring through the current data-dir-resolved storePath round-trips
 // across a fresh load exactly as a new process would see it.
 func TestStoreIgnoresConfigDirCleanBreak(t *testing.T) {

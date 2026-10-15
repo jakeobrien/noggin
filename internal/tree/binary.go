@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// Open refusals (D140). A file noggin will not open is reported as one of
+// Open refusals. A file noggin will not open is reported as one of
 // these, so every open route can show the same Footer message.
 var (
 	// ErrBinary marks a file with a NUL byte in its first sniffLen bytes —

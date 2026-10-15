@@ -122,8 +122,8 @@ func TestNavPanesOmitUpDownAndTheViewerFoldsItsMovement(t *testing.T) {
 	}
 }
 
-// TestPaneHintsNameThePickerFromEveryPane is D39's "M2.3 makes the [ctrl+p]
-// binding visible/discoverable": every pane's footer hints now name the
+// TestPaneHintsNameThePickerFromEveryPane checks that M2.3 makes the [ctrl+p]
+// binding visible/discoverable: every pane's footer hints now name the
 // Picker, the same way they already name Edit/Navigator regardless of
 // focus.
 func TestPaneHintsNameThePickerFromEveryPane(t *testing.T) {
@@ -221,7 +221,7 @@ func TestPaneHintsOmitEveryFocusBindingEverywhere(t *testing.T) {
 }
 
 // TestPaneHintsNameCloseViewerOnlyInViewerPanes: ctrl+w always acts from a
-// viewer (D141), so the viewers hint it; from a nav pane it is usually a
+// viewer, so the viewers hint it; from a nav pane it is usually a
 // no-op (DV2 absent), so they do not — the Help Modal is its backstop there.
 func TestPaneHintsNameCloseViewerOnlyInViewerPanes(t *testing.T) {
 	for _, p := range []pane{dv1Pane, dv2Pane} {
@@ -319,7 +319,7 @@ func TestPickerHintTextNamesToggleHidden(t *testing.T) {
 
 // TestCtrlPNamedOnlyByPeekDV2 supersedes the pre-C3 invariant "no footer hint
 // may ever name ctrl+p" (M2.2 retired it as the Picker's own open binding in
-// favor of "space"): C3/M1.4a's D55 rebind gives PeekDV2 the same chord, so
+// favor of "space"): C3/M1.4a's rebind gives PeekDV2 the same chord, so
 // it is a legitimate hint again — but only in filesPane's list, the one
 // paneHints entry PeekDV2 actually belongs to. Every other pane's hints and
 // the Picker's own hint line must still never mention it.
@@ -338,7 +338,7 @@ func TestCtrlPNamedOnlyByPeekDV2(t *testing.T) {
 	// width to actually observe the untruncated line. 270, not 260 (M4.8):
 	// FilesMode/FilesScope grew the full line past 260 too.
 	if text := plainHints(hintText(filesPane, 270)); !strings.Contains(text, "ctrl+p") {
-		t.Errorf("filesPane hint text = %q, want it to name ctrl+p (PeekDV2, D55)", text)
+		t.Errorf("filesPane hint text = %q, want it to name ctrl+p (PeekDV2)", text)
 	}
 }
 

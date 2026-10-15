@@ -84,7 +84,7 @@ func TestLocationLineForOrphanFile(t *testing.T) {
 }
 
 // TestLocationLineForArticleIsTheExactThreeSegmentAttribution pins S9a's
-// literal wording verbatim (D98/D112, PLAN M8.2's own "the article line's
+// literal wording verbatim (ADR-0007, PLAN M8.2's own "the article line's
 // exact three-segment text"): the CC BY-SA 4.0 notice, the article's own
 // canonical URL, and the modification disclosure, joined by " · " exactly
 // like S9's Root/orphan forms above, replacing them entirely rather than

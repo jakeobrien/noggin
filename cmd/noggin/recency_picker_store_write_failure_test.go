@@ -8,7 +8,7 @@ import (
 
 // TestPickerActivateStoreWriteFailureSurfacesMessage is M3.5's Picker-path
 // variant of M3.4's TestActivateStoreWriteFailureSurfacesMessage (TRIAGE
-// T18/D77): activatePickerInto and activateGrepPickerInto each call
+// T18): activatePickerInto and activateGrepPickerInto each call
 // recordViewed (M3.3) the same way activateInto does, so a store write
 // failure there must surface the same way — the store's own error, not
 // silently overwritten by anything Activate does afterwards, with the
