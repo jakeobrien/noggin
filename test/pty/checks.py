@@ -11,6 +11,8 @@ from harness import *  # noqa: E402
 
 # Run from the repo root (see `make check-pty`).
 BINARY = "./bin/noggin"
+# Last row of cmd/noggin/laika.txt (the empty Document Viewer art), bottom-left.
+MARKER = open("cmd/noggin/laika.txt").read().rstrip("\n").split("\n")[-1][:14]
 FIXTURE = "cmd/noggin/testdata/fixture.md"
 TREE = "cmd/noggin/testdata/tree"
 
@@ -291,7 +293,7 @@ s = Session([BINARY], 80, 24)
 out = s.pump(1.2)
 sc = screen_of(out, 80, 24)
 check("M1.3 empty state on bare launch",
-      "No document open" in "\n".join(sc.raw_lines()))
+      MARKER in "\n".join(sc.raw_lines()))
 s.send(KEY["Quit"], 0.6)
 s.close()
 
@@ -773,7 +775,7 @@ s.send(KEY["Refresh"], 0.8)
 sc = screen_of(s.out, 80, 24)
 body = "\n".join(sc.raw_lines())
 check("C2a/M5.1 pty: the Document Viewer empties when the Active Document vanishes",
-      "No document open" in body, repr(body[:300]))
+      MARKER in body, repr(body[:300]))
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("C2a/M5.1 pty: exits 0 after the Active Document vanished", code == 0, f"exit {code}")

@@ -178,7 +178,7 @@ func TestViewerCloseEmptiesTheViewer(t *testing.T) {
 	if v.doc.isOpen() {
 		t.Errorf("doc still open after close()")
 	}
-	if !strings.Contains(v.view(), emptyViewerText) {
+	if !strings.Contains(v.view(), emptyViewerMarker) {
 		t.Errorf("view after close() = %q, want the empty state", v.view())
 	}
 }
@@ -292,7 +292,7 @@ func TestRefreshEmptiesTheViewerWhenTheActiveDocumentIsDeleted(t *testing.T) {
 	if m.dv1.doc.isOpen() {
 		t.Errorf("viewer still reports a document open after its file was deleted")
 	}
-	if !strings.Contains(m.dv1.view(), emptyViewerText) {
+	if !strings.Contains(m.dv1.view(), emptyViewerMarker) {
 		t.Errorf("viewer view = %q, want the empty state", m.dv1.view())
 	}
 	if m.message == "" {

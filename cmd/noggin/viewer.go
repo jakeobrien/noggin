@@ -10,8 +10,34 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// emptyViewerText is what the Document Viewer says when nothing is open (S7).
-const emptyViewerText = "No document open. Pick a file in the Navigator."
+// emptyViewerArt is what the Document Viewer shows when nothing is open (S7):
+// laika.txt, one entry per row, with trailing blank rows dropped.
+var emptyViewerArt = strings.Split(strings.TrimRight(laika, "\n"), "\n")
+
+// emptyViewerArtView lays emptyViewerArt out over a width x height box,
+// anchored to the bottom-left corner: a box shorter than the art loses its
+// top rows, a narrower one its right-hand columns. Rows are cut by rune
+// because the art is plain ASCII with no styling to preserve.
+func emptyViewerArtView(width, height int) string {
+	art := emptyViewerArt
+	if len(art) > height {
+		art = art[len(art)-height:]
+	}
+	rows := make([]string, 0, height)
+	for range height - len(art) {
+		rows = append(rows, "")
+	}
+	for _, line := range art {
+		if r := []rune(line); len(r) > width {
+			line = string(r[:width])
+		}
+		rows = append(rows, line)
+	}
+	return emptyViewerStyle().
+		Width(width).Height(height).
+		MaxWidth(width).MaxHeight(height).
+		Render(strings.Join(rows, "\n"))
+}
 
 // viewer is the Document Viewer: the active document, its rendered form and the
 // scroll position within it. Navigation is viewport scrolling only — no cursor,
@@ -641,7 +667,7 @@ func (v viewer) view() string {
 	case v.err != nil:
 		return v.fill(emptyViewerStyle(), v.vp.Width(), v.vp.Height(), v.err.Error())
 	case !v.doc.isOpen():
-		return v.fill(emptyViewerStyle(), v.vp.Width(), v.vp.Height(), emptyViewerText)
+		return emptyViewerArtView(v.vp.Width(), v.vp.Height())
 	default:
 		if v.muted && v.mutedContent != "" {
 			vp := v.vp

@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 const fixturePath = "testdata/fixture.md"
@@ -179,15 +180,15 @@ func TestViewerShowsTheOpenDocument(t *testing.T) {
 			t.Errorf("view does not show frontmatter %q", line)
 		}
 	}
-	if strings.Contains(view, emptyViewerText) {
+	if strings.Contains(view, emptyViewerMarker) {
 		t.Error("view shows the empty state with a document open")
 	}
 }
 
 func TestEmptyStateWithNoDocumentOpen(t *testing.T) {
 	m := sized(t, newModel(), 80, 24)
-	if !strings.Contains(m.View().Content, emptyViewerText) {
-		t.Errorf("view with no document open does not contain %q", emptyViewerText)
+	if !strings.Contains(m.View().Content, emptyViewerMarker) {
+		t.Errorf("view with no document open does not contain %q", emptyViewerMarker)
 	}
 	if got := m.paneTitle(dv1Pane); got != dv1Pane.title() {
 		t.Errorf("viewer title with no document = %q, want %q", got, dv1Pane.title())
@@ -335,5 +336,32 @@ func TestFrameStaysWithinTheTerminalWhileScrolling(t *testing.T) {
 			return
 		}
 		m = press(t, m, keys.PageDown.Keys()[0])
+	}
+}
+
+// emptyViewerMarker is the start of the art's bottom row — always on screen,
+// since the art is anchored to the viewer's bottom-left corner.
+var emptyViewerMarker = emptyViewerArt[len(emptyViewerArt)-1][:14]
+
+func TestEmptyViewerArtAnchoredBottomLeft(t *testing.T) {
+	art := emptyViewerArt
+	rows := strings.Split(ansi.Strip(emptyViewerArtView(30, len(art)+3)), "\n")
+	if len(rows) != len(art)+3 {
+		t.Fatalf("got %d rows, want %d", len(rows), len(art)+3)
+	}
+	for i := range 3 {
+		if strings.TrimSpace(rows[i]) != "" {
+			t.Errorf("row %d above the art is not blank: %q", i, rows[i])
+		}
+	}
+	for i, want := range art {
+		if got := strings.TrimRight(rows[i+3], " "); got != strings.TrimRight(want[:30], " ") {
+			t.Fatalf("art row %d = %q, want %q", i, got, strings.TrimRight(want[:30], " "))
+		}
+	}
+	// A box shorter than the art keeps the bottom rows.
+	rows = strings.Split(ansi.Strip(emptyViewerArtView(100, 2)), "\n")
+	if strings.TrimRight(rows[1], " ") != strings.TrimRight(art[len(art)-1], " ") {
+		t.Errorf("short box lost the bottom row: %q", rows[1])
 	}
 }

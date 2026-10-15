@@ -160,7 +160,7 @@ func TestPeekClearedWithNoActiveDocumentEmptiesTheViewer(t *testing.T) {
 	if m.dv1.doc.isOpen() {
 		t.Error("an Active Document appeared after clearing Peek with none open before")
 	}
-	if !strings.Contains(m.View().Content, emptyViewerText) {
+	if !strings.Contains(m.View().Content, emptyViewerMarker) {
 		t.Errorf("view after clearing Peek with no Active Document = %q, want the empty state", m.View().Content)
 	}
 }
