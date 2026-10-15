@@ -426,7 +426,7 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 // candidate set (files_search.go's listFiles/isDotfilePath), the same
 // queuePickerSearch path switchPickerMode/switchPickerScope already reuse
 // for their own in-place switches: the Prompt is untouched, and
-// resultsCurrent's hideDotfiles comparison stales the previous candidate
+// resultsCurrent's bounds comparison stales the previous candidate
 // set's rows immediately, exactly as it already does for a mode or Scope
 // switch.
 //
@@ -435,15 +435,15 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 // bearing on a Wikipedia search's results at all — queuePickerSearch would
 // still fire a real, debounced network request with no visible effect. The
 // toggle itself still flips (for whenever the Picker next switches to
-// File/Grep), but instead of requerying, p.results.bounds is relabeled
-// to match directly — resultsCurrent's label comparison then still
+// File/Grep), but instead of requerying, p.results.bounds.hideDotfiles is
+// relabeled to match directly — resultsCurrent's bounds comparison then still
 // reports the existing, still-valid Wikipedia rows as current, so they
 // stay on screen rather than reading as stale (which the view would show
 // as "searching…" for a search that was never actually dispatched).
 func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 	m.hideDotfiles = !m.hideDotfiles
 	if m.picker.mode == wikipediaMode {
-		m.picker.results.bounds = m.searchBounds()
+		m.picker.results.bounds.hideDotfiles = m.hideDotfiles
 		return m, nil
 	}
 	return m.queuePickerSearch()
@@ -454,8 +454,7 @@ func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 // the Tree is re-walked too); with Wikipedia active there is no Root and it
 // flips the most recently set value instead (setFileFilter covers both). Either
 // way the Picker reads the result back from filesNav.fileFilter, never a copy
-// of its own. Wikipedia
-// mode and the Starred scope ignore the filter, so like toggleHiddenFiles they
+// of its own. Wikipedia mode and the Starred scope ignore the filter, so like toggleHiddenFiles they
 // relabel the rows on screen rather than fire a search whose results could not
 // differ.
 func (m model) togglePickerFilter() (model, tea.Cmd) {
@@ -476,7 +475,7 @@ func (m model) togglePickerFilter() (model, tea.Cmd) {
 // filter cannot affect them.
 func (m model) refreshPickerAfterFilter() (model, tea.Cmd) {
 	if m.picker.mode == wikipediaMode || m.picker.scope == starredScope {
-		m.picker.results.bounds = m.searchBounds()
+		m.picker.results.bounds.hideDotfiles = m.hideDotfiles
 		return m, nil
 	}
 	return m.queuePickerSearch()
@@ -815,7 +814,8 @@ type pickerBounds struct {
 	filter       tree.Filter
 }
 
-// searchBounds is the model's current pickerBounds.
+// searchBounds is the model's current pickerBounds: the live values a Picker
+// search is bounded by, which pickerResults.bounds is compared against.
 func (m model) searchBounds() pickerBounds {
 	return pickerBounds{hideDotfiles: m.hideDotfiles, filter: m.files.fileFilter()}
 }
