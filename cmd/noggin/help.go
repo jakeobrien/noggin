@@ -53,7 +53,7 @@ import (
 // FindNext/FindPrevious/Cancel usually are with no search active, but this
 // modal is exactly the discoverability backstop those bindings' own comment
 // (and this one) promises — so, like them, it is listed unconditionally
-// even though the terser footer omits it. keys.CloseDV2 (S4, C3/M2.1)
+// even though the terser footer omits it. keys.CloseViewer (S4, C3/M2.1)
 // joins it for the identical reason: also usually a no-op with DV2 absent,
 // also listed unconditionally here as its own discoverability backstop.
 // keys.Peek (S7) and C3/S3's two
@@ -86,7 +86,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown,
 			keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.FileFilter,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseDV2, keys.Refresh,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh,
 			keys.Help, keys.Quit,
 		}
 	case filesPane:
@@ -94,7 +94,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown,
 			keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.FileFilter,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseDV2, keys.Refresh, keys.Peek,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh, keys.Peek,
 			keys.ActivateDV2, keys.PeekDV2,
 			keys.Help, keys.Quit,
 		}
@@ -107,7 +107,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
 			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.FileFilter,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseDV2, keys.Refresh,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh,
 			keys.Help, keys.Quit,
 		)
 	}

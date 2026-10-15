@@ -21,14 +21,14 @@ import (
 // Footer no longer needs to repeat what the pane itself already shows.
 // FocusDV2 was never listed here in the first place (predates M7.2, C3/M1.3:
 // it is usually a no-op with DV2 absent, the same "inapplicable binding"
-// treatment CloseDV2 gets below) — M7.2 is three removals, not four, for the
+// treatment CloseViewer gets below) — M7.2 is three removals, not four, for the
 // same outcome ("no keys.Focus* binding in any Footer hint list"). help.go's
 // helpBindings still lists all four unconditionally, unaffected by either
 // reason: the badges replace the footer hint, not the Help Modal's own
 // entry.
 // Refresh (S2) (C2a/M9.1) is unaffected by the same change and stays
 // global — reachable from every one of these three panes, the same way
-// Navigator/Picker already are — so all three panes list it. CloseDV2
+// Navigator/Picker already are — so all three panes list it. CloseViewer
 // (S4, C3/M2.1) is a no-op whenever DV2 does not exist, which is every
 // pane's common case (DV2 is absent at launch, S1, and stays that way until
 // something creates it), so it gets the same "inapplicable binding"

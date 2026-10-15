@@ -611,7 +611,46 @@ func (m model) ensureDV2() model {
 	return m.resize(m.width, m.height, resizeCauseSecondViewer)
 }
 
-// closeDV2 is S4/C3/M2.1's `ctrl+x` binding: closes DV2, a no-op if it does
+// closeViewer is D141's ctrl+w: it acts on the focused Document Viewer.
+//
+//   - DV2 focused: closeDV2 (Focus moves to DV1).
+//   - DV1 focused, DV2 open: DV1 takes over DV2's whole viewer state —
+//     document, history, scroll memory, Render Mode — and DV2 closes. DV1's
+//     previous state is discarded, and its document is pruned from the
+//     staleness baseline unless DV2 had the same one open. The re-layout to
+//     the full width runs through resize, as closeDV2's does, so a find DV2
+//     carried is dropped and reported the same way. A DV2-targeted article
+//     fetch still in flight lands in DV1 (applyArticleFetch's own fallback).
+//   - DV1 focused, no DV2: DV1 is cleared to a fresh, empty viewer (as at
+//     launch), its document pruned from the baseline. Already empty: no-op.
+//   - Sources Nav / Files Nav focused: no-op.
+func (m model) closeViewer() model {
+	if m.focus == dv2Pane {
+		return m.closeDV2()
+	}
+	if m.focus != dv1Pane {
+		return m
+	}
+	if m.dv2 != nil {
+		next := *m.dv2
+		if old := m.dv1.doc; old.isOpen() && old.path != next.doc.path {
+			m.staleBaseline = m.staleBaseline.withoutDoc(old.path)
+		}
+		m.dv1 = next
+		m.dv2 = nil
+		return m.resize(m.width, m.height, resizeCauseViewerClosed)
+	}
+	if !m.dv1.doc.isOpen() && len(m.dv1.history) == 0 && m.dv1.pendingFetch == nil {
+		return m
+	}
+	if m.dv1.doc.isOpen() {
+		m.staleBaseline = m.staleBaseline.withoutDoc(m.dv1.doc.path)
+	}
+	m.dv1 = newViewer()
+	return m.resize(m.width, m.height, resizeCauseViewerClosed)
+}
+
+// closeDV2 is S4/C3/M2.1's binding (ctrl+w from DV2 since D141): closes DV2, a no-op if it does
 // not exist (mirroring FocusDV2's own "a bare request has no document to
 // create/close" shape). Focus is set to dv1Pane directly (not through
 // resolveFocus's generic focusOrder fallback) when it was on dv2Pane: DV2 no
@@ -1716,14 +1755,12 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m.focusPane(dv2Pane), nil
-		// CloseDV2 (S4, C3/M2.1) lives in this global switch, not a pane-
-		// specific case, so it is reachable from every one of Sources Nav/Files
-		// Nav/DV1/DV2 — and, like every other binding in this switch, already
-		// unreachable while a find is editing, the Help Modal is open or the
-		// Picker is open, per the three gates above that return before this
-		// switch ever runs.
-		case key.Matches(msg, keys.CloseDV2):
-			return m.closeDV2(), nil
+		// CloseViewer (D141) lives in this global switch, so — like every
+		// other binding here — it is unreachable while a find is editing, the
+		// Help Modal is open or the Picker is open. closeViewer itself decides
+		// what Focus it acts on.
+		case key.Matches(msg, keys.CloseViewer):
+			return m.closeViewer(), nil
 		case key.Matches(msg, keys.Refresh):
 			return m.refresh()
 		case key.Matches(msg, keys.Help):

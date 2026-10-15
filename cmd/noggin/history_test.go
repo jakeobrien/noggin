@@ -364,9 +364,9 @@ func TestDV2HistoryDiesWithDV2(t *testing.T) {
 		t.Fatalf("setup: DV2 history = %v, want [%q, %q]", got, docA, docB)
 	}
 
-	m = press(t, m, keys.CloseDV2.Keys()[0])
+	m = press(t, m, keys.CloseViewer.Keys()[0])
 	if m.dv2 != nil {
-		t.Fatalf("setup: DV2 still exists after CloseDV2")
+		t.Fatalf("setup: DV2 still exists after CloseViewer")
 	}
 
 	m = press(t, m, keys.FocusFiles.Keys()[0])

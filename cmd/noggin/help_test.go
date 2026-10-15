@@ -376,11 +376,11 @@ func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
 // FocusDV2 (C3/M1.3) join this list too: unlike the footer's paneHints,
 // which omits FocusDV2 as usually inapplicable, this modal is exactly the
 // discoverability backstop that reasoning promises (helpBindings' own
-// comment), so both are listed unconditionally here. CloseDV2 (S4, C3/M2.1)
+// comment), so both are listed unconditionally here. CloseViewer (S4, C3/M2.1)
 // joins them for the identical reason: also usually a no-op with DV2
 // absent, also listed unconditionally as its own discoverability backstop.
 func TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane(t *testing.T) {
-	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.ToggleHidden, keys.FileFilter}
+	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseViewer, keys.Refresh, keys.ToggleHidden, keys.FileFilter}
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		bindings := helpBindings(p)
 		for _, w := range want {

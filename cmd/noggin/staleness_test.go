@@ -490,7 +490,7 @@ func TestResetStaleBaselineTracksBothViewersActiveDocuments(t *testing.T) {
 	}
 }
 
-// TestResetStaleBaselineDropsDV2WhenItCloses: CloseDV2 (S4/C3/M2.1) prunes
+// TestResetStaleBaselineDropsDV2WhenItCloses: CloseViewer (S4/C3/M2.1) prunes
 // DV2's former document from the baseline immediately (C3/M2.1b, TRIAGE
 // T12), not just as a side effect of whatever refresh happens to run next
 // — this confirms the baseline stops tracking DV2's former document the
@@ -501,9 +501,9 @@ func TestResetStaleBaselineDropsDV2WhenItCloses(t *testing.T) {
 		t.Fatalf("setup: baseline does not track both viewers' documents yet")
 	}
 
-	m = press(t, m, keys.CloseDV2.Keys()[0])
+	m = press(t, m, keys.CloseViewer.Keys()[0])
 	if m.dv2 != nil {
-		t.Fatal("setup: CloseDV2 did not close DV2")
+		t.Fatal("setup: CloseViewer did not close DV2")
 	}
 	if got := m.staleBaseline.trackedDocPaths(); len(got) != 1 || got[0] != pathA {
 		t.Errorf("tracked doc paths immediately after closing DV2 (no refresh) = %v, want [%q]", got, pathA)
@@ -521,9 +521,9 @@ func TestClosingDV2DoesNotFlipStaleForItsFormerDocument(t *testing.T) {
 		t.Fatal("setup: already stale before any change")
 	}
 
-	m = press(t, m, keys.CloseDV2.Keys()[0])
+	m = press(t, m, keys.CloseViewer.Keys()[0])
 	if m.dv2 != nil {
-		t.Fatal("setup: CloseDV2 did not close DV2")
+		t.Fatal("setup: CloseViewer did not close DV2")
 	}
 
 	bumpMtimeForward(t, pathB)

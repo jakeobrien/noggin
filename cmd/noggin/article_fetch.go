@@ -153,6 +153,13 @@ func (m model) refreshArticleFetchInto(target pane) (model, tea.Cmd) {
 // (C6/M6.1) of the same recordViewed-then-navigate pair activatePickerInto's
 // own fileMode branch already gives a file).
 func (m model) applyArticleFetch(msg articleFetchMsg) model {
+	// A DV2-targeted fetch arriving after DV2 closed can only still match a
+	// token if DV1 inherited DV2's state (model.closeViewer, D141): tokens
+	// are model-wide and never reused. Retarget it at DV1 so the result lands
+	// there instead of withViewerFor resurrecting DV2.
+	if msg.pane == dv2Pane && m.dv2 == nil {
+		msg.pane = dv1Pane
+	}
 	v := m.viewerFor(msg.pane)
 	if v.pendingFetch == nil || v.pendingFetch.token != msg.token {
 		return m

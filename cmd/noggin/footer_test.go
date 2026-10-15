@@ -175,16 +175,16 @@ func TestPaneHintsOmitEveryFocusBindingEverywhere(t *testing.T) {
 	}
 }
 
-// TestPaneHintsOmitCloseDV2Everywhere is CloseDV2's (S4, C3/M2.1) own half
+// TestPaneHintsOmitCloseViewerEverywhere is CloseViewer's (S4, C3/M2.1) own half
 // of the same carve-out TestPaneHintsOmitEveryFocusBindingEverywhere pins
 // for FocusDV2: also usually a no-op with DV2 absent, so paneHints omits it
 // from every pane's terse footer hints too — the Help Modal is its
 // discoverability backstop instead
 // (TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane).
-func TestPaneHintsOmitCloseDV2Everywhere(t *testing.T) {
+func TestPaneHintsOmitCloseViewerEverywhere(t *testing.T) {
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
 		if text := hintText(p, 200); strings.Contains(text, "close dv2") {
-			t.Errorf("pane %v: hint text = %q, want it to omit CloseDV2", p, text)
+			t.Errorf("pane %v: hint text = %q, want it to omit CloseViewer", p, text)
 		}
 	}
 }
