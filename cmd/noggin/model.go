@@ -1870,6 +1870,11 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m = m.clearPeek()
 			}
 			if next, handled := m.files.handleKey(msg); handled {
+				// Collapse can climb to the parent folder (D141), a
+				// selection change like any other.
+				if key.Matches(msg, keys.Collapse) && next.selected != m.files.selected {
+					m = m.clearPeek()
+				}
 				m.files = next
 				return m, nil
 			}

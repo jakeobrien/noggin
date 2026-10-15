@@ -772,17 +772,33 @@ func (f filesNav) expand() filesNav {
 	return f
 }
 
-// collapse closes the selected folder in place. A file or an already-closed
-// folder is a no-op; the selection stays on the folder, which keeps its index
-// valid as its children vanish beneath it. Also a no-op in a flat-list mode
-// (M4.5) — see expand's own comment for why.
+// collapse is Left (D141). On an expanded folder it closes that folder in
+// place; the selection stays on it, which keeps its index valid as its
+// children vanish beneath it. On a file or a collapsed folder it climbs: the
+// parent folder is closed and selected — the parent sits above the selection,
+// so its index is unaffected by the rows that vanish. Only the parent's own
+// entry is cleared from expanded, so folders inside it reopen as they were.
+// A top-level row has no parent row (the Root itself is not a row) and is a
+// no-op, as is the whole call in a flat-list mode (M4.5) — see expand's own
+// comment for why.
 func (f filesNav) collapse() filesNav {
 	if f.flatMode() {
 		return f
 	}
-	n := f.selectedNode()
-	if n != nil && n.IsDir && f.expanded[n.Path] {
-		f = f.withExpanded(n.Path, false)
+	rows := f.visibleRows()
+	if f.selected < 0 || f.selected >= len(rows) {
+		return f
+	}
+	r := rows[f.selected]
+	if r.node.IsDir && f.expanded[r.node.Path] {
+		return f.withExpanded(r.node.Path, false)
+	}
+	for i := f.selected - 1; i >= 0 && r.depth > 0; i-- {
+		if rows[i].depth == r.depth-1 {
+			f = f.withExpanded(rows[i].node.Path, false)
+			f.selected = i
+			return f
+		}
 	}
 	return f
 }
