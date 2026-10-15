@@ -14,5 +14,13 @@
     "body": "Correction: pickerResults has a named field `bounds pickerBounds` (not embedded). Review follow-up: toggleHiddenFiles in Wikipedia mode relabels only bounds.hideDotfiles, as before.",
     "created_at": "2026-10-15T14:43:28.449995624Z",
     "updated_at": "2026-10-15T14:43:28.449995624Z"
+  },
+  {
+    "id": "tk-xw3p-c85642397b0",
+    "issue_id": "tk-xw3p",
+    "author": "noggin",
+    "body": "Verified at 27fb959: every item is resolved in code (7b9d62c, 3c4814f, db3ad56) or dropped as wontfix per the triage comment above. make check and go test -count=1 ./... green; no user-visible change.",
+    "created_at": "2026-10-15T19:08:09.726868713Z",
+    "updated_at": "2026-10-15T19:08:09.726868713Z"
   }
 ]

@@ -1,14 +1,13 @@
 ---
 title: 'Follow-up: tidy File Filter / Picker bounds after tk-ybh'
-status: open
+status: closed
 priority: 3
 issue_type: chore
-labels:
-- needs-triage
 depends_on:
   tk-0ta: parent-child
 created_at: 2026-10-14T20:50:31.566121839+00:00
-updated_at: 2026-10-14T20:50:31.566121839+00:00
+updated_at: 2026-10-15T19:08:09.745499880+00:00
+closed_at: 2026-10-15T19:08:09.733661297+00:00
 ---
 
 # Description
