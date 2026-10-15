@@ -17,7 +17,8 @@ import (
 // re-listed by hand, per that slice's own comment. keys.Picker is added to
 // every case for the same reason (D39/M2.3): opening the Picker is global
 // and reachable from any Focus, so its binding belongs in the discoverability
-// backstop everywhere, the same way Edit/Navigator already are.
+// backstop everywhere, the same way Navigator already is. Edit is viewer-only (D141), so only
+// the viewer case lists it.
 //
 // keys.PickerUp/PickerDown/PickerMode/PickerScope are also added to every
 // case, even though they only do anything once the Picker is already open
@@ -31,13 +32,6 @@ import (
 // joins them for the identical reason (C2a/M9.1): it too only does anything
 // once the Picker is open, and these three panes are the only place Help
 // can ever show it.
-//
-// keys.PickerStar (S2/M2.5, keymap.go's own comment on it) is deliberately
-// left off every case's list here, unlike the Picker-only bindings above:
-// its Help() description ("star") collides with keys.Star's own. The
-// Footer's own pickerHintText (footer.go) is PickerStar's one
-// discoverability surface for now — real, but weaker than the other
-// Picker-only actions' backstop here.
 //
 // keys.Star (S2/M2.1/M2.2) itself now joins filesPane's and the viewer's
 // list here (M2.8, TRIAGE T5/T6), not only rootsPane's: the Files Nav
@@ -72,36 +66,34 @@ import (
 // TRIAGE T20, D81), for the identical Files-Nav-only reason as Peek/
 // ActivateDV2/PeekDV2 just above — S5's Browse mode/scope cycle has no other
 // discoverability surface than this modal and paneHints' matching addition
-// (footer.go). Their Help() key/desc ("tab"/"mode", "shift+tab"/"scope")
-// happen to read identically to keys.PickerMode/keys.PickerScope's own,
-// already listed here for the Picker-open case (see this func's comment
-// above on those) — a real duplicate line, not a bug: the two pairs are
-// never reachable at the same time (Picker closed vs. open), so the modal
-// simply documents both contexts' "tab cycles mode" shape once each.
+// (footer.go). Their descriptions ("mode", "scope") are shared with
+// keys.PickerMode/keys.PickerScope, listed here for the Picker-open case;
+// the keys differ (t/a vs alt+t/alt+a, D141), so the modal documents each
+// context once.
 //
 // keys.HistoryBack/keys.HistoryForward (C4/M6.1) join the viewer case below
 // (M6.3, TRIAGE T41), for the identical viewer-only reason as the rest of
 // this func's viewer-specific additions: S9's per-viewer back/forward walk
 // has no discoverability surface but this modal and paneHints' matching
 // addition (footer.go). Their Help() text ("["/"back", "]"/"forward")
-// collides with nothing else already listed here, unlike keys.PickerStar
-// (this func's own comment above) or keys.FilesMode/keys.FilesScope, so a
+// collides with nothing else already listed here, unlike
+// keys.FilesMode/keys.FilesScope, so a
 // plain string check is enough to pin their presence.
 func helpBindings(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
 		return []key.Binding{
 			keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown,
-			keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.PickerFilter,
+			keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.FileFilter,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,
 		}
 	case filesPane:
 		return []key.Binding{
-			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.FileFilter, keys.Star, keys.LineUp, keys.LineDown,
-			keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.PickerFilter,
+			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown,
+			keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.FileFilter,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.Peek,
 			keys.ActivateDV2, keys.PeekDV2,
 			keys.Help, keys.Quit,
@@ -114,7 +106,7 @@ func helpBindings(p pane) []key.Binding {
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
 			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
-			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.PickerFilter,
+			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.FileFilter,
 			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 			keys.Help, keys.Quit,
 		)

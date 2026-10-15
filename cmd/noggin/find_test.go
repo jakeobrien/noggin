@@ -290,7 +290,7 @@ func TestNavigatorToggleAfterCommittedFindNamesTheToggleNotAResize(t *testing.T)
 		t.Fatal("test setup: committed find has no matches to lose")
 	}
 
-	m = press(t, m, "ctrl+n")
+	m = press(t, m, keys.Navigator.Keys()[0])
 
 	if m.dv1.hasFindMatches() {
 		t.Fatal("test setup: toggling the Navigator did not actually invalidate the committed find (width unchanged?)")

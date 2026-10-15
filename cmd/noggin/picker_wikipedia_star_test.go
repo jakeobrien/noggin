@@ -49,14 +49,14 @@ func TestPickerStarTogglesSelectedWikipediaResult(t *testing.T) {
 
 	key := wikipedia.ArticleURL(result.Title)
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	got := m.docRecord(key)
 	if !got.Starred || !got.Article || got.Title != result.Title {
 		t.Errorf("docRecord(%q) after Picker star = %+v, want Starred/Article/Title=%q", key, got, result.Title)
 	}
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 	got = m.docRecord(key)
 	if got.Starred {
 		t.Errorf("docRecord(%q) after un-starring = %+v, want Starred cleared", key, got)
@@ -92,7 +92,7 @@ func TestPickerStarNoOpWithNothingSelectedInWikipediaMode(t *testing.T) {
 	storePath := dir + "/documents"
 	m := pickerWikipediaWithDocs(t, storePath)
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	if m.message != "" {
 		t.Errorf("Picker star with nothing selected: want silent no-op, got message %q", m.message)
@@ -136,14 +136,14 @@ func TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInWikipediaMode(t *testin
 		t.Fatalf("Results row before starring = %q, want the article row present with no star marker\n%s", row, before)
 	}
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	after := ansi.Strip(m.View().Content)
 	if row := resultRow(after); !strings.Contains(row, "\u2605") {
 		t.Errorf("Results row after starring the selected Result = %q, want it to carry the \"\u2605\" marker\n%s", row, after)
 	}
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 	cleared := ansi.Strip(m.View().Content)
 	if row := resultRow(cleared); strings.Contains(row, "\u2605") {
 		t.Errorf("Results row after un-starring = %q, want the star marker gone\n%s", row, cleared)

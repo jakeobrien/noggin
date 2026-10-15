@@ -39,7 +39,7 @@ func filterPickerModel(t *testing.T) (m model, a, b string) {
 
 func pressPickerFilter(t *testing.T, m model) (model, int) {
 	t.Helper()
-	next, cmd := m.Update(keyPress(keys.PickerFilter.Keys()[0]))
+	next, cmd := m.Update(keyPress(keys.FileFilter.Keys()[0]))
 	m = concrete(t, next)
 	if cmd == nil {
 		return m, 0

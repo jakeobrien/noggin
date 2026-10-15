@@ -108,9 +108,9 @@ func TestScrollIsIndependentPerViewer(t *testing.T) {
 	}
 	dv1Before := m.dv1.offset()
 
-	m = press(t, m, "j")
-	m = press(t, m, "j")
-	m = press(t, m, "j")
+	m = press(t, m, "down")
+	m = press(t, m, "down")
+	m = press(t, m, "down")
 
 	dv2After := m.dv2.offset()
 	if dv2After == 0 {
@@ -121,7 +121,7 @@ func TestScrollIsIndependentPerViewer(t *testing.T) {
 	}
 
 	m = press(t, m, keys.FocusDV1.Keys()[0])
-	m = press(t, m, "j")
+	m = press(t, m, "down")
 
 	if got := m.dv1.offset(); got == dv1Before {
 		t.Error("scrolling DV1 (now focused) did not move its own offset")

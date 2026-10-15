@@ -38,7 +38,7 @@ func TestRenameEditsSelectedRootNameInline(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m, storeFile := renameFixture(t, target)
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	if !m.roots.renameEditing() {
 		t.Fatal("c did not start a rename")
 	}
@@ -81,7 +81,7 @@ func TestRenameCancelDiscardsEdit(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m, storeFile := renameFixture(t, target)
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	m = typeText(t, m, "should not stick")
 	m = press(t, m, "esc")
 
@@ -110,7 +110,7 @@ func TestRenameEmptyRevertsToDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	if got := m.roots.renameInput.Value(); got != "Custom" {
 		t.Fatalf("seeded rename input = %q, want the existing custom name %q", got, "Custom")
 	}
@@ -138,7 +138,7 @@ func TestRenameWhitespaceOnlyRevertsToDefault(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m, _ := renameFixture(t, target)
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	m.roots.renameInput.SetValue("   ")
 	m = press(t, m, "enter")
 
@@ -156,7 +156,7 @@ func TestRenameRefusedForUnstarredAdhocRoot(t *testing.T) {
 	m, _ := renameFixture(t, target)
 	m.roots = m.roots.setRoots([]root{{path: target}}, 0) // unstarred
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	if m.roots.renameEditing() {
 		t.Error("rename started on an unstarred ad-hoc root, want refused")
 	}
@@ -173,7 +173,7 @@ func TestRenameRefusedForWikipediaSource(t *testing.T) {
 	m.roots = m.roots.activateWikipedia()
 	m.roots.selected = len(m.roots.rows) // the Wikipedia row
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	if m.roots.renameEditing() {
 		t.Error("rename started on the Wikipedia row, want refused")
 	}
@@ -194,18 +194,18 @@ func TestRenameAllowedAfterStarringGivesDefaultName(t *testing.T) {
 	m.roots = m.roots.setRoots([]root{{path: target}}, 0) // unstarred
 	m.focus = rootsPane
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	if m.roots.renameEditing() {
 		t.Fatal("rename started on an unstarred ad-hoc root before it was even starred")
 	}
 
-	m = press(t, m, "s") // star it (toggleStar)
+	m = press(t, m, keys.Star.Keys()[0]) // star it (toggleStar)
 	row, ok := m.roots.selectedRow()
 	if !ok || !row.root.starred {
 		t.Fatalf("selected row after star: ok=%v starred=%v, want true", ok, row.root.starred)
 	}
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	if !m.roots.renameEditing() {
 		t.Fatal("rename still refused after starring the ad-hoc root")
 	}
@@ -222,7 +222,7 @@ func TestRenameOwnsKeyboardWhileEditing(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m, _ := renameFixture(t, target)
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	m.roots.renameInput.SetValue("")
 	m = press(t, m, "s")
 	m = press(t, m, "q")
@@ -245,7 +245,7 @@ func TestRenamePersistsAcrossReload(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m, storeFile := renameFixture(t, target)
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	m.roots.renameInput.SetValue("Work")
 	m = press(t, m, "enter")
 
@@ -302,7 +302,7 @@ func TestRenameFooterReplacesOrdinaryHintsWhileEditing(t *testing.T) {
 		t.Fatalf("footer before renaming = %q, want the ordinary rootsPane hints", before)
 	}
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	during := m.renderFooter(rect{width: 80, height: 1})
 	if strings.Contains(during, "star") || strings.Contains(during, "open") {
 		t.Errorf("footer while renaming = %q, want rootsPane's ordinary hints replaced", during)
@@ -320,7 +320,7 @@ func TestRenameRendersInlineOnTheRowNotTheFooter(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m, _ := renameFixture(t, target)
 
-	m = press(t, m, "c")
+	m = press(t, m, keys.Rename.Keys()[0])
 	m.roots.renameInput.SetValue("Distinctive")
 
 	// ansi.Strip first: the textinput's own cursor rendering (a reverse-video

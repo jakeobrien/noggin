@@ -34,7 +34,7 @@ func TestPickerStarTogglesSelectedFileResult(t *testing.T) {
 	m.picker.selected = 0
 	before := m.picker
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	if got := m.docRecord(path); !got.Starred {
 		t.Errorf("docRecord(report.md) after Picker star = %+v, want Starred", got)
@@ -42,7 +42,7 @@ func TestPickerStarTogglesSelectedFileResult(t *testing.T) {
 	// Un-starring leaves the Result row and cursor position unchanged (S2):
 	// picker state besides the store itself must be byte-identical to what
 	// it was before either toggle.
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 	if got := m.docRecord(path); got.Starred {
 		t.Errorf("docRecord(report.md) after un-starring = %+v, want cleared", got)
 	}
@@ -85,7 +85,7 @@ func TestPickerStarTogglesSelectedGrepResult(t *testing.T) {
 	}
 	m.picker.selected = 0
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	if got := m.docRecord(path); !got.Starred {
 		t.Errorf("docRecord(notes.md) after Picker star (Grep mode) = %+v, want Starred", got)
@@ -103,7 +103,7 @@ func TestPickerStarNoOpWithNothingSelected(t *testing.T) {
 		withRipgrep(ripgrepAvailability{available: true})
 	m, _ = m.openPicker()
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	if m.message != "" {
 		t.Errorf("Picker star with nothing selected: want silent no-op, got message %q", m.message)
@@ -151,7 +151,7 @@ func TestPickerStarTogglingUpdatesTheRenderedMarkerLive(t *testing.T) {
 		t.Fatalf("Results row before starring = %q, want the report.md row present with no star marker\n%s", row, before)
 	}
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	after := ansi.Strip(m.View().Content)
 	if row := resultRow(after); !strings.Contains(row, "\u2605") {
@@ -160,7 +160,7 @@ func TestPickerStarTogglingUpdatesTheRenderedMarkerLive(t *testing.T) {
 
 	// Un-starring clears the marker in the same frame, matching S2's "marker
 	// cleared" wording literally now that there is a rendered marker to clear.
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 	cleared := ansi.Strip(m.View().Content)
 	if row := resultRow(cleared); strings.Contains(row, "\u2605") {
 		t.Errorf("Results row after un-starring = %q, want the star marker gone\n%s", row, cleared)
@@ -204,7 +204,7 @@ func TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode(t *testing.T) 
 		t.Fatalf("Results row before starring = %q, want the notes.md row present with no star marker\n%s", row, before)
 	}
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 
 	after := ansi.Strip(m.View().Content)
 	if row := resultRow(after); !strings.Contains(row, "\u2605") {
@@ -213,7 +213,7 @@ func TestPickerStarTogglingUpdatesTheRenderedMarkerLiveInGrepMode(t *testing.T) 
 
 	// Un-starring clears the marker in the same frame, matching S2's "marker
 	// cleared" wording literally now that there is a rendered marker to clear.
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 	cleared := ansi.Strip(m.View().Content)
 	if row := resultRow(cleared); strings.Contains(row, "\u2605") {
 		t.Errorf("Results row after un-starring = %q, want the star marker gone\n%s", row, cleared)

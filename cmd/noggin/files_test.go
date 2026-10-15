@@ -257,8 +257,8 @@ func TestModelRoutesKeysToFocusedFilesPane(t *testing.T) {
 	}
 
 	// Expand docs, then move down onto its first child.
-	m = press(t, m, keys.Expand.Keys()[1])   // "l"
-	m = press(t, m, keys.LineDown.Keys()[1]) // "j"
+	m = press(t, m, keys.Expand.Keys()[0])
+	m = press(t, m, keys.LineDown.Keys()[0])
 	if got := m.files.selectedNode().Name; got != "guide.md" {
 		t.Errorf("selection after expand+down = %q, want guide.md", got)
 	}
@@ -267,8 +267,8 @@ func TestModelRoutesKeysToFocusedFilesPane(t *testing.T) {
 	}
 
 	// Collapse from the parent hides it again.
-	m = press(t, m, keys.LineUp.Keys()[1])   // "k" back to docs
-	m = press(t, m, keys.Collapse.Keys()[1]) // "h"
+	m = press(t, m, keys.LineUp.Keys()[0]) // back to docs
+	m = press(t, m, keys.Collapse.Keys()[0])
 	if strings.Contains(m.frame(), "guide.md") {
 		t.Error("navigator frame still shows guide.md after collapsing docs")
 	}
@@ -289,7 +289,7 @@ func TestActivateOpensSelectedFileAndMovesFocus(t *testing.T) {
 	// docs sorts first (dirs-first, per fixtureTree's comment); step down onto
 	// README.md, a file, before activating.
 	for m.files.selectedNode().Name != "README.md" {
-		m = press(t, m, keys.LineDown.Keys()[1])
+		m = press(t, m, keys.LineDown.Keys()[0])
 	}
 
 	m = press(t, m, keys.Activate.Keys()[0])
@@ -305,7 +305,7 @@ func TestActivateOpensSelectedFileAndMovesFocus(t *testing.T) {
 
 	// Scroll keys now act on the viewer, not the Files Nav.
 	before := m.dv1.offset()
-	m = press(t, m, keys.LineDown.Keys()[1])
+	m = press(t, m, keys.LineDown.Keys()[0])
 	if m.dv1.offset() == before && !m.dv1.atBottom() {
 		t.Errorf("scroll key after activate did not move the viewer (offset stayed %d)", before)
 	}

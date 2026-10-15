@@ -88,7 +88,7 @@ type filesNav struct {
 	filters map[string]tree.Filter
 
 	// lastFilter is the most recently set File Filter value, by any path
-	// (`a`, the Picker's alt+a, or a launch that starts a Root on `All`). With
+	// (alt+m in the Files Nav or the Picker, or a launch that starts a Root on `All`). With
 	// no Active Root (Wikipedia active) there is no Root's filter to use, so
 	// fileFilter falls back to this one. The zero value is tree.FilterMarkdown.
 	lastFilter tree.Filter

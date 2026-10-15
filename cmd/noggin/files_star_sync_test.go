@@ -87,7 +87,7 @@ func TestFilesNavMarkerSyncsWhenStarredFromPicker(t *testing.T) {
 	}
 	m.picker.selected = 0
 
-	m = press(t, m, keys.PickerStar.Keys()[0])
+	m = press(t, m, keys.Star.Keys()[0])
 	if got := m.docRecord(path); !got.Starred {
 		t.Fatalf("docRecord(report.md) after Picker star = %+v, want Starred", got)
 	}

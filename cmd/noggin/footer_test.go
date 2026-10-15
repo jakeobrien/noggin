@@ -96,7 +96,7 @@ func TestPaneHintsNameThePickerFromEveryPane(t *testing.T) {
 // star toggle) rather than the pane-specific hints hintText would give for,
 // say, the Files pane ("expand"/"collapse", absent here). "star" moved from
 // the not-wanted list to the wanted one in M2.5: it is no longer a leaked
-// pane hint once the Picker has its own star action (keys.PickerStar,
+// pane hint once the Picker has its own star action (keys.Star,
 // distinct from the Sources Nav/Files Nav/viewer's own keys.Star — see
 // keymap.go's own comment on PickerStar for why).
 func TestPickerHintTextNamesPickerActionsNotThePane(t *testing.T) {

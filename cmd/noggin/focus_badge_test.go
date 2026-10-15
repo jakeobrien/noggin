@@ -7,7 +7,7 @@ import (
 
 // TestPaneFocusBadgesShowAtNormalWidthRegardlessOfFocus is M7.1's acceptance
 // criterion: at a normal terminal width every pane's title row carries its
-// own focus-key badge ([r], [f], [o], [^o]), whether or not that pane
+// own focus-key badge ([r], [f], [d], [D]), whether or not that pane
 // currently holds Focus. Focus is parked on filesPane so the other three
 // checks all cover unfocused panes.
 func TestPaneFocusBadgesShowAtNormalWidthRegardlessOfFocus(t *testing.T) {
@@ -27,8 +27,8 @@ func TestPaneFocusBadgesShowAtNormalWidthRegardlessOfFocus(t *testing.T) {
 	}{
 		{"rootsPane", 1, rootsPane, "[r]"},
 		{"filesPane", l.roots.height + 1, filesPane, "[f]"},
-		{"dv1Pane", 1, dv1Pane, "[o]"},
-		{"dv2Pane", 1, dv2Pane, "[^o]"},
+		{"dv1Pane", 1, dv1Pane, "[d]"},
+		{"dv2Pane", 1, dv2Pane, "[D]"},
 	} {
 		t.Run(want.name, func(t *testing.T) {
 			if got := want.pane.focusBadge(); got != want.badge {

@@ -298,7 +298,7 @@ func allBindings() []key.Binding {
 		keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
 		keys.Help, keys.Picker, keys.PickerRestore,
 		keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
-		keys.ToggleHidden, keys.PickerFilter, keys.PickerStar,
+		keys.ToggleHidden,
 		keys.Peek,
 		keys.ActivateDV2, keys.PeekDV2,
 		keys.FilesMode, keys.FilesScope, keys.FileFilter,

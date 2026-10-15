@@ -61,16 +61,11 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 		}
 	}
 
-	// keys.FilesMode/keys.FilesScope render as "tab"/"mode" and
-	// "shift+tab"/"scope" — text identical to keys.PickerMode/
-	// keys.PickerScope's own (help.go's own comment), which are already
-	// listed unconditionally for filesPane. A plain string check against
-	// the rendered box above can't tell those two pairs apart, so it would
-	// still pass even if FilesMode/FilesScope were dropped from filesPane's
-	// helpBindings entirely. Counting occurrences of the matching Help()
-	// text in helpBindings(filesPane) directly does catch that: dropping
-	// FilesMode/FilesScope takes the count from 2 (itself plus
-	// PickerMode/PickerScope) down to 1.
+	// keys.FilesMode/keys.FilesScope ("t"/"mode", "a"/"scope") share their
+	// descriptions with keys.PickerMode/keys.PickerScope ("alt+t"/"mode",
+	// "alt+a"/"scope"), which are also listed for filesPane, so a plain
+	// string check on "mode"/"scope" can't see them dropped. Matching key
+	// and description together in helpBindings(filesPane) does.
 	for _, want := range []key.Binding{keys.FilesMode, keys.FilesScope} {
 		count := 0
 		for _, b := range helpBindings(filesPane) {
@@ -78,8 +73,8 @@ func TestHelpModalListsThePaneOwnBindings(t *testing.T) {
 				count++
 			}
 		}
-		if count != 2 {
-			t.Errorf("filesPane: helpBindings has %d binding(s) matching %q (%q), want 2 (it plus PickerMode/PickerScope's identical text)", count, want.Help().Key, want.Help().Desc)
+		if count != 1 {
+			t.Errorf("filesPane: helpBindings has %d binding(s) matching %q (%q), want 1", count, want.Help().Key, want.Help().Desc)
 		}
 	}
 }
@@ -385,7 +380,7 @@ func TestHelpBindingsNameThePickerFromEveryPane(t *testing.T) {
 // joins them for the identical reason: also usually a no-op with DV2
 // absent, also listed unconditionally as its own discoverability backstop.
 func TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane(t *testing.T) {
-	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.ToggleHidden, keys.PickerFilter}
+	want := []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh, keys.ToggleHidden, keys.FileFilter}
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane} {
 		bindings := helpBindings(p)
 		for _, w := range want {

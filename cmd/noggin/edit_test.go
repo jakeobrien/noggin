@@ -13,6 +13,7 @@ import (
 // $EDITOR).
 func TestEditWithNoDocumentReportsFooterMessage(t *testing.T) {
 	m := sized(t, newModel(), 80, 24)
+	m.focus = dv1Pane
 	next, cmd := m.Update(keyPress(keys.Edit.Keys()[0]))
 	got := concrete(t, next)
 
@@ -27,9 +28,8 @@ func TestEditWithNoDocumentReportsFooterMessage(t *testing.T) {
 // TestEditWithOpenDocumentReleasesTheTerminal covers the handoff itself: with
 // a document open, the edit key produces a command (tea.ExecProcess's, which
 // pauses the Program and runs $EDITOR) rather than a message, and leaves the
-// open document untouched until the editor actually exits. It is global, not
-// pane-specific (S10 names the active document, not the focused pane) — the
-// key still acts while focus is on the Files Nav.
+// open document untouched until the editor actually exits. Viewer-only since
+// D141, so Focus sits on DV1.
 func TestEditWithOpenDocumentReleasesTheTerminal(t *testing.T) {
 	d, err := loadDocument(fixturePath)
 	if err != nil {
@@ -37,7 +37,7 @@ func TestEditWithOpenDocumentReleasesTheTerminal(t *testing.T) {
 	}
 	m := sized(t, newModel(), 80, 24)
 	m = m.openDocument(d)
-	m.focus = filesPane
+	m.focus = dv1Pane
 
 	next, cmd := m.Update(keyPress(keys.Edit.Keys()[0]))
 	got := concrete(t, next)
@@ -207,5 +207,27 @@ func TestFinishEditWithVanishedFileReportsFooterMessage(t *testing.T) {
 
 	if got.message == "" {
 		t.Error("message is empty, want a report that the document could not be reopened")
+	}
+}
+
+// TestEditIsViewerOnly pins D141: `e` edits only from a focused Document
+// Viewer. On the Files Nav it does nothing at all — no command, no message —
+// even with a document open.
+func TestEditIsViewerOnly(t *testing.T) {
+	d, err := loadDocument(fixturePath)
+	if err != nil {
+		t.Fatalf("loading %s: %v", fixturePath, err)
+	}
+	m := sized(t, newModel(), 80, 24)
+	m = m.openDocument(d)
+	m.focus = filesPane
+
+	next, cmd := m.Update(keyPress(keys.Edit.Keys()[0]))
+	got := concrete(t, next)
+	if cmd != nil {
+		t.Errorf("cmd = %v, want nil: Edit is viewer-only", cmd)
+	}
+	if got.message != "" {
+		t.Errorf("message = %q, want empty", got.message)
 	}
 }

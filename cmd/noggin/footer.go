@@ -28,7 +28,7 @@ import (
 // entry.
 // Refresh (S2) (C2a/M9.1) is unaffected by the same change and stays
 // global — reachable from every one of these three panes, the same way
-// Edit/Navigator/Picker already are — so all three panes list it. CloseDV2
+// Navigator/Picker already are — so all three panes list it. CloseDV2
 // (S4, C3/M2.1) is a no-op whenever DV2 does not exist, which is every
 // pane's common case (DV2 is absent at launch, S1, and stays that way until
 // something creates it), so it gets the same "inapplicable binding"
@@ -70,9 +70,9 @@ import (
 func paneHints(p pane) []key.Binding {
 	switch p {
 	case rootsPane:
-		return []key.Binding{keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh}
+		return []key.Binding{keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown, keys.Navigator, keys.Picker, keys.Refresh}
 	case filesPane:
-		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.FileFilter, keys.Star, keys.LineUp, keys.LineDown, keys.Edit, keys.Navigator, keys.Picker, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
+		return []key.Binding{keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.FileFilter, keys.Star, keys.LineUp, keys.LineDown, keys.Navigator, keys.Picker, keys.Refresh, keys.Peek, keys.ActivateDV2, keys.PeekDV2}
 	default: // dv1Pane, dv2Pane
 		// FindNext/FindPrevious and Cancel are omitted: they only do anything
 		// once a search is active, and a hint for an inapplicable binding is
@@ -91,8 +91,8 @@ func paneHints(p pane) []key.Binding {
 // dismisses it — so it is never the inapplicable hint that comment warns
 // against. ToggleHidden (S4/M6.2, C2a/M9.1) is included for the same
 // reason PickerMode/PickerScope are: it always does something while the
-// Picker is open, regardless of mode or Scope. PickerStar (S2/M2.5) joins
-// them for the identical reason — star/un-star always acts on whatever
+// Picker is open, regardless of mode or Scope. Star (S2/M2.5, the same
+// ctrl+s every pane stars with since D141) joins them for the identical reason — star/un-star always acts on whatever
 // Result is currently selected.
 func pickerHints() []key.Binding {
 	return []key.Binding{
@@ -100,7 +100,7 @@ func pickerHints() []key.Binding {
 		keys.PickerUp, keys.PickerDown,
 		keys.PageUp, keys.PageDown,
 		keys.PickerMode, keys.PickerScope,
-		keys.ToggleHidden, keys.PickerFilter, keys.PickerStar,
+		keys.ToggleHidden, keys.FileFilter, keys.Star,
 	}
 }
 

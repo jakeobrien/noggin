@@ -95,7 +95,7 @@ func TestSourcesNavStarOnWikipediaRowIsRefusedWithFooterMessage(t *testing.T) {
 		t.Fatalf("setup: a Root-less session's only row should be Wikipedia")
 	}
 
-	m = press(t, m, "s")
+	m = press(t, m, keys.Star.Keys()[0])
 	if m.message == "" {
 		t.Error("Star on the Wikipedia row produced no Footer message")
 	}

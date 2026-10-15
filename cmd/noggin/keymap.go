@@ -19,9 +19,11 @@ type keyMap struct {
 
 	// Star toggles the selected item's starred mark, persisted via the S1/S2
 	// document (or Roots) store: the Sources Nav's selected root, the Files
-	// Nav's selected file, or a focused Document Viewer's Active Document
-	// (C4/M2.1, M2.2, M2.8). Sources Nav selection moves with the shared
-	// LineUp/LineDown bindings; Activate (below) also opens the selected root.
+	// Nav's selected file, a focused Document Viewer's Active Document
+	// (C4/M2.1, M2.2, M2.8), or the open Picker's selected Result. One chord
+	// in every context (D141): ctrl+s is a control chord, so the Picker's
+	// always-typing Prompt never sees it as query text and needs no
+	// Picker-only star binding of its own.
 	Star key.Binding
 
 	// Files Nav folder control (S5): open and close a folder in place.
@@ -39,6 +41,8 @@ type keyMap struct {
 	Activate key.Binding
 
 	// Document Viewer scrolling (S7): line, half-page, page, top, bottom.
+	// LineUp/LineDown (and Expand/Collapse above) are the arrow keys alone:
+	// D141 retired the h/j/k/l aliases.
 	// PageUp/PageDown land on the same offset as HalfPageUp/HalfPageDown in
 	// a Document Viewer (M8.1, viewer.go's scrollActions) — kept as separate
 	// bindings (distinct chords) rather than merged because the Picker's own
@@ -53,11 +57,14 @@ type keyMap struct {
 	Top          key.Binding
 	Bottom       key.Binding
 
-	// Edit hands the active document to $EDITOR (S10, D3): noggin releases the
-	// terminal, resumes on exit and re-renders it from disk. Global, not
-	// pane-specific — with no document open it reports that instead of doing
-	// nothing (M4.1). Refused with a Footer message on a Wikipedia article
-	// (S3, C6/M4.3): there is nothing on disk to hand $EDITOR.
+	// Edit hands the focused Document Viewer's document to $EDITOR (S10, D3):
+	// noggin releases the terminal, resumes on exit and re-renders it from
+	// disk. Viewer-only since D141 — matched in Update's dv1Pane/dv2Pane
+	// case, which frees the same physical key for Rename on the Sources Nav;
+	// on the Files Nav it does nothing. With no document open it reports
+	// that instead of doing nothing (M4.1). Refused with a Footer message on
+	// a Wikipedia article (S3, C6/M4.3): there is nothing on disk to hand
+	// $EDITOR.
 	Edit key.Binding
 
 	// RenderMode toggles the targeted viewer between Markdown and Text
@@ -94,10 +101,10 @@ type keyMap struct {
 	FocusRoots key.Binding
 	FocusFiles key.Binding
 
-	// FocusDV1 and FocusDV2 (S5, C3/M1.3, rebound C3/M1.3a per D55) round out
-	// the four direct focus-jump keys FocusRoots/FocusFiles started: `o`
-	// moves Focus straight to DV1, always applicable since DV1 always exists
-	// (S1). `ctrl+o` moves Focus to DV2, but is a genuine no-op if DV2
+	// FocusDV1 and FocusDV2 (S5, C3/M1.3, rebound per D55 and again per
+	// D141) round out the four direct focus-jump keys FocusRoots/FocusFiles
+	// started: `d` moves Focus straight to DV1, always applicable since DV1
+	// always exists (S1). `D` moves Focus to DV2, but is a genuine no-op if DV2
 	// does not exist (C3/S5: "a bare focus request has no document to
 	// create") — unlike FocusRoots/FocusFiles falling back through
 	// focusOrder when their target is merely hidden by width, model.Update
@@ -168,12 +175,12 @@ type keyMap struct {
 	PickerRestore key.Binding
 
 	// PickerUp and PickerDown move the open Picker's Results selection
-	// (S2, M2.3). Nav Keys' shared LineUp/LineDown (above) deliberately
-	// are not reused here: their "k"/"j" alternates are printable, and
-	// S2's "every printable keystroke goes to the Prompt" means the
-	// Picker cannot treat them as movement the way every other pane
-	// does — only the arrow keys survive that rule, so these bind to
-	// them alone.
+	// (S2, M2.3). They bind the same arrow keys as LineUp/LineDown but stay
+	// separate bindings: S2's "every printable keystroke goes to the Prompt"
+	// means the Picker may only ever move on non-printable keys, so keeping
+	// its movement apart means a printable alias added to LineUp/LineDown
+	// can never leak into the Picker (the h/j/k/l aliases D141 retired were
+	// exactly that case).
 	PickerUp   key.Binding
 	PickerDown key.Binding
 
@@ -184,9 +191,12 @@ type keyMap struct {
 	// S7/S8; Wikipedia mode has none — the key is a no-op there, S2) in
 	// place, without touching the Prompt (M2.3 reserves them as non-typing;
 	// M5.1/M5.2 give them their actions, C4/M5.1 adds Scope's third value).
-	// Tab/Shift+Tab rather than a letter, for the same reason
-	// PickerUp/PickerDown avoid "j"/"k": both are non-printable, so typing
-	// a query is never at odds with switching.
+	// alt+t/alt+a (D141, were Tab/Shift+Tab) rather than a bare letter,
+	// for the same reason PickerUp/PickerDown avoid printable keys: an alt
+	// chord carries no text, so typing a query is never at odds with
+	// switching. The letters mirror the Files Nav's own FilesMode/FilesScope
+	// (t/a), which can be bare because the Files Nav is never a typing
+	// context.
 	PickerMode  key.Binding
 	PickerScope key.Binding
 
@@ -198,22 +208,6 @@ type keyMap struct {
 	// PickerScope avoid one: S2's "always-typing" Prompt (handlePickerInput)
 	// must not treat this as query text.
 	ToggleHidden key.Binding
-
-	// PickerFilter toggles the File Filter (D140, tree.Filter) from the
-	// Picker: the same per-Root state as the Files Nav's FileFilter. alt+a for
-	// the same non-printable reason ToggleHidden is alt+h.
-	PickerFilter key.Binding
-
-	// PickerStar is S2/M2.5's Picker-only star toggle: acts on the Picker's
-	// currently selected Result (either mode), the same conceptual action
-	// keys.Star already gives the Sources Nav, Files Nav and a focused Document
-	// Viewer, but under its own binding rather than reusing keys.Star's plain
-	// "s" — for the identical reason PickerUp/PickerDown avoid "j"/"k" and
-	// ToggleHidden avoids a bare letter: S2's "every printable keystroke goes
-	// to the Prompt" means the Picker cannot treat "s" as anything but query
-	// text. alt+s, matching ToggleHidden's own alt+ prefix for a Picker-only
-	// toggle.
-	PickerStar key.Binding
 
 	// ActivateDV2 and PeekDV2 are C3/S3's `ctrl+` targeting modifier on
 	// the Files Nav (C3/M1.4, rebound C3/M1.4a per D55): the same load/peek
@@ -234,8 +228,7 @@ type keyMap struct {
 	// `L`, since a raw control byte can never be typed into the Picker's
 	// always-typing Prompt as query text (TRIAGE T3, closed structurally by
 	// this without a Picker-specific carve-out — M1.5's own comment).
-	// PeekDV2 needs no fallback of its own: like `ctrl+o` (FocusDV2), a
-	// plain Ctrl+letter is a raw C0 control byte every terminal delivers
+	// PeekDV2 needs no fallback of its own: a plain Ctrl+letter is a raw C0 control byte every terminal delivers
 	// identically regardless of Kitty/CSI-u/modifyOtherKeys support, so
 	// there is nothing to degrade (D55).
 	ActivateDV2 key.Binding
@@ -256,14 +249,10 @@ type keyMap struct {
 	// FilesMode and FilesScope are S5's two Browse cycle keys (C4/M4.1):
 	// Files-Nav-only, like Peek above, so they are matched in Update's
 	// filesPane case (via filesNav.handleKey, beside Expand/Collapse) rather
-	// than the global switch, and do nothing from any other Focus. Tab and
-	// Shift+Tab, reused from keys.PickerMode/keys.PickerScope's own physical
-	// chords rather than new ones: the two contexts never overlap (the
-	// Picker owns the keyboard exclusively while open, handlePickerInput's
-	// own gate, so Update's filesPane case is only ever reached with the
-	// Picker closed) the same way keys.Activate's "enter" already means one
-	// thing on the Files Nav and another on the Sources Nav/Picker without
-	// collision. FilesMode cycles Tree -> Recent -> Starred -> Tree ...
+	// than the global switch, and do nothing from any other Focus. `t` and
+	// `a` (D141, were Tab/Shift+Tab): bare letters are safe here because the
+	// Files Nav is never a typing context; the Picker's own PickerMode/
+	// PickerScope are the alt+ versions of the same letters. FilesMode cycles Tree -> Recent -> Starred -> Tree ...
 	// (filesNav.cycleMode); FilesScope cycles the current mode's own Browse
 	// Scope values (filesNav.cycleScope), a no-op while the mode is Tree,
 	// which has none (S5).
@@ -271,9 +260,12 @@ type keyMap struct {
 	FilesScope key.Binding
 
 	// FileFilter toggles the Active Root's File Filter between Markdown and
-	// All (D140, tree.Filter): Files-Nav-only, like Peek, so it is matched in
-	// Update's filesPane case. It bounds the Tree only; with the Wikipedia
-	// Source active it does nothing but say so in the Footer.
+	// All (D140, tree.Filter), from the Files Nav (matched in Update's
+	// filesPane case) and from the open Picker (handlePickerInput) alike:
+	// one per-Root state, one chord. alt+m rather than a bare letter so the
+	// Picker's always-typing Prompt never sees it as text. In the Files Nav
+	// it bounds the Tree only; with the Wikipedia Source active it does
+	// nothing but say so in the Footer.
 	FileFilter key.Binding
 
 	// HistoryBack and HistoryForward walk a focused Document Viewer's own S9
@@ -282,7 +274,7 @@ type keyMap struct {
 	// Focus (DV1 and DV2 each walk their own history independently) and do
 	// nothing from the Sources Nav or Files Nav. `[`/`]`, unused elsewhere in
 	// the keymap and free of S2's Picker-Prompt "always typing" constraint
-	// PickerUp/PickerDown, ToggleHidden and PickerStar each had to route
+	// PickerUp/PickerDown and ToggleHidden each had to route
 	// around, since neither the Files Nav nor a focused viewer is ever a
 	// typing context the way the Picker's Prompt is.
 	HistoryBack    key.Binding
@@ -294,13 +286,10 @@ type keyMap struct {
 	// every other key while it is open, the identical exclusivity
 	// handleFindInput already gives an in-progress find query. Refused with a
 	// Footer message for the Wikipedia row and for an unstarred ad-hoc Root
-	// (S8), matched in Update's rootsPane case beside Activate/Star. "r" and
-	// "n"/"N" — the obvious mnemonics for "rename"/"name" — are already
-	// FocusRoots and FindNext/FindPrevious, both global, so this binds "c"
-	// instead (free, and — like every binding in this file — a plain letter
-	// rather than a function key: the codebase has no F-key precedent, for
-	// the same portability reason D55's ActivateDV2 comment gives for
-	// avoiding raw escape sequences a terminal might not forward).
+	// (S8), matched in Update's rootsPane case beside Activate/Star. "e"
+	// (D141, was "c"): "edit this Root's name", the same physical key that
+	// edits a document in a focused Document Viewer — Edit is viewer-only, so
+	// the two never meet.
 	Rename key.Binding
 }
 
@@ -311,28 +300,28 @@ var keys = keyMap{
 		key.WithHelp("q", "quit"),
 	),
 	Star: key.NewBinding(
-		key.WithKeys("s"),
-		key.WithHelp("s", "star"),
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "star"),
 	),
 	Expand: key.NewBinding(
-		key.WithKeys("right", "l"),
-		key.WithHelp("→/l", "expand"),
+		key.WithKeys("right"),
+		key.WithHelp("→", "expand"),
 	),
 	Collapse: key.NewBinding(
-		key.WithKeys("left", "h"),
-		key.WithHelp("←/h", "collapse"),
+		key.WithKeys("left"),
+		key.WithHelp("←", "collapse"),
 	),
 	Activate: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "open"),
 	),
 	LineUp: key.NewBinding(
-		key.WithKeys("up", "k"),
-		key.WithHelp("↑/k", "up"),
+		key.WithKeys("up"),
+		key.WithHelp("↑", "up"),
 	),
 	LineDown: key.NewBinding(
-		key.WithKeys("down", "j"),
-		key.WithHelp("↓/j", "down"),
+		key.WithKeys("down"),
+		key.WithHelp("↓", "down"),
 	),
 	HalfPageUp: key.NewBinding(
 		key.WithKeys("ctrl+u"),
@@ -379,8 +368,8 @@ var keys = keyMap{
 		key.WithHelp("N", "prev match"),
 	),
 	Navigator: key.NewBinding(
-		key.WithKeys("ctrl+n"),
-		key.WithHelp("ctrl+n", "sidebar"),
+		key.WithKeys("F"),
+		key.WithHelp("F", "sidebar"),
 	),
 	FocusRoots: key.NewBinding(
 		key.WithKeys("r"),
@@ -391,12 +380,12 @@ var keys = keyMap{
 		key.WithHelp("f", "files"),
 	),
 	FocusDV1: key.NewBinding(
-		key.WithKeys("o"),
-		key.WithHelp("o", "dv1"),
+		key.WithKeys("d"),
+		key.WithHelp("d", "dv1"),
 	),
 	FocusDV2: key.NewBinding(
-		key.WithKeys("ctrl+o"),
-		key.WithHelp("ctrl+o", "dv2"),
+		key.WithKeys("D"),
+		key.WithHelp("D", "dv2"),
 	),
 	CloseDV2: key.NewBinding(
 		key.WithKeys("ctrl+x"),
@@ -431,40 +420,32 @@ var keys = keyMap{
 		key.WithHelp("↓", "down"),
 	),
 	PickerMode: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "mode"),
+		key.WithKeys("alt+t"),
+		key.WithHelp("alt+t", "mode"),
 	),
 	PickerScope: key.NewBinding(
-		key.WithKeys("shift+tab"),
-		key.WithHelp("shift+tab", "scope"),
+		key.WithKeys("alt+a"),
+		key.WithHelp("alt+a", "scope"),
 	),
 	ToggleHidden: key.NewBinding(
 		key.WithKeys("alt+h"),
 		key.WithHelp("alt+h", "hidden files"),
-	),
-	PickerFilter: key.NewBinding(
-		key.WithKeys("alt+a"),
-		key.WithHelp("alt+a", "file filter"),
-	),
-	PickerStar: key.NewBinding(
-		key.WithKeys("alt+s"),
-		key.WithHelp("alt+s", "star"),
 	),
 	Peek: key.NewBinding(
 		key.WithKeys("p"),
 		key.WithHelp("p", "peek"),
 	),
 	FilesMode: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "mode"),
+		key.WithKeys("t"),
+		key.WithHelp("t", "mode"),
 	),
 	FilesScope: key.NewBinding(
-		key.WithKeys("shift+tab"),
-		key.WithHelp("shift+tab", "scope"),
+		key.WithKeys("a"),
+		key.WithHelp("a", "scope"),
 	),
 	FileFilter: key.NewBinding(
-		key.WithKeys("a"),
-		key.WithHelp("a", "file filter"),
+		key.WithKeys("alt+m"),
+		key.WithHelp("alt+m", "file filter"),
 	),
 	ActivateDV2: key.NewBinding(
 		key.WithKeys("ctrl+enter", "ctrl+l"),
@@ -483,7 +464,7 @@ var keys = keyMap{
 		key.WithHelp("]", "forward"),
 	),
 	Rename: key.NewBinding(
-		key.WithKeys("c"),
-		key.WithHelp("c", "rename"),
+		key.WithKeys("e"),
+		key.WithHelp("e", "rename"),
 	),
 }

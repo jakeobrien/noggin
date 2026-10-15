@@ -82,7 +82,7 @@ func TestPickerAlwaysOpensAsFileActiveRootEmptyPrompt(t *testing.T) {
 // exact same rendered frame.
 func TestPickerDismissRestoresThePreOpenFrameByteForByte(t *testing.T) {
 	m := openedFixture(t, 80, 24)
-	m = press(t, m, "j") // move the viewer's scroll position off zero
+	m = press(t, m, "down") // move the viewer's scroll position off zero
 	beforeFrame := m.View().Content
 	beforeDoc := m.dv1.doc.path
 	beforeRoot := m.roots.active

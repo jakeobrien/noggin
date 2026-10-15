@@ -40,32 +40,33 @@ KEY = {
     "HalfPageDown": b"\x04",    # keys.HalfPageDown: ctrl+d
     "PageUp":       b"\x02",    # keys.PageUp, second key: ctrl+b
     "Bottom":       b"G",       # keys.Bottom
-    "Down":         b"j",       # keys.LineDown, second key: j
-    "Up":           b"k",       # keys.LineUp, second key: k
-    "Expand":       b"l",       # keys.Expand, second key: l
-    "Collapse":     b"h",       # keys.Collapse, second key: h
+    "Down":         b"\x1b[B",  # keys.LineDown: down arrow
+    "Up":           b"\x1b[A",  # keys.LineUp: up arrow
+    "Expand":       b"\x1b[C",  # keys.Expand: right arrow
+    "Collapse":     b"\x1b[D",  # keys.Collapse: left arrow
     "Activate":     b"\r",      # keys.Activate: enter
-    "Star":         b"s",       # keys.Star
+    "Star":         b"\x13",    # keys.Star: ctrl+s
     "Edit":         b"e",       # keys.Edit
     "Find":         b"/",       # keys.Find
     "FindNext":     b"n",       # keys.FindNext
     "FindPrevious": b"N",       # keys.FindPrevious
-    "Navigator":    b"\x0e",    # keys.Navigator: ctrl+n
+    "Navigator":    b"F",       # keys.Navigator
     "Cancel":       b"\x1b",    # keys.Cancel: esc
     "Help":         b"?",       # keys.Help
     "Refresh":      b"R",       # keys.Refresh
     "FocusRoots":   b"r",       # keys.FocusRoots
     "FocusFiles":   b"f",       # keys.FocusFiles
+    "FocusDV1":     b"d",       # keys.FocusDV1
     "Peek":         b"p",       # keys.Peek
     "Picker":       b" ",       # keys.Picker: space
     "PickerUp":     b"\x1b[A",  # keys.PickerUp: up arrow
     "PickerDown":   b"\x1b[B",  # keys.PickerDown: down arrow
-    "PickerMode":   b"\t",      # keys.PickerMode: tab (still bound, Picker-only)
-    "PickerScope":  b"\x1b[Z",  # keys.PickerScope: shift+tab (still bound, Picker-only)
+    "PickerMode":   b"\x1bt",   # keys.PickerMode: alt+t (ESC t on the wire)
+    "PickerScope":  b"\x1ba",   # keys.PickerScope: alt+a (ESC a on the wire)
     "ToggleHidden": b"\x1bh",   # keys.ToggleHidden: alt+h (ESC h on the wire)
 
     # C3/M1.7 (TRIAGE T6): keys.ActivateDV2's two keys, keys.PeekDV2 and
-    # keys.FocusDV2 — none had pty coverage until now. ctrl+l/ctrl+p/ctrl+o
+    # keys.FocusDV2 — none had pty coverage until now. ctrl+l/ctrl+p
     # are plain C0 control bytes (ctrl+<letter> = ord(letter) & 0x1f), the
     # same encoding every other ctrl+ entry above already uses. ctrl+enter
     # is different: without Kitty/CSI-u/modifyOtherKeys negotiated (this
@@ -80,11 +81,11 @@ KEY = {
     "ActivateDV2CtrlEnter": b"\x1b[13;5u",  # keys.ActivateDV2, primary: ctrl+enter (CSI u)
     "ActivateDV2CtrlL":     b"\x0c",        # keys.ActivateDV2, fallback: ctrl+l
     "PeekDV2":              b"\x10",        # keys.PeekDV2: ctrl+p
-    "FocusDV2":             b"\x0f",        # keys.FocusDV2: ctrl+o
+    "FocusDV2":             b"D",           # keys.FocusDV2
 
     # C3/M2.1a (TRIAGE T10): keys.CloseDV2 postdates M1.7's four-chord sweep
     # above, so it had no pty coverage of its own until now. Plain C0 byte,
-    # same encoding as ctrl+l/ctrl+p/ctrl+o.
+    # same encoding as ctrl+l/ctrl+p.
     "CloseDV2": b"\x18",  # keys.CloseDV2: ctrl+x
 }
 
@@ -791,6 +792,7 @@ body = "\n".join(screen_of(out, 80, 24).raw_lines())
 check("M4.1 document opens before editing",
       "doc.md" in body and "Edit Handoff Fixture" in body, repr(body[:200]))
 
+s.send(KEY["FocusDV1"], 0.4)  # Edit is viewer-only (D141)
 s.send(KEY["Edit"], 1.5)
 sc = screen_of(s.out, 80, 24)
 lines = sc.raw_lines()
@@ -812,6 +814,7 @@ check("M4.1 exits 0 after an edit round-trip", code == 0, f"exit {code}")
 # With no document open, the key reports that instead of doing nothing.
 s = Session([BINARY], 80, 24, env={"EDITOR": fake_editor})
 s.pump(1.2)
+s.send(KEY["FocusDV1"], 0.4)  # Edit is viewer-only (D141)
 s.send(KEY["Edit"], 0.6)
 footer = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.1 editing with no document open reports it in the footer",
@@ -1605,7 +1608,7 @@ check("C3/M1.7 pty: ctrl+p names the Peeked document in DV2's title",
 check("C3/M1.7 pty: ctrl+p leaves DV2's own Active Document (charlie) reachable underneath",
       "Alpha 01" in body, repr(body[:400]))
 
-s.send(KEY["FocusDV2"], 0.6)  # ctrl+o: Focus -> dv2Pane; a Focus change clears Peek (S7)
+s.send(KEY["FocusDV2"], 0.6)  # D: Focus -> dv2Pane; a Focus change clears Peek (S7)
 sc = screen_of(s.out, 80, 24)
 body = "\n".join(sc.raw_lines())
 check("C3/M1.7 pty: ctrl+o moves focus to DV2, clearing the Peek back to its Active Document",

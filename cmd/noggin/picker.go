@@ -449,8 +449,8 @@ func (m model) toggleHiddenFiles() (model, tea.Cmd) {
 	return m.queuePickerSearch()
 }
 
-// togglePickerFilter is alt+a: it flips the File Filter (D140) and re-searches.
-// With an Active Root it is that Root's filter (the Files Nav's `a` state, so
+// togglePickerFilter is alt+m: it flips the File Filter (D140) and re-searches.
+// With an Active Root it is that Root's filter (the Files Nav's alt+m state, so
 // the Tree is re-walked too); with Wikipedia active there is no Root and it
 // flips the most recently set value instead (setFileFilter covers both). Either
 // way the Picker reads the result back from filesNav.fileFilter, never a copy
@@ -1344,9 +1344,9 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.switchPickerScope()
 	case key.Matches(msg, keys.ToggleHidden):
 		return m.toggleHiddenFiles()
-	case key.Matches(msg, keys.PickerFilter):
+	case key.Matches(msg, keys.FileFilter):
 		return m.togglePickerFilter()
-	case key.Matches(msg, keys.PickerStar):
+	case key.Matches(msg, keys.Star):
 		return m.togglePickerStar(), nil
 	}
 	before := m.picker.input.Value()

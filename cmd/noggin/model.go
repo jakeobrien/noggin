@@ -72,9 +72,9 @@ func (p pane) focusKey() key.Binding {
 
 // focusBadge is p's title-row badge (S10, M7.1): its focusKey's primary key,
 // bracketed, with lipgloss's own "ctrl+" spelling compacted to the terminal
-// convention "^" so `ctrl+o` reads as the four-character `[^o]` the
-// acceptance criterion asks for, not the much wider `[ctrl+o]` — matching
-// how every other badge (`[r]`, `[f]`, `[o]`) already fits comfortably
+// convention "^" so a chord like `ctrl+o` would read as the four-character
+// `[^o]`, not the much wider `[ctrl+o]` — matching how every other badge
+// (`[r]`, `[f]`, `[d]`, `[D]`) already fits comfortably
 // beside a title. Derived from p.focusKey() rather than a literal so it
 // tracks the binding if it is ever rebound.
 func (p pane) focusBadge() string {
@@ -812,7 +812,7 @@ func (m model) toggleFileFilter() model {
 }
 
 // setFileFilter sets the File Filter in effect to next, the one path both the
-// Files Nav's `a` and the Picker's alt+a take (they share one per-Root state).
+// Files Nav's and the Picker's alt+m take (they share one per-Root state).
 // With an Active Root it is that Root's, and the Root is re-walked under it;
 // with none (Wikipedia active) it is only the fallback fileFilter reads. It
 // reports whether the filter changed: a failed walk leaves it as it was.
@@ -1696,8 +1696,6 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.openPicker()
 		case key.Matches(msg, keys.PickerRestore):
 			return m.restorePicker()
-		case key.Matches(msg, keys.Edit):
-			return m.startEdit()
 		case key.Matches(msg, keys.RenderMode):
 			return m.toggleRenderMode(), nil
 		case key.Matches(msg, keys.Find):
@@ -1749,6 +1747,11 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key.Matches(msg, keys.HistoryForward) {
 				return m.historyForward(), nil
 			}
+			// Edit is viewer-only (D141): the same physical key is Rename on
+			// the Sources Nav and does nothing on the Files Nav.
+			if key.Matches(msg, keys.Edit) {
+				return m.startEdit()
+			}
 		case filesPane:
 			if key.Matches(msg, keys.Activate) {
 				return m.activate()
@@ -1799,7 +1802,7 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case rootsPane:
 			// S1/C6/M1.2: the Wikipedia row is a Source like any Root for
-			// Activate, but `s` is refused with a Footer message instead of
+			// Activate, but Star is refused with a Footer message instead of
 			// toggleStar's silent no-op ("nothing can add, remove or hide
 			// it") — both branches below must be checked before falling
 			// into activateRoot/toggleStar, which only know how to act on a
