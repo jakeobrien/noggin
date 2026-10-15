@@ -23,7 +23,7 @@ func locationRootFixture(t *testing.T) (m model, rootPath, filePath string) {
 	mkdir(t, filepath.Join(rootPath, "sub"))
 	filePath = writeFileContent(t, filepath.Join(rootPath, "sub", "doc.md"), "# Doc\n")
 
-	node, err := tree.Walk(rootPath, tree.FilterMarkdown)
+	node, err := tree.Walk(rootPath, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

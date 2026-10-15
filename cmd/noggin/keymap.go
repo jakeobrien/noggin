@@ -208,14 +208,16 @@ type keyMap struct {
 	PickerMode  key.Binding
 	PickerScope key.Binding
 
-	// ToggleHidden is S4/M6.2's session-scoped dotfile toggle: hides and
-	// shows dotfiles (and files under a dot-directory) in both Picker
-	// modes' Results, reset only on relaunch (model.hideDotfiles, not
-	// picker-owned — see its own doc comment for why). alt+h rather than
-	// a bare letter for the same non-printable reason PickerMode/
-	// PickerScope avoid one: S2's "always-typing" Prompt (handlePickerInput)
-	// must not treat this as query text.
-	ToggleHidden key.Binding
+	// ToggleHidden and ToggleIgnored are the session-wide view toggles
+	// (S4/M6.2, widened by D141): alt+h hides and shows dotfiles (and
+	// everything under a dot-directory), alt+i shows and hides gitignored
+	// entries. One flag each (filesNav.hideDotfiles/showIgnored), shared by
+	// the Files Nav Tree and the Picker's File/Grep search and toggled by the
+	// same chord from either (model.setViewToggles); reset only on relaunch.
+	// alt+ chords so the Picker's always-typing Prompt never sees them as
+	// query text, the same family as FileFilter's alt+m.
+	ToggleHidden  key.Binding
+	ToggleIgnored key.Binding
 
 	// ActivateDV2 and PeekDV2 are C3/S3's `ctrl+` targeting modifier on
 	// the Files Nav (C3/M1.4, rebound C3/M1.4a per D55): the same load/peek
@@ -446,6 +448,10 @@ var keys = keyMap{
 	ToggleHidden: key.NewBinding(
 		key.WithKeys("alt+h"),
 		key.WithHelp("alt+h", "hidden files"),
+	),
+	ToggleIgnored: key.NewBinding(
+		key.WithKeys("alt+i"),
+		key.WithHelp("alt+i", "ignored files"),
 	),
 	Peek: key.NewBinding(
 		key.WithKeys("p"),

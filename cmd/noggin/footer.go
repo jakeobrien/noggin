@@ -100,7 +100,7 @@ func pickerHints() []key.Binding {
 		keys.PickerUp, keys.PickerDown,
 		keys.PageUp, keys.PageDown,
 		keys.PickerMode, keys.PickerScope,
-		keys.ToggleHidden, keys.FileFilter, keys.Star,
+		keys.ToggleHidden, keys.FileFilter, keys.Star, keys.ToggleIgnored,
 	}
 }
 

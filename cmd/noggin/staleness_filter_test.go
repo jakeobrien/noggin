@@ -17,7 +17,7 @@ import (
 // what stale() says.
 func staleAfter(t *testing.T, root, dir string, change func()) bool {
 	t.Helper()
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, "")
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, "")
 	if b.stale() {
 		t.Fatalf("setup: baseline already stale before any change")
 	}
@@ -107,7 +107,7 @@ func TestStaleDetectsAGitignoreEditedInPlace(t *testing.T) {
 	writeFile(t, filepath.Join(sub, "doc.md"))
 	ignore := writeFileContent(t, filepath.Join(root, ".gitignore"), "*.log\n")
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, "")
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, "")
 	bumpMtimeForward(t, ignore)
 	if err := os.WriteFile(ignore, []byte("*.log\nsub/\n"), 0o644); err != nil {
 		t.Fatal(err)

@@ -492,15 +492,14 @@ func TestPickerStatusStates(t *testing.T) {
 			want:  []string{"File · Active Source"},
 		},
 		{
-			// TRIAGE T7 / DECISIONS.md D50: the alt+h dotfile-hiding toggle's
-			// only visible confirmation is this " · Hidden" suffix on the
-			// same title row the mode/Scope indicator above already covers —
-			// previously only test/pty/checks.py exercised the string.
+			// D141: the title's right-aligned view-toggle indicator drops
+			// its `h` slot while dotfiles are hidden.
 			name:         "mode and Scope indicator with dotfiles hidden",
 			avail:        ripgrepAvailability{available: true},
 			hideDotfiles: true,
 			setup:        func(p *picker) {},
-			want:         []string{"File · Active Source · Markdown · Hidden"},
+			want:         []string{"File · Active Source", "      md"},
+			deny:         []string{"h    md"},
 		},
 		{
 			name:  "Grep and All Roots indicator",
@@ -578,7 +577,7 @@ func TestPickerStatusStates(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := openedFixture(t, 80, 24).withRipgrep(tc.avail)
-			m.hideDotfiles = tc.hideDotfiles
+			m.files.hideDotfiles = tc.hideDotfiles
 			m, _ = m.openPicker()
 			tc.setup(&m.picker)
 

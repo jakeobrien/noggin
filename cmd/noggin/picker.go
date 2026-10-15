@@ -420,9 +420,9 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 	})
 }
 
-// toggleHiddenFiles flips the session-scoped alt+h dotfile toggle
-// (m.hideDotfiles — see its own doc comment on model for why it lives
-// there and not here) and re-searches the current query against the new
+// toggleHiddenFiles is the Picker's alt+h: it flips the session-wide
+// hidden-files toggle (model.setViewToggles, shared with the Files Nav, whose
+// Tree is re-walked too) and re-searches the current query against the new
 // candidate set (files_search.go's listFiles/isDotfilePath), the same
 // queuePickerSearch path switchPickerMode/switchPickerScope already reuse
 // for their own in-place switches: the Prompt is untouched, and
@@ -441,9 +441,29 @@ func (m model) queuePickerSearch() (model, tea.Cmd) {
 // stay on screen rather than reading as stale (which the view would show
 // as "searching…" for a search that was never actually dispatched).
 func (m model) toggleHiddenFiles() (model, tea.Cmd) {
-	m.hideDotfiles = !m.hideDotfiles
+	m, ok := m.setViewToggles(!m.files.hideDotfiles, m.files.showIgnored)
+	if !ok {
+		return m, nil
+	}
 	if m.picker.mode == wikipediaMode {
-		m.picker.results.bounds.hideDotfiles = m.hideDotfiles
+		m.picker.results.bounds.hideDotfiles = m.files.hideDotfiles
+		return m, nil
+	}
+	return m.queuePickerSearch()
+}
+
+// toggleIgnoredFiles is the Picker's alt+i (D141): toggleHiddenFiles' twin
+// for the session-wide ignored-files toggle. Showing ignored files changes
+// ripgrep's listing (rgFiles' --no-ignore-vcs); the Starred scope never asks
+// ripgrep and Wikipedia mode has no files, so both just relabel the rows on
+// screen instead of re-searching.
+func (m model) toggleIgnoredFiles() (model, tea.Cmd) {
+	m, ok := m.setViewToggles(m.files.hideDotfiles, !m.files.showIgnored)
+	if !ok {
+		return m, nil
+	}
+	if m.picker.mode == wikipediaMode || m.picker.scope == starredScope {
+		m.picker.results.bounds.showIgnored = m.files.showIgnored
 		return m, nil
 	}
 	return m.queuePickerSearch()
@@ -806,18 +826,19 @@ func (p picker) showPreview(yOffset int) picker {
 }
 
 // pickerBounds is what the model says bounds a Picker search right now: the
-// hidden-files toggle and the File Filter. The Picker keeps no copy of either
-// (the File Filter has one home, filesNav.fileFilter); it labels its Results
+// hidden- and ignored-files toggles and the File Filter. The Picker keeps no
+// copy of any of them (each has one home on filesNav); it labels its Results
 // with the bounds they were searched under and compares them to these.
 type pickerBounds struct {
 	hideDotfiles bool
+	showIgnored  bool
 	filter       tree.Filter
 }
 
 // searchBounds is the model's current pickerBounds: the live values a Picker
 // search is bounded by, which pickerResults.bounds is compared against.
 func (m model) searchBounds() pickerBounds {
-	return pickerBounds{hideDotfiles: m.hideDotfiles, filter: m.files.fileFilter()}
+	return pickerBounds{hideDotfiles: m.files.hideDotfiles, showIgnored: m.files.showIgnored, filter: m.files.fileFilter()}
 }
 
 // resultsCurrent reports whether p.results still answers what the Prompt,
@@ -896,7 +917,7 @@ func pickerSearchCmd(seq int, mode pickerMode, scope pickerScope, query string, 
 			// never sees starredScope at all.
 			files = starredPickerFiles(docs, roots, bounds.hideDotfiles)
 		} else {
-			files = listFiles(roots, active, scope, bounds.hideDotfiles, bounds.filter)
+			files = listFiles(roots, active, scope, bounds)
 		}
 		switch mode {
 		case grepMode:
@@ -1344,6 +1365,8 @@ func (m model) handlePickerInput(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.switchPickerScope()
 	case key.Matches(msg, keys.ToggleHidden):
 		return m.toggleHiddenFiles()
+	case key.Matches(msg, keys.ToggleIgnored):
+		return m.toggleIgnoredFiles()
 	case key.Matches(msg, keys.FileFilter):
 		return m.togglePickerFilter()
 	case key.Matches(msg, keys.Star):

@@ -76,7 +76,7 @@ func TestWalkMarkdownSet(t *testing.T) {
 		"empty/":           "",
 	})
 
-	node, err := Walk(root, FilterMarkdown)
+	node, err := Walk(root, Options{Filter: FilterMarkdown})
 	if err != nil {
 		t.Fatalf("Walk: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestWalkChildOrder(t *testing.T) {
 		"mdir/y.md": "",
 		"README":    "",
 	})
-	node, err := Walk(root, FilterMarkdown)
+	node, err := Walk(root, Options{Filter: FilterMarkdown})
 	if err != nil {
 		t.Fatalf("Walk: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestWalkChildOrder(t *testing.T) {
 // TestWalkPathsAbsolute confirms nodes carry an absolute, loadable path.
 func TestWalkPathsAbsolute(t *testing.T) {
 	root := writeTree(t, map[string]string{"README": "hi"})
-	node, err := Walk(root, FilterMarkdown)
+	node, err := Walk(root, Options{Filter: FilterMarkdown})
 	if err != nil {
 		t.Fatalf("Walk: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestWalkPathsAbsolute(t *testing.T) {
 func entriesOf(n *Node) []Entry {
 	out := []Entry{}
 	for _, c := range n.Children {
-		out = append(out, Entry{Name: c.Name, IsDir: c.IsDir})
+		out = append(out, Entry{Name: c.Name, IsDir: c.IsDir, Ignored: c.Ignored})
 	}
 	return out
 }
@@ -195,7 +195,7 @@ func TestListDirMatchesWalk(t *testing.T) {
 		"notes/deep/nested/":       "",
 		"notes/deep/build/hide.md": "",
 	})
-	walked, err := Walk(root, FilterMarkdown)
+	walked, err := Walk(root, Options{Filter: FilterMarkdown})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestListDirMatchesWalk(t *testing.T) {
 		if rel != "" {
 			dir = findDir(t, walked, rel)
 		}
-		got, err := ListDir(walked.Path, dir.Path, FilterMarkdown)
+		got, err := ListDir(walked.Path, dir.Path, Options{Filter: FilterMarkdown})
 		if err != nil {
 			t.Fatalf("ListDir(%q): %v", rel, err)
 		}
@@ -222,7 +222,7 @@ func TestListDirMatchesWalk(t *testing.T) {
 // error, not an empty listing, so a caller can tell "gone" from "emptied".
 func TestListDirMissingDirectoryErrors(t *testing.T) {
 	root := t.TempDir()
-	if _, err := ListDir(root, filepath.Join(root, "gone"), FilterMarkdown); err == nil {
+	if _, err := ListDir(root, filepath.Join(root, "gone"), Options{Filter: FilterMarkdown}); err == nil {
 		t.Error("ListDir on a missing directory returned nil error, want one")
 	}
 }

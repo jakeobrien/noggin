@@ -115,21 +115,10 @@ type model struct {
 	// restoring it leaves that state exactly as it was (M5.2).
 	navigatorHidden bool
 
-	// hideDotfiles is S4/M6.2's session-scoped `alt+h` toggle: hides
-	// dotfiles (and files under a dot-directory) from both Picker modes'
-	// Results (files_search.go's listFiles/isDotfilePath). Lives on model,
-	// not picker, deliberately: resetPicker (openPicker/dismissPicker)
-	// replaces the whole picker struct with newPicker()'s zero value every
-	// close/reopen, which is exactly what a field needing to survive that
-	// within a session cannot be subject to — the same reason
-	// navigatorHidden lives here rather than on any one pane. Only a fresh
-	// model (relaunch) resets it, matching S4's "reset on relaunch".
-	hideDotfiles bool
-
 	// lastPicker is the query/mode/Scope of the most recent Picker session
 	// dismissed with a non-empty Prompt, for keys.PickerRestore. Session-only
-	// and on model rather than picker for the same reason hideDotfiles is:
-	// resetPicker replaces the picker struct on every open/close. nil until
+	// and on model rather than picker because resetPicker replaces the picker
+	// struct on every open/close. nil until
 	// a non-empty dismissal.
 	lastPicker *lastPickerState
 
@@ -445,7 +434,7 @@ func (m model) applyResolution(res resolution) model {
 		if res.startsOnAll() {
 			m.files = m.files.withRootFilter(path, tree.FilterAll)
 		}
-		if node, err := tree.Walk(path, m.files.filterFor(path)); err != nil {
+		if node, err := tree.Walk(path, m.files.treeOptions(path)); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", path, err)
 		} else {
 			m = m.openFolder(node)
@@ -821,7 +810,7 @@ func (m model) activateRoot() model {
 		m.message = fmt.Sprintf("%s no longer exists; not activated", row.root.path)
 		return m
 	}
-	node, err := tree.Walk(row.root.path, m.files.filterFor(row.root.path))
+	node, err := tree.Walk(row.root.path, m.files.treeOptions(row.root.path))
 	if err != nil {
 		m.message = fmt.Sprintf("cannot read %s: %v", row.root.path, err)
 		return m
@@ -863,7 +852,9 @@ func (m model) setFileFilter(next tree.Filter) (model, bool) {
 		return m, true
 	}
 	path := m.files.root.Path
-	node, err := tree.Walk(path, next)
+	opts := m.files.treeOptions(path)
+	opts.Filter = next
+	node, err := tree.Walk(path, opts)
 	if err != nil {
 		m.message = fmt.Sprintf("cannot read %s: %v", path, err)
 		return m, false
@@ -873,6 +864,68 @@ func (m model) setFileFilter(next tree.Filter) (model, bool) {
 	m.files = m.files.withRootFilter(path, next).withFilteredRoot(node)
 	m.message = ""
 	return m.rebaseTreeStaleness(), true
+}
+
+// setViewToggles sets the session-wide hidden/ignored toggles (D141), the one
+// path the Files Nav's and the Picker's alt+h/alt+i both take. With an Active
+// Root the Root is re-walked under them (selection falling back to the nearest
+// surviving ancestor, withFilteredRoot) and staleness re-snapshotted, exactly
+// as setFileFilter does for the File Filter; with none (Wikipedia active)
+// only the flags change, for the Picker and the next Root. It reports whether
+// they changed: a failed walk leaves them as they were.
+func (m model) setViewToggles(hideDotfiles, showIgnored bool) (model, bool) {
+	next := m.files.withViewToggles(hideDotfiles, showIgnored)
+	if m.files.root == nil {
+		m.files = next
+		return m, true
+	}
+	path := m.files.root.Path
+	node, err := tree.Walk(path, next.treeOptions(path))
+	if err != nil {
+		m.message = fmt.Sprintf("cannot read %s: %v", path, err)
+		return m, false
+	}
+	// A selection change is one of Peek's clearing triggers (S7).
+	m = m.clearPeek()
+	m.files = next.withFilteredRoot(node)
+	m.message = ""
+	return m.rebaseTreeStaleness(), true
+}
+
+// toggleViewFromFiles is the Files Nav's alt+h (hidden) or alt+i (ignored):
+// it flips that session-wide toggle (setViewToggles) and, where the Tree is
+// not on screen to show the effect, says so in the Footer — the same shape
+// toggleFileFilter gives the File Filter, except the flag flips even with the
+// Wikipedia Source active, since the Picker reads it too.
+func (m model) toggleViewFromFiles(ignored bool) model {
+	hide, show := m.files.hideDotfiles, m.files.showIgnored
+	label, state := "Hidden files", ""
+	if ignored {
+		show = !show
+		label = "Ignored files"
+		state = shownOrHidden(show)
+	} else {
+		hide = !hide
+		state = shownOrHidden(!hide)
+	}
+	m, ok := m.setViewToggles(hide, show)
+	if !ok {
+		return m
+	}
+	switch {
+	case m.files.wikipedia:
+		m.message = fmt.Sprintf("%s: %s (the Wikipedia Source has no Tree)", label, state)
+	case m.files.flatMode():
+		m.message = fmt.Sprintf("%s: %s (Recent and Starred ignore it)", label, state)
+	}
+	return m
+}
+
+func shownOrHidden(shown bool) string {
+	if shown {
+		return "shown"
+	}
+	return "hidden"
 }
 
 // activateWikipediaSource makes the Wikipedia Query Source the model's
@@ -1425,7 +1478,7 @@ func (m model) refresh() (model, tea.Cmd) {
 	// S7/M7.1: a refresh is one of Peek's clearing triggers.
 	m = m.clearPeek()
 	if m.files.root != nil {
-		if node, err := tree.Walk(m.files.root.Path, m.files.filterFor(m.files.root.Path)); err != nil {
+		if node, err := tree.Walk(m.files.root.Path, m.files.treeOptions(m.files.root.Path)); err != nil {
 			m.message = fmt.Sprintf("cannot read %s: %v", m.files.root.Path, err)
 		} else {
 			m.files = m.files.refreshRoot(node).withStatus(gitStatus(node.Path)).withStarred(m.filesStarredMarks())
@@ -1831,6 +1884,12 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if key.Matches(msg, keys.FileFilter) {
 				return m.toggleFileFilter(), nil
+			}
+			if key.Matches(msg, keys.ToggleHidden) {
+				return m.toggleViewFromFiles(false), nil
+			}
+			if key.Matches(msg, keys.ToggleIgnored) {
+				return m.toggleViewFromFiles(true), nil
 			}
 			// Peek (S7, M7.1) is Files-Nav-only, unlike every other binding
 			// matched above in the global switch — that is what keeps it

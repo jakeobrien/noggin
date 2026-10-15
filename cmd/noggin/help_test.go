@@ -132,12 +132,12 @@ func TestHelpModalListsPageAndHalfPageTogetherForTheViewer(t *testing.T) {
 // without changing what a terminal actually displays, so a byte-exact
 // comparison would fail on formatting, not content.
 func TestHelpOverlayLeavesTheFrameVisibleAroundIt(t *testing.T) {
-	// Height 37, not 24 (PickerFilter added one more row; RenderMode added one more row; PickerRestore added one more row; C2a/M9.1 grew filesPane's helpBindings list past
+	// Height 38, not 24 (ToggleIgnored added one more row; PickerFilter added one more row; RenderMode added one more row; PickerRestore added one more row; C2a/M9.1 grew filesPane's helpBindings list past
 	// what a 24-row terminal fits without clamping, M2.8 grew it by one more
 	// row (keys.Star), and M4.8 grew it by one more again (FilesMode,
 	// FilesScope) — see TestHelpOverlayNeverExceedsTheTerminal for that
 	// clamped case, which this test is not exercising).
-	m := sized(t, newModel().openFolder(fixtureTree()), 80, 37)
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 38)
 	beforeLines := plainLines(m.View().Content)
 
 	m = press(t, m, "?")

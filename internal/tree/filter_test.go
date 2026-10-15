@@ -42,7 +42,7 @@ func childNames(n *Node) []string {
 }
 
 func TestFilterMarkdownListsOnlyMarkdownFiles(t *testing.T) {
-	node, err := Walk(filterFixture(t), FilterMarkdown)
+	node, err := Walk(filterFixture(t), Options{Filter: FilterMarkdown})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestFilterMarkdownListsOnlyMarkdownFiles(t *testing.T) {
 }
 
 func TestFilterAllListsTextFilesAndHidesBinaries(t *testing.T) {
-	node, err := Walk(filterFixture(t), FilterAll)
+	node, err := Walk(filterFixture(t), Options{Filter: FilterAll})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestFilterAllStillListsMarkdownNamedFiles(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "odd.md"), []byte("a\x00b"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	node, err := Walk(root, FilterAll)
+	node, err := Walk(root, Options{Filter: FilterAll})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestFilterAllListsAnOversizeTextFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "big.log"), big, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	node, err := Walk(root, FilterAll)
+	node, err := Walk(root, Options{Filter: FilterAll})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestFilterAllHidesASymlinkedDirectory(t *testing.T) {
 	if err := os.Symlink(filepath.Join(root, "sub"), filepath.Join(root, "link")); err != nil {
 		t.Skip("symlinks unavailable:", err)
 	}
-	node, err := Walk(root, FilterAll)
+	node, err := Walk(root, Options{Filter: FilterAll})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestFilterAllHidesADanglingSymlink(t *testing.T) {
 	if err := os.Symlink(filepath.Join(root, "gone"), filepath.Join(root, "dangling")); err != nil {
 		t.Skip("symlinks unavailable:", err)
 	}
-	node, err := Walk(root, FilterAll)
+	node, err := Walk(root, Options{Filter: FilterAll})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,18 +130,18 @@ func TestFilterAllHidesADanglingSymlink(t *testing.T) {
 func TestListDirMatchesWalkUnderEveryFilter(t *testing.T) {
 	root := filterFixture(t)
 	for _, f := range []Filter{FilterMarkdown, FilterAll} {
-		walked, err := Walk(root, f)
+		walked, err := Walk(root, Options{Filter: f})
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, dir := range []*Node{walked, walked.Children[0]} {
-			got, err := ListDir(walked.Path, dir.Path, f)
+			got, err := ListDir(walked.Path, dir.Path, Options{Filter: f})
 			if err != nil {
 				t.Fatal(err)
 			}
 			var want []Entry
 			for _, c := range dir.Children {
-				want = append(want, Entry{Name: c.Name, IsDir: c.IsDir})
+				want = append(want, Entry{Name: c.Name, IsDir: c.IsDir, Ignored: c.Ignored})
 			}
 			if !slices.Equal(got, want) {
 				t.Errorf("filter %v: ListDir(%s) = %v, want Walk's %v", f, dir.Name, got, want)

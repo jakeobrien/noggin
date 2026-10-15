@@ -63,7 +63,7 @@ type pickerFile struct {
 // Filter shows (D140) under scope, found via `rg --files` (S14) with the
 // filter (tree.Filter.Shows) applied on top — rg itself has no notion of it.
 // Under `All` that is Markdown plus Text files: rg lists binaries too, so the
-// binary sniff drops them. filter is the Active Root's, applied uniformly to
+// binary sniff drops them. The filter is the Active Root's, applied uniformly to
 // every Root searched. A Broken Root is skipped, never an error (S6,
 // liveRootsInScope); a live Root that rg still cannot read (e.g. permission denied, or a TOCTOU
 // race with liveRootsInScope's own stat) is likewise absorbed by rgFiles
@@ -74,9 +74,10 @@ type pickerFile struct {
 // caps it. Correctness, not speed, is this task's job — a slow-Root
 // complaint is whichever later milestone first hits one.
 //
-// hideDotfiles is S4/M6.2's session-scoped `alt+h` toggle (model.hideDotfiles,
-// threaded in rather than read off a package-level var so this stays a pure
-// function of its arguments like the rest of this file): when true, a
+// bounds carries the File Filter and the session-wide view toggles
+// (filesNav's, threaded in so this stays a pure function of its arguments
+// like the rest of this file). showIgnored widens rgFiles' listing (D141).
+// hideDotfiles is S4/M6.2's `alt+h` toggle: when true, a
 // candidate is dropped if any path component between the Root and the file
 // itself starts with `.` (isDotfilePath) — not just the file's own base name,
 // since M6.1's --hidden widened rgFiles to also walk into dot-directories
@@ -84,15 +85,15 @@ type pickerFile struct {
 // full, not just the dotfile-named-file half of it. `.git` needs no such
 // check here: rgFiles' own `--glob '!.git'` already keeps it out of rel
 // entirely, toggle or not.
-func listFiles(roots []root, active int, scope pickerScope, hideDotfiles bool, filter tree.Filter) []pickerFile {
+func listFiles(roots []root, active int, scope pickerScope, bounds pickerBounds) []pickerFile {
 	var files []pickerFile
 	for _, r := range liveRootsInScope(roots, active, scope) {
-		for _, rel := range rgFiles(r.path) {
-			if hideDotfiles && isDotfilePath(rel) {
+		for _, rel := range rgFiles(r.path, bounds.showIgnored) {
+			if bounds.hideDotfiles && isDotfilePath(rel) {
 				continue
 			}
 			path := filepath.Join(r.path, rel)
-			if !filter.Shows(path, filepath.Base(rel)) {
+			if !bounds.filter.Shows(path, filepath.Base(rel)) {
 				continue
 			}
 			files = append(files, pickerFile{root: r, path: path})
@@ -249,8 +250,21 @@ func isDotfilePath(rel string) bool {
 // --hidden only changes whether a dotfile is a candidate for those rules to
 // apply to at all, not whether the rules themselves run (S4's "`.gitignore`
 // handling is unchanged everywhere").
-func rgFiles(dir string) []string {
-	cmd := exec.Command(ripgrepBinary, "--files", "--no-require-git", "--hidden", "--glob", "!.git")
+//
+// showIgnored is D141's alt+i: --no-ignore-vcs drops the git ignore rules
+// (`.gitignore`, `.git/info/exclude`, the global excludes file) — the same
+// rules the Tree's own matcher stops applying — and tree.HeavyDirs are then
+// globbed out, the same folders the Tree keeps excluded while showing
+// ignored entries.
+func rgFiles(dir string, showIgnored bool) []string {
+	args := []string{"--files", "--no-require-git", "--hidden", "--glob", "!.git"}
+	if showIgnored {
+		args = append(args, "--no-ignore-vcs")
+		for _, d := range tree.HeavyDirs() {
+			args = append(args, "--glob", "!"+d)
+		}
+	}
+	cmd := exec.Command(ripgrepBinary, args...)
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

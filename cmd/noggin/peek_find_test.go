@@ -19,7 +19,7 @@ func TestFindNextPreviousAreNoOpsWhilePeeking(t *testing.T) {
 	activePath := writeFileContent(t, filepath.Join(root, "active.md"), listContent(60))
 	writeFileContent(t, filepath.Join(root, "peeked.md"), "# Peeked\n")
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

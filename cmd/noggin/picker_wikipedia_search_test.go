@@ -253,7 +253,7 @@ func TestPickerWikipediaModeSearchesWithoutRipgrep(t *testing.T) {
 // TestPickerAltHInWikipediaModeTogglesWithoutRequerying is M3.7's own
 // acceptance criterion (TRIAGE T21): pickerSearchCmd's wikipediaMode branch
 // never calls listFiles, so hideDotfiles has no bearing on a Wikipedia
-// search at all — alt+h there must still flip m.hideDotfiles (for later
+// search at all — alt+h there must still flip m.files.hideDotfiles (for later
 // File/Grep use) without firing a real, debounced network re-search that
 // could only ever come back with the exact same rows.
 func TestPickerAltHInWikipediaModeTogglesWithoutRequerying(t *testing.T) {
@@ -274,13 +274,13 @@ func TestPickerAltHInWikipediaModeTogglesWithoutRequerying(t *testing.T) {
 		t.Fatal("results not current before alt+h; setup is broken")
 	}
 
-	if m.hideDotfiles {
+	if m.files.hideDotfiles {
 		t.Fatal("hideDotfiles starts true; want false (S4's default: dotfiles shown)")
 	}
 	next, cmd := m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
 	m = concrete(t, next)
 
-	if !m.hideDotfiles {
+	if !m.files.hideDotfiles {
 		t.Fatal("hideDotfiles after alt+h in Wikipedia mode = false, want true (the toggle itself still flips)")
 	}
 	if cmd != nil {
@@ -303,7 +303,7 @@ func TestPickerAltHInWikipediaModeTogglesWithoutRequerying(t *testing.T) {
 	// A second alt+h restores hideDotfiles, still without a requery.
 	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
 	m = concrete(t, next)
-	if m.hideDotfiles {
+	if m.files.hideDotfiles {
 		t.Fatal("hideDotfiles after a second alt+h in Wikipedia mode = true, want false")
 	}
 	if cmd != nil {

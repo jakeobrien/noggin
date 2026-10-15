@@ -1293,15 +1293,15 @@ s.send(b"secret", 0.9)            # single search, already hidden
 hidden = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("C2a/M6.2 pty: alt+h hides the dotfile from the File Results",
       ".secret.md" not in hidden, repr(hidden[:300]))
-check("C2a/M6.2 pty: alt+h marks the Prompt title Hidden",
-      "File \u00b7 Active Source \u00b7 Hidden" in hidden, repr(hidden[:300]))
+check("D141 pty: alt+h blanks the h slot of the Prompt title's indicator",
+      "File \u00b7 Active Source" in hidden and "h    md" not in hidden and "     md" in hidden, repr(hidden[:300]))
 
 s.send(KEY["Cancel"], 0.3)
 s.send(KEY["Picker"], 0.3)   # reopen: fresh empty Prompt, toggle untouched
 s.send(b"secret", 0.9)       # no toggle this cycle -- just re-search
 reopened = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("C2a/M6.2 pty: the hidden state survives closing and reopening the Picker",
-      ".secret.md" not in reopened and "Hidden" in reopened, repr(reopened[:300]))
+      ".secret.md" not in reopened and "h    md" not in reopened, repr(reopened[:300]))
 
 s.send(KEY["Cancel"], 0.3)
 s.send(KEY["Picker"], 0.3)
@@ -1310,8 +1310,8 @@ s.send(b"secret", 0.9)
 restored = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 check("C2a/M6.2 pty: a second alt+h restores the dotfile",
       ".secret.md" in restored, repr(restored[:300]))
-check("C2a/M6.2 pty: a second alt+h drops the Hidden title suffix",
-      "Hidden" not in restored, repr(restored[:300]))
+check("D141 pty: a second alt+h restores the h slot",
+      "h    md" in restored, repr(restored[:300]))
 
 code = (s.send(KEY["Cancel"], 0.4), s.send(KEY["Quit"], 0.6), s.close())[2]
 check("C2a/M6.2 pty: exits 0 after the File mode alt+h flow", code == 0, f"exit {code}")
@@ -1319,7 +1319,7 @@ check("C2a/M6.2 pty: exits 0 after the File mode alt+h flow", code == 0, f"exit 
 # Grep mode: the same empty-Prompt-only toggle rule, plus the mode/Scope
 # flow's own rule of switching mode only on an empty Prompt too. Reopening
 # the Picker resets mode back to File (S1's fixed opening state) but leaves
-# the alt+h toggle untouched (model.hideDotfiles, not picker-owned), so each
+# the alt+h toggle untouched (filesNav.hideDotfiles, not picker-owned), so each
 # reopen below re-switches to Grep before typing.
 grep_root = tempfile.mkdtemp()
 with open(os.path.join(grep_root, ".secret.md"), "w") as f:
@@ -1341,8 +1341,8 @@ hidden_grep = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 # actual match is listed.
 check("C2a/M6.2 pty: alt+h hides a dotfile's match from the Grep Results too",
       ".secret.md" not in hidden_grep, repr(hidden_grep[:300]))
-check("C2a/M6.2 pty: alt+h marks the Grep Prompt title Hidden",
-      "Grep \u00b7 Active Root \u00b7 Hidden" in hidden_grep, repr(hidden_grep[:300]))
+check("D141 pty: alt+h blanks the h slot of the Grep Prompt title's indicator",
+      "Grep \u00b7 Active Root" in hidden_grep and "h    md" not in hidden_grep, repr(hidden_grep[:300]))
 
 s.send(KEY["Cancel"], 0.3)
 s.send(KEY["Picker"], 0.3)

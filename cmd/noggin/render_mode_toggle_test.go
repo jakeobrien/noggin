@@ -32,7 +32,7 @@ func toggleModel(t *testing.T, content string) model {
 	t.Helper()
 	dir := t.TempDir()
 	path := writeFileContent(t, filepath.Join(dir, "doc.md"), content)
-	node, err := tree.Walk(dir, tree.FilterMarkdown)
+	node, err := tree.Walk(dir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatal(err)
 	}

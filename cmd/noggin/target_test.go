@@ -204,7 +204,7 @@ func TestTargetingModifiersRefuseADirectoryWithoutCreatingDV2(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	mkdir(t, filepath.Join(root, "sub"))
 	writeFileContent(t, filepath.Join(root, "a.md"), "# A\n")
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

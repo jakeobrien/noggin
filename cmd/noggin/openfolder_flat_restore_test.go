@@ -38,11 +38,11 @@ func TestOpenFolderRestoresFlatModeSelectionAgainstTheCorrectRoot(t *testing.T) 
 	a3 := starredFixtureFile(t, rootADir, "a3.md")
 	_ = starredFixtureFile(t, rootBDir, "b1.md")
 
-	nodeA, err := tree.Walk(rootADir, tree.FilterMarkdown)
+	nodeA, err := tree.Walk(rootADir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk(rootA): %v", err)
 	}
-	nodeB, err := tree.Walk(rootBDir, tree.FilterMarkdown)
+	nodeB, err := tree.Walk(rootBDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk(rootB): %v", err)
 	}

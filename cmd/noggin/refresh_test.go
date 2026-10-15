@@ -206,7 +206,7 @@ func TestRefreshShowsFilesystemChangesPreservingNavAndScrollPosition(t *testing.
 	doomedPath := writeFile(t, filepath.Join(sub, "doomed.md"))
 	docPath := writeFileContent(t, filepath.Join(root, "doc.md"), listContent(60))
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestRefreshEmptiesTheViewerWhenTheActiveDocumentIsDeleted(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	docPath := writeFile(t, filepath.Join(root, "doc.md"))
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestRefreshRecomputesGitStatusMarkers(t *testing.T) {
 	requireGit(t)
 	dir := newGitRepo(t) // tracked.md (M), sub/untracked.md (A), clean.md unmarked
 
-	node, err := tree.Walk(dir, tree.FilterMarkdown)
+	node, err := tree.Walk(dir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestRefreshRecomputesGitStatusMarkers(t *testing.T) {
 func TestRefreshAfterCommittedFindSurfacesMessage(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	docPath := writeFile(t, filepath.Join(root, "doc.md")) // content is "# note\n"
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -380,7 +380,7 @@ func TestRefreshUpdatesBothViewersPreservingEachScrollPosition(t *testing.T) {
 	docAPath := writeFileContent(t, filepath.Join(root, "a.md"), listContent(60))
 	docBPath := writeFileContent(t, filepath.Join(root, "b.md"), listContent(60))
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -448,7 +448,7 @@ func TestRefreshCombinesBothViewersDroppedFindIntoOneMessage(t *testing.T) {
 	docAPath := writeFile(t, filepath.Join(root, "a.md")) // "# note\n"
 	docBPath := writeFile(t, filepath.Join(root, "b.md"))
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -499,7 +499,7 @@ func TestRefreshDV1ReadFailureWinsOverDV2ReadFailure(t *testing.T) {
 	docAPath := writeFile(t, filepath.Join(root, "a.md"))
 	docBPath := writeFile(t, filepath.Join(root, "b.md"))
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -548,7 +548,7 @@ func TestRefreshReadFailureMessageWinsOverFindDroppedMessage(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	docPath := writeFile(t, filepath.Join(root, "doc.md")) // "# note\n"
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -594,7 +594,7 @@ func TestRefreshReadFailureMessageWinsOverFindDroppedMessageWithDV2(t *testing.T
 	docAPath := writeFile(t, filepath.Join(root, "a.md")) // "# note\n"
 	docBPath := writeFile(t, filepath.Join(root, "b.md"))
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -672,7 +672,7 @@ func TestRefreshWorksWithFocusOnRootsPane(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	writeFile(t, filepath.Join(root, "keep.md"))
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

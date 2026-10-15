@@ -49,8 +49,8 @@ func TestFileFilterDefaultsToMarkdownAndTheStatusRowSaysSo(t *testing.T) {
 	if got := rowNames(m.files); !slices.Equal(got, []string{"docs", "README.md"}) {
 		t.Errorf("rows = %v, want Markdown files only", got)
 	}
-	if got := statusRow(m); !strings.Contains(got, "Tree \u00b7 - \u00b7 Markdown") {
-		t.Errorf("status row = %q, want it to end Tree \u00b7 - \u00b7 Markdown", got)
+	if got := statusRow(m); !strings.HasPrefix(got, "Tree \u00b7 -") || !strings.HasSuffix(got, "h    md") {
+		t.Errorf("status row = %q, want Tree \u00b7 - with the indicator h    md right-aligned", got)
 	}
 }
 
@@ -61,16 +61,16 @@ func TestFileFilterKeyTogglesBetweenMarkdownAndAll(t *testing.T) {
 	if got := rowNames(m.files); !slices.Equal(got, []string{"docs", "README.md", "main.go"}) {
 		t.Errorf("rows under All = %v, want Markdown and Text files, binary hidden", got)
 	}
-	if got := statusRow(m); !strings.Contains(got, "Tree \u00b7 - \u00b7 All") {
-		t.Errorf("status row under All = %q", got)
+	if got := statusRow(m); !strings.HasSuffix(got, "h   txt") {
+		t.Errorf("status row under All = %q, want it to end h   txt", got)
 	}
 
 	m = pressFilter(t, m)
 	if got := rowNames(m.files); !slices.Equal(got, []string{"docs", "README.md"}) {
 		t.Errorf("rows after toggling back = %v, want Markdown only", got)
 	}
-	if got := statusRow(m); !strings.Contains(got, "Tree \u00b7 - \u00b7 Markdown") {
-		t.Errorf("status row after toggling back = %q", got)
+	if got := statusRow(m); !strings.HasSuffix(got, "h    md") {
+		t.Errorf("status row after toggling back = %q, want it to end h    md", got)
 	}
 }
 
@@ -96,7 +96,7 @@ func TestFileFilterIsRememberedPerRootForTheSession(t *testing.T) {
 	if !containsRow(m.files, "main.go") {
 		t.Errorf("Root A rows after A\u2192B\u2192A = %v, want its All filter remembered", rowNames(m.files))
 	}
-	if got := statusRow(m); !strings.HasSuffix(got, "All") {
+	if got := statusRow(m); !strings.HasSuffix(got, "txt") {
 		t.Errorf("Root A status row = %q, want All", got)
 	}
 }
@@ -212,7 +212,7 @@ func TestLaunchOnATextFileStartsItsAdHocRootOnAll(t *testing.T) {
 	if !containsRow(m.files, "main.go") {
 		t.Errorf("rows = %v, want the launched file in the Tree", rowNames(m.files))
 	}
-	if got := statusRow(m); !strings.HasSuffix(got, "All") {
+	if got := statusRow(m); !strings.HasSuffix(got, "txt") {
 		t.Errorf("status row = %q, want All", got)
 	}
 }
@@ -295,11 +295,11 @@ func TestStalenessUnderAllIgnoresHiddenBinariesButSeesTextFiles(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := filterRoot(t)
-			node, err := tree.Walk(root, tree.FilterAll)
+			node, err := tree.Walk(root, tree.Options{Filter: tree.FilterAll})
 			if err != nil {
 				t.Fatal(err)
 			}
-			b := snapshotStaleness(node, tree.FilterAll)
+			b := snapshotStaleness(node, tree.Options{Filter: tree.FilterAll})
 			bumpMtimeForward(t, root)
 			writeFileContent(t, filepath.Join(root, tc.name), tc.content)
 			if got := b.stale(); got != tc.want {
@@ -311,7 +311,7 @@ func TestStalenessUnderAllIgnoresHiddenBinariesButSeesTextFiles(t *testing.T) {
 
 func TestStalenessUnderMarkdownIgnoresTextFileChanges(t *testing.T) {
 	root := filterRoot(t)
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown)
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown})
 	bumpMtimeForward(t, root)
 	writeFileContent(t, filepath.Join(root, "new.txt"), "text\n")
 	if b.stale() {

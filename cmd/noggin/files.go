@@ -93,6 +93,16 @@ type filesNav struct {
 	// fileFilter falls back to this one. The zero value is tree.FilterMarkdown.
 	lastFilter tree.Filter
 
+	// hideDotfiles and showIgnored are the session-wide view toggles (D141):
+	// alt+h hides dotfiles (and everything under a dot-directory), alt+i
+	// reveals gitignored entries. One value each for the whole session —
+	// every Root's Tree and the Picker's File/Grep search read them here —
+	// unlike the File Filter, which is per Root. Only a relaunch resets
+	// them; the zero values are the defaults (dotfiles shown, ignored
+	// entries hidden).
+	hideDotfiles bool
+	showIgnored  bool
+
 	// status holds S8's per-file git markers for the current root, keyed by
 	// absolute Path (gitStatus's return shape, ready to match tree.Node.Path
 	// directly). Unlike memory, it is never restored from a prior visit — the
@@ -403,6 +413,25 @@ func (f filesNav) withRevealed(path string) filesNav {
 	if i := f.rowIndexOf(path); i >= 0 {
 		f.selected = i
 	}
+	return f
+}
+
+// treeOptions is what the Root at path is walked under: its own File Filter
+// plus the session-wide hidden/ignored toggles.
+func (f filesNav) treeOptions(path string) tree.Options {
+	return tree.Options{Filter: f.filterFor(path), HideDotfiles: f.hideDotfiles, ShowIgnored: f.showIgnored}
+}
+
+// currentTreeOptions is treeOptions for the Active Root, or with none the
+// fallback File Filter (fileFilter) and the toggles.
+func (f filesNav) currentTreeOptions() tree.Options {
+	return tree.Options{Filter: f.fileFilter(), HideDotfiles: f.hideDotfiles, ShowIgnored: f.showIgnored}
+}
+
+// withViewToggles sets the session-wide hidden/ignored toggles. It does not
+// re-walk anything; model.setViewToggles does that.
+func (f filesNav) withViewToggles(hideDotfiles, showIgnored bool) filesNav {
+	f.hideDotfiles, f.showIgnored = hideDotfiles, showIgnored
 	return f
 }
 
@@ -852,14 +881,17 @@ func (f filesNav) view() string {
 
 // modeScopeRow renders S5's own status line: the current Browse Mode and
 // Browse Scope, " \u00b7 "-joined the same way the footer joins its hints
-// (footer.go's joinHints) so the two status lines read consistently.
+// (footer.go's joinHints) so the two status lines read consistently, with
+// D141's view-toggle indicator right-aligned. The toggles and the File Filter
+// bound only the Tree (D140, D141): Recent and Starred ignore them, so only
+// the Tree's row carries the indicator.
 func (f filesNav) modeScopeRow() string {
-	text := f.mode.label() + " \u00b7 " + f.scopeLabel()
-	// The File Filter bounds only the Tree (D140): Recent and Starred ignore
-	// it, so only the Tree's row names it.
+	left := f.mode.label() + " \u00b7 " + f.scopeLabel()
+	right := ""
 	if f.mode == treeBrowse && f.root != nil {
-		text += " \u00b7 " + f.fileFilter().String()
+		right = viewIndicator(hiddenSlot(f.hideDotfiles), ignoredSlot(f.showIgnored), filterSlot(f.fileFilter()))
 	}
+	text := statusLine(left, right, f.width)
 	return mutedText(modeScopeRowStyle, f.unfocused, true).Width(f.width).MaxWidth(f.width).Render(text)
 }
 
@@ -1027,9 +1059,14 @@ func (f filesNav) renderRow(r fileRow, selected bool) string {
 	line = rightTruncate(line, f.width)
 
 	style := lipgloss.NewStyle()
-	if selected {
+	switch {
+	case selected:
 		style = selectedRowStyle(style, f.unfocused)
-	} else {
+	case r.node.Ignored:
+		// D141: a gitignored entry only alt+i revealed reads de-emphasised,
+		// the way `git status` greys ignored files.
+		style = mutedText(style.Foreground(theme.Subtle), f.unfocused, true)
+	default:
 		style = mutedText(style, f.unfocused, false)
 	}
 	return style.Width(f.width).MaxWidth(f.width).Render(line)

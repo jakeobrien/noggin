@@ -340,7 +340,7 @@ func TestPickerActivateOpensResultAsActiveDocumentOnly(t *testing.T) {
 	fileB := filepath.Join(rootB, "report.md")
 	writeFileContent(t, fileB, "root B report\n")
 
-	nodeA, err := tree.Walk(rootA, tree.FilterMarkdown)
+	nodeA, err := tree.Walk(rootA, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("walking %s: %v", rootA, err)
 	}
@@ -517,7 +517,7 @@ func TestPickerActivateGrepResultDoesNotChangeFilesNav(t *testing.T) {
 	fileB := filepath.Join(rootB, "report.md")
 	writeFileContent(t, fileB, "a report line\n")
 
-	nodeA, err := tree.Walk(rootA, tree.FilterMarkdown)
+	nodeA, err := tree.Walk(rootA, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("walking %s: %v", rootA, err)
 	}
@@ -1174,7 +1174,7 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 	m.roots = m.roots.setRoots([]root{{path: dir}}, 0)
 	m, _ = m.openPicker()
 
-	if m.hideDotfiles {
+	if m.files.hideDotfiles {
 		t.Fatal("hideDotfiles starts true; want false (S4's default: dotfiles shown)")
 	}
 
@@ -1194,7 +1194,7 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 	// path a mode/Scope switch already reuses for its own in-place switch.
 	next, cmd := m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
 	m = concrete(t, next)
-	if !m.hideDotfiles {
+	if !m.files.hideDotfiles {
 		t.Fatal("hideDotfiles after alt+h = false, want true")
 	}
 	if got := m.picker.input.Value(); got != "config" {
@@ -1215,7 +1215,7 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 	// A second alt+h restores it.
 	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
 	m = concrete(t, next)
-	if m.hideDotfiles {
+	if m.files.hideDotfiles {
 		t.Fatal("hideDotfiles after a second alt+h = true, want false")
 	}
 	msg, ok = cmd().(pickerSearchMsg)
@@ -1232,7 +1232,7 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 
 	// Hide again, then close and reopen the Picker (dismissPicker replaces
 	// the whole picker struct, resetPicker) — the toggle must survive that
-	// within the session (model.hideDotfiles, not picker-owned) even though
+	// within the session (filesNav.hideDotfiles, not picker-owned) even though
 	// mode/Scope/Prompt do not.
 	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
 	m = concrete(t, next)
@@ -1241,7 +1241,7 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 
 	m = press(t, m, keys.Cancel.Keys()[0])
 	m, _ = m.openPicker()
-	if !m.hideDotfiles {
+	if !m.files.hideDotfiles {
 		t.Fatal("hideDotfiles after closing and reopening the Picker = false, want true (unchanged)")
 	}
 
@@ -1262,7 +1262,7 @@ func TestPickerAltHTogglesDotfilesInBothModesAndSurvivesReopen(t *testing.T) {
 	// A second alt+h, still in Grep mode, restores the dotfile's own match.
 	next, cmd = m.Update(keyPress(keys.ToggleHidden.Keys()[0]))
 	m = concrete(t, next)
-	if m.hideDotfiles {
+	if m.files.hideDotfiles {
 		t.Fatal("hideDotfiles after alt+h in Grep mode = true, want false")
 	}
 	msg, ok = cmd().(pickerSearchMsg)

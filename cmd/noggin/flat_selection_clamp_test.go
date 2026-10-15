@@ -21,7 +21,7 @@ func TestCyclingToAShorterFlatListReClampsSelection(t *testing.T) {
 	_ = recentFixtureFile(t, rootDir, "b.md")
 	_ = recentFixtureFile(t, rootDir, "c.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestUnstarringLastVisibleStarredRowReClampsSelection(t *testing.T) {
 	b := starredFixtureFile(t, rootDir, "b.md")
 	storePath := filepath.Join(dir, "documents")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestCyclingScopeToASmallerFlatListReClampsSelection(t *testing.T) {
 	b2 := recentFixtureFile(t, rootBDir, "b2.md")
 	b3 := recentFixtureFile(t, rootBDir, "b3.md")
 
-	nodeA, err := tree.Walk(rootADir, tree.FilterMarkdown)
+	nodeA, err := tree.Walk(rootADir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -205,11 +205,11 @@ func TestSettingRootRestoringAFlatModeReClampsSelection(t *testing.T) {
 	a2 := starredFixtureFile(t, rootADir, "a2.md")
 	a3 := starredFixtureFile(t, rootADir, "a3.md")
 
-	nodeA, err := tree.Walk(rootADir, tree.FilterMarkdown)
+	nodeA, err := tree.Walk(rootADir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
-	nodeB, err := tree.Walk(rootBDir, tree.FilterMarkdown)
+	nodeB, err := tree.Walk(rootBDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestSettingRootRestoringAFlatModeReClampsSelection(t *testing.T) {
 	// (a3.md) against the current Tree — still row 2, the file itself was
 	// never removed — giving a Tree-shaped f.selected of 2 before
 	// clampSelected re-resolves it against the now-two-row Starred list.
-	nodeA2, err := tree.Walk(rootADir, tree.FilterMarkdown)
+	nodeA2, err := tree.Walk(rootADir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

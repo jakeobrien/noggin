@@ -48,7 +48,7 @@ func TestUnstarringRootLeavesDocumentStoreUntouched(t *testing.T) {
 		t.Fatalf("reading seeded store: %v", err)
 	}
 
-	node, err := tree.Walk(target, tree.FilterMarkdown)
+	node, err := tree.Walk(target, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

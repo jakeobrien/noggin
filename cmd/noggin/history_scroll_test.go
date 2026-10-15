@@ -25,7 +25,7 @@ func longDocFixture(t *testing.T) (m model, docA, docB, docC string) {
 	docB = writeFileContent(t, filepath.Join(dir, "b.md"), "doc b\n")
 	docC = writeFileContent(t, filepath.Join(dir, "c.md"), "doc c\n")
 
-	node, err := tree.Walk(dir, tree.FilterMarkdown)
+	node, err := tree.Walk(dir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

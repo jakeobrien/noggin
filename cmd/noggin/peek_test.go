@@ -20,7 +20,7 @@ func peekFixture(t *testing.T) (m model, activePath, peekedPath string) {
 	activePath = writeFileContent(t, filepath.Join(root, "active.md"), "# Active\n")
 	peekedPath = writeFileContent(t, filepath.Join(root, "peeked.md"), "# Peeked\n")
 
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -194,7 +194,7 @@ func TestPeekEditIsASilentNoOp(t *testing.T) {
 func TestPeekOnAFolderIsANoOp(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	mkdir(t, filepath.Join(root, "sub"))
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

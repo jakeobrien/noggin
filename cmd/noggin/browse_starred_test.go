@@ -304,7 +304,7 @@ func TestFilesNavStarredModeRendersFlatRowsWithoutStarMarker(t *testing.T) {
 	starred := starredFixtureFile(t, rootDir, "starred.md")
 	starredFixtureFile(t, rootDir, "unstarred.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -341,7 +341,7 @@ func TestFilesNavStarredModeEmptyShowsAMessage(t *testing.T) {
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 	starredFixtureFile(t, rootDir, "unstarred.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -368,7 +368,7 @@ func TestFilesNavStarredModeMarksBrokenRow(t *testing.T) {
 	present := starredFixtureFile(t, rootDir, "present.md")
 	gonePath := filepath.Join(rootDir, "gone.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -398,7 +398,7 @@ func TestActivateRefusesBrokenStarredRow(t *testing.T) {
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 	gonePath := filepath.Join(rootDir, "gone.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -431,7 +431,7 @@ func TestActivateOpensNonBrokenStarredRow(t *testing.T) {
 	present := starredFixtureFile(t, rootDir, "present.md")
 	storePath := filepath.Join(dir, "documents")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -462,7 +462,7 @@ func TestToggleDocStarInStarredModeDropsTheRowImmediately(t *testing.T) {
 	target := starredFixtureFile(t, rootDir, "target.md")
 	storePath := filepath.Join(dir, "documents")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

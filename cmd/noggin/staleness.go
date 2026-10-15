@@ -58,10 +58,10 @@ type staleBaseline struct {
 	dirs map[string]dirSnapshot
 	docs []docSnapshot
 
-	// filter is the File Filter the tree was walked under, so re-listing a
-	// directory compares like with like: a change to a file the filter hides
-	// never raises the indicator (D139, D140).
-	filter tree.Filter
+	// opts are what the tree was walked under (File Filter, hidden/ignored
+	// toggles), so re-listing a directory compares like with like: a change
+	// to a file the tree hides never raises the indicator (D139, D140, D141).
+	opts tree.Options
 }
 
 // dirSnapshot is one known directory's state at snapshot time: its own
@@ -113,8 +113,8 @@ type docSnapshot struct {
 // path at all, never a placeholder empty one). Every Stat is against a path
 // the caller already knows about — nothing here discovers a new path via
 // os.ReadDir.
-func snapshotStaleness(root *tree.Node, filter tree.Filter, docPaths ...string) staleBaseline {
-	b := staleBaseline{dirs: map[string]dirSnapshot{}, filter: filter}
+func snapshotStaleness(root *tree.Node, opts tree.Options, docPaths ...string) staleBaseline {
+	b := staleBaseline{dirs: map[string]dirSnapshot{}, opts: opts}
 	if root != nil {
 		b.root = root.Path
 	}
@@ -156,7 +156,7 @@ func collectDirSnapshots(n *tree.Node, out map[string]dirSnapshot) {
 	if info, err := os.Stat(n.Path); err == nil {
 		entries := make([]tree.Entry, 0, len(n.Children))
 		for _, c := range n.Children {
-			entries = append(entries, tree.Entry{Name: c.Name, IsDir: c.IsDir})
+			entries = append(entries, tree.Entry{Name: c.Name, IsDir: c.IsDir, Ignored: c.Ignored})
 		}
 		out[n.Path] = dirSnapshot{
 			modTime:   info.ModTime(),
@@ -242,7 +242,7 @@ func (b staleBaseline) dirChanged(path string, want dirSnapshot) bool {
 	if !moved {
 		return false
 	}
-	entries, err := tree.ListDir(b.root, path, b.filter)
+	entries, err := tree.ListDir(b.root, path, b.opts)
 	if err != nil {
 		return true
 	}
@@ -297,15 +297,15 @@ func (m model) resetStaleBaseline() model {
 	if m.dv1.doc.isOpen() {
 		dv1Path = m.dv1.doc.path
 	}
-	filter := m.files.fileFilter()
+	opts := m.files.currentTreeOptions()
 	if m.dv2 == nil {
-		m.staleBaseline = snapshotStaleness(m.files.root, filter, dv1Path)
+		m.staleBaseline = snapshotStaleness(m.files.root, opts, dv1Path)
 	} else {
 		dv2Path := ""
 		if m.dv2.doc.isOpen() {
 			dv2Path = m.dv2.doc.path
 		}
-		m.staleBaseline = snapshotStaleness(m.files.root, filter, dv1Path, dv2Path)
+		m.staleBaseline = snapshotStaleness(m.files.root, opts, dv1Path, dv2Path)
 	}
 	m.stale = false
 	m.staleGen++
@@ -319,7 +319,7 @@ func (m model) resetStaleBaseline() model {
 // generation moves on so a check still running against the old filter is
 // discarded.
 func (m model) rebaseTreeStaleness() model {
-	b := snapshotStaleness(m.files.root, m.files.fileFilter())
+	b := snapshotStaleness(m.files.root, m.files.currentTreeOptions())
 	b.docs = m.staleBaseline.docs
 	m.staleBaseline = b
 	m.staleGen++

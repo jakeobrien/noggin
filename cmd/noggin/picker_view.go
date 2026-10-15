@@ -145,8 +145,10 @@ func (p picker) promptView(width int) string {
 // shows its mode and Scope", M2.5), rendered as the Prompt box's title. It
 // is the Picker's answer to "what would Enter search?", and the surface
 // M5.1/M5.2's in-place switching will be seen through — the reason it reads
-// off p.mode/p.scope rather than being passed in as text.
-func pickerModeScope(p picker, bounds pickerBounds) string {
+// off p.mode/p.scope rather than being passed in as text. The view toggles
+// that bound the search are pickerIndicator's, right-aligned beside it
+// (pickerTitle).
+func pickerModeScope(p picker) string {
 	mode := "File"
 	// Grep's own Scope keeps reading "Active Root" (C6/M1.3): Grep never
 	// reaches Wikipedia (S6), so its activeRootScope value always names a
@@ -172,20 +174,30 @@ func pickerModeScope(p picker, bounds pickerBounds) string {
 			scope = "Starred"
 		}
 	}
-	label := mode + " · " + scope
-	// The File Filter (D140) bounds File and Grep except in the Starred
-	// scope, which ignores it; Wikipedia mode has no files at all.
-	if p.mode != wikipediaMode && p.scope != starredScope {
-		label += " · " + bounds.filter.String()
+	return mode + " · " + scope
+}
+
+// pickerIndicator is D141's view-toggle indicator for the open Picker,
+// carrying only the slots that bound what it would search: none in Wikipedia
+// mode (no files at all); only hidden files in the Starred scope, which lists
+// the document store rather than asking ripgrep (so neither the ignore rules
+// nor the File Filter apply); all three otherwise.
+func pickerIndicator(p picker, bounds pickerBounds) string {
+	switch {
+	case p.mode == wikipediaMode:
+		return ""
+	case p.scope == starredScope:
+		return viewIndicator(hiddenSlot(bounds.hideDotfiles))
+	default:
+		return viewIndicator(hiddenSlot(bounds.hideDotfiles), ignoredSlot(bounds.showIgnored), filterSlot(bounds.filter))
 	}
-	if bounds.hideDotfiles {
-		// S4/M6.2's alt+h toggle has no other visible confirmation — the
-		// title is the one place mode/Scope already surface "what would
-		// Enter search", and a dotfile-hiding candidate set is exactly that
-		// same kind of fact about the search, not a new indicator of its own.
-		label += " · Hidden"
-	}
-	return label
+}
+
+// pickerTitle is the Prompt box's title row at width: pickerModeScope with
+// pickerIndicator right-aligned (statusLine drops the indicator first when
+// the two do not fit).
+func pickerTitle(p picker, bounds pickerBounds, width int) string {
+	return statusLine(pickerModeScope(p), pickerIndicator(p, bounds), width)
 }
 
 // Picker status lines (S12/C2, S14). Exact strings, asserted by
@@ -742,7 +754,7 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, bounds pi
 	if status := pickerStatus(p, avail, bounds); status != "" {
 		promptContent += "\n" + status
 	}
-	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerModeScope(p, bounds)), promptContent)
+	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerTitle(p, bounds, l.prompt.content().width)), promptContent)
 	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, bounds, docs)
 	results := renderBox(borderStyle, l.results, titleStyle.Render("Results"), resultsContent)
 	preview := renderBox(borderStyle, l.preview, titleStyle.Render("Preview"), pickerPreviewContent(p))

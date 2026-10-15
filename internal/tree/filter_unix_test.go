@@ -23,7 +23,7 @@ func TestFilterAllHidesAFifoWithoutBlocking(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		node, err := Walk(root, FilterAll)
+		node, err := Walk(root, Options{Filter: FilterAll})
 		done <- result{node, err}
 	}()
 	select {

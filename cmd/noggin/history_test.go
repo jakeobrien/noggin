@@ -28,7 +28,7 @@ func threeDocFixture(t *testing.T) (m model, dir string, docA, docB, docC string
 	docB = writeFileContent(t, filepath.Join(dir, "b.md"), "doc b\n")
 	docC = writeFileContent(t, filepath.Join(dir, "c.md"), "doc c\n")
 
-	node, err := tree.Walk(dir, tree.FilterMarkdown)
+	node, err := tree.Walk(dir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -311,11 +311,11 @@ func TestHistoryWalkNeverChangesActiveRoot(t *testing.T) {
 	docA := writeFileContent(t, filepath.Join(rootA, "doc.md"), "doc a\n")
 	docB := writeFileContent(t, filepath.Join(rootB, "doc.md"), "doc b\n")
 
-	nodeA, err := tree.Walk(rootA, tree.FilterMarkdown)
+	nodeA, err := tree.Walk(rootA, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk(a): %v", err)
 	}
-	nodeB, err := tree.Walk(rootB, tree.FilterMarkdown)
+	nodeB, err := tree.Walk(rootB, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk(b): %v", err)
 	}

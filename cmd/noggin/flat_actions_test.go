@@ -18,7 +18,7 @@ func TestPeekIntoRecentRowDV1(t *testing.T) {
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 	target := recentFixtureFile(t, rootDir, "target.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestPeekIntoRecentRowDV2(t *testing.T) {
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 	target := recentFixtureFile(t, rootDir, "target.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestActivateIntoRecentRowDV1AndDV2(t *testing.T) {
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 	target := recentFixtureFile(t, rootDir, "target.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestPeekRefusesBrokenStarredRow(t *testing.T) {
 	rootDir := mkdir(t, filepath.Join(dir, "project"))
 	gonePath := filepath.Join(rootDir, "gone.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestExpandCollapseNoOpInFlatMode(t *testing.T) {
 	sub := mkdir(t, filepath.Join(rootDir, "sub"))
 	target := recentFixtureFile(t, sub, "target.md")
 
-	node, err := tree.Walk(rootDir, tree.FilterMarkdown)
+	node, err := tree.Walk(rootDir, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}

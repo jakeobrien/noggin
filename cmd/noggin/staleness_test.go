@@ -16,7 +16,7 @@ import (
 
 func walkFor(t *testing.T, root string) *tree.Node {
 	t.Helper()
-	node, err := tree.Walk(root, tree.FilterMarkdown)
+	node, err := tree.Walk(root, tree.Options{Filter: tree.FilterMarkdown})
 	if err != nil {
 		t.Fatalf("tree.Walk: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestStaleBaselineNotStaleWhenNothingChanged(t *testing.T) {
 	writeFile(t, filepath.Join(sub, "keep.md"))
 	docPath := writeFile(t, filepath.Join(root, "doc.md"))
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, docPath)
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, docPath)
 	if b.stale() {
 		t.Error("stale() = true immediately after snapshotting an untouched tree, want false")
 	}
@@ -48,7 +48,7 @@ func TestStaleBaselineDetectsFileAddedInsideKnownNestedDirectory(t *testing.T) {
 	sub := mkdir(t, filepath.Join(root, "sub"))
 	writeFile(t, filepath.Join(sub, "keep.md"))
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, "")
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, "")
 	if b.stale() {
 		t.Fatalf("setup: baseline already stale before any change")
 	}
@@ -69,7 +69,7 @@ func TestStaleBaselineDetectsDirectoryRemoved(t *testing.T) {
 	sub := mkdir(t, filepath.Join(root, "sub"))
 	writeFile(t, filepath.Join(sub, "keep.md"))
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, "")
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, "")
 	if err := os.RemoveAll(sub); err != nil {
 		t.Fatalf("RemoveAll: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestStaleBaselineDetectsActiveDocumentEditedInPlace(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	docPath := writeFileContent(t, filepath.Join(root, "doc.md"), "one\n")
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, docPath)
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, docPath)
 	if b.stale() {
 		t.Fatalf("setup: baseline already stale before any change")
 	}
@@ -108,7 +108,7 @@ func TestStaleBaselineDetectsActiveDocumentDeleted(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	docPath := writeFile(t, filepath.Join(root, "doc.md"))
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, docPath)
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, docPath)
 	if err := os.Remove(docPath); err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestStaleBaselineIgnoresChangesOutsideTheKnownTree(t *testing.T) {
 	writeFile(t, filepath.Join(root, "doc.md"))
 	elsewhere := mkdir(t, filepath.Join(t.TempDir(), "elsewhere"))
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, "")
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, "")
 	writeFile(t, filepath.Join(elsewhere, "unrelated.md"))
 
 	if b.stale() {
@@ -699,7 +699,7 @@ func TestSnapshotStalenessUntracksADocumentWhoseStatFails(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	missing := filepath.Join(root, "gone.md") // never created
 
-	b := snapshotStaleness(walkFor(t, root), tree.FilterMarkdown, missing)
+	b := snapshotStaleness(walkFor(t, root), tree.Options{Filter: tree.FilterMarkdown}, missing)
 	if got := b.trackedDocPaths(); len(got) != 0 {
 		t.Errorf("tracked doc paths = %v after snapshotting an unstattable document, want none (untracked)", got)
 	}
