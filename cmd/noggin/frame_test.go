@@ -117,26 +117,6 @@ func TestViewReflowsOnResize(t *testing.T) {
 	}
 }
 
-// TestFocusJumpsReachEveryVisiblePane covers S5's replacement for Tab-
-// cycling (removed as of C3/M1.1): FocusRoots/FocusFiles jump Focus
-// directly, from any starting pane, to a pane that stays put otherwise —
-// there is no cycle to walk any more, just direct jumps (focus_test.go
-// covers the jumps themselves in full; this only pins that Tab/Shift+Tab
-// no longer do anything).
-func TestTabAndShiftTabAreUnbound(t *testing.T) {
-	m := sized(t, newModel(), 80, 24)
-	start := m.focus
-
-	m = press(t, m, "tab")
-	if m.focus != start {
-		t.Errorf("focus after tab = %v, want unchanged %v (Tab-cycling is removed, S5)", m.focus, start)
-	}
-	m = press(t, m, "shift+tab")
-	if m.focus != start {
-		t.Errorf("focus after shift+tab = %v, want unchanged %v (Tab-cycling is removed, S5)", m.focus, start)
-	}
-}
-
 func TestNarrowTerminalDropsNavigatorAndKeepsFocusVisible(t *testing.T) {
 	narrow := minNavigatorWidth + minViewerWidth - 1
 	l := computeLayout(narrow, 24, false, false)
@@ -295,7 +275,7 @@ func allBindings() []key.Binding {
 		keys.Top, keys.Bottom,
 		keys.Edit, keys.RenderMode,
 		keys.Find, keys.FindNext, keys.FindPrevious, keys.Navigator, keys.Cancel,
-		keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.CloseDV2, keys.Refresh,
+		keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseDV2, keys.Refresh,
 		keys.Help, keys.Picker, keys.PickerRestore,
 		keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope,
 		keys.ToggleHidden,

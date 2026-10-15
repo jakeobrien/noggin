@@ -35,8 +35,8 @@ REVERSE_SGR = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")  # reverse video, alone
 KEY = {
     "Quit":         b"q",       # keys.Quit
     "QuitCtrlC":    b"\x03",    # keys.Quit, second key: ctrl+c
-    "Tab":          b"\t",      # raw tab byte; unbound as of C3/M1.1 (S5) except inside the Picker
-    "ShiftTab":     b"\x1b[Z",  # raw shift+tab byte; ditto
+    "Tab":          b"\t",      # keys.FocusNext: tab
+    "ShiftTab":     b"\x1b[Z",  # keys.FocusPrevious: shift+tab
     "HalfPageDown": b"\x04",    # keys.HalfPageDown: ctrl+d
     "PageUp":       b"\x02",    # keys.PageUp, second key: ctrl+b
     "Bottom":       b"G",       # keys.Bottom
@@ -171,8 +171,7 @@ for cols, rows in [(80, 24), (100, 30)]:
     check(f"M1.2 focus starts in the Files pane at {cols}x{rows}",
           focused() == "Files", repr(focused()))
 
-    # C3/M1.1 (S5): Tab-cycling is removed in favor of direct focus-jump
-    # keys — FocusRoots/FocusFiles reach their panes from anywhere non-modal.
+    # Direct focus-jump keys reach their panes from anywhere non-modal.
     s.send(KEY["FocusRoots"], 0.5)
     check(f"M1.2 FocusRoots jumps focus to Sources at {cols}x{rows}",
           focused() == "Sources", repr(focused()))
@@ -181,13 +180,13 @@ for cols, rows in [(80, 24), (100, 30)]:
     check(f"M1.2 FocusFiles jumps focus back to Files at {cols}x{rows}",
           focused() == "Files", repr(focused()))
 
-    before = focused()
+    # D141: tab/shift+tab cycle Focus through the visible panes.
     s.send(KEY["Tab"], 0.5)
     after_tab = focused()
     s.send(KEY["ShiftTab"], 0.5)
     after_shift_tab = focused()
-    check(f"M1.2 tab/shift+tab no longer cycle focus at {cols}x{rows}",
-          after_tab == before and after_shift_tab == before,
+    check(f"D141 tab moves focus Files -> Document, shift+tab back at {cols}x{rows}",
+          after_tab == "Document" and after_shift_tab == "Files",
           f"tab -> {after_tab!r}, shift+tab -> {after_shift_tab!r}")
 
     s.send(KEY["Quit"], 0.6)

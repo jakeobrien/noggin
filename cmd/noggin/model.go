@@ -30,11 +30,13 @@ const (
 // is not visible: down the Navigator column, then out to DV1. DV2 is
 // deliberately absent — falling back onto a pane that does not exist would
 // be nonsensical, and DV1 (S1's always-present viewer) is the natural
-// landing spot Tab/Shift+Tab's removal (S5) leaves as the one non-Navigator
-// fallback. (Tab-cycling itself, and the paneOrder/shiftFocus it drove, are
-// gone as of C3/M1.1 — S5 replaces cycling with four direct focus-jump
-// keys.)
+// non-Navigator fallback.
 var focusOrder = []pane{rootsPane, filesPane, dv1Pane}
+
+// focusRing is the order Tab/Shift+Tab cycle Focus through (D141,
+// model.cycleFocus). Unlike focusOrder it includes DV2: cycling only ever
+// lands on a visible pane, so a missing DV2 is simply skipped.
+var focusRing = []pane{rootsPane, filesPane, dv1Pane, dv2Pane}
 
 // title is the pane's heading, shown in its border and the footer. It is a
 // short display label, not the GLOSSARY.md term ("Sources Nav", "Files Nav",
@@ -1161,6 +1163,36 @@ func (m model) focusPane(target pane) model {
 	return m
 }
 
+// cycleFocus moves Focus to the next (dir 1) or previous (dir -1) visible
+// pane in focusRing, wrapping (D141's Tab/Shift+Tab). Panes that are not
+// visible are skipped, so a hidden or width-dropped Navigator and a missing
+// DV2 drop out of the ring and nothing is ever revealed; with one visible
+// pane (or none) it is a no-op. Routed through setFocus like every other
+// Focus change, so leaving the Files Nav clears Peek.
+func (m model) cycleFocus(dir int) model {
+	var ring []pane
+	current := -1
+	for _, p := range focusRing {
+		if !m.visible(p) {
+			continue
+		}
+		if p == m.focus {
+			current = len(ring)
+		}
+		ring = append(ring, p)
+	}
+	if len(ring) < 2 {
+		return m
+	}
+	if current < 0 {
+		// Focus on a pane that is not visible should not happen (resize
+		// re-resolves it), but land somewhere sensible if it does.
+		return m.setFocus(ring[0])
+	}
+	next := (current + dir + len(ring)) % len(ring)
+	return m.setFocus(ring[next])
+}
+
 // togglePeek is S7/M7.1's `p` binding: shows the Files Nav's selected
 // document in the Document Viewer without making it the Active Document
 // and without moving Focus (Update's filesPane case is what keeps this
@@ -1670,6 +1702,10 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.focusPane(filesPane), nil
 		case key.Matches(msg, keys.FocusDV1):
 			return m.focusPane(dv1Pane), nil
+		case key.Matches(msg, keys.FocusNext):
+			return m.cycleFocus(1), nil
+		case key.Matches(msg, keys.FocusPrevious):
+			return m.cycleFocus(-1), nil
 		// FocusDV2 (C3/S5) is a genuine no-op with DV2 absent, not a fall back
 		// through focusOrder the way an ordinary invisible target would be
 		// (resolveFocus's fallback is for a target hidden by terminal width,

@@ -119,6 +119,17 @@ type keyMap struct {
 	FocusDV1 key.Binding
 	FocusDV2 key.Binding
 
+	// FocusNext and FocusPrevious (D141) cycle Focus through the visible
+	// panes in the fixed ring Sources Nav -> Files Nav -> DV1 -> DV2,
+	// forward and backward (model.cycleFocus). They complement the four
+	// direct jumps above rather than replacing them: a pane that is not
+	// visible (a hidden or width-dropped Navigator, a DV2 that does not
+	// exist) is skipped, so neither ever reveals the Navigator, and with a
+	// single visible pane both are no-ops. Global, so they are inert while
+	// Find, Rename, the Help Modal or the Picker owns the keyboard.
+	FocusNext     key.Binding
+	FocusPrevious key.Binding
+
 	// CloseDV2 (S4, C3/M2.1) closes DV2: `ctrl+x`, global like FocusDV1/
 	// FocusDV2 — reachable from any pane's Focus, including DV1/DV2
 	// themselves — but, unlike them, never matched while a modal (Picker,
@@ -386,6 +397,14 @@ var keys = keyMap{
 	FocusDV2: key.NewBinding(
 		key.WithKeys("D"),
 		key.WithHelp("D", "dv2"),
+	),
+	FocusNext: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "next pane"),
+	),
+	FocusPrevious: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tab", "prev pane"),
 	),
 	CloseDV2: key.NewBinding(
 		key.WithKeys("ctrl+x"),
