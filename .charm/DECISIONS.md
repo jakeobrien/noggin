@@ -1797,3 +1797,52 @@
     ripgrep's column does not match a find hit exactly. Why: the two engines can disagree on
     column (e.g. after control-character or tab substitution), and landing on the right line
     beats failing to land.
+
+## D141: Keymap batch — arrows only, Tab cycles Focus again, ctrl+w closes the focused viewer, alt+ view toggles shared by Files Nav and Picker; amends S5 (C3)
+
+- Status: decided
+- Date: 2026-10-16
+- Amends: S5/C3-M1.1 (Tab cycling removed in favour of direct jumps), S4 (`ctrl+x` close DV2),
+  S4/M6.2 (Picker-only `alt+h`), D140 (File Filter keys `a`/`alt+a`)
+- Context: dogfooding. The vim aliases (`h`/`j`/`k`/`l`) went unused and took four letters.
+  Tab was free outside the Picker, and moving between four panes by four separate keys felt
+  heavy. Closing only ever targeted DV2, so there was no way to empty DV1 or promote DV2's
+  document. The Files Nav could not show dotfiles' absence or gitignored files at all. The
+  Picker's toggles and the Files Nav's toggles used unrelated keys. Spec: tk-95fr.
+- Decision:
+  - **Arrows only.** LineUp/LineDown/Expand/Collapse drop their `k`/`j`/`l`/`h` aliases.
+  - **Tab cycles Focus again**, alongside the direct jumps rather than instead of them:
+    Sources → Files → DV1 → DV2, `shift+tab` reversed. It skips panes that are not visible,
+    never reveals the Navigator, and does nothing with one visible pane. Direct jumps move to
+    `d`/`D` (DV1/DV2); the sidebar toggle moves to `F`.
+  - **Left climbs.** In the Tree, Left on a file or collapsed folder collapses the parent and
+    selects it. Right is unchanged.
+  - **`ctrl+w` acts on the focused viewer**: from DV2 it closes DV2. From DV1 it hands DV1
+    DV2's whole state and closes DV2, or, with no DV2, clears DV1 to empty. It does nothing on
+    the Navigator panes. A DV2-targeted article fetch still in flight lands in DV1.
+  - **One letter, two contexts.** Files Nav keys are bare letters, because the Files Nav is
+    never a typing context. The Picker uses the `alt+` version of the same letter, because its
+    Prompt is always typing: Browse Mode `t`/`alt+t`, Scope `a`/`alt+a`. `ctrl+s` stars
+    everywhere, the Picker included, since a control chord is never text. `e` edits only from
+    a viewer, which frees it for Rename on the Sources Nav.
+  - **View toggles.** `alt+h` (hidden files), `alt+i` (gitignored files) and `alt+m` (File
+    Filter) work from both the Files Nav and the Picker. Hidden and ignored are one
+    session-wide flag each, shared by the Tree and the Picker. The File Filter stays per Root
+    (D140). Showing ignored files makes the Tree stop applying `.gitignore` (revealed entries
+    are drawn muted) and runs ripgrep with `--no-ignore-vcs`. A fixed set of heavy folder
+    names stays excluded while ignored files are shown, declared once in `internal/tree`.
+  - **Indicator.** The toggles' state is a right-aligned plain-text slot run: `h` or a space,
+    `i` or a space, ` md` or `txt`. It sits on the Files Nav status row (Tree mode only) and in
+    the Picker's title, where it shows only the slots that apply. The indicator gives way
+    before the label does.
+- Why: Tab is the conventional pane key, and S5's direct jumps remain for precision. Plain
+  `ctrl+i`/`ctrl+m` were considered for the Files Nav toggles. They were rejected because on
+  terminals without Kitty keyboard disambiguation they arrive as `tab` and `enter`, so the
+  `alt+` family is used in both contexts. Sharing one session-wide flag for hidden and for
+  ignored makes the Picker and Tree agree about what exists. The heavy-folder list stops an
+  eager walk from crawling `node_modules`.
+- Cost / revisit: the heavy-folder exclusion is by name, so a repo that commits a folder named
+  e.g. `target` loses it while ignored files are shown. If that grates, move the list to a
+  config file. Showing ignored files still walks the remaining ignored trees eagerly; lazy
+  expansion is the next step if that is slow. The bare-letter Files Nav keys (`t`, `a`, `d`,
+  `D`, `F`) shrink the pool of free letters.

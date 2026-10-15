@@ -130,7 +130,7 @@ below:
 
 Only one pane has focus at a time; most keys route to it. Every pane shows
 the key that jumps focus to it, right-aligned on its title row (e.g.
-`Files` ... `[f]`, DV2's `[^o]`) — dropped if the pane is too narrow to fit
+`Files` ... `[f]`, DV2's `[D]`) — dropped if the pane is too narrow to fit
 both. See [Focus](#focus) below. The focused pane is drawn with a thick border
 and an accent-coloured title bar, so focus is visible at a glance — see
 [Focus](#focus).
@@ -147,21 +147,21 @@ terminal that honours `NO_COLOR` still gets no colour.)
 ## Keybindings
 
 Bindings are provisional (cheap to retune) but consistent across panes: movement
-is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
+uses the arrow keys (plus `g`/`G` for top/bottom where it applies). There are
+no `h`/`j`/`k`/`l` aliases.
 
 ### Global (any non-modal pane)
 
 | Key | Action |
 |---|---|
 | `?` | open the Help modal (full keybinding list for the focused pane) |
-| `ctrl+n` | toggle the Navigator (hide/restore the whole left sidebar) |
+| `F` | toggle the Navigator (hide/restore the whole left sidebar) |
 | `r` | focus the Sources Nav (reveals the Navigator if hidden) |
 | `f` | focus the Files Nav (reveals the Navigator if hidden) |
-| `o` | focus DV1 |
-| `ctrl+o` | focus DV2 (no-op if DV2 doesn't exist — a bare focus request never creates it) |
-| `ctrl+x` | close DV2, wherever focus is (no-op if DV2 doesn't exist); focus moves to DV1 if DV2 held it |
+| `d` | focus DV1 |
+| `D` | focus DV2 (no-op if DV2 doesn't exist — a bare focus request never creates it) |
+| `tab` / `shift+tab` | cycle focus forward / backward through the visible panes (see [Focus](#focus)) |
 | `R` | refresh the Active Root's file tree and every open Document Viewer's document from disk (re-fetches an open Wikipedia article instead) |
-| `e` | edit the active document in `$EDITOR` (refused on a Wikipedia article) |
 | `m` | toggle the viewer between Markdown and Text rendering (see [Render Mode](#render-mode)) |
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
@@ -170,10 +170,7 @@ is vim-style (`j`/`k`/arrows, plus `g`/`G` for top/bottom where it applies).
 | `q` / `ctrl+c` | quit |
 | `esc` | context-dependent cancel (dismiss find, discard a rename, close Help, close Picker) |
 
-There is no pane-cycling key: every pane is reached by a direct focus key
-(`r`/`f`/`o`/`ctrl+o`) instead — see [Focus](#focus).
-
-`e`, `m`, `/`, `n` and `N` are reachable from any pane, not just a Document
+`m`, `/`, `n` and `N` are reachable from any pane, not just a Document
 Viewer's, but always act on DV1's document — unless focus is currently on
 DV2, in which case they act on DV2's.
 
@@ -181,10 +178,10 @@ DV2, in which case they act on DV2's.
 
 | Key | Action |
 |---|---|
-| `j`/`k` or `↓`/`↑` | move selection |
+| `↓`/`↑` | move selection |
 | `enter` | activate the selected Source (a Root, or Wikipedia) |
-| `s` | star / unstar the selected root (no-op with a footer message on Wikipedia) |
-| `c` | rename the selected root inline (see [Renaming a Root](#renaming-a-root); refused on Wikipedia and on an unstarred ad-hoc root) |
+| `ctrl+s` | star / unstar the selected root (no-op with a footer message on Wikipedia) |
+| `e` | rename the selected root inline (see [Renaming a Root](#renaming-a-root); refused on Wikipedia and on an unstarred ad-hoc root) |
 
 While a rename is in progress, every other key types into the name instead of
 acting on its usual binding: `enter` confirms, `esc` cancels.
@@ -193,17 +190,21 @@ acting on its usual binding: `enter` confirms, `esc` cancels.
 
 | Key | Action |
 |---|---|
-| `j`/`k` or `↓`/`↑` | move selection |
-| `l`/`→` | expand the selected folder (`Tree` mode) |
-| `h`/`←` | collapse the selected folder (`Tree` mode) |
+| `↓`/`↑` | move selection |
+| `→` | expand the selected folder (`Tree` mode) |
+| `←` | collapse the selected folder; on a file or collapsed folder inside a folder, collapse the parent and select it; no-op at the top level and in `Recent`/`Starred` (`Tree` mode) |
 | `enter` | open the selected file into DV1 and move focus there (fetches and opens an article for a Wikipedia row) |
 | `ctrl+enter` (fallback `ctrl+l`) | open the selected file into DV2 instead, creating it if needed, and move focus there |
 | `p` | peek at the selected row in DV1, without opening it or moving focus (press `p` again, or move the selection, to return) |
 | `ctrl+p` | peek at the selected row in DV2 instead, creating it if needed, without moving focus |
-| `s` | star / unstar the selected document or article |
-| `tab` | cycle Browse Mode: `Tree` → `Recent` → `Starred` → `Tree` … (Wikipedia active: `Recent` ↔ `Starred` only, no `Tree`) |
-| `shift+tab` | cycle the current mode's Browse Scope (no-op in `Tree`) |
-| `a` | toggle the Active Root's File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown)) |
+| `ctrl+s` | star / unstar the selected document or article |
+| `t` | cycle Browse Mode: `Tree` → `Recent` → `Starred` → `Tree` … (Wikipedia active: `Recent` ↔ `Starred` only, no `Tree`) |
+| `a` | cycle the current mode's Browse Scope (no-op in `Tree`) |
+| `alt+h` | show / hide hidden files (dotfiles and anything under a dot-directory); shared with the Picker (see [View toggles](#view-toggles-and-the-indicator)) |
+| `alt+i` | show / hide gitignored files; shared with the Picker (see [View toggles](#view-toggles-and-the-indicator)) |
+| `alt+m` | toggle the Active Root's File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown)) |
+
+`e` does nothing on the Files Nav.
 
 See [Browsing: Tree, Recent, Starred](#browsing-tree-recent-starred).
 
@@ -214,11 +215,13 @@ editing and history in DV1 never touch DV2, and vice versa.
 
 | Key | Action |
 |---|---|
-| `j`/`k` or `↓`/`↑` | scroll one line |
+| `↓`/`↑` | scroll one line |
 | `ctrl+u` / `ctrl+d` | half-page up / down |
 | `pgup`/`ctrl+b` , `pgdown`/`ctrl+f` | half-page up / down (same distance as `ctrl+u`/`ctrl+d`) |
 | `g`/`home` , `G`/`end` | jump to top / bottom |
-| `s` | star / unstar this viewer's document |
+| `ctrl+s` | star / unstar this viewer's document |
+| `e` | edit this viewer's document in `$EDITOR` (refused on a Wikipedia article; see [Editing](#editing)) |
+| `ctrl+w` | close this viewer (see [A second Document Viewer](#a-second-document-viewer)) |
 | `[` / `]` | step back / forward through this viewer's own Document History |
 
 See [Document history](#document-history).
@@ -240,14 +243,17 @@ leave. Everything else is on a non-printable key:
 |---|---|
 | *(typing)* | updates the Results list live (once 2+ characters are typed) |
 | `↑` / `↓` | move the Results selection; the Preview follows it (File/Grep only) |
-| `tab` | switch mode: File → Grep → Wikipedia → File … (the typed query carries over) |
-| `shift+tab` | switch Scope (no-op in Wikipedia mode, which has none — see below) |
-| `alt+h` | toggle hiding dotfiles from the Results, for the rest of this session (File/Grep only) |
-| `alt+a` | toggle the File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown); in Wikipedia mode the Footer names the new value) |
-| `alt+s` | star / unstar the selected Result (file or article) |
+| `alt+t` | switch mode: File → Grep → Wikipedia → File … (the typed query carries over) |
+| `alt+a` | switch Scope (no-op in Wikipedia mode, which has none — see below) |
+| `alt+h` | show / hide hidden files in the Results, for the rest of this session; shared with the Files Nav (File/Grep only) |
+| `alt+i` | show / hide gitignored files in the Results, for the rest of this session; shared with the Files Nav (File/Grep only) |
+| `alt+m` | toggle the File Filter between `Markdown` and `All` (see [What gets shown](#what-gets-shown); in Wikipedia mode the Footer names the new value) |
+| `ctrl+s` | star / unstar the selected Result (file or article) |
 | `enter` | activate the selected Result into DV1 (fetches an article, then renders it) |
 | `ctrl+enter` (fallback `ctrl+l`) | activate the selected Result into DV2 instead, creating it if needed |
 | `esc` | dismiss the Picker — nothing about the session changes |
+
+`tab`/`shift+tab` do nothing while the Picker is open.
 
 See [Finding across files (the Picker)](#finding-across-files-the-picker) and
 [Wikipedia](#wikipedia).
@@ -255,12 +261,19 @@ See [Finding across files (the Picker)](#finding-across-files-the-picker) and
 ## Focus
 
 Exactly one pane has focus at a time, and every pane is reached by a direct
-key from anywhere non-modal: `r` (Sources Nav), `f` (Files Nav), `o` (DV1),
-`ctrl+o` (DV2 — a no-op if DV2 doesn't exist). `r`/`f` reveal the Navigator
-first if it's hidden; `o`/`ctrl+o` don't, since DV1/DV2 are never inside it.
-There's no Tab-cycling. Each pane's own focus key is shown right-aligned on
-its title row (`Files` ... `[f]`, DV2's `[^o]`), dropped if the pane is too
-narrow for both title and badge.
+key from anywhere non-modal: `r` (Sources Nav), `f` (Files Nav), `d` (DV1),
+`D` (DV2 — a no-op if DV2 doesn't exist). `r`/`f` reveal the Navigator
+first if it's hidden; `d`/`D` don't, since DV1/DV2 are never inside it.
+Each pane's own focus key is shown right-aligned on its title row (`Files`
+... `[f]`, DV2's `[D]`), dropped if the pane is too narrow for both title and
+badge.
+
+`tab` and `shift+tab` cycle focus forward and backward through the visible
+panes: Sources Nav → Files Nav → DV1 → DV2 → Sources Nav. Panes that aren't
+visible are skipped — a hidden sidebar, or a terminal too narrow to show it,
+drops the Sources and Files Navs, and a missing DV2 is skipped. With only one
+visible pane they do nothing. They never reveal a hidden sidebar, and are
+inert while Find, a rename, Help or the Picker is open.
 
 The focused pane is drawn with a thick border and its title row becomes a
 full-width accent-coloured bar; unfocused panes keep the thin rounded border
@@ -289,9 +302,14 @@ affecting DV1's own document, scroll position, find state or history:
   focus doesn't move.
 - From the Picker, the same `ctrl+enter`/`ctrl+l` activates the selected
   Result into DV2 instead of DV1.
-- `ctrl+x`, from any non-modal pane's focus (including DV1 or DV2
-  themselves), closes DV2. A no-op if it doesn't exist. If DV2 held focus,
-  focus moves to DV1; from anywhere else, focus is unchanged.
+- `ctrl+w` closes the focused viewer:
+  - DV2 focused: DV2 closes and focus moves to DV1.
+  - DV1 focused with DV2 open: DV1 takes over DV2's whole state (document,
+    history, scroll position, Render Mode), DV1's previous state is
+    discarded, and DV2 closes. Focus stays on DV1.
+  - DV1 focused with no DV2: DV1 is cleared to empty (document and history),
+    as at launch. Already empty: a no-op.
+  - Sources Nav or Files Nav focused: a no-op.
 
 DV1 and DV2 are fully independent: separate Active Document, Peek, Find and
 scroll position each, and each walks its own [Document History](#document-history) —
@@ -308,12 +326,12 @@ just one.
 
 Every persisted Root has a **name**, shown in bold on its Sources Nav row,
 its Picker result rows, and cross-Source Files Nav rows; it defaults to the
-folder's own base name until you rename it. Press `c` on a Root row in the
+folder's own base name until you rename it. Press `e` on a Root row in the
 Sources Nav to edit its name in place: `enter` confirms, `esc` cancels, and
 clearing the name entirely reverts it to the default. The name persists
 across sessions alongside the root's starred state.
 
-An unstarred ad-hoc root can't be renamed yet — `c` reports "star this root
+An unstarred ad-hoc root can't be renamed yet — `e` reports "star this root
 before renaming it" in the Footer; starring it first gives it the default
 name to rename from. The Wikipedia row can't be renamed at all. Names aren't
 required to be unique — the Sources Nav's path line (and, for two same-named
@@ -325,7 +343,7 @@ Roots, files and Wikipedia articles can each be starred independently of one
 another — un-starring a root never touches the star on any document under
 it, and vice versa.
 
-**Roots:** press `s` in the Sources Nav to star or unstar the selected root
+**Roots:** press `ctrl+s` in the Sources Nav to star or unstar the selected root
 (a no-op on the Wikipedia row, refused with a footer message). Starred roots
 are what a plain `noggin` (no argument) opens next time, marked `★` in the
 Sources Nav. They're recorded, one absolute path per line (optionally
@@ -342,11 +360,11 @@ A missing or unreadable file is treated as "no starred roots" rather than an
 error, and stale paths (root no longer exists) are kept, not silently pruned —
 they just show up broken in the Sources Nav.
 
-**Documents and articles:** press `s` to star or unstar a document or
+**Documents and articles:** press `ctrl+s` to star or unstar a document or
 Wikipedia article from the Files Nav (the selected row), from a focused
 Document Viewer (that viewer's own document — DV1 and DV2 can have different
-starred documents open at once), or `alt+s` in the Picker (the selected
-Result, file or article). A star shows as `★` on Files Nav rows (in every
+starred documents open at once), or in the Picker (the selected
+Result, file or article) — `ctrl+s` is the one star key everywhere. A star shows as `★` on Files Nav rows (in every
 Browse Mode except `Starred`, where membership already says it), to the left
 of the document's title in a Document Viewer, and on Picker rows in every
 mode. A starred document or article survives un-starring its root, moving to
@@ -394,13 +412,14 @@ What the Tree lists is set by the **File Filter**, `Markdown` or `All`:
 - **All**: Markdown files plus Text files. Binary files stay hidden, whatever
   they are named.
 
-Press `a` in the Files Nav to toggle the Active Root's filter. Each Root keeps
+Press `alt+m` in the Files Nav (or the Picker) to toggle the Active Root's filter. Each Root keeps
 its own, for the rest of the session; a Root you have not toggled is on
 `Markdown`, except that launching `noggin <file>` on a Text file starts the
 cwd Root (ad-hoc, or already starred) on `All`, so the file you opened is in
 the Tree, selected. Launching on a Markdown file leaves it on `Markdown`. The Tree's status
-row names the filter, e.g. `Tree · - · All`. With Wikipedia active there is no
-Root and so no filter: `a` does nothing but say so in the Footer.
+row shows it in its right-aligned [view indicator](#view-toggles-and-the-indicator).
+With Wikipedia active there is no Root and so no filter: `alt+m` does nothing
+but say so in the Footer.
 
 The filter bounds the Tree and the File and Grep Pickers' `Active Root` and
 `All Roots` scopes (see [the Picker](#finding-across-files-the-picker)).
@@ -421,28 +440,62 @@ dump.md: too large`.
 Folders are always shown, even empty ones or ones containing no Markdown
 (unless the folder itself is ignored — see below).
 
-`.gitignore` is respected while browsing, with no toggle to turn it off. It
+`.gitignore` is respected while browsing unless you show gitignored files
+(`alt+i`, below). It
 covers the common cases (per-directory `.gitignore` files, `#` comments, `!`
 negation, directory-only and anchored patterns, `*`/`?`/`[...]`/`**` globs) but
 is a focused subset, not full git semantics — it doesn't consult global excludes
 or `.git/info/exclude`. `.git` itself is always excluded. Dotfiles and hidden
-directories otherwise *are* shown (e.g. `.github/`), since they often hold real
+directories are shown by default (e.g. `.github/`), since they often hold real
 notes.
+
+### View toggles and the indicator
+
+Three toggles shape what the Files Nav's Tree and the Picker's File/Grep
+search list. Each has the same key in both, and `alt+h` and `alt+i` are one
+session-wide flag shared by the two (relaunching noggin resets them);
+toggling in either context re-walks the Tree / re-searches the Picker:
+
+- `alt+h` — **hidden files** (dotfiles, and anything under a dot-directory).
+  Shown by default.
+- `alt+i` — **gitignored files**. Hidden by default. While shown, the Tree
+  stops applying `.gitignore` (revealed entries are drawn muted) and ripgrep
+  runs with `--no-ignore-vcs`. These folder names stay excluded while shown:
+  `node_modules`, `.venv`, `venv`, `__pycache__`, `.mypy_cache`,
+  `.pytest_cache`, `.tox`, `.gradle`, `.next`, `target`. `.git` is always
+  excluded.
+- `alt+m` — the **File Filter** (`Markdown` | `All`), still per Root.
+
+The flags bound the Tree only. In `Recent`/`Starred`, or with Wikipedia
+active, the Files Nav's toggles still flip the flag and the Footer says they
+have no effect there (`alt+m` with Wikipedia: a Footer message only). If a
+toggle hides the selected Tree row, the selection moves to its nearest
+visible ancestor; open documents stay open.
+
+The **indicator** is right-aligned on the Files Nav status row (Tree mode
+only): `h` or a space, `i` or a space, then ` md` or `txt`, separated by
+single spaces. The default is `h    md`; everything on is `h i txt`. Under
+width pressure the indicator is dropped first, then the mode/scope label is
+truncated. The Picker's Prompt title shows the same indicator right-aligned,
+with only the slots that apply: none in Wikipedia mode, only `h` in the
+`Starred` scope.
 
 ## Browsing: Tree, Recent, Starred
 
-The Files Nav has three Browse Modes, cycled with `tab` (Files Nav focused):
+The Files Nav has three Browse Modes, cycled with `t` (Files Nav focused):
 `Tree` (the file tree), `Recent`, and `Starred`. A status row below the
-pane's title always names the current mode and scope, e.g. `Tree · - · Markdown`,
-`Recent · Active Source`, `Starred · All Starred` — costing the list one row
+pane's title always names the current mode and scope, e.g. `Tree · -`,
+`Recent · Active Source`, `Starred · All Starred` — with the
+[view indicator](#view-toggles-and-the-indicator) right-aligned on the Tree's
+row — costing the list one row
 of height in every mode.
 
 With a **Root** active, all three modes are reachable, defaulting to `Tree`.
 With **Wikipedia** active, there is no tree to walk: `Tree` drops out of the
-cycle entirely and `tab` toggles directly between `Recent` and `Starred`
+cycle entirely and `t` toggles directly between `Recent` and `Starred`
 instead, landing on `Starred` the first time a session activates Wikipedia.
 
-`shift+tab` cycles the current mode's Browse Scope (a no-op in `Tree`,
+`a` cycles the current mode's Browse Scope (a no-op in `Tree`,
 which has none):
 
 - **Recent** — `Active Source` ↔ `All Sources`. Lists documents by when
@@ -518,7 +571,7 @@ with `m`:
   gutter (blank on continuation rows) and no colour. An unfocused pane shows a
   muted variant.
 
-`m` is reachable from any pane and, like `e` and `/`, acts on DV1's viewer
+`m` is reachable from any pane and, like `/`, acts on DV1's viewer
 unless focus is on DV2, in which case it acts on DV2's. The mode belongs to the
 viewer and is sticky: it carries across every document opened, Peeked or
 walked to with `[`/`]` in that viewer, for the rest of the session. DV1 and DV2
@@ -541,9 +594,10 @@ whole line.
 
 ## Editing
 
-Press `e` to hand off to your editor: `$EDITOR` if set, otherwise `vi`. `e` is
-reachable from any pane, and always acts on DV1's document unless focus is
-currently on DV2, in which case it acts on DV2's. noggin releases the
+Press `e` in a focused Document Viewer to hand off to your editor: `$EDITOR`
+if set, otherwise `vi`. It edits that viewer's document (DV1's or DV2's). `e`
+is not global: on the Sources Nav it renames the selected Root, and on the
+Files Nav it does nothing. noggin releases the
 terminal for the editor and resumes when it exits, re-reading the file from
 disk so your edits show up immediately — there's no live file-watching, this
 is the one point where it re-reads. With no document open in the targeted
@@ -630,7 +684,7 @@ activating a Result), and searches it straight away. A session dismissed with
 an empty Prompt doesn't replace it, and with nothing saved `ctrl+space` opens
 normally. It lasts for the current session only — it isn't saved between runs.
 
-The Picker has three modes, switched in place with `tab` without losing what
+The Picker has three modes, switched in place with `alt+t` without losing what
 you've typed:
 
 - **File** (the default with a Root active) — fuzzy-matches your query
@@ -647,15 +701,15 @@ you've typed:
   [Wikipedia](#wikipedia) below.
 
 File and Grep each search one of three Scopes, cycled in place with
-`shift+tab`: **Active Root**, **All Roots**, or **Starred** (every starred
+`alt+a`: **Active Root**, **All Roots**, or **Starred** (every starred
 document, including orphans, plus — File mode only — starred Wikipedia
 articles matched on title and labelled `Wikipedia`; `All Roots` and Grep in
 every scope never include an article). With Wikipedia the Active Source,
 File and Grep have no Active Root to offer, so their Scope cycles only
 `All Roots` ↔ `Starred`. The title above the Prompt names both mode and
-scope and the File Filter, e.g. `File · Active Root · Markdown` or
-`Grep · All Roots · All` (see `alt+h`/`alt+a` below). All Roots silently
-skips any Broken root.
+scope, e.g. `File · Active Root` or `Grep · All Roots`, with the
+[view indicator](#view-toggles-and-the-indicator) right-aligned (see the
+view toggles below). All Roots silently skips any Broken root.
 
 A query shorter than 2 characters doesn't search at all ("type at least 2
 characters"); a query that matches nothing says "no results"; a File/Grep
@@ -685,27 +739,29 @@ mode needs no `rg` and is unaffected.
 
 Because `rg` supplies the file list, its own ignore rules apply, not
 noggin's Files Nav ignore rules: `.gitignore`/`.ignore` files are respected
-(consistent with the Files Nav). Dotfiles and dot-directories (e.g. `.github/`)
-are included by default in both modes, matching what the Files Nav tree
-already shows — `.git/` itself stays excluded unconditionally, in either
-pane. `alt+h` toggles hiding them again, in both modes at once; the title
-above the Prompt gains a ` · Hidden` suffix while the toggle is on. It's
-session-only — relaunching noggin resets it to showing dotfiles. `alt+h` has
-no effect in Wikipedia mode.
+by default (consistent with the Files Nav). Dotfiles and dot-directories (e.g.
+`.github/`) are included by default in both modes, matching what the Files Nav
+tree already shows — `.git/` itself stays excluded unconditionally, in either
+pane. `alt+h` toggles hiding hidden files, in both modes at once, and `alt+i`
+toggles showing gitignored files (ripgrep then runs with `--no-ignore-vcs`;
+the heavy folders listed under [View toggles](#view-toggles-and-the-indicator)
+stay excluded). Each is the same session-wide flag the Files Nav uses.
+Neither has any effect in Wikipedia mode; the title's indicator shows their
+state.
 
-**File Filter.** `alt+a` toggles the same `Markdown` | `All` File Filter the
-Files Nav's `a` does, and it is the same per-Root state: toggling it in the
+**File Filter.** `alt+m` toggles the same `Markdown` | `All` File Filter the
+Files Nav's `alt+m` does, and it is the same per-Root state: toggling it in the
 Picker re-walks the Active Root's Tree, and vice versa. File and Grep search
 the `Active Root` and `All Roots` scopes under the **Active Root's** filter,
 applied to every Root searched, so `All Roots` never mixes two filters. `All`
 means Markdown plus non-binary files: ripgrep's file list is run through the
 same binary check as the Tree, and Grep already skips binaries. The `Starred`
-scope ignores the filter, and so does Wikipedia mode (`alt+a` there still
+scope ignores the filter, and so does Wikipedia mode (`alt+m` there still
 flips the stored value, for when you switch back to File or Grep, and the
 Footer says what it is now, e.g. `File Filter: All`). With Wikipedia as the
 Active Source there is no Active Root, so the Picker uses the most recently set
-filter value (or `Markdown`), and `alt+a` toggles that value. The filter is
-named in the title, e.g. `Grep · All Roots · All` (left off in `Starred` scope
+filter value (or `Markdown`), and `alt+m` toggles that value. The filter is
+shown in the title's indicator (` md` / `txt`; left off in `Starred` scope
 and Wikipedia mode, which ignore it).
 
 ## Wikipedia
@@ -717,7 +773,7 @@ out (see [Browsing](#browsing-tree-recent-starred)) and the Picker opens
 straight into Wikipedia mode.
 
 **Searching.** Open the Picker (`space`) and switch to Wikipedia mode with
-`tab` (or just open it with Wikipedia already active). Typing 2 or more
+`alt+t` (or just open it with Wikipedia already active). Typing 2 or more
 characters searches Wikipedia's own article-title index — like Wikipedia's
 own search box, not a full-text search — after a short pause in typing
 (a little longer than File/Grep's, since each search is a network call).
@@ -726,7 +782,7 @@ description, with a `★` marker for a starred article. There is no Preview
 for Wikipedia mode — the Preview pane shows a short placeholder instead
 ("No preview — Activate to open the article"). A failed search (offline, a
 Wikipedia service error) is reported on the Picker's status line and leaves
-the previous Results in place rather than clearing them. `alt+s` stars or
+the previous Results in place rather than clearing them. `ctrl+s` stars or
 unstars the selected Result exactly as it does a file Result.
 
 **Opening an article.** `enter` fetches and opens the selected Result (or a

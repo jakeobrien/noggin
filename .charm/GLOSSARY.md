@@ -162,6 +162,11 @@
   distinct mechanism with no load/peek routing involved (C3; `shift+` before D55).
 - **Text file** — any file that is neither a Markdown file nor binary (a NUL byte early in
   the file). Shown only as raw text. Binary files are never shown or opened (D140).
+- **View toggles** — the two session-wide switches over what exists in the Tree and the
+  File/Grep Pickers: hidden files (`alt+h`, default shown) and gitignored files (`alt+i`,
+  default hidden). One flag each, shared by the Files Nav and the Picker; the File Filter is
+  their per-Root sibling on `alt+m`. Their state is shown by the right-aligned indicator
+  (`h`, `i`, ` md`/`txt`) (D141). _Avoid_: show-hidden mode.
 - **Wikipedia Picker** — the Picker mode that searches Wikipedia article titles; no Scope, no
   Preview; reachable from any Active Source (C6).
 - **Wikipedia Source** — the first Query Source: English Wikipedia, listed last in the
