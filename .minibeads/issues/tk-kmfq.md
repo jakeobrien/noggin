@@ -1,6 +1,6 @@
 ---
 title: Clean up stale wording and record accepted D140 deviations
-status: open
+status: closed
 priority: 3
 issue_type: chore
 labels:
@@ -8,7 +8,8 @@ labels:
 depends_on:
   tk-0ta: parent-child
 created_at: 2026-10-14T20:44:32.135453959+00:00
-updated_at: 2026-10-14T20:44:32.135453959+00:00
+updated_at: 2026-10-15T13:18:03.859371763+00:00
+closed_at: 2026-10-15T13:18:03.859371722+00:00
 ---
 
 # Description

@@ -33,7 +33,7 @@ func writeTree(t *testing.T, files map[string]string) string {
 	return root
 }
 
-// collect returns the readable files and the directories of a walked tree, each
+// collect returns the listed files and the directories of a walked tree, each
 // as sorted slash paths relative to root, so a walk can be asserted as a set.
 func collect(root *Node, base string) (files, dirs []string) {
 	for _, c := range root.Children {
@@ -172,7 +172,7 @@ func findDir(t *testing.T, root *Node, rel string) *Node {
 
 // TestListDirMatchesWalk pins ListDir's one contract: for any directory Walk
 // lists, ListDir reports exactly that directory's Children, in the same order
-// — the same readable-file policy, `.git` exclusion and `.gitignore` files
+// — the same file-classification policy, `.git` exclusion and `.gitignore` files
 // from the root down to (and including) the directory itself.
 func TestListDirMatchesWalk(t *testing.T) {
 	root := writeTree(t, map[string]string{

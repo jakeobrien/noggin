@@ -1785,3 +1785,15 @@
   Syntax colouring in Text (chroma by file type) is a natural follow-up, but brings ANSI back
   into the find/highlight path. Persisting per-Root filters (a `roots` column) is the
   follow-up if re-toggling every launch grates.
+- Amendment (2026-10-15): three deviations from the text above were reviewed and accepted.
+  - **Text rendering is not byte-exact.** It drops a leading BOM and trailing carriage
+    returns, and shows control characters as U+FFFD, instead of "the source exactly as on
+    disk". Why: these would corrupt gutter alignment and soft-wrap widths, or emit terminal
+    escapes, and are invisible or harmful in a terminal.
+  - **The Picker's Starred scope ignores the File Filter but still hides binary and
+    non-regular files.** Why: they cannot be opened, so listing them would only produce
+    refused activations.
+  - **A Grep landing in Text mode falls back to the first match on ripgrep's line** when
+    ripgrep's column does not match a find hit exactly. Why: the two engines can disagree on
+    column (e.g. after control-character or tab substitution), and landing on the right line
+    beats failing to land.

@@ -71,8 +71,8 @@ func TestListFilesAppliesMarkdownClassification(t *testing.T) {
 }
 
 // TestListFilesOmitsGitignored: a .gitignore'd file is absent even though
-// it's Readable by extension — rg's own ignore rules decide this, ahead of
-// the allowlist (S14). S4/M6.1 leaves this half of the old
+// it's a Markdown file by extension — rg's own ignore rules decide this, ahead of
+// the File Filter (S14). S4/M6.1 leaves this half of the old
 // TestListFilesOmitsGitignoredAndHidden unchanged; the hidden half is now
 // the opposite assertion, split out below (TestListFilesIncludesDotfiles).
 func TestListFilesOmitsGitignored(t *testing.T) {
@@ -97,19 +97,19 @@ func TestListFilesOmitsGitignored(t *testing.T) {
 }
 
 // TestListFilesIncludesDotfiles is S4/M6.1's own acceptance criterion at
-// the File Picker's own layer: a dotfile and a Readable file inside a
+// the File Picker's own layer: a dotfile and a Markdown file inside a
 // dot-directory — both already shown by the Files Nav tree (tree.Walk
 // applies no hidden-file rule of its own) — are now found here too,
-// matching that pane with no extra keystroke. A non-Readable dotfile
+// matching that pane with no extra keystroke. A non-Markdown dotfile
 // (wrong extension) stays excluded, same allowlist as ever — M6.1 widens
-// which files are *candidates*, not the Readable policy itself.
+// which files are *candidates*, not the File Filter itself.
 func TestListFilesIncludesDotfiles(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	dotfile := writeFile(t, filepath.Join(dir, ".hidden.md"))
 	mkdir(t, filepath.Join(dir, ".hiddendir"))
 	insideDotdir := writeFile(t, filepath.Join(dir, ".hiddendir", "inside.md"))
-	writeFileContent(t, filepath.Join(dir, ".bashrc"), "not Readable: no allowlisted extension\n")
+	writeFileContent(t, filepath.Join(dir, ".bashrc"), "not a Markdown file: no Markdown extension\n")
 	roots := []root{{path: dir}}
 
 	got := filePaths(listFiles(roots, 0, activeRootScope, false, tree.FilterMarkdown))
@@ -122,11 +122,11 @@ func TestListFilesIncludesDotfiles(t *testing.T) {
 
 // TestListFilesHidesDotfilesWhenToggled is S4/M6.2's alt+h toggle at
 // listFiles' own level: hideDotfiles=true drops both a dotfile's own base
-// name and a Readable file merely living inside a dot-directory (the same
+// name and a Markdown file merely living inside a dot-directory (the same
 // two candidates TestListFilesIncludesDotfiles pins as present by default),
-// leaving only a plain Readable file untouched. The excluded-regardless
-// non-Readable dotfile is unaffected either way — the toggle narrows an
-// already-Readable candidate set, it does not widen the allowlist.
+// leaving only a plain Markdown file untouched. The excluded-regardless
+// non-Markdown dotfile is unaffected either way — the toggle narrows an
+// already-Markdown candidate set, it does not widen the allowlist.
 func TestListFilesHidesDotfilesWhenToggled(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
@@ -147,7 +147,7 @@ func TestListFilesHidesDotfilesWhenToggled(t *testing.T) {
 // TestListFilesStillExcludesGitDirectory checks the flip side of M6.1's
 // --hidden flag: `.git` must stay excluded unconditionally (S4), the same
 // as tree.Walk's own by-name check, not merely as a side effect of the
-// hidden-file rule --hidden just widened past. Uses a Readable-by-extension
+// hidden-file rule --hidden just widened past. Uses a Markdown-by-extension
 // name inside `.git` so a regression (dropping the `.git` glob but keeping
 // --hidden) would otherwise list it.
 func TestListFilesStillExcludesGitDirectory(t *testing.T) {
@@ -174,7 +174,7 @@ func TestListFilesStillExcludesGitDirectory(t *testing.T) {
 }
 
 // TestListFilesAllRootsCoversLiveRootsAndSkipsBroken: All Roots scope finds
-// Readable files across every live Root and silently omits a Broken one,
+// Markdown files across every live Root and silently omits a Broken one,
 // without an error (S6).
 func TestListFilesAllRootsCoversLiveRootsAndSkipsBroken(t *testing.T) {
 	requireRipgrep(t)
@@ -429,10 +429,10 @@ func TestGrepPickerFilesIsSmartCase(t *testing.T) {
 	}
 }
 
-// TestGrepPickerFilesOnlySearchesReadableFiles: a non-Readable file in Scope
+// TestGrepPickerFilesOnlySearchesMarkdownFiles: a non-Markdown file in Scope
 // (S13) is never searched, even though it contains the query —
 // grepPickerFiles only ever sees what listFiles already allowed through.
-func TestGrepPickerFilesOnlySearchesReadableFiles(t *testing.T) {
+func TestGrepPickerFilesOnlySearchesMarkdownFiles(t *testing.T) {
 	requireRipgrep(t)
 	dir := t.TempDir()
 	writeFileContent(t, filepath.Join(dir, "notes.md"), "needle here\n")

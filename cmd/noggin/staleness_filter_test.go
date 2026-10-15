@@ -28,7 +28,7 @@ func staleAfter(t *testing.T, root, dir string, change func()) bool {
 
 // TestStaleIgnoresEntriesTheTreeDoesNotShow: an entry the tree would never
 // list still bumps its directory's mtime — editor swap and probe files,
-// Finder's .DS_Store, a non-Readable file — but refreshing would show no
+// Finder's .DS_Store, a non-Markdown file — but refreshing would show no
 // difference, so none of them may raise the indicator.
 func TestStaleIgnoresEntriesTheTreeDoesNotShow(t *testing.T) {
 	for _, name := range []string{".doc.md.swp", "4913", ".DS_Store", "image.png", "doc.md~"} {
@@ -43,8 +43,8 @@ func TestStaleIgnoresEntriesTheTreeDoesNotShow(t *testing.T) {
 	}
 }
 
-// TestStaleIgnoresAGitignoredAddition: a Readable file the tree hides via
-// .gitignore is no more visible than a non-Readable one.
+// TestStaleIgnoresAGitignoredAddition: a Markdown file the tree hides via
+// .gitignore is no more visible than a non-Markdown one.
 func TestStaleIgnoresAGitignoredAddition(t *testing.T) {
 	root := mkdir(t, filepath.Join(t.TempDir(), "root"))
 	writeFileContent(t, filepath.Join(root, ".gitignore"), "drafts.md\n")
@@ -74,14 +74,14 @@ func TestStaleIgnoresAnAtomicSaveOfANonActiveDocument(t *testing.T) {
 // change the tree would show after a refresh still raises the indicator.
 func TestStaleDetectsVisibleChanges(t *testing.T) {
 	cases := map[string]func(t *testing.T, root string){
-		"readable file added":   func(t *testing.T, root string) { writeFile(t, filepath.Join(root, "new.md")) },
+		"Markdown file added":   func(t *testing.T, root string) { writeFile(t, filepath.Join(root, "new.md")) },
 		"empty directory added": func(t *testing.T, root string) { mkdir(t, filepath.Join(root, "newdir")) },
-		"readable file removed": func(t *testing.T, root string) {
+		"Markdown file removed": func(t *testing.T, root string) {
 			if err := os.Remove(filepath.Join(root, "doc.md")); err != nil {
 				t.Fatal(err)
 			}
 		},
-		"readable file renamed": func(t *testing.T, root string) {
+		"Markdown file renamed": func(t *testing.T, root string) {
 			if err := os.Rename(filepath.Join(root, "doc.md"), filepath.Join(root, "renamed.md")); err != nil {
 				t.Fatal(err)
 			}

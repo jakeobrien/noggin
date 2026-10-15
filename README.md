@@ -522,8 +522,8 @@ with `m`:
 unless focus is on DV2, in which case it acts on DV2's. The mode belongs to the
 viewer and is sticky: it carries across every document opened, Peeked or
 walked to with `[`/`]` in that viewer, for the rest of the session. DV1 and DV2
-each have their own, and a new DV2 starts on Markdown. Toggling resets any find
-in progress.
+each have their own, and a new DV2 starts on Markdown. Toggling keeps the find
+query and the current match.
 
 A Text file (anything that is not a [Markdown file](#what-gets-shown)) is always
 shown as text without changing the viewer's mode, so `m` on one is refused with
@@ -670,8 +670,9 @@ search), without changing the Active Root or touching the Files Nav tree's
 expansion or selection. `esc` dismisses the Picker with no side effects at
 all — same Active Document, same Active Root, same scroll positions.
 
-Only [Markdown files](#what-gets-shown) are ever searched or shown by File
-and Grep.
+What File and Grep search follows the [File Filter](#what-gets-shown): under
+`Markdown` (the default) only Markdown files; under `All`, Markdown files plus
+Text files. Binary files are never searched or shown.
 
 ### Requires `ripgrep`
 
