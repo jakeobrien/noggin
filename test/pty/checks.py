@@ -14,16 +14,24 @@ BINARY = "./bin/noggin"
 FIXTURE = "cmd/noggin/testdata/fixture.md"
 TREE = "cmd/noggin/testdata/tree"
 
-# The Theme's colours (cmd/noggin/theme.go, nightTheme) as truecolor SGR
-# operands, "2;r;g;b" — what follows "38;" (foreground) or "48;" (background) on
-# the wire. As with KEY below, the Go side owns the colours and this is the
-# terminal's encoding of them. noggin paints every cell, so a foreground
-# usually arrives fused with the canvas background ("38;2;…;48;2;…m"); the
-# patterns below therefore match a colour followed by optional further params.
-THEME_ACCENT        = "2;187;154;247"  # Theme.Accent  #bb9af7: focused border, title bar
-THEME_BORDER        = "2;106;115;153"  # Theme.Border  #6a7399: unfocused border
-THEME_SUBTLE        = "2;138;147;189"  # Theme.Subtle  #8a93bd: de-emphasized text
-THEME_UNFOCUSED_BAR = "2;47;51;77"     # Theme.UnfocusedBar #2f334d
+# The default Theme's colours (cmd/noggin/theme_palettes.go,
+# gruvboxMaterialTheme) as truecolor SGR operands, "2;r;g;b" — what follows
+# "38;" (foreground) or "48;" (background) on the wire. As with KEY below, the
+# Go side owns the colours and this is the terminal's encoding of them. noggin
+# paints every cell, so a foreground usually arrives fused with the canvas
+# background ("38;2;…;48;2;…m"); the patterns below therefore match a colour
+# followed by optional further params.
+THEME_ACCENT        = "2;169;182;101"  # Theme.Accent  #a9b665: focused border, title bar
+THEME_BORDER        = "2;124;111;100"  # Theme.Border  #7c6f64: unfocused border
+THEME_SUBTLE        = "2;168;153;132"  # Theme.Subtle  #a89984: de-emphasized text
+THEME_UNFOCUSED_BAR = "2;69;64;61"     # Theme.UnfocusedBar #45403d
+THEME_BG            = "2;40;40;40"     # Theme.Bg      #282828: the canvas
+THEME_H1_BG         = "2;216;166;87"   # Markdown.H1Bg #d8a657: the H1 chip
+# The next Theme in the keys.Theme cycle (tokyoNightTheme).
+NEXT_THEME_NAME   = "tokyonight"
+NEXT_THEME_BG     = "2;26;27;38"     # Theme.Bg      #1a1b26
+NEXT_THEME_ACCENT = "2;122;162;247"  # Theme.Accent  #7aa2f7
+NEXT_THEME_H1_BG  = "2;187;154;247"  # Markdown.H1Bg #bb9af7
 REVERSE_SGR = re.compile(rb"\x1b\[(?:\d+;)*7(?:;\d+)*m")  # reverse video, alone or fused
 
 # D2 keeps key literals inside cmd/noggin/keymap.go, but a pty harness has to
@@ -87,6 +95,7 @@ KEY = {
     # above, so it had no pty coverage of its own until now. Plain C0 byte,
     # same encoding as ctrl+l/ctrl+p.
     "CloseDV2": b"\x17",  # keys.CloseViewer: ctrl+w (closes DV2 when DV2 holds focus)
+    "Theme":    b"\x14",  # keys.Theme: ctrl+t
 }
 
 
@@ -150,7 +159,7 @@ for cols, rows in [(80, 24), (100, 30)]:
     check(f"M1.2 all three regions present at {cols}x{rows}",
           "Sources" in body and "Files" in body and "Document" in body)
     check(f"M1.2 footer is the last row at {cols}x{rows}",
-          "quit" in lines[-1], repr(lines[-1][:40]))
+          "Quit" in lines[-1], repr(lines[-1][:40]))
 
     # Navigator column ends where the viewer begins: two box edges on row 0.
     nav_edge = lines[0].index("╮")
@@ -166,7 +175,7 @@ for cols, rows in [(80, 24), (100, 30)]:
     # it also exercises bubbletea v2's own decoding of these keys, which the
     # synthetic keyPress() helper in keymap.go cannot vouch for.
     def focused():
-        return screen_of(s.out, cols, rows).lines()[-1].split(" ·")[0]
+        return screen_of(s.out, cols, rows).lines()[-1].split(" |")[0]
 
     check(f"M1.2 focus starts in the Files pane at {cols}x{rows}",
           focused() == "Files", repr(focused()))
@@ -337,7 +346,7 @@ for _ in range(2):
 body = "\n".join(screen_of(s.out, 80, 24).raw_lines())
 footer_before = screen_of(s.out, 80, 24).lines()[-1]
 check("M2.3 selection reaches README.md before activating",
-      "README.md" in body and footer_before.split(" ·")[0] == "Files",
+      "README.md" in body and footer_before.split(" |")[0] == "Files",
       repr(footer_before))
 
 s.send(KEY["Activate"], 0.6)
@@ -345,7 +354,7 @@ sc = screen_of(s.out, 80, 24)
 footer = sc.lines()[-1]
 body = "\n".join(sc.raw_lines())
 check("M2.3 activating a file moves focus to the Document pane",
-      footer.split(" ·")[0] == "Document", repr(footer))
+      footer.split(" |")[0] == "Document", repr(footer))
 check("M2.3 activated file's content is rendered",
       "Root Readme" in body, repr(body[:200]))
 check("M2.3 pane title names the activated file",
@@ -404,14 +413,14 @@ check("M3.3 a root whose path does not exist is marked broken",
 # active and focus opens on the Files pane, same as a directory launch.
 footer = screen_of(s.out, 80, 30).lines()[-1]
 check("M3.3 bare launch with starred roots opens focused on Files",
-      footer.split(" \u00b7")[0] == "Files", repr(footer))
+      footer.split(" |")[0] == "Files", repr(footer))
 
 # FocusRoots jumps back to the Roots pane before its own keys act (C3/M1.1,
 # S5: Tab-cycling is removed).
 s.send(KEY["FocusRoots"], 0.4)
 footer = screen_of(s.out, 80, 30).lines()[-1]
 check("M3.3 FocusRoots from Files moves focus to Sources",
-      footer.split(" \u00b7")[0] == "Sources", repr(footer))
+      footer.split(" |")[0] == "Sources", repr(footer))
 
 
 def row_with(text, lines):
@@ -512,7 +521,7 @@ s.pump(1.5)
 s.send(KEY["FocusRoots"], 0.4)  # Files -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
 check("M3.2 restart fixture: focus reaches Sources to star the ad-hoc root",
-      footer.split(" \u00b7")[0] == "Sources", repr(footer))
+      footer.split(" |")[0] == "Sources", repr(footer))
 
 s.send(KEY["Star"], 0.5)
 lines = screen_of(s.out, 80, 24).raw_lines()
@@ -573,7 +582,7 @@ viewer_before = [norm_border(line[nav_edge + 1:]) for line in lines_before[:-1]]
 s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer = screen_of(s.out, 80, 24).lines()[-1]
 check("M3.4 pty: FocusRoots from the Document pane reaches Sources",
-      footer.split(" \u00b7")[0] == "Sources", repr(footer))
+      footer.split(" |")[0] == "Sources", repr(footer))
 
 s.send(KEY["Down"], 0.4)   # selection off the ad-hoc TREE root, onto root-b
 s.send(KEY["Activate"], 0.6)
@@ -828,7 +837,7 @@ s = Session([BINARY, TREE], 80, 24)
 s.pump(1.2)
 footer_files = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.2 Files pane footer names its own actions",
-      "expand" in footer_files and "collapse" in footer_files and "open" in footer_files,
+      "Expand" in footer_files and "Collapse" in footer_files and "Open" in footer_files,
       repr(footer_files))
 
 # No direct focus-jump key reaches the Document pane yet (M1.3, C3), so this
@@ -839,17 +848,17 @@ s.send(KEY["Down"], 0.4)
 s.send(KEY["Activate"], 0.6)  # Files -> Document (opens README.md)
 footer_doc = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.2 hints change with focus (Document differs from Files)",
-      footer_doc != footer_files and "page" in footer_doc, repr(footer_doc))
+      footer_doc != footer_files and "Nav" in footer_doc, repr(footer_doc))
 
 s.send(KEY["FocusRoots"], 0.4)  # Document -> Roots
 footer_roots = screen_of(s.out, 80, 24).lines()[-1]
 check("M4.2 hints change with focus (Sources differs from Files and Document)",
-      footer_roots not in (footer_files, footer_doc) and "star" in footer_roots,
+      footer_roots not in (footer_files, footer_doc) and "Star" in footer_roots,
       repr(footer_roots))
 check("M4.2 quit is always in the footer",
-      all("quit" in f for f in (footer_files, footer_doc, footer_roots)))
+      all("Quit" in f for f in (footer_files, footer_doc, footer_roots)))
 check("M4.2 the help affordance is always in the footer",
-      all("help" in f for f in (footer_files, footer_doc, footer_roots)))
+      all("Help" in f for f in (footer_files, footer_doc, footer_roots)))
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("M4.2 exits 0 after cycling focus", code == 0, f"exit {code}")
@@ -861,7 +870,7 @@ s = Session([BINARY], 30, 24)
 s.pump(1.2)
 narrow_footer = screen_of(s.out, 30, 24).lines()[-1]
 check("M4.2 narrow terminal footer still names the help affordance and quit",
-      "help" in narrow_footer and "quit" in narrow_footer, repr(narrow_footer))
+      "Help" in narrow_footer and "Quit" in narrow_footer, repr(narrow_footer))
 check("M4.2 narrow terminal footer dropped the pane-specific hints",
       "page" not in narrow_footer and "top" not in narrow_footer, repr(narrow_footer))
 
@@ -1200,7 +1209,7 @@ check("M7.1 activating a File Result dismisses the Picker",
       "Results" not in activated_body and "Preview" not in activated_body,
       repr(activated_body[:200]))
 check("M7.1 activating a File Result opens it as the Active Document, focused",
-      footer_activated.split(" \u00b7")[0] == "Document", repr(footer_activated))
+      footer_activated.split(" |")[0] == "Document", repr(footer_activated))
 check("M7.1 the activated Result's pane title names the file",
       "guide.md" in activated_body, repr(activated_body[:200]))
 check("M7.1 the activated Result's content is rendered",
@@ -1599,7 +1608,7 @@ sc = screen_of(s.out, 80, 24)
 body = "\n".join(sc.raw_lines())
 footer = sc.lines()[-1]
 check("C3/M1.7 pty: ctrl+p peeks the selection into DV2 without moving focus",
-      footer.split(" ·")[0] == "Files", repr(footer))
+      footer.split(" |")[0] == "Files", repr(footer))
 check("C3/M1.7 pty: ctrl+p's Peek shows the selected file's content in DV2",
       "Bravo 01" in body, repr(body[:400]))
 check("C3/M1.7 pty: ctrl+p names the Peeked document in DV2's title",
@@ -1748,5 +1757,33 @@ check("S11 pty: moving Focus to the Sources Nav redraws it with the title bar",
 
 code = (s.send(KEY["Quit"], 0.6), s.close())[1]
 check("S11 pty: exits 0 after the focus-indicator check", code == 0, f"exit {code}")
+
+# --- Theme switching: ctrl+t restyles the running app ----------------------
+# theme_switch_test.go covers the model; only a real terminal renders markdown
+# in colour (markdownColoured), so this is where a stale Glamour render would
+# show: the H1 chip must change colour along with the canvas and the frame.
+
+s = Session([BINARY, FIXTURE], 80, 24)
+s.pump(1.5)
+check("Theme pty: starts in the default Theme (canvas and H1 chip)",
+      f"48;{THEME_BG}".encode() in s.out and f"48;{THEME_H1_BG}".encode() in s.out,
+      repr(s.out[-600:]))
+mark = len(s.out)
+s.send(KEY["Theme"], 0.8)
+delta = s.out[mark:]
+footer = screen_of(s.out, 80, 24).raw_lines()[-1]
+check("Theme pty: ctrl+t names the new Theme in the Footer",
+      f"theme: {NEXT_THEME_NAME}" in footer, repr(footer))
+check("Theme pty: ctrl+t repaints the canvas in the new Theme's Bg",
+      f"48;{NEXT_THEME_BG}".encode() in delta, repr(delta[:600]))
+check("Theme pty: ctrl+t repaints the focused border in the new Theme's Accent",
+      f"38;{NEXT_THEME_ACCENT}".encode() in delta, repr(delta[:600]))
+check("Theme pty: ctrl+t re-renders the document (the H1 chip takes the new colour)",
+      f"48;{NEXT_THEME_H1_BG}".encode() in delta, repr(delta[:600]))
+check("Theme pty: no cell keeps the old canvas after ctrl+t",
+      f"48;{THEME_BG}".encode() not in delta, repr(delta[:600]))
+
+code = (s.send(KEY["Quit"], 0.6), s.close())[1]
+check("Theme pty: exits 0 after the theme switch", code == 0, f"exit {code}")
 
 done()

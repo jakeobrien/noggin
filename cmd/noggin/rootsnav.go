@@ -319,15 +319,16 @@ const rootRowHeight = 2
 var (
 	rootsBrokenStyle = lipgloss.NewStyle().Faint(true)
 	rootsNameStyle   = lipgloss.NewStyle().Bold(true)
-	// rootsPathStyle is S10/M8.3's de-emphasized path line (line 2): the same
-	// theme.Subtle colour every pane's empty-state/footer text and the S9/S9a location
-	// line (locationLineStyle, style.go) already use, so a Root's path reads
-	// as secondary the same way those do. There is nothing to match-highlight
-	// against it (unlike a Picker File row's path, S10's other half) — the
-	// Sources Nav has no search/filter of its own — so this is the row's
-	// entire path-line treatment, not a base a highlighter layers onto.
-	rootsPathStyle = lipgloss.NewStyle().Foreground(theme.Subtle)
 )
+
+// rootsPathStyle is S10/M8.3's de-emphasized path line (line 2): the same
+// theme.Subtle colour every pane's empty-state/footer text and the S9/S9a location
+// line (locationLineStyle, style.go) already use, so a Root's path reads
+// as secondary the same way those do. There is nothing to match-highlight
+// against it (unlike a Picker File row's path, S10's other half) — the
+// Sources Nav has no search/filter of its own — so this is the row's
+// entire path-line treatment, not a base a highlighter layers onto.
+func rootsPathStyle() lipgloss.Style { return lipgloss.NewStyle().Foreground(theme.Subtle) }
 
 // scrollOffsetFor is the window's first entry for the current selection:
 // scrollOffset applied to the remembered offset, in whole two-line entries.
@@ -395,7 +396,7 @@ func (r rootsNav) renderRow(idx int) []string {
 	editingThisRow := r.renaming && idx == r.selected
 
 	var line1 string
-	style1, style2 := rootsNameStyle, rootsPathStyle
+	style1, style2 := rootsNameStyle, rootsPathStyle()
 	if editingThisRow {
 		prefixWidth := lipgloss.Width(activeMark + starMark)
 		r.renameInput.SetWidth(max(r.width-prefixWidth, 0))
@@ -451,7 +452,7 @@ func (r rootsNav) renderWikipediaRow() []string {
 	line1 := rightTruncate(activeMark+wikipediaLabel, r.width)
 	line2 := leftTruncate(wikipediaDomain, r.width)
 
-	style1, style2 := rootsNameStyle, rootsPathStyle
+	style1, style2 := rootsNameStyle, rootsPathStyle()
 	if r.selectedIsWikipedia() {
 		style1 = selectedRowStyle(style1, r.unfocused)
 		style2 = selectedRowStyle(style2, r.unfocused)

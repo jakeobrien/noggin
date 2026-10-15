@@ -32,7 +32,7 @@ func TestMuteColorsRewritesColorsOnly(t *testing.T) {
 	if err := json.Unmarshal([]byte(src), &doc); err != nil {
 		t.Fatal(err)
 	}
-	muteColors(doc, theme.Bg)
+	muteColors(doc, theme.Bg, theme.MutedFade)
 	out, _ := json.Marshal(doc)
 	got := string(out)
 	for _, orig := range []string{`"223"`, `#00AAFF`, `#373737`} {
@@ -46,8 +46,8 @@ func TestMuteColorsRewritesColorsOnly(t *testing.T) {
 }
 
 func TestMutedColorMovesTowardTheBackground(t *testing.T) {
-	dark := mutedColor("#ffffff", lipgloss.Color("#000000"))
-	light := mutedColor("#000000", lipgloss.Color("#ffffff"))
+	dark := mutedColor("#ffffff", lipgloss.Color("#000000"), 0.5)
+	light := mutedColor("#000000", lipgloss.Color("#ffffff"), 0.5)
 	if dark >= "#ffffff" || dark == "#000000" {
 		t.Errorf("dark-theme white muted to %s, want a mid grey", dark)
 	}

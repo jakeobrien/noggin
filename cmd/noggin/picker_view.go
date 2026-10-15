@@ -754,10 +754,10 @@ func renderPicker(p picker, l pickerLayout, avail ripgrepAvailability, bounds pi
 	if status := pickerStatus(p, avail, bounds); status != "" {
 		promptContent += "\n" + status
 	}
-	prompt := renderBox(focusedBorderStyle, l.prompt, titleStyle.Render(pickerTitle(p, bounds, l.prompt.content().width)), promptContent)
+	prompt := renderBox(focusedBorderStyle(), l.prompt, titleStyle.Render(pickerTitle(p, bounds, l.prompt.content().width)), promptContent)
 	resultsContent := pickerResultsContent(p, l.results.content().width, l.results.content().height, bounds, docs)
-	results := renderBox(borderStyle, l.results, titleStyle.Render("Results"), resultsContent)
-	preview := renderBox(borderStyle, l.preview, titleStyle.Render("Preview"), pickerPreviewContent(p))
+	results := renderBox(borderStyle(), l.results, titleStyle.Render("Results"), resultsContent)
+	preview := renderBox(borderStyle(), l.preview, titleStyle.Render("Preview"), pickerPreviewContent(p))
 	body := lipgloss.JoinHorizontal(lipgloss.Top, results, preview)
 	return lipgloss.JoinVertical(lipgloss.Left, prompt, body)
 }

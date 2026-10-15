@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"image/color"
-
-	"charm.land/lipgloss/v2"
 )
 
 // Theme is noggin's whole colour scheme: one struct of semantic tokens that
@@ -19,9 +17,18 @@ import (
 // colour profile at write time, so a 256-colour terminal gets the nearest
 // approximation without any code here.
 //
-// To add a look, write another Theme value and point `theme` at it. Nothing
+// Themes are hot-swappable: keys.Theme cycles `theme` through `themes`
+// (model.cycleTheme). Every style is therefore built from `theme` at the moment
+// it is used, never captured in a package-level var at startup, and the one
+// thing rendered ahead of time — a Document Viewer's content — is re-rendered on
+// a switch (viewer.restyle).
+//
+// To add a look, write another Theme value and append it to `themes`. Nothing
 // else names a colour.
 type Theme struct {
+	// Name identifies the Theme in the Footer when it is switched to.
+	Name string
+
 	// Bg and Fg are the canvas: the colours of every cell nothing else styles.
 	Bg, Fg color.Color
 
@@ -29,7 +36,8 @@ type Theme struct {
 	Subtle color.Color
 	// Border frames an unfocused pane or box.
 	Border color.Color
-	// Accent marks focus: the focused pane's border and title bar.
+	// Accent marks focus: the focused pane's border and title bar. It
+	// also colours the keys in the Footer's hints.
 	Accent color.Color
 	// Highlight asks for attention: the staleness row and the Help Modal's
 	// border. A colour no pane border uses, so it cannot be mistaken for focus.
@@ -41,6 +49,12 @@ type Theme struct {
 	// foregrounds of that pane's other rows: its normal text and its
 	// already-subtle text.
 	UnfocusedBar, UnfocusedText, UnfocusedSubtle color.Color
+	// MutedFade is how far an unfocused Document Viewer's colours are pulled
+	// toward Bg (mutedColor): 0 leaves them as focused, 1 erases them. Set per
+	// Theme because the same fraction dims a low-contrast palette more than a
+	// high-contrast one; each is tuned so muted body text keeps comfortable
+	// contrast (theme_test.go holds it to WCAG AA) yet still visibly recedes.
+	MutedFade float64
 
 	Markdown MarkdownTheme
 	Syntax   SyntaxTheme
@@ -69,70 +83,27 @@ type SyntaxTheme struct {
 	ErrorFg, ErrorBg                                         color.Color
 }
 
-// theme is the active Theme. A package var so a test can swap it; production
-// code never reassigns it.
-var theme = gruvboxMaterialTheme
+// themes is every shipped Theme, in the order keys.Theme cycles them. The first
+// is the startup default. Foreground tokens keep at least WCAG AA contrast
+// (4.5:1) against Bg, and syntax tokens against Markdown.CodeBg —
+// theme_test.go enforces both for every Theme here.
+var themes = []Theme{gruvboxMaterialTheme, tokyoNightTheme, everforestTheme, charmTheme}
 
-// gruvboxMaterialTheme is the only shipped Theme: a warm, low-glare dark
-// palette after Gruvbox Material (dark, medium contrast). Foreground tokens
-// keep at least WCAG AA contrast (4.5:1) against Bg, and syntax tokens against
-// Markdown.CodeBg — theme_test.go enforces both for any Theme in allThemes.
-var gruvboxMaterialTheme = Theme{
-	Bg:        lipgloss.Color("#282828"),
-	Fg:        lipgloss.Color("#d4be98"),
-	Subtle:    lipgloss.Color("#a89984"),
-	Border:    lipgloss.Color("#7c6f64"),
-	Accent:    lipgloss.Color("#a9b665"),
-	Highlight: lipgloss.Color("#d8a657"),
+// theme is the active Theme: process-wide, like the terminal it paints.
+// model.cycleTheme is the one production writer; a test that switches it
+// restores it (keepTheme, theme_switch_test.go).
+var theme = themes[0]
 
-	UnfocusedBar:    lipgloss.Color("#45403d"),
-	UnfocusedText:   lipgloss.Color("#c5b18a"),
-	UnfocusedSubtle: lipgloss.Color("#928374"),
-
-	Markdown: MarkdownTheme{
-		H1Fg:      lipgloss.Color("#282828"),
-		H1Bg:      lipgloss.Color("#d8a657"),
-		Heading:   lipgloss.Color("#ea6962"),
-		H2:        lipgloss.Color("#ea6962"),
-		H3:        lipgloss.Color("#e78a4e"),
-		H4:        lipgloss.Color("#a9b665"),
-		H5:        lipgloss.Color("#7daea3"),
-		H6:        lipgloss.Color("#d3869b"),
-		Emph:      lipgloss.Color("#d3869b"),
-		Strong:    lipgloss.Color("#e78a4e"),
-		Link:      lipgloss.Color("#7daea3"),
-		LinkText:  lipgloss.Color("#89b482"),
-		Image:     lipgloss.Color("#d3869b"),
-		ImageText: lipgloss.Color("#a89984"),
-		Code:      lipgloss.Color("#89b482"),
-		CodeBg:    lipgloss.Color("#32302f"),
-		Rule:      lipgloss.Color("#7c6f64"),
-	},
-	Syntax: SyntaxTheme{
-		Text:        lipgloss.Color("#d4be98"),
-		Comment:     lipgloss.Color("#a89984"),
-		Preproc:     lipgloss.Color("#d3869b"),
-		Keyword:     lipgloss.Color("#ef7770"),
-		Type:        lipgloss.Color("#d8a657"),
-		Function:    lipgloss.Color("#a9b665"),
-		Builtin:     lipgloss.Color("#89b482"),
-		String:      lipgloss.Color("#a9b665"),
-		Escape:      lipgloss.Color("#89b482"),
-		Number:      lipgloss.Color("#d3869b"),
-		Operator:    lipgloss.Color("#e78a4e"),
-		Punctuation: lipgloss.Color("#a89984"),
-		Tag:         lipgloss.Color("#ef7770"),
-		Attribute:   lipgloss.Color("#d8a657"),
-		Inserted:    lipgloss.Color("#a9b665"),
-		Deleted:     lipgloss.Color("#ef7770"),
-		ErrorFg:     lipgloss.Color("#282828"),
-		ErrorBg:     lipgloss.Color("#ea6962"),
-	},
+// nextTheme is the Theme after the one named name in the cycle, wrapping
+// around; the first Theme if name is not one of them.
+func nextTheme(name string) Theme {
+	for i, t := range themes {
+		if t.Name == name {
+			return themes[(i+1)%len(themes)]
+		}
+	}
+	return themes[0]
 }
-
-// allThemes is every shipped Theme, for the tests that hold each to the same
-// contrast bar.
-var allThemes = map[string]Theme{"gruvbox-material": gruvboxMaterialTheme}
 
 // hexOf is c as "#rrggbb", the form Glamour's stylesheets take.
 func hexOf(c color.Color) string {

@@ -200,6 +200,11 @@ type model struct {
 	// touches docs, docsPath or docstore.go's load/save/evict directly.
 	docsPath string
 	docs     map[string]docRecord
+
+	// themePath is where the active Theme's Name is persisted (theme_store.go),
+	// so a Theme switch survives the session. Empty — no resolvable data
+	// directory, or a test model — means the choice is not persisted.
+	themePath string
 }
 
 func newModel() model {
@@ -266,6 +271,13 @@ func (m model) focusedViewerPane() pane {
 // re-derives dataDir() itself.
 func (m model) withStorePath(path string) model {
 	m.roots.storePath = path
+	return m
+}
+
+// withThemePath sets where a Theme switch is persisted (themeStorePath).
+// main.go resolves it once at startup, like withStorePath.
+func (m model) withThemePath(path string) model {
+	m.themePath = path
 	return m
 }
 
@@ -1816,6 +1828,8 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.closeViewer(), nil
 		case key.Matches(msg, keys.Refresh):
 			return m.refresh()
+		case key.Matches(msg, keys.Theme):
+			return m.cycleTheme(), nil
 		case key.Matches(msg, keys.Help):
 			return m.openHelp(), nil
 		case key.Matches(msg, keys.Picker):
@@ -1872,6 +1886,12 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if key.Matches(msg, keys.HistoryForward) {
 				return m.historyForward(), nil
+			}
+			if key.Matches(msg, keys.StarredNext) {
+				return m.cycleStarred(1), nil
+			}
+			if key.Matches(msg, keys.StarredPrevious) {
+				return m.cycleStarred(-1), nil
 			}
 			// Edit is viewer-only (D141): the same physical key is Rename on
 			// the Sources Nav and does nothing on the Files Nav.
@@ -2209,27 +2229,34 @@ func (m model) resolveFocus(want pane) pane {
 	return want
 }
 
+// The Theme-coloured frame styles are functions, not vars, so they always
+// read the active Theme (theme.go) and a Theme switch restyles them for free.
+
+func borderStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(theme.Border)
+}
+
+func focusedBorderStyle() lipgloss.Style { return borderStyle().BorderForeground(theme.Accent) }
+
+// focusedPaneBorderStyle is the focused pane's border (S11): thick, in
+// the same accent colour as focusedBorderStyle (which the Picker's own
+// prompt box keeps using, unchanged). Every border shape is one cell
+// wide, so thick vs rounded never moves layout.
+func focusedPaneBorderStyle() lipgloss.Style {
+	return focusedBorderStyle().Border(lipgloss.ThickBorder())
+}
+
+// focusedTitleStyle is the focused pane's title bar (S11): bold canvas-
+// coloured text on the border's own accent colour, so the two read as one
+// cue.
+func focusedTitleStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Bold(true).Foreground(theme.Bg).Background(theme.Accent)
+}
+
+func footerStyle() lipgloss.Style { return lipgloss.NewStyle().Foreground(theme.Subtle) }
+
 var (
-	borderStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(theme.Border)
-	focusedBorderStyle = borderStyle.
-				BorderForeground(theme.Accent)
-	// focusedPaneBorderStyle is the focused pane's border (S11): thick, in
-	// the same accent colour as focusedBorderStyle (which the Picker's own
-	// prompt box keeps using, unchanged). Every border shape is one cell
-	// wide, so thick vs rounded never moves layout.
-	focusedPaneBorderStyle = focusedBorderStyle.Border(lipgloss.ThickBorder())
-	// focusedTitleStyle is the focused pane's title bar (S11): bold canvas-
-	// coloured text on the border's own accent colour, so the two read as one
-	// cue.
-	focusedTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(theme.Bg).
-				Background(theme.Accent)
-	titleStyle  = lipgloss.NewStyle().Bold(true)
-	footerStyle = lipgloss.NewStyle().
-			Foreground(theme.Subtle)
+	titleStyle = lipgloss.NewStyle().Bold(true)
 	// peekTitleStyle is S7/M7.1's inverted Peek header: the same title row
 	// every pane already draws, in reverse video instead of bold, so a
 	// Peeked document's heading cannot be mistaken for the Active
@@ -2340,10 +2367,10 @@ func (m model) frame() string {
 // outer size is passed straight through rather than pre-deducting the border as
 // v1 required.
 func (m model) renderPane(p pane, r rect, content string) string {
-	style := borderStyle
+	style := borderStyle()
 	focused := m.focus == p
 	if focused {
-		style = focusedPaneBorderStyle
+		style = focusedPaneBorderStyle()
 	}
 	// S7/M7.1: a Peeked document gets the inverted header instead of the
 	// title row every other pane (and the Active Document) draws with
@@ -2365,7 +2392,7 @@ func (m model) renderPane(p pane, r rect, content string) string {
 		if pad := r.content().width - lipgloss.Width(row); pad > 0 {
 			row += strings.Repeat(" ", pad)
 		}
-		titleRenderStyle = focusedTitleStyle
+		titleRenderStyle = focusedTitleStyle()
 	}
 	title := titleRenderStyle.Render(row)
 	return renderBox(style, r, title, content)
@@ -2456,8 +2483,8 @@ func (m model) renderFooter(r rect) string {
 			Render(m.focusedViewer().findView(r.width))
 	}
 	if m.roots.renameEditing() {
-		return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
-			Render(renameFooterText)
+		return footerStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).
+			Render(renameFooterText())
 	}
 	text := hintText(m.focus, r.width)
 	// The open Picker (S2, M2.3) owns the keyboard the same exclusive way a
@@ -2471,7 +2498,7 @@ func (m model) renderFooter(r rect) string {
 	if m.message != "" {
 		text = m.message
 	}
-	return footerStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
+	return footerStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
 }
 
 // renderStaleRow draws S9's dedicated staleness row (C3/M5.1): frame() only
@@ -2488,5 +2515,5 @@ func (m model) renderFooter(r rect) string {
 // lipgloss-v2-row-rendering-gotchas.md).
 func (m model) renderStaleRow(r rect) string {
 	text := rightTruncate(staleMessage, r.width)
-	return staleRowStyle.Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
+	return staleRowStyle().Width(r.width).MaxWidth(r.width).MaxHeight(r.height).Render(text)
 }

@@ -595,7 +595,7 @@ func (v viewer) height() int { return v.vp.Height() }
 // label names the open document for the pane title, or is empty when none is.
 func (v viewer) label() string { return v.doc.label() }
 
-var emptyViewerStyle = lipgloss.NewStyle().Foreground(theme.Subtle)
+func emptyViewerStyle() lipgloss.Style { return lipgloss.NewStyle().Foreground(theme.Subtle) }
 
 // view renders the viewer's content box at exactly its width x height.
 func (v viewer) view() string {
@@ -617,7 +617,7 @@ func (v viewer) view() string {
 		if v.pendingFetch.peek {
 			width, height = v.peek.vp.Width(), v.peek.vp.Height()
 		}
-		return v.fill(emptyViewerStyle, width, height, fmt.Sprintf("Fetching %q\u2026", v.pendingFetch.title))
+		return v.fill(emptyViewerStyle(), width, height, fmt.Sprintf("Fetching %q\u2026", v.pendingFetch.title))
 	}
 	// A Peeked document (S7, M7.1) takes over the content box entirely,
 	// ahead of the Active Document's own err/empty/open cases below — those
@@ -627,7 +627,7 @@ func (v viewer) view() string {
 			// S9/M8.2: Peek's own dimensions, not v.vp's — the two viewports
 			// can now differ in height (boxHeight's own doc comment), so
 			// filling to the wrong one would over- or under-fill Peek's box.
-			return v.fill(emptyViewerStyle, v.peek.vp.Width(), v.peek.vp.Height(), v.peek.err.Error())
+			return v.fill(emptyViewerStyle(), v.peek.vp.Width(), v.peek.vp.Height(), v.peek.err.Error())
 		}
 		if v.muted && v.mutedPeekContent != "" {
 			vp := v.peek.vp
@@ -638,9 +638,9 @@ func (v viewer) view() string {
 	}
 	switch {
 	case v.err != nil:
-		return v.fill(emptyViewerStyle, v.vp.Width(), v.vp.Height(), v.err.Error())
+		return v.fill(emptyViewerStyle(), v.vp.Width(), v.vp.Height(), v.err.Error())
 	case !v.doc.isOpen():
-		return v.fill(emptyViewerStyle, v.vp.Width(), v.vp.Height(), emptyViewerText)
+		return v.fill(emptyViewerStyle(), v.vp.Width(), v.vp.Height(), emptyViewerText)
 	default:
 		if v.muted && v.mutedContent != "" {
 			vp := v.vp

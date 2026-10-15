@@ -34,7 +34,13 @@ func main() {
 	// detectRipgrep is a PATH lookup, independent of the launch argument
 	// above; resolving it once here keeps the Picker's later startup-time
 	// query (M2.5) from re-shelling-out on every reach for it (S14).
-	m := newModel().withStorePath(path).withDocs(docsPath, loadDocuments()).withRipgrep(detectRipgrep()).applyResolution(res)
+	// The Theme chosen last session, if any, is the one to start on; the
+	// default stands for a first run or an unreadable/unknown choice.
+	themePath, _ := themeStorePath()
+	if t, ok := loadThemeChoice(themePath); ok {
+		theme = t
+	}
+	m := newModel().withThemePath(themePath).withStorePath(path).withDocs(docsPath, loadDocuments()).withRipgrep(detectRipgrep()).applyResolution(res)
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "noggin:", err)

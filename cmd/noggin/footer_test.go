@@ -6,15 +6,30 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
+
+// plainHints is a footer line as text: styling stripped and lower-cased, so a
+// check names an action ("star") without restating its capitalisation.
+func plainHints(s string) string { return strings.ToLower(ansi.Strip(s)) }
+
+// focusHints are the Focus* bindings as they would read in a plainHints line,
+// for the checks that they never appear there.
+func focusHints() []string {
+	var out []string
+	for _, b := range []key.Binding{keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2} {
+		out = append(out, plainHints(formatHint(b)))
+	}
+	return out
+}
 
 // TestHintTextChangesWithFocus checks S11's "key hints relevant to the
 // focused pane": each pane's full-width hint text names an action that is
 // specific to it and not the others (M4.2).
 func TestHintTextChangesWithFocus(t *testing.T) {
-	roots := hintText(rootsPane, 200)
-	files := hintText(filesPane, 200)
-	dv1 := hintText(dv1Pane, 200)
+	roots := plainHints(hintText(rootsPane, 200))
+	files := plainHints(hintText(filesPane, 200))
+	dv1 := plainHints(hintText(dv1Pane, 200))
 
 	cases := []struct {
 		name string
@@ -23,7 +38,7 @@ func TestHintTextChangesWithFocus(t *testing.T) {
 	}{
 		{"roots names star", roots, "star"},
 		{"files names expand", files, "expand"},
-		{"viewer names page", dv1, "page"},
+		{"viewer names pgup", dv1, "pgup"},
 	}
 	for _, c := range cases {
 		if !strings.Contains(c.text, c.want) {
@@ -40,9 +55,9 @@ func TestHintTextChangesWithFocus(t *testing.T) {
 func TestHintTextAlwaysIncludesQuit(t *testing.T) {
 	for _, width := range []int{200, 30, 10} {
 		for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-			text := hintText(p, width)
+			text := plainHints(hintText(p, width))
 			if !strings.Contains(text, "quit") {
-				t.Errorf("hintText(%v, %d) = %q, want it to contain quit", p, width, text)
+				t.Errorf("plainHints(hintText(%v, %d)) = %q, want it to contain quit", p, width, text)
 			}
 		}
 	}
@@ -52,8 +67,8 @@ func TestHintTextAlwaysIncludesQuit(t *testing.T) {
 // ... advertising the help affordance": a narrow footer drops pane-specific
 // hints but still names help.
 func TestHintTextTruncatesButKeepsHelpAffordance(t *testing.T) {
-	wide := hintText(filesPane, 200)
-	narrow := hintText(filesPane, 20)
+	wide := plainHints(hintText(filesPane, 200))
+	narrow := plainHints(hintText(filesPane, 20))
 
 	if len(narrow) >= len(wide) {
 		t.Errorf("narrow hint text (%q) is not shorter than wide (%q)", narrow, wide)
@@ -66,14 +81,44 @@ func TestHintTextTruncatesButKeepsHelpAffordance(t *testing.T) {
 	}
 }
 
-// TestJoinHintsSeparatesWithMiddleDot checks the render shape the footer and
-// (later) the help modal share: title and hints joined by " · ", the same
-// separator the pre-M4.2 footer used.
-func TestJoinHintsSeparatesWithMiddleDot(t *testing.T) {
-	text := joinHints("Files", []key.Binding{keys.Activate})
-	want := "Files · " + formatHint(keys.Activate) + " · " + formatHint(keys.Help) + " · " + formatHint(keys.Quit)
+// TestJoinHintsSeparatesWithPipes checks the footer's entry shape: title and
+// "<key> <Action>" hints joined by " | ", the action capitalised.
+func TestJoinHintsSeparatesWithPipes(t *testing.T) {
+	text := ansi.Strip(joinHints("Files", []key.Binding{keys.Activate}))
+	want := "Files | enter Open | ? Help | q Quit"
 	if text != want {
 		t.Errorf("joinHints = %q, want %q", text, want)
+	}
+}
+
+// TestHintKeysTakeTheAccentColour: each hint's key is drawn in the Theme's
+// Accent so the keys stand out along the line; the action is not.
+func TestHintKeysTakeTheAccentColour(t *testing.T) {
+	accent := "38;" + sgrColor(theme.Accent) + "m"
+	got := formatHint(keys.Activate)
+	if !strings.Contains(got, accent+"enter") {
+		t.Errorf("formatHint = %q, want the key in Accent (%s)", got, accent)
+	}
+	if strings.Contains(got, accent+"Open") {
+		t.Errorf("formatHint = %q, want the action not in Accent", got)
+	}
+}
+
+// TestNavPanesOmitUpDownAndTheViewerFoldsItsMovement: the nav panes and the
+// Picker leave the arrow keys unhinted; the viewer keeps its movement keys as
+// one "Nav" entry.
+func TestNavPanesOmitUpDownAndTheViewerFoldsItsMovement(t *testing.T) {
+	for _, text := range []string{plainHints(hintText(rootsPane, 400)), plainHints(hintText(filesPane, 400)), plainHints(pickerHintText(400))} {
+		if strings.Contains(text, "↑") || strings.Contains(text, "↓") {
+			t.Errorf("hint text = %q, want no up/down hint", text)
+		}
+	}
+	dv := ansi.Strip(hintText(dv1Pane, 400))
+	if !strings.Contains(dv, "Document | ↑/↓/pgup/pgdn/g/G Nav | ") {
+		t.Errorf("viewer hint text = %q, want one leading Nav entry", dv)
+	}
+	if strings.Contains(dv, "Page up") || strings.Contains(dv, "Top") {
+		t.Errorf("viewer hint text = %q, want movement only inside the Nav entry", dv)
 	}
 }
 
@@ -83,7 +128,7 @@ func TestJoinHintsSeparatesWithMiddleDot(t *testing.T) {
 // focus.
 func TestPaneHintsNameThePickerFromEveryPane(t *testing.T) {
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
+		text := plainHints(hintText(p, 200))
 		if !strings.Contains(text, "picker") {
 			t.Errorf("pane %v: hint text = %q, want it to contain %q", p, text, "picker")
 		}
@@ -100,8 +145,8 @@ func TestPaneHintsNameThePickerFromEveryPane(t *testing.T) {
 // distinct from the Sources Nav/Files Nav/viewer's own keys.Star — see
 // keymap.go's own comment on PickerStar for why).
 func TestPickerHintTextNamesPickerActionsNotThePane(t *testing.T) {
-	text := pickerHintText(200)
-	for _, want := range []string{"Picker", "cancel", "up", "down", "star"} {
+	text := plainHints(pickerHintText(200))
+	for _, want := range []string{"picker", "cancel", "page up", "page down", "star"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("pickerHintText = %q, want it to contain %q", text, want)
 		}
@@ -120,10 +165,10 @@ func TestPickerHintTextNamesPickerActionsNotThePane(t *testing.T) {
 func TestFooterShowsPickerHintsWhileOpen(t *testing.T) {
 	m := openedFixture(t, 80, 24)
 	m.focus = filesPane
-	before := m.renderFooter(rect{width: 80, height: 1})
+	before := plainHints(m.renderFooter(rect{width: 80, height: 1}))
 
 	m, _ = m.openPicker()
-	openFooter := m.renderFooter(rect{width: 80, height: 1})
+	openFooter := plainHints(m.renderFooter(rect{width: 80, height: 1}))
 	if strings.Contains(openFooter, "expand") {
 		t.Errorf("footer while picker open = %q, unexpectedly still names Files pane's \"expand\"", openFooter)
 	}
@@ -132,7 +177,7 @@ func TestFooterShowsPickerHintsWhileOpen(t *testing.T) {
 	}
 
 	m = m.dismissPicker()
-	after := m.renderFooter(rect{width: 80, height: 1})
+	after := plainHints(m.renderFooter(rect{width: 80, height: 1}))
 	if after != before {
 		t.Errorf("footer after dismissal = %q, want it restored to %q", after, before)
 	}
@@ -144,7 +189,7 @@ func TestFooterShowsPickerHintsWhileOpen(t *testing.T) {
 // already get.
 func TestPaneHintsNameRefreshFromEveryPane(t *testing.T) {
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
+		text := plainHints(hintText(p, 200))
 		if !strings.Contains(text, "refresh") {
 			t.Errorf("pane %v: hint text = %q, want it to contain %q", p, text, "refresh")
 		}
@@ -166,8 +211,8 @@ func TestPaneHintsNameRefreshFromEveryPane(t *testing.T) {
 // (TestHelpBindingsNameFocusDV1AndDV2FromEveryPane).
 func TestPaneHintsOmitEveryFocusBindingEverywhere(t *testing.T) {
 	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
-		for _, notWant := range []string{"roots", "files", "dv1", "dv2"} {
+		text := plainHints(hintText(p, 200))
+		for _, notWant := range focusHints() {
 			if strings.Contains(text, notWant) {
 				t.Errorf("pane %v: hint text = %q, unexpectedly names a Focus binding (%q)", p, text, notWant)
 			}
@@ -175,15 +220,17 @@ func TestPaneHintsOmitEveryFocusBindingEverywhere(t *testing.T) {
 	}
 }
 
-// TestPaneHintsOmitCloseViewerEverywhere is CloseViewer's (S4, C3/M2.1) own half
-// of the same carve-out TestPaneHintsOmitEveryFocusBindingEverywhere pins
-// for FocusDV2: also usually a no-op with DV2 absent, so paneHints omits it
-// from every pane's terse footer hints too — the Help Modal is its
-// discoverability backstop instead
-// (TestHelpBindingsNameFocusRefreshAndToggleHiddenFromEveryPane).
-func TestPaneHintsOmitCloseViewerEverywhere(t *testing.T) {
-	for _, p := range []pane{rootsPane, filesPane, dv1Pane, dv2Pane} {
-		if text := hintText(p, 200); strings.Contains(text, "close dv2") {
+// TestPaneHintsNameCloseViewerOnlyInViewerPanes: ctrl+w always acts from a
+// viewer (D141), so the viewers hint it; from a nav pane it is usually a
+// no-op (DV2 absent), so they do not — the Help Modal is its backstop there.
+func TestPaneHintsNameCloseViewerOnlyInViewerPanes(t *testing.T) {
+	for _, p := range []pane{dv1Pane, dv2Pane} {
+		if text := plainHints(hintText(p, 200)); !strings.Contains(text, "close viewer") {
+			t.Errorf("pane %v: hint text = %q, want it to name CloseViewer", p, text)
+		}
+	}
+	for _, p := range []pane{rootsPane, filesPane} {
+		if text := plainHints(hintText(p, 400)); strings.Contains(text, "close viewer") {
 			t.Errorf("pane %v: hint text = %q, want it to omit CloseViewer", p, text)
 		}
 	}
@@ -195,11 +242,11 @@ func TestPaneHintsOmitCloseViewerEverywhere(t *testing.T) {
 // inapplicable-binding-is-worse-than-no-hint reasoning paneHints already
 // gives for the viewer's own omissions.
 func TestPaneHintsNamePeekOnlyInFilesPane(t *testing.T) {
-	if !strings.Contains(hintText(filesPane, 200), "peek") {
-		t.Errorf("filesPane hint text = %q, want it to contain %q", hintText(filesPane, 200), "peek")
+	if !strings.Contains(plainHints(hintText(filesPane, 200)), "peek") {
+		t.Errorf("filesPane hint text = %q, want it to contain %q", plainHints(hintText(filesPane, 200)), "peek")
 	}
 	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
+		text := plainHints(hintText(p, 200))
 		if strings.Contains(text, "peek") {
 			t.Errorf("pane %v: hint text = %q, unexpectedly names Peek (Files-Nav-only)", p, text)
 		}
@@ -215,7 +262,7 @@ func TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane(t *testing.T) {
 	// Matching TestPaneHintsNamePeekOnlyInFilesPane: FilesMode/FilesScope
 	// sort earlier than Peek in paneHints' filesPane list, so any width wide
 	// enough to keep "peek" untruncated keeps these two too.
-	text := hintText(filesPane, 200)
+	text := plainHints(hintText(filesPane, 200))
 	if !strings.Contains(text, "mode") {
 		t.Errorf("filesPane hint text = %q, want it to contain %q", text, "mode")
 	}
@@ -223,7 +270,7 @@ func TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane(t *testing.T) {
 		t.Errorf("filesPane hint text = %q, want it to contain %q", text, "scope")
 	}
 	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
+		text := plainHints(hintText(p, 200))
 		if strings.Contains(text, "mode") {
 			t.Errorf("pane %v: hint text = %q, unexpectedly names mode (Files-Nav-only)", p, text)
 		}
@@ -240,7 +287,7 @@ func TestPaneHintsNameFilesModeAndScopeOnlyInFilesPane(t *testing.T) {
 // of their own to walk — do not.
 func TestPaneHintsNameHistoryBackAndForwardOnlyInViewerPanes(t *testing.T) {
 	for _, p := range []pane{dv1Pane, dv2Pane} {
-		text := hintText(p, 200)
+		text := plainHints(hintText(p, 200))
 		if !strings.Contains(text, "back") {
 			t.Errorf("pane %v hint text = %q, want it to contain %q", p, text, "back")
 		}
@@ -249,7 +296,7 @@ func TestPaneHintsNameHistoryBackAndForwardOnlyInViewerPanes(t *testing.T) {
 		}
 	}
 	for _, p := range []pane{rootsPane, filesPane} {
-		text := hintText(p, 200)
+		text := plainHints(hintText(p, 200))
 		if strings.Contains(text, "back") {
 			t.Errorf("pane %v: hint text = %q, unexpectedly names back (viewer-only)", p, text)
 		}
@@ -264,7 +311,7 @@ func TestPaneHintsNameHistoryBackAndForwardOnlyInViewerPanes(t *testing.T) {
 // always-does-something-while-open reasoning PickerMode/PickerScope already
 // get.
 func TestPickerHintTextNamesToggleHidden(t *testing.T) {
-	text := pickerHintText(200)
+	text := plainHints(pickerHintText(200))
 	if !strings.Contains(text, "hidden files") {
 		t.Errorf("pickerHintText = %q, want it to contain %q", text, "hidden files")
 	}
@@ -278,11 +325,11 @@ func TestPickerHintTextNamesToggleHidden(t *testing.T) {
 // the Picker's own hint line must still never mention it.
 func TestCtrlPNamedOnlyByPeekDV2(t *testing.T) {
 	for _, p := range []pane{rootsPane, dv1Pane, dv2Pane} {
-		if text := hintText(p, 200); strings.Contains(text, "ctrl+p") {
+		if text := plainHints(hintText(p, 200)); strings.Contains(text, "ctrl+p") {
 			t.Errorf("pane %v: hint text = %q, unexpectedly names ctrl+p", p, text)
 		}
 	}
-	if text := pickerHintText(200); strings.Contains(text, "ctrl+p") {
+	if text := plainHints(pickerHintText(200)); strings.Contains(text, "ctrl+p") {
 		t.Errorf("pickerHintText = %q, unexpectedly names ctrl+p", text)
 	}
 	// filesPane's full hint list (paneHints) is wide enough that 200 cols
@@ -290,7 +337,7 @@ func TestCtrlPNamedOnlyByPeekDV2(t *testing.T) {
 	// essential) regardless of this rebind, so this half needs a generous
 	// width to actually observe the untruncated line. 270, not 260 (M4.8):
 	// FilesMode/FilesScope grew the full line past 260 too.
-	if text := hintText(filesPane, 270); !strings.Contains(text, "ctrl+p") {
+	if text := plainHints(hintText(filesPane, 270)); !strings.Contains(text, "ctrl+p") {
 		t.Errorf("filesPane hint text = %q, want it to name ctrl+p (PeekDV2, D55)", text)
 	}
 }
@@ -319,16 +366,16 @@ func TestFooterAtWideWidthOmitsFocusHintsButKeepsEverythingElse(t *testing.T) {
 	}{
 		{rootsPane, []string{"star", "refresh", "help", "quit"}},
 		{filesPane, []string{"expand", "collapse", "star", "refresh", "peek", "help", "quit"}},
-		{dv1Pane, []string{"page", "star", "refresh", "help", "quit"}},
+		{dv1Pane, []string{"pgup", "star", "refresh", "help", "quit"}},
 	} {
 		m.focus = want.pane
-		text := m.renderFooter(rect{width: 200, height: 1})
+		text := plainHints(m.renderFooter(rect{width: 200, height: 1}))
 		for _, h := range want.haveWant {
 			if !strings.Contains(text, h) {
 				t.Errorf("pane %v: footer = %q, want it to contain %q", want.pane, text, h)
 			}
 		}
-		for _, notWant := range []string{"roots", "files", "dv1", "dv2"} {
+		for _, notWant := range focusHints() {
 			if strings.Contains(text, notWant) {
 				t.Errorf("pane %v: footer = %q, unexpectedly names a Focus binding (%q)", want.pane, text, notWant)
 			}

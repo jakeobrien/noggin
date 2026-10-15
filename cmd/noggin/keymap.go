@@ -290,6 +290,14 @@ type keyMap struct {
 	HistoryBack    key.Binding
 	HistoryForward key.Binding
 
+	// StarredNext and StarredPrevious cycle the focused Document Viewer
+	// through the Active Root's starred documents in folder order, wrapping
+	// (model.cycleStarred). Viewer-only, matched in Update's dv1Pane/dv2Pane
+	// case beside HistoryBack/HistoryForward; from a document outside that
+	// list, `s` loads the first and `S` the last.
+	StarredNext     key.Binding
+	StarredPrevious key.Binding
+
 	// Rename (S8/M7.2) edits the Sources Nav's selected Root's Name inline on
 	// its row: Enter confirms, Cancel (esc) discards, an empty name reverts
 	// to the default (the folder's base name) — model.handleRenameInput owns
@@ -301,6 +309,13 @@ type keyMap struct {
 	// edits a document in a focused Document Viewer — Edit is viewer-only, so
 	// the two never meet.
 	Rename key.Binding
+
+	// Theme switches to the next Theme in the cycle (theme.go's `themes`),
+	// restyling the whole frame in place and naming the new Theme in the
+	// Footer (model.cycleTheme). Global, like Navigator and Refresh, so it is
+	// inert while Find, Rename, the Help Modal or the Picker owns the
+	// keyboard. A control chord, so no letter is spent on it.
+	Theme key.Binding
 }
 
 // keys is the program's keymap.
@@ -485,8 +500,20 @@ var keys = keyMap{
 		key.WithKeys("]"),
 		key.WithHelp("]", "forward"),
 	),
+	StarredNext: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "next starred"),
+	),
+	StarredPrevious: key.NewBinding(
+		key.WithKeys("S"),
+		key.WithHelp("S", "prev starred"),
+	),
 	Rename: key.NewBinding(
 		key.WithKeys("e"),
 		key.WithHelp("e", "rename"),
+	),
+	Theme: key.NewBinding(
+		key.WithKeys("ctrl+t"),
+		key.WithHelp("ctrl+t", "next theme"),
 	),
 }

@@ -1023,11 +1023,11 @@ func TestPickerGrepPreviewOpensScrolledToMatchedLineWithHighlight(t *testing.T) 
 
 	// D140: only the matched span is reversed, not the whole line.
 	rows := strings.Split(m.picker.preview.GetContent(), "\n")
-	want := gutterStyle.Render(fmt.Sprintf("%3d ", matchLine)) + "the target " + matchSpanStyle.Render("report") + " line"
+	want := gutterStyle().Render(fmt.Sprintf("%3d ", matchLine)) + "the target " + matchSpanStyle.Render("report") + " line"
 	if rows[idx] != want {
 		t.Errorf("matched row = %q, want %q", rows[idx], want)
 	}
-	if rows[idx-1] != gutterStyle.Render(fmt.Sprintf("%3d ", matchLine-1))+fmt.Sprintf("filler line %d", matchLine-1) {
+	if rows[idx-1] != gutterStyle().Render(fmt.Sprintf("%3d ", matchLine-1))+fmt.Sprintf("filler line %d", matchLine-1) {
 		t.Errorf("row before the match = %q, want it plain", rows[idx-1])
 	}
 }

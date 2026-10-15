@@ -265,11 +265,11 @@ func TestRenamePersistsAcrossReload(t *testing.T) {
 // discoverability requirement: rootsPane's hints name it, filesPane's and
 // the viewer's do not (only a Root row can ever be renamed).
 func TestPaneHintsNameRenameOnlyForRootsPane(t *testing.T) {
-	if !strings.Contains(hintText(rootsPane, 200), "rename") {
-		t.Errorf("rootsPane hint text = %q, want it to name rename", hintText(rootsPane, 200))
+	if !strings.Contains(plainHints(hintText(rootsPane, 200)), "rename") {
+		t.Errorf("rootsPane hint text = %q, want it to name rename", plainHints(hintText(rootsPane, 200)))
 	}
 	for _, p := range []pane{filesPane, dv1Pane} {
-		if strings.Contains(hintText(p, 200), "rename") {
+		if strings.Contains(plainHints(hintText(p, 200)), "rename") {
 			t.Errorf("pane %v hint text unexpectedly names rename", p)
 		}
 	}
@@ -297,13 +297,13 @@ func TestRenameFooterReplacesOrdinaryHintsWhileEditing(t *testing.T) {
 	target := mkdir(t, filepath.Join(t.TempDir(), "project"))
 	m, _ := renameFixture(t, target)
 
-	before := m.renderFooter(rect{width: 80, height: 1})
+	before := plainHints(m.renderFooter(rect{width: 80, height: 1}))
 	if !strings.Contains(before, "star") {
 		t.Fatalf("footer before renaming = %q, want the ordinary rootsPane hints", before)
 	}
 
 	m = press(t, m, keys.Rename.Keys()[0])
-	during := m.renderFooter(rect{width: 80, height: 1})
+	during := plainHints(m.renderFooter(rect{width: 80, height: 1}))
 	if strings.Contains(during, "star") || strings.Contains(during, "open") {
 		t.Errorf("footer while renaming = %q, want rootsPane's ordinary hints replaced", during)
 	}

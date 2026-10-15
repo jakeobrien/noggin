@@ -848,15 +848,15 @@ func (f filesNav) withExpanded(path string, open bool) filesNav {
 	return f
 }
 
-var (
-	filesSelectedStyle = lipgloss.NewStyle().Reverse(true)
-	emptyFilesStyle    = lipgloss.NewStyle().Foreground(theme.Subtle)
-	// modeScopeRowStyle is S5's mode/scope row (below): dim, like every
-	// other pane's resting/empty text (Theme.Subtle's own doc comment), so it
-	// reads as a status line rather than competing with the selected-row
-	// reverse video or a git-status/star marker.
-	modeScopeRowStyle = lipgloss.NewStyle().Foreground(theme.Subtle)
-)
+var filesSelectedStyle = lipgloss.NewStyle().Reverse(true)
+
+func emptyFilesStyle() lipgloss.Style { return lipgloss.NewStyle().Foreground(theme.Subtle) }
+
+// modeScopeRowStyle is S5's mode/scope row (below): dim, like every
+// other pane's resting/empty text (Theme.Subtle's own doc comment), so it
+// reads as a status line rather than competing with the selected-row
+// reverse video or a git-status/star marker.
+func modeScopeRowStyle() lipgloss.Style { return lipgloss.NewStyle().Foreground(theme.Subtle) }
 
 // view renders the pane's content box at exactly its width x height, the same
 // contract the viewer keeps. S5's mode/scope row (modeScopeRow) always takes
@@ -892,7 +892,7 @@ func (f filesNav) modeScopeRow() string {
 		right = viewIndicator(hiddenSlot(f.hideDotfiles), ignoredSlot(f.showIgnored), filterSlot(f.fileFilter()))
 	}
 	text := statusLine(left, right, f.width)
-	return mutedText(modeScopeRowStyle, f.unfocused, true).Width(f.width).MaxWidth(f.width).Render(text)
+	return mutedText(modeScopeRowStyle(), f.unfocused, true).Width(f.width).MaxWidth(f.width).Render(text)
 }
 
 // rowsView renders the file-list portion of the box at exactly height rows
@@ -923,7 +923,7 @@ func (f filesNav) rowsView(height int) string {
 		if f.root != nil {
 			text = emptyTreeText
 		}
-		return mutedText(emptyFilesStyle, f.unfocused, true).
+		return mutedText(emptyFilesStyle(), f.unfocused, true).
 			Width(f.width).Height(height).
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
@@ -941,7 +941,7 @@ func (f filesNav) flatRowsView(height int) string {
 	rows := f.flatRows()
 	if len(rows) == 0 {
 		text := flatEmptyText(f.mode, f.scope)
-		return mutedText(emptyFilesStyle, f.unfocused, true).
+		return mutedText(emptyFilesStyle(), f.unfocused, true).
 			Width(f.width).Height(height).
 			MaxWidth(f.width).MaxHeight(height).
 			Render(text)
@@ -1022,12 +1022,14 @@ func (f filesNav) renderFlatRow(r browseRow, selected bool) string {
 // folder, then the name, padded and truncated to the box width. The selected
 // row is drawn in reverse video so the whole line reads as a bar.
 func (f filesNav) renderRow(r fileRow, selected bool) string {
+	// Full-size triangles, not the small ▸/▾, which read as specks at
+	// terminal sizes; both are text-presentation, one cell wide.
 	marker := "  "
 	if r.node.IsDir {
 		if f.expanded[r.node.Path] {
-			marker = "▾ "
+			marker = "▼ "
 		} else {
-			marker = "▸ "
+			marker = "▶ "
 		}
 	}
 	// Git status (S8) applies to files only — an expanded/collapsed folder

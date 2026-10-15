@@ -184,6 +184,6 @@ func (m model) composeViewerContent(p pane, width int, content string) string {
 	if room := width - lipgloss.Width(suffix); room >= 2 {
 		text = rightTruncate(place, room) + suffix
 	}
-	row := locationLineStyle.Width(width).MaxWidth(width).Render(text)
+	row := locationLineStyle().Width(width).MaxWidth(width).Render(text)
 	return content + "\n" + row
 }

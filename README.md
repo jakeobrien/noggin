@@ -125,8 +125,9 @@ below:
   [A second Document Viewer](#a-second-document-viewer).
 - **Footer** — key hints for whatever pane has focus, plus transient messages
   (a rejected launch path, a refused action). A message clears on your next
-  keypress. Hints truncate gracefully on a narrow terminal, always keeping
-  `help` and `quit`.
+  keypress. Each hint reads `key Action`, with the key in the Theme's accent
+  colour. Hints truncate gracefully on a narrow terminal, always keeping
+  `Help` and `Quit`.
 
 Only one pane has focus at a time; most keys route to it. Every pane shows
 the key that jumps focus to it, right-aligned on its title row (e.g.
@@ -138,11 +139,18 @@ and an accent-coloured title bar, so focus is visible at a glance — see
 ### Appearance
 
 noggin has its own colour scheme and does not inherit your terminal's theme: it
-paints every cell — background included — from one built-in palette, so it looks
+paints every cell — background included — from a built-in Theme, so it looks
 the same in any terminal and its text is always legible against its own
 background. It uses 24-bit colour; a terminal that only does 256 colours gets
-the nearest match. There is no light/dark detection and no setting for it. (A
-terminal that honours `NO_COLOR` still gets no colour.)
+the nearest match. There is no light/dark detection. (A terminal that honours
+`NO_COLOR` still gets no colour.)
+
+Four dark Themes ship: `gruvbox-material` (the default), `tokyonight`,
+`everforest` and `charm`. `ctrl+t` switches to the next one in that order,
+restyling everything in place — open documents keep their scroll position and
+find — and names the new Theme in the footer. The choice is saved
+(in a `theme` file beside noggin's other data) and the next launch starts on
+it; a first launch starts on `gruvbox-material`.
 
 ## Keybindings
 
@@ -162,6 +170,7 @@ no `h`/`j`/`k`/`l` aliases.
 | `D` | focus DV2 (no-op if DV2 doesn't exist — a bare focus request never creates it) |
 | `tab` / `shift+tab` | cycle focus forward / backward through the visible panes (see [Focus](#focus)) |
 | `R` | refresh the Active Root's file tree and every open Document Viewer's document from disk (re-fetches an open Wikipedia article instead) |
+| `ctrl+t` | switch to the next colour Theme (see [Appearance](#appearance)) |
 | `m` | toggle the viewer between Markdown and Text rendering (see [Render Mode](#render-mode)) |
 | `/` | start find in the active document |
 | `n` / `N` | next / previous find match (once a search has matches) |
@@ -223,6 +232,7 @@ editing and history in DV1 never touch DV2, and vice versa.
 | `e` | edit this viewer's document in `$EDITOR` (refused on a Wikipedia article; see [Editing](#editing)) |
 | `ctrl+w` | close this viewer (see [A second Document Viewer](#a-second-document-viewer)) |
 | `[` / `]` | step back / forward through this viewer's own Document History |
+| `s` / `S` | open the Active Root's next / previous starred document, in folder order (wraps) |
 
 See [Document history](#document-history).
 
@@ -376,6 +386,15 @@ Files Nav's `Starred` mode and the Picker's `Starred` scope even when no open
 root covers it (see [Browsing](#browsing-tree-recent-starred)). A starred
 Wikipedia article can never go "missing" the same way — see
 [Wikipedia](#wikipedia) for what happens if it can no longer be fetched.
+
+**Cycling starred documents:** with a Document Viewer focused, `s` opens the
+Active Root's next starred document and `S` the previous one, in folder order
+(the order the `Tree` lists them) and wrapping at either end. If the viewer's
+document isn't one of them (unstarred, under another Root, or no document at
+all), `s` starts at the first and `S` at the last. Each step is an ordinary
+open: it goes into that viewer's history and counts toward `Recent`. Broken
+stars are skipped, the File Filter and view toggles are ignored, and with
+Wikipedia as the Active Source the Footer just says there's no Root to cycle.
 
 Document/article stars, along with each one's last-viewed time (used by
 [Recent](#browsing-tree-recent-starred)), live in a second plain file

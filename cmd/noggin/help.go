@@ -86,7 +86,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Activate, keys.Star, keys.Rename, keys.LineUp, keys.LineDown,
 			keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.ToggleIgnored, keys.FileFilter,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh, keys.Theme,
 			keys.Help, keys.Quit,
 		}
 	case filesPane:
@@ -94,7 +94,7 @@ func helpBindings(p pane) []key.Binding {
 			keys.Activate, keys.Expand, keys.Collapse, keys.FilesMode, keys.FilesScope, keys.Star, keys.LineUp, keys.LineDown,
 			keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.ToggleIgnored, keys.FileFilter,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh, keys.Peek,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh, keys.Theme, keys.Peek,
 			keys.ActivateDV2, keys.PeekDV2,
 			keys.Help, keys.Quit,
 		}
@@ -105,9 +105,9 @@ func helpBindings(p pane) []key.Binding {
 		}
 		return append(bindings,
 			keys.Find, keys.FindNext, keys.FindPrevious, keys.Cancel,
-			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
+			keys.Star, keys.HistoryBack, keys.HistoryForward, keys.StarredNext, keys.StarredPrevious, keys.Edit, keys.RenderMode, keys.Navigator, keys.Picker, keys.PickerRestore,
 			keys.PickerUp, keys.PickerDown, keys.PickerMode, keys.PickerScope, keys.ToggleHidden, keys.ToggleIgnored, keys.FileFilter,
-			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh,
+			keys.FocusRoots, keys.FocusFiles, keys.FocusDV1, keys.FocusDV2, keys.FocusNext, keys.FocusPrevious, keys.CloseViewer, keys.Refresh, keys.Theme,
 			keys.Help, keys.Quit,
 		)
 	}
@@ -116,10 +116,12 @@ func helpBindings(p pane) []key.Binding {
 // modalStyle borders the Help Modal in a colour no pane border uses
 // (Theme.Border, Theme.Accent), so it reads as a layer above
 // the frame rather than another (possibly focused-looking) pane within it.
-var modalStyle = lipgloss.NewStyle().
-	Border(lipgloss.RoundedBorder()).
-	BorderForeground(theme.Highlight).
-	Padding(0, 1)
+func modalStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(theme.Highlight).
+		Padding(0, 1)
+}
 
 // helpBox renders the Help Modal's content for a pane's context: the pane's
 // title, then every binding helpBindings names for it, through bubbles/help's
@@ -132,9 +134,24 @@ var modalStyle = lipgloss.NewStyle().
 func helpBox(p pane) string {
 	hm := help.New()
 	hm.ShowAll = true
+	hm.Styles = helpStyles()
 	body := hm.FullHelpView([][]key.Binding{helpBindings(p)})
 	title := titleStyle.Render("Help: " + p.title())
-	return modalStyle.Render(title + "\n\n" + body)
+	return modalStyle().Render(title + "\n\n" + body)
+}
+
+// helpStyles colours the Help Modal's columns from the Theme instead of
+// bubbles/help's fixed dark greys, which sit too close to any Theme's Bg to
+// read: keys in Fg, the brightest text, and descriptions one step down in
+// Subtle, so the two columns still part by brightness alone.
+func helpStyles() help.Styles {
+	key := lipgloss.NewStyle().Foreground(theme.Fg)
+	desc := lipgloss.NewStyle().Foreground(theme.Subtle)
+	sep := lipgloss.NewStyle().Foreground(theme.Border)
+	return help.Styles{
+		ShortKey: key, ShortDesc: desc, ShortSeparator: sep, Ellipsis: sep,
+		FullKey: key, FullDesc: desc, FullSeparator: sep,
+	}
 }
 
 // overlayHelp composes the Help Modal on top of an already-rendered frame,

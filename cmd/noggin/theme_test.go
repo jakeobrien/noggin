@@ -63,7 +63,8 @@ func colorFields(v any) map[string]color.Color {
 // the code background, the unfocused muted text a looser 3:1 (it is meant to
 // recede), and borders 3:1 as non-text UI.
 func TestThemesMeetContrast(t *testing.T) {
-	for name, th := range allThemes {
+	for _, th := range themes {
+		name := th.Name
 		check := func(group string, fields map[string]color.Color, bg color.Color, min float64, skip ...string) {
 		fields:
 			for field, c := range fields {
@@ -102,10 +103,38 @@ func TestThemesMeetContrast(t *testing.T) {
 	}
 }
 
+// TestMutedDocumentTextStaysReadable holds each Theme's MutedFade to its
+// purpose: an unfocused Document Viewer's body text recedes (less contrast
+// than focused) but stays at WCAG AA, and its coloured text (headings, links,
+// code) at 3:1.
+func TestMutedDocumentTextStaysReadable(t *testing.T) {
+	for _, th := range themes {
+		muted := func(c color.Color) color.Color { return lipgloss.Color(mutedColor(hexOf(c), th.Bg, th.MutedFade)) }
+		fg := contrast(muted(th.Fg), th.Bg)
+		if fg < 4.5 || fg >= contrast(th.Fg, th.Bg) {
+			t.Errorf("%s: muted Fg contrast %.2f:1, want >= 4.5:1 and below focused %.2f:1", th.Name, fg, contrast(th.Fg, th.Bg))
+		}
+		for field, c := range colorFields(th.Markdown) {
+			switch field {
+			case "H1Fg", "H1Bg", "CodeBg", "Rule":
+				continue
+			}
+			if got := contrast(muted(c), th.Bg); got < 3 {
+				t.Errorf("%s: muted Markdown.%s contrast %.2f:1, want >= 3:1", th.Name, field, got)
+			}
+		}
+	}
+}
+
 // TestMarkdownStyleConfigStaysInThePalette: every colour in the generated
 // stylesheet is one the Theme names, so no literal can sneak in beside it.
 func TestMarkdownStyleConfigStaysInThePalette(t *testing.T) {
-	th := gruvboxMaterialTheme
+	for _, th := range themes {
+		t.Run(th.Name, func(t *testing.T) { checkStyleConfigPalette(t, th) })
+	}
+}
+
+func checkStyleConfigPalette(t *testing.T, th Theme) {
 	palette := map[string]bool{hexOf(th.Fg): true}
 	for _, fields := range []map[string]color.Color{colorFields(th.Markdown), colorFields(th.Syntax)} {
 		for _, c := range fields {

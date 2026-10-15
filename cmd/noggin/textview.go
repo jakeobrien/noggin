@@ -185,12 +185,13 @@ func (m model) toggleRenderMode() model {
 	return m.withViewerFor(p, v.toggleMode())
 }
 
-var (
-	gutterStyle      = lipgloss.NewStyle().Foreground(theme.Subtle)
-	mutedGutterStyle = lipgloss.NewStyle().Foreground(theme.UnfocusedSubtle)
-	mutedTextStyle   = lipgloss.NewStyle().Foreground(theme.UnfocusedText)
-	matchSpanStyle   = lipgloss.NewStyle().Reverse(true)
-)
+var matchSpanStyle = lipgloss.NewStyle().Reverse(true)
+
+// The Text renderer's gutter and its muted (unfocused) counterparts. Functions,
+// not vars, so they always read the active Theme (theme.go).
+func gutterStyle() lipgloss.Style      { return lipgloss.NewStyle().Foreground(theme.Subtle) }
+func mutedGutterStyle() lipgloss.Style { return lipgloss.NewStyle().Foreground(theme.UnfocusedSubtle) }
+func mutedTextStyle() lipgloss.Style   { return lipgloss.NewStyle().Foreground(theme.UnfocusedText) }
 
 // textSpan is a byte range [start, end) within one display line of a Text
 // render (textLayout.lines): what Find indicates as the current match.
@@ -282,9 +283,9 @@ func layoutText(src []byte, width int) *textLayout {
 // (or muted, for an unfocused pane, D136). span, when it is on line i, is
 // drawn reversed.
 func (l *textLayout) lineRows(i int, muted bool, span *textSpan) []string {
-	numStyle, bodyStyle := gutterStyle, lipgloss.NewStyle()
+	numStyle, bodyStyle := gutterStyle(), lipgloss.NewStyle()
 	if muted {
-		numStyle, bodyStyle = mutedGutterStyle, mutedTextStyle
+		numStyle, bodyStyle = mutedGutterStyle(), mutedTextStyle()
 	}
 	body := func(s string) string {
 		if s == "" || !muted {

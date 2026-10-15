@@ -140,7 +140,7 @@ func cardColor(c color.Color, muted bool) color.Color {
 	if !muted {
 		return c
 	}
-	return lipgloss.Color(mutedColor(hexOf(c), theme.Bg))
+	return lipgloss.Color(mutedColor(hexOf(c), theme.Bg, theme.MutedFade))
 }
 
 // frontmatterHeader splits src into the card drawn above the document and the

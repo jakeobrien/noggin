@@ -1846,3 +1846,85 @@
   config file. Showing ignored files still walks the remaining ignored trees eagerly; lazy
   expansion is the next step if that is slow. The bare-letter Files Nav keys (`t`, `a`, `d`,
   `D`, `F`) shrink the pool of free letters.
+
+## D142: Themes are hot-swappable; `ctrl+t` cycles four dark Themes for the session
+
+- Status: decided
+- Date: 2026-10-15
+- Context: noggin had one Theme (Gruvbox Material), with `theme` documented as never
+  reassigned. Several Theme-coloured styles were package-level vars, which capture the
+  colours at startup. A Document Viewer's content (Glamour or Text render, focused and muted)
+  is rendered ahead of time, so it also holds the old colours.
+- Decision:
+  - **Four dark Themes:** `gruvbox-material` (unchanged, still the default), `tokyonight`
+    (Tokyo Night, night variant), `everforest` (Everforest dark medium) and `charm` (bright
+    pink and violet on near-black, after Charm's charmtone colours). They are registered in
+    cycle order in `themes`. Each must pass the same contrast tests as before.
+  - **`ctrl+t` (keys.Theme) switches to the next Theme**, wrapping around, and names it in
+    the Footer. It is global, like `R`, so it does nothing while Find, Rename, the Help Modal
+    or the Picker owns the keyboard. A control chord, so no letter is spent.
+  - **`theme` stays a process-wide var**, now written by `model.cycleTheme`. Threading a
+    Theme through every renderer would touch most files for no behavioural gain. Every
+    Theme-coloured style is now a function that reads `theme` when called, never a
+    package var.
+  - **Viewers re-render in place (`viewer.restyle`).** A Theme changes colours, never text or
+    wrapping, so scroll offsets, a committed find, its current match and Peek's position are
+    carried across the re-render unchanged.
+  - **Session-only.** Every launch starts on the default; nothing is persisted.
+- Why: cycling with one key gives you every Theme without a selector UI. Restyling in place
+  means switching while reading costs nothing.
+- Cost / revisit: a global written from `Update` is state outside the model; tests that
+  switch it restore it (`keepTheme`). If a Theme picker panel or a persisted choice is
+  wanted, add a `theme` entry to the store and a Picker-style list then. A future
+  style written as a package var would silently miss a switch. `TestThemeKeyRepaintsTheWholeFrame`
+  catches that for anything visible in its fixture frame.
+
+## D143: Footer hints read "key Action" with themed keys; unfocused documents recede per Theme; amends D136
+
+- Status: decided
+- Date: 2026-10-16
+- Context: the Footer's hints were plain Subtle text joined by ` · `, so keys and actions
+  ran together. The nav panes and Picker spent room on `↑ up · ↓ down`, and the viewer on
+  six separate movement hints. The Help Modal used bubbles/help's fixed dark greys, which
+  read poorly on every Theme. An unfocused Document Viewer faded every colour halfway to the
+  background, which left body text at 3–4:1 and headings near 2:1.
+- Decision:
+  - **Footer entries are `<key> <Action>`, joined by ` | `.** The key is in `Theme.Accent`,
+    the action is capitalised in `Theme.Subtle`, and the separator is in `Theme.Border`.
+  - **Up/Down are no longer hinted** in the Sources Nav, Files Nav or Picker. The viewer
+    folds its movement keys into one `↑/↓/pgup/pgdn/g/G Nav` entry. The space this frees goes
+    to `alt+h`/`alt+i` in the Files Nav, `ctrl+space`/`ctrl+t` in the Sources Nav, `m` and
+    `ctrl+w` in the viewer, and `ctrl+enter` in the Picker.
+  - **Help Modal columns:** keys are drawn in `Theme.Fg` and descriptions in `Theme.Subtle`.
+  - **`Theme.MutedFade`** sets how far an unfocused viewer's colours move toward `Bg`. It is
+    tuned per Theme, because one fraction dims some palettes more than others. Desaturation
+    drops from 60% to 50%. Tests require muted body text to stay at or above 4.5:1 and below
+    the focused text's contrast, and muted markdown colours to stay at or above 3:1.
+- Why: highlighted keys can be scanned along the line. A fixed fade gave uneven results
+  across palettes, while a per-Theme value keeps the same reading comfort on each one.
+- Cost / revisit: the Footer's hint strings now carry ANSI, so tests compare them through
+  `ansi.Strip`.
+
+## D144: `s`/`S` cycle the focused viewer through the Active Root's starred documents
+
+- Status: decided
+- Date: 2026-10-16
+- Context: reaching another starred document meant leaving the viewer for the Files Nav's
+  `Starred` mode or the Picker's `Starred` scope.
+- Decision:
+  - **Viewer-only `s` / `S`** (keys.StarredNext/StarredPrevious) open the Active Root's next
+    / previous starred document in the focused viewer, wrapping. Bare letters are safe
+    because a viewer is never a typing context.
+  - **Folder order**: the `Tree`'s order flattened depth-first (folders before files, then
+    by name), computed from paths (`folderOrderLess`), so stars the File Filter or view
+    toggles hide from the Tree still cycle, as they still show in `Starred`.
+  - **Entry point**: from a document not in that list (unstarred, under another Root, an
+    article, or an empty viewer) `s` opens the first and `S` the last.
+  - **A navigation**: each step records recency and a Document History entry, like
+    Activate.
+  - Broken stars and articles are skipped. With Wikipedia as the Active Source, no Active
+    Root, or no starred documents in it, the Footer says so.
+- Why: one key to page through a Root's bookmarks while reading. Folder order matches what
+  the Tree shows, so the sequence is predictable.
+- Cost / revisit: not listed in the Footer's viewer hints (already full), only the Help
+  Modal. No cycling of starred articles with Wikipedia active; add it if wanted.

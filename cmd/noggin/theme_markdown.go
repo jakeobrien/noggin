@@ -153,7 +153,7 @@ func mutedMarkdownStyleConfig(t Theme) (ansi.StyleConfig, error) {
 	if err := json.Unmarshal(src, &doc); err != nil {
 		return ansi.StyleConfig{}, fmt.Errorf("muted style: %w", err)
 	}
-	muteColors(doc, t.Bg)
+	muteColors(doc, t.Bg, t.MutedFade)
 	src, err = json.Marshal(doc)
 	if err != nil {
 		return ansi.StyleConfig{}, fmt.Errorf("muted style: %w", err)
@@ -167,32 +167,33 @@ func mutedMarkdownStyleConfig(t Theme) (ansi.StyleConfig, error) {
 
 // muteColors rewrites every "color"/"background_color" string in a decoded
 // stylesheet with mutedColor, leaving every other field alone.
-func muteColors(v any, bg color.Color) {
+func muteColors(v any, bg color.Color, fade float64) {
 	switch t := v.(type) {
 	case map[string]any:
 		for k, val := range t {
 			if s, ok := val.(string); ok && (k == "color" || k == "background_color") && s != "" {
-				t[k] = mutedColor(s, bg)
+				t[k] = mutedColor(s, bg, fade)
 				continue
 			}
-			muteColors(val, bg)
+			muteColors(val, bg, fade)
 		}
 	case []any:
 		for _, val := range t {
-			muteColors(val, bg)
+			muteColors(val, bg, fade)
 		}
 	}
 }
 
-// mutedColor desaturates c 60% toward its own luma, then blends it halfway
-// toward bg — darker on a dark theme, lighter on a light one, with no
-// light/dark branch because bg already says which way "back" is.
-func mutedColor(c string, bg color.Color) string {
+// mutedColor desaturates c halfway toward its own luma, then blends it the
+// fraction fade (Theme.MutedFade) toward bg — darker on a dark theme, lighter
+// on a light one, with no light/dark branch because bg already says which way
+// "back" is.
+func mutedColor(c string, bg color.Color, fade float64) string {
 	r16, g16, b16, _ := lipgloss.Color(c).RGBA()
 	br16, bg16, bb16, _ := bg.RGBA()
 	r, g, b := float64(r16>>8), float64(g16>>8), float64(b16>>8)
 	luma := 0.299*r + 0.587*g + 0.114*b
-	const desat, fade = 0.6, 0.5
+	const desat = 0.5
 	r, g, b = r+(luma-r)*desat, g+(luma-g)*desat, b+(luma-b)*desat
 	mix := func(x float64, back uint32) uint8 {
 		return uint8(x + (float64(back>>8)-x)*fade)

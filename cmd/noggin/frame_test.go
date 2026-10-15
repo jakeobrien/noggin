@@ -283,7 +283,9 @@ func allBindings() []key.Binding {
 		keys.ActivateDV2, keys.PeekDV2,
 		keys.FilesMode, keys.FilesScope, keys.FileFilter,
 		keys.HistoryBack, keys.HistoryForward,
+		keys.StarredNext, keys.StarredPrevious,
 		keys.Rename,
+		keys.Theme,
 	}
 }
 

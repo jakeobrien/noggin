@@ -35,6 +35,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 | `tab` / `shift+tab` | focus next / prev pane [^cycle] | focus next / prev pane [^cycle] | focus next / prev pane [^cycle] | — | — | — | — |
 | `ctrl+w` | — | — | close viewer [^close] | — | — | — | — |
 | `R` | refresh [^refresh] | refresh [^refresh] | refresh [^refresh] | - | - | — | - |
+| `ctrl+t` | next Theme [^theme] | next Theme [^theme] | next Theme [^theme] | — | — | — | — |
 | `?` | open help | open help | open help | - | - | close help | - |
 | `space` | open Picker | open Picker | open Picker | - | - | — | - |
 | `ctrl+space` | reopen Picker to last query | reopen Picker to last query | reopen Picker to last query | - | - | — | - |
@@ -53,6 +54,7 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 | `p` | — | peek in place [^peek] | — | - | - | — | - |
 | `ctrl+p` | — | peek into DV2 [^peek] | — | — | — | — | — |
 | `[` / `]` | — | — | history back / forward [^history] | - | - | — | - |
+| `s` / `S` | — | — | next / prev starred document [^cyclestar] | - | - | — | - |
 | **Stars, names, editing, cycling, view toggles** | | | | | | | |
 | `ctrl+s` | star Root [^starroot] | star selected row [^star] | star this viewer's document [^star] | — | — | — | star selected Result [^star] |
 | `e` | rename Root [^rename] | — | edit [^edit] | - | - | — | - |
@@ -78,6 +80,8 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 
 [^refresh]: Re-reads the Active Root's tree and both viewers' documents (whichever exist) from disk, and recomputes git markers. A viewer showing a Wikipedia article re-fetches it instead, bypassing the session cache. Clears any Peek. A committed find may be lost. Doesn't add a history entry. Failures appear in the Footer.
 
+[^theme]: Switches to the next colour Theme (`gruvbox-material` → `tokyonight` → `everforest` → `charm` → back), restyling the whole frame in place: open documents keep their scroll position and find. The Footer names the new Theme. The choice is saved and the next launch starts on it (default `gruvbox-material`).
+
 [^edit]: Hands the focused viewer's document to `$EDITOR` (fallback `vi`) and re-reads it on return. Acts on the focused viewer only (not reachable from Sources or Files, where `e` is Rename or does nothing). Footer message if no document is open, or for a Wikipedia article ("cannot edit a Wikipedia article"). Silent no-op while Peeking.
 
 [^mode]: Flips the targeted viewer's Render Mode between Markdown and Text (sticky for that viewer, session-only). Acts on DV2 only when DV2 has focus; otherwise DV1. Keeps a find (query and current match, re-run in the new mode) or, with no find, the proportional scroll position. Footer message on a Text file, which is always shown as text (also while one is Peeked).
@@ -91,6 +95,8 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 [^peek]: Shows the selected document read-only in the viewer (DV1 for `p`, DV2 for `ctrl+p`, creating DV2 if needed) without making it the Active Document and **without moving focus**. A second press clears it. No-op on a folder or on the document already active there. A selection change, focus change, opening the Picker, or a refresh also clears Peek. A Peeked document can't be searched or edited. Doesn't count toward `Recent`.
 
 [^history]: Walks that viewer's own back/forward Document History (DV1 and DV2 are independent). Restores each document's last scroll position. History is session-only.
+
+[^cyclestar]: Opens the Active Root's next (`s`) or previous (`S`) starred document in the focused viewer, in folder order (the `Tree`'s order: folders before files, then by name), wrapping. From a document that isn't one of them (unstarred, under another Root, an article, or an empty viewer), `s` opens the first and `S` the last. Records history and `Recent` like any open. Broken stars are skipped; the File Filter and view toggles are ignored. A no-op when the only starred document is already shown, and while Peeking. Footer message with no starred documents in the Active Root, no Active Root, or Wikipedia as the Active Source.
 
 [^starroot]: Stars or un-stars the selected Root, persisting it to the `roots` file; starred Roots are what a plain `noggin` opens next time. Refused with a Footer message on the Wikipedia row.
 
@@ -121,4 +127,4 @@ Legend: **—** = does nothing in that mode · **types** = the key is entered as
 
 - **Typing modes are exclusive.** While Find, Rename or the Picker's Prompt is active, every key not listed for that mode is entered as text — `q` never quits and `g` never jumps to the top. This is why the Picker's own bindings are all control or `alt+` chords (`ctrl+s`, `alt+t`, `alt+a`, `alt+h`, `alt+i`, `alt+m`) and its movement is arrow-only.
 - **Mouse**: wheel scrolling is also supported, aimed at the pane under the cursor rather than the focused one. It isn't a key command, so isn't tabulated.
-- **Where `?` shows these**: the Help Modal lists a per-pane subset (`helpBindings` in `help.go`); the Footer shows a shorter one. The Help Modal lists `tab`/`shift+tab` and `alt+i` in every pane, and Edit only in the viewer; the Footer's Sources and Files hints no longer include Edit, and the Picker's footer lists `alt+i` after star.
+- **Where `?` shows these**: the Help Modal lists a per-pane subset (`helpBindings` in `help.go`); the Footer shows a shorter one. The Help Modal lists `tab`/`shift+tab` and `alt+i` in every pane, and Edit only in the viewer; the Footer's Sources and Files hints no longer include Edit, and the Picker's footer lists `alt+i` after star. The Footer leaves out `↑`/`↓` in Sources, Files and the Picker, and folds the viewer's movement keys into one `Nav` entry.

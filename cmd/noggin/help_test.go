@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image/color"
 	"strings"
 	"testing"
 
@@ -132,12 +133,12 @@ func TestHelpModalListsPageAndHalfPageTogetherForTheViewer(t *testing.T) {
 // without changing what a terminal actually displays, so a byte-exact
 // comparison would fail on formatting, not content.
 func TestHelpOverlayLeavesTheFrameVisibleAroundIt(t *testing.T) {
-	// Height 38, not 24 (ToggleIgnored added one more row; PickerFilter added one more row; RenderMode added one more row; PickerRestore added one more row; C2a/M9.1 grew filesPane's helpBindings list past
+	// Height 39, not 24 (Theme added one more row; ToggleIgnored added one more row; PickerFilter added one more row; RenderMode added one more row; PickerRestore added one more row; C2a/M9.1 grew filesPane's helpBindings list past
 	// what a 24-row terminal fits without clamping, M2.8 grew it by one more
 	// row (keys.Star), and M4.8 grew it by one more again (FilesMode,
 	// FilesScope) — see TestHelpOverlayNeverExceedsTheTerminal for that
 	// clamped case, which this test is not exercising).
-	m := sized(t, newModel().openFolder(fixtureTree()), 80, 38)
+	m := sized(t, newModel().openFolder(fixtureTree()), 80, 39)
 	beforeLines := plainLines(m.View().Content)
 
 	m = press(t, m, "?")
@@ -427,5 +428,16 @@ func TestCtrlPNamedOnlyInFilesPaneHelp(t *testing.T) {
 	}
 	if box := helpBox(filesPane); !strings.Contains(box, "ctrl+p") {
 		t.Errorf("filesPane help modal = %q, want it to name ctrl+p (PeekDV2, D55)", box)
+	}
+}
+
+// TestHelpModalColumnsUseTheTheme: the modal's keys are drawn in Fg and their
+// descriptions one step down in Subtle, not bubbles/help's fixed dark greys.
+func TestHelpModalColumnsUseTheTheme(t *testing.T) {
+	box := helpBox(filesPane)
+	for what, c := range map[string]color.Color{"key (Fg)": theme.Fg, "description (Subtle)": theme.Subtle} {
+		if !strings.Contains(box, "38;"+sgrColor(c)+"m") {
+			t.Errorf("help modal has no %s colour", what)
+		}
 	}
 }
